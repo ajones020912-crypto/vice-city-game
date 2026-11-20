@@ -9,29 +9,32 @@ html,body{margin:0;height:100%;background:#081423;color:#edf6ff;font:14px Arial,
 <header>
 <h1>Vice City 3D - Rendering Diagnostics</h1>
 <nav>
-<label><input type="checkbox" id="shadows">Sun shadows</label>
-<label><input type="checkbox" id="post">Post-processing</label>
-<label><input type="checkbox" id="details">Surface-detail maps</label>
+<label><input type="checkbox" id="shadows" checked>Sun shadows</label>
+<label><input type="checkbox" id="post" checked>Bloom + color effects</label>
+<label><input type="checkbox" id="details" checked>Surface-detail maps</label>
+<label><input type="checkbox" id="ao">Depth darkening (SSAO)</label>
+<button id="look">Restore enhanced look</button>
 <button id="safe">Reset to safe mode</button>
 <a href="./index.html" target="_blank" rel="noopener">Open original game</a>
 </nav>
-<p id="status" role="status">Loading the existing game. Safe mode leaves color textures intact but disables the three suspect effects. This is a diagnostic page, not a confirmed permanent fix.</p>
+<p id="status" role="status">Loading the existing game with bloom, color effects, shadows and texture detail enabled; depth darkening starts disabled. This is a targeted test, not a confirmed permanent fix.</p>
 </header>
 <iframe id="game" title="Vice City game" allow="fullscreen; gamepad" allowfullscreen></iframe>
 <script>
 (()=>{'use strict';
 const frame=document.getElementById('game'),status=document.getElementById('status');
-const controls={shadows:document.getElementById('shadows'),post:document.getElementById('post'),details:document.getElementById('details')};
+const controls={shadows:document.getElementById('shadows'),post:document.getElementById('post'),details:document.getElementById('details'),ao:document.getElementById('ao')};
 let game=null,materialMaps=new WeakMap(),lastQuality=null,skipPost=false,attached=false;
 function materials(fn){if(!game||!game.scene)return;game.scene.traverse(o=>{if(!o.isMesh)return;const list=Array.isArray(o.material)?o.material:[o.material];for(const m of list)if(m)fn(m)})}
 function syncMaterials(){materials(m=>{if(!('normalMap' in m)&&!('roughnessMap' in m))return;let saved=materialMaps.get(m);if(!saved){const known=m.userData&&(m.userData.cityDetailMaps||m.userData.detailMaps);saved={normal:(known&&known.normal)||m.normalMap||null,roughness:(known&&known.roughness)||m.roughnessMap||null};materialMaps.set(m,saved)}const normal=controls.details.checked?saved.normal:null,roughness=controls.details.checked?saved.roughness:null;if(m.normalMap!==normal||m.roughnessMap!==roughness){m.normalMap=normal;m.roughnessMap=roughness;m.needsUpdate=true}})}
-function describe(){if(!attached)return;const enabled=Object.entries(controls).filter(([,el])=>el.checked).map(([name])=>name);status.textContent=enabled.length?'Enabled: '+enabled.join(', ')+'. Turn on only one effect at a time and walk around. If the lines return, turn that effect off.':'Safe mode active: shadows, post-processing and surface-detail maps are off. Color textures remain on. Click inside the game to play, then enable one effect at a time.';if(game.quality===0)status.textContent+=' The game is on Low quality; press Q in the game to select Medium or High before testing individual effects.'}
+function describe(){if(!attached)return;status.textContent=controls.post.checked?'Bloom and color effects are ON. Depth darkening (SSAO) is '+(controls.ao.checked?'ON':'OFF')+'. Walk around and check the lines. Press Esc to release the mouse before changing controls.':'Post-processing is OFF. Color textures remain on. Use Restore enhanced look to keep bloom and color effects without depth darkening.';if(game.quality===0)status.textContent+=' The game is on Low quality; press Q inside the game to select Medium or High for post-processing.'}
 function apply(){if(!game)return;game.renderer.shadowMap.enabled=controls.shadows.checked;game.renderer.shadowMap.needsUpdate=true;syncMaterials();describe()}
 for(const el of Object.values(controls))el.addEventListener('change',apply);
+document.getElementById('look').onclick=()=>{controls.shadows.checked=true;controls.post.checked=true;controls.details.checked=true;controls.ao.checked=false;apply()};
 document.getElementById('safe').onclick=()=>{for(const el of Object.values(controls))el.checked=false;apply()};
 function attach(){if(attached)return true;let g;try{g=frame.contentWindow.__vc}catch(e){status.textContent='The browser blocked access to the embedded game. Open this page on the same site as index.html.';return false}if(!g||!g.renderer||!g.scene||!g.camera||!g.pl)return false;game=g;
 const renderer=g.renderer,render=renderer.render.bind(renderer);
-renderer.render=function(scene,camera){if(scene===g.scene&&camera===g.camera){renderer.shadowMap.enabled=controls.shadows.checked;if(lastQuality!==g.quality){lastQuality=g.quality;syncMaterials()}if(!controls.post.checked){const target=renderer.getRenderTarget();skipPost=!!target;if(target)renderer.setRenderTarget(null);try{return render(scene,camera)}finally{if(target)renderer.setRenderTarget(target)}}skipPost=false;return render(scene,camera)}if(skipPost&&camera&&camera.isOrthographicCamera&&scene&&scene.children&&scene.children.some(o=>o.material&&o.material.uniforms&&o.material.uniforms.tDiffuse&&o.material.uniforms.tDepth)){skipPost=false;return}return render(scene,camera)};
+renderer.render=function(scene,camera){if(scene===g.scene&&camera===g.camera){renderer.shadowMap.enabled=controls.shadows.checked;if(lastQuality!==g.quality){lastQuality=g.quality;syncMaterials()}if(!controls.post.checked){const target=renderer.getRenderTarget();skipPost=!!target;if(target)renderer.setRenderTarget(null);try{return render(scene,camera)}finally{if(target)renderer.setRenderTarget(target)}}skipPost=false;return render(scene,camera)}if(camera&&camera.isOrthographicCamera&&scene&&scene.children){const passes=scene.children.filter(o=>o.material&&o.material.uniforms&&o.material.uniforms.tDiffuse&&o.material.uniforms.tDepth);if(passes.length){if(skipPost){skipPost=false;return}for(const o of passes){const u=o.material.uniforms;if(u.aoStrength&&!controls.ao.checked)u.aoStrength.value=0}}}return render(scene,camera)};
 attached=true;lastQuality=g.quality;apply();return true}
 let attempts=0;const timer=setInterval(()=>{attempts++;if(attach()){clearInterval(timer);setInterval(()=>{if(attached){syncMaterials();describe()}},1000)}else if(attempts>=240){clearInterval(timer);status.textContent='Could not find the game renderer. The original game has not been changed. Check that index.html loads successfully and exposes window.__vc.'}},250);
 frame.src='./index.html';
