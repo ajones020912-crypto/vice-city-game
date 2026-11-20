@@ -1,0 +1,116 @@
+name: Update game graphics, traffic and audio
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/update-game.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: main-game-update
+  cancel-in-progress: false
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply guarded and syntax-checked game update
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile, os
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='// CITY_MAIN_UPDATE_V2'
+          if marker in s:
+              print('Update already applied.')
+              raise SystemExit(0)
+          blob=subprocess.check_output(['git','hash-object','index.html'],text=True).strip()
+          if blob!='e35b2fca1b28345a135f518b68bef8e9e09e6b1f':
+              raise SystemExit('index.html changed since review; refusing to overwrite it.')
+          def replace_once(old,new):
+              global s
+              if s.count(old)!=1: raise SystemExit('Unexpected patch anchor: '+old[:80])
+              s=s.replace(old,new,1)
+          def replace_function(name,new):
+              global s
+              start=s.index('function '+name+'('); brace=s.index('{',start)
+              depth=0; quote=None; comment=None; i=brace
+              while i<len(s):
+                  ch=s[i]; pair=s[i:i+2]
+                  if comment=='line':
+                      if ch=='\n': comment=None
+                  elif comment=='block':
+                      if pair=='*/': comment=None; i+=1
+                  elif quote:
+                      if ch=='\\': i+=1
+                      elif ch==quote: quote=None
+                  elif pair=='//': comment='line'; i+=1
+                  elif pair=='/*': comment='block'; i+=1
+                  elif ch in "'\"`": quote=ch
+                  elif ch=='{': depth+=1
+                  elif ch=='}':
+                      depth-=1
+                      if depth==0:
+                          s=s[:start]+new+s[i+1:]
+                          return
+                  i+=1
+              raise SystemExit('Could not locate function end: '+name)
+          replace_once('aoStrength:{value:.85}','aoStrength:{value:0}')
+          replace_once('postU.aoStrength.value=G.quality>=2?.9:.55;',marker+'\n postU.aoStrength.value=0;')
+          replace_once('const g=this.g,t=this.t;','const g=this.g,t=this.t;\n  if(!t.boat){this.pitch=0;this.roll=0;this.pV=0;this.rV=0;}')
+          replace_once('if(d<2.2||((rt.x-c.x)*sn+(rt.z-c.z)*cs)<0){ai.route.shift();rt=ai.route[0]}\n   else if(rt.node.sig&&!ai.cop&&sigRed(rt.node,rt.axis)){','const mustStop=rt.node.sig&&!ai.cop&&sigRed(rt.node,rt.axis),passedStop=((rt.x-c.x)*sn+(rt.z-c.z)*cs)<-.5;\n   if(passedStop||(d<2.2&&!mustStop)){ai.route.shift();rt=ai.route[0]}\n   else if(mustStop){')
+          replace_function('buildSignals',"function buildSignals(){\n const count=G.sigNodes.length*24;sigMesh=new T.InstancedMesh(new T.SphereGeometry(1,16,12),new T.MeshBasicMaterial({toneMapped:false}),count);\n const m=new T.Matrix4(),q=new T.Quaternion(),v=new T.Vector3(),sc=new T.Vector3();let i=0;\n for(const nd of G.sigNodes){nd.si=i;for(const[sx,sz]of[[1,1],[-1,-1]]){const x=nd.x+sx*(nd.v.hw+1.6),z=nd.z+sz*(nd.h.hw+1.6);\n  for(const axis of['h','v']){const hx=axis==='h'?x-sx*4.2:x,hz=axis==='v'?z-sz*4.2:z;bakeG('plain',GEO.box,hx,4.65,hz,0,axis==='h'?.30:.58,1.45,axis==='h'?.58:.30,[.045,.055,.065]);\n   for(const face of[-1,1])for(let color=0;color<3;color++){v.set(hx+(axis==='h'?face*.205:0),5.78-color*.43,hz+(axis==='v'?face*.205:0));sc.set(axis==='h'?.035:.19,.19,axis==='h'?.19:.035);m.compose(v,q,sc);sigMesh.setMatrixAt(i++,m)}\n  }\n }}sigMesh.frustumCulled=false;world.add(sigMesh);updateSignals(0);\n}")
+          replace_function('updateSignals',"function updateSignals(t){if(!sigMesh)return;for(const nd of G.sigNodes){let i=nd.si;for(let side=0;side<2;side++)for(const axis of['h','v']){const active=sigState(nd,t,axis);for(let face=0;face<2;face++)for(let lamp=0;lamp<3;lamp++){const c=SCOL[lamp],k=lamp===active?1:.035;sigMesh.setColorAt(i++,_ic.setRGB(c[0]*k,c[1]*k,c[2]*k))}}}if(sigMesh.instanceColor)sigMesh.instanceColor.needsUpdate=true}")
+          replace_function('sigState',"function sigState(node,t,axis){const off=Number.isFinite(node.off)?node.off:0,ph=((t+off)%CYC+CYC)%CYC;if(axis==='h')return ph<10?2:ph<12?1:0;return ph>=14&&ph<24?2:ph>=24&&ph<26?1:0}")
+          audio_upgrade=r'''
+           // CITY_AUDIO_UPGRADE_V2: original procedural music and smoother vehicle sound.
+           let engineBus=null,bodyOsc=null,subOsc=null,bodyGain=null,subGain=null,airGain=null,bodyFilter=null,airFilter=null,paused=false,nextBeatTime=0;
+           const songSteps=[0,0,0,0],legacyInit=A.init,legacyTick=A.tick;
+           A.init=function(){legacyInit();if(!ctx||engineBus)return;
+            master.disconnect();const limiter=ctx.createDynamicsCompressor();limiter.threshold.value=-12;limiter.knee.value=18;limiter.ratio.value=4;limiter.attack.value=.006;limiter.release.value=.18;master.connect(limiter);limiter.connect(ctx.destination);
+            engG.gain.value=0;engG.disconnect();engineBus=ctx.createGain();engineBus.gain.value=paused?0:1;engineBus.connect(master);
+            sirG.disconnect();sirG.connect(engineBus);heliG.disconnect();heliG.connect(engineBus);
+            bodyOsc=ctx.createOscillator();bodyOsc.setPeriodicWave(ctx.createPeriodicWave(new Float32Array([0,0,0,0,0,0]),new Float32Array([0,1,.32,.12,.06,.025])));bodyFilter=ctx.createBiquadFilter();bodyFilter.type='lowpass';bodyFilter.frequency.value=550;bodyGain=ctx.createGain();bodyGain.gain.value=0;bodyOsc.connect(bodyFilter);bodyFilter.connect(bodyGain);bodyGain.connect(engineBus);bodyOsc.start();
+            subOsc=ctx.createOscillator();subOsc.type='sine';subGain=ctx.createGain();subGain.gain.value=0;subOsc.connect(subGain);subGain.connect(engineBus);subOsc.start();
+            const air=ctx.createBufferSource();air.buffer=noiseBuf;air.loop=true;airFilter=ctx.createBiquadFilter();airFilter.type='bandpass';airFilter.Q.value=.5;airGain=ctx.createGain();airGain.gain.value=0;air.connect(airFilter);airFilter.connect(airGain);airGain.connect(engineBus);air.start();
+            radioBus.gain.value=.72;const delay=ctx.createDelay(1),feedback=ctx.createGain(),echo=ctx.createGain(),filter=ctx.createBiquadFilter();delay.delayTime.value=.28;feedback.gain.value=.19;echo.gain.value=.13;filter.type='lowpass';filter.frequency.value=2600;radioBus.connect(delay);delay.connect(filter);filter.connect(echo);echo.connect(master);filter.connect(feedback);feedback.connect(delay);
+           };
+           A.setPaused=function(on){on=!!on;if(paused===on)return;paused=on;if(!ctx||!engineBus)return;const t=ctx.currentTime;engineBus.gain.cancelScheduledValues(t);engineBus.gain.setTargetAtTime(on?0:1,t,on?.025:.08);radioBus.gain.setTargetAtTime(on?0:.72,t,.08)};
+           A.tick=function(spd,thr,inCar,sirenLvl){legacyTick(spd,thr,false,sirenLvl);if(!ctx||!engineBus||paused)return;const t=ctx.currentTime,car=pl.car,kind=car?car.tk:'sedan',boat=!!(car&&car.t.boat),speed=Math.max(0,Math.abs(Number(spd)||0)),throttle=Math.min(1,Math.abs(Number(thr)||0)),limits=[0,9,18,30,45,65,95];let gear=0;while(gear<5&&speed>limits[gear+1])gear++;const phase=(speed-limits[gear])/(limits[gear+1]-limits[gear]),rpm=boat?Math.min(5200,950+speed*130+throttle*700):Math.min(6500,900+phase*4200+throttle*600),tone=kind==='sports'?2:kind==='van'||kind==='suv'?1.2:1.6,f=Math.max(26,rpm/60*tone),active=inCar&&!(car&&car.dead);
+            bodyOsc.frequency.setTargetAtTime(f,t,.1);subOsc.frequency.setTargetAtTime(f*.5,t,.12);bodyFilter.frequency.setTargetAtTime(350+rpm*.10+throttle*850,t,.12);bodyGain.gain.setTargetAtTime(active?.045+throttle*.045+Math.min(.025,speed*.0007):0,t,.08);subGain.gain.setTargetAtTime(active?.022+throttle*.018:0,t,.1);airFilter.frequency.setTargetAtTime(650+speed*16+throttle*400,t,.12);airGain.gain.setTargetAtTime(active?.003+throttle*.012+Math.min(.008,speed*.0002):0,t,.1);
+           };
+          R.o=function(f,type,d,v,fc,t){const os=ctx.createOscillator(),g=ctx.createGain(),fl=ctx.createBiquadFilter();os.type=type;os.frequency.value=f;fl.type='lowpass';fl.frequency.value=fc||2200;const duration=Math.max(.06,d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.001,v),t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+duration);os.connect(fl);fl.connect(g);g.connect(radioBus);os.onended=()=>{os.disconnect();fl.disconnect();g.disconnect()};os.start(t);os.stop(t+duration+.03)};
+          STATIONS.splice(0,STATIONS.length,...[
+            {name:'NEON FM',genre:'Synthwave',ms:125,play(s,t,R){const st=s%16,bar=Math.floor(s/16),section=Math.floor(bar/8)%4,root=[45,41,48,43][bar%4];if(st%4===0)R.kick(t,.24,115,42,.28);if(st===4||st===12)R.n(.13,.11,2100,'highpass',1,t);if(st%2===0)R.n(.035,.022,8500,'highpass',1,t);if(st===0||st===6||st===8||st===14)R.o(mt(root-12),'triangle',.28,.09,600,t);if(st===0)for(const n of[0,3,7,10])R.o(mt(root+12+n),'triangle',1.6,.022,1500,t);if(section!==0&&st%2===1){const motif=[0,7,10,14,12,10,7,3];R.o(mt(root+24+motif[(st>>1)%8]),'triangle',.24,.033,2400,t)}if(section===2&&st===15)R.n(.09,.05,4500,'highpass',1,t)}},
+            {name:'PALM BEAT 98',genre:'Tropical / Latin',ms:150,play(s,t,R){const st=s%16,bar=Math.floor(s/16),root=[45,41,48,43][bar%4],full=Math.floor(bar/8)%3!==0;if(st===0||st===6||st===8)R.kick(t,.25,110,43,.24);if([3,6,11,14].includes(st))R.n(.085,.095,1800,'bandpass',1.2,t);if(st%2===0)R.n(.025,.018,8200,'highpass',1,t);if([0,7,8,12].includes(st))R.o(mt(root-12),'sine',.38,.12,450,t);if(st===2||st===10)for(const n of[0,3,7])R.o(mt(root+12+n),'triangle',.45,.026,1800,t);if(full&&st%2===1)R.o(mt(root+24+[0,3,7,10,7,3,12,10][st>>1]),'sine',.3,.046,3200,t)}},
+            {name:'BASS COAST',genre:'Miami Bass',ms:115,play(s,t,R){const st=s%16,bar=Math.floor(s/16),root=[36,36,39,34][bar%4],section=Math.floor(bar/8)%4;if([0,6,10].includes(st)){R.kick(t,.25,125,36,.42);R.o(mt(root-12),'sine',.5,.105,280,t)}if(st===4||st===12)R.n(.12,.12,1700,'bandpass',1,t);R.n(.025,st%4===2?.027:.014,9500,'highpass',1,t);if(section!==3&&(st===2||st===7||st===14))for(const n of[0,7,12])R.o(mt(root+24+n),'triangle',.18,.024,2300,t);if(section===2&&st%2===1)R.o(mt(root+36+[0,3,7,10][(st>>1)%4]),'triangle',.1,.02,3500,t)}},
+            {name:'GULF LO-FI',genre:'Chillhop',ms:185,play(s,t,R){const st=s%16,bar=Math.floor(s/16),root=[50,55,48,53][bar%4];if(st===0||st===10)R.kick(t,.15,85,39,.3);if(st===4||st===12)R.n(.075,.055,2600,'bandpass',1.5,t);if(st%4===2)R.n(.035,.014,6800,'highpass',1,t);if(st===0||st===8)for(const n of[0,3,7,10])R.o(mt(root+12+n),'triangle',1.8,.022,1400,t);if(st===3||st===7||st===11||st===14){const motif=[7,10,12,14,12,10,7,3];R.o(mt(root+24+motif[(bar*4+Math.floor(st/4))%8]),'sine',.55,.04,2000,t)}}}
+           ]);
+
+           A.radioTick=function(on){const want=(on&&ctx&&stIdx>=0&&stIdx<STATIONS.length)?stIdx:-1;if(want===playing)return;if(radT){clearInterval(radT);radT=null}if(playing>=0)songSteps[playing]=step;playing=want;if(want>=0){const station=STATIONS[want];step=songSteps[want]||0;nextBeatTime=ctx.currentTime+.035;const schedule=()=>{if(!ctx||playing!==want)return;if(nextBeatTime<ctx.currentTime-.3)nextBeatTime=ctx.currentTime+.035;let count=0;while(nextBeatTime<ctx.currentTime+.12&&count++<8){try{station.play(step++,nextBeatTime,R)}catch(e){}nextBeatTime+=station.ms/1000;songSteps[want]=step}};schedule();radT=setInterval(schedule,25)}};
+          '''
+          replace_once(' return A})();',audio_upgrade+'\n return A})();')
+          replace_once('function updateFx(rdt){const f=G.fx;','function updateFx(rdt){audio.setPaused(G.state===\'paused\');const f=G.fx;')
+          for code in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I):
+              if not code.strip(): continue
+              with tempfile.NamedTemporaryFile(mode='w',suffix='.js',delete=False) as f:
+                  f.write(code); name=f.name
+              try: subprocess.run(['node','--check',name],check=True)
+              finally: os.unlink(name)
+          p.write_text(s,encoding='utf-8')
+          print('Validated: SSAO off, upright cars, visible signals, red-light stopping, original radio arrangements, layered engine audio and pause-only sound fade.')
+          PY
+      - name: Commit only the validated game file
+        shell: bash
+        run: |
+          if git diff --quiet -- index.html; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html
+          git commit -m 'Fix graphics, upright cars, traffic signals, radio and paused engine sound'
+          git push origin HEAD:main
