@@ -3566,7 +3566,9 @@ function envLighting(dt){
  if(!pl.inside&&G.hemiBase!=null)hemi.intensity=G.hemiBase+(G.lightning||0)*2.4;
  skyDome.position.copy(camera.position);waterU.time.value=G.time;waterU.fogNear.value=scene.fog.near;waterU.fogFar.value=scene.fog.far}
 let last=performance.now();
-function frame(now){requestAnimationFrame(frame);const rdt=Math.min((now-last)/1000,.05);last=now;G.rdt=rdt;
+// Frame cap: the game updates and draws at most 30 times a second, on a fixed schedule so 60/120/144 Hz screens all get a steady 30.
+const FPS_CAP=30,FRAME_MS=1000/FPS_CAP;let nextFrameAt=0;
+function frame(now){requestAnimationFrame(frame);if(now<nextFrameAt-1.5)return;nextFrameAt=Math.max(nextFrameAt+FRAME_MS,now);const rdt=Math.min((now-last)/1000,.05);last=now;G.rdt=rdt;
  const dt=rdt*((pl.focusT>0&&G.state==='play')?.45:G.state==='dead'?.35:1);updateFx(rdt);
  try{
  if(G.state==='play'||G.state==='dead'){simulate(dt);updateParticles(dt);updateTracers(dt);updateCamera(dt);updateHUD(dt);if(!pl.inside)updateSignals(G.time);drawMini();
