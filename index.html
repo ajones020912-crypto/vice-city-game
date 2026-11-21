@@ -1699,20 +1699,33 @@ const TEX={
  }
 };
 function humanMat(kind,hex){
- TEX.init();
- const maps={skin:TEX.skin,shirt:TEX.shirt,pants:TEX.denim,hair:TEX.hair,shoe:TEX.shoe};
- const rough={skin:.76,shirt:.92,pants:.94,hair:.64,shoe:.78};
- const map=maps[kind]||TEX.shirt;
- return new T.MeshStandardMaterial({
-  map,color:hex,roughness:rough[kind]??.75,metalness:0,
-  envMapIntensity:kind==='skin'?.2:.25
- });
+ const rough={skin:.82,shirt:.9,pants:.92,hair:.78,shoe:.82};
+ return new T.MeshStandardMaterial({color:hex,roughness:rough[kind]??.85,metalness:0});
 }
 
-const FACE_STYLE={white:new T.MeshStandardMaterial({color:0xf4efdf,roughness:.38}),iris:new T.MeshStandardMaterial({color:0x5b7059,roughness:.3}),pupil:new T.MeshStandardMaterial({color:0x121416,roughness:.26}),glint:new T.MeshBasicMaterial({color:0xffffff}),lip:new T.MeshStandardMaterial({color:0x965e58,roughness:.7}),sole:new T.MeshStandardMaterial({color:0xd9d6ca,roughness:.85}),metal:new T.MeshStandardMaterial({color:0xa8a8a0,metalness:.7,roughness:.35})};const FACE_GEO=new T.SphereGeometry(1,10,8);
-function addCharacterDetails(root,o){const u=root.userData,h=u.headP,m=u.m;const ell=(parent,mat,x,y,z,sx,sy,sz)=>{const a=new T.Mesh(FACE_GEO,mat);a.position.set(x,y,z);a.scale.set(sx,sy,sz);parent.add(a);return a};
- for(const side of[-1,1]){ell(h,m.skin,side*.109,.165,-.005,.023,.035,.018);ell(h,FACE_STYLE.white,side*.044,.177,.100,.025,.013,.010);ell(h,FACE_STYLE.iris,side*.044,.177,.109,.010,.010,.003);ell(h,FACE_STYLE.pupil,side*.044,.177,.112,.0048,.007,.002);ell(h,FACE_STYLE.glint,side*.041,.181,.114,.0026,.0026,.001);const brow=ell(h,m.hair,side*.044,.202,.100,.030,.0055,.006);brow.rotation.z=-side*.10}ell(h,m.skin,0,.151,.113,.017,.030,.026);ell(h,FACE_STYLE.lip,0,.119,.103,.027,.0055,.005);ell(h,m.skin,0,.105,.094,.032,.010,.009);
- const hairBack=ell(h,m.hair,0,.101,-.071,.108,.152,.058),hairTail=ell(h,m.hair,0,-.025,-.111,.052,.100,.045),fringe=ell(h,m.hair,.026,.259,.033,.085,.026,.073);fringe.rotation.z=-.13;const glasses=new T.Group();h.add(glasses);for(const side of[-1,1])ell(glasses,FACE_STYLE.pupil,side*.045,.179,.119,.034,.020,.006);for(const leg of u.Lg){const sole=new T.Mesh(new T.BoxGeometry(.116,.018,.256),FACE_STYLE.sole);sole.position.set(0,-.475,.05);leg.kn.add(sole)}const belt=new T.Mesh(new T.CylinderGeometry(.18,.18,.034,12),m.shoe);belt.scale.z=.62;belt.position.y=.058;u.hips.add(belt);const buckle=new T.Mesh(new T.BoxGeometry(.040,.026,.009),FACE_STYLE.metal);buckle.position.set(0,.059,.116);u.hips.add(buckle);u.appearance={hairBack,hairTail,glasses,fringe};applyCharacterDetails(root,o)}
+const FACE_STYLE={white:new T.MeshStandardMaterial({color:0xf4efdf,roughness:.5}),pupil:new T.MeshStandardMaterial({color:0x17191d,roughness:.5}),sole:new T.MeshStandardMaterial({color:0x242424,roughness:.9}),metal:new T.MeshStandardMaterial({color:0x9a9a9a,metalness:.35,roughness:.55})};
+const FACE_GEO=new T.SphereGeometry(1,7,5);
+function addCharacterDetails(root,o){
+ const u=root.userData,h=u.headP,m=u.m;
+ const ell=(parent,mat,x,y,z,sx,sy,sz)=>{const a=new T.Mesh(FACE_GEO,mat);a.position.set(x,y,z);a.scale.set(sx,sy,sz);parent.add(a);return a};
+ for(const side of[-1,1]){
+  ell(h,FACE_STYLE.pupil,side*.044,.177,.108,.009,.009,.004);
+  ell(h,m.hair,side*.044,.202,.100,.027,.005,.005);
+ }
+ const hairBack=ell(h,m.hair,0,.101,-.071,.105,.145,.055);
+ const hairTail=ell(h,m.hair,0,-.025,-.111,.045,.09,.04);
+ const fringe=ell(h,m.hair,.026,.259,.033,.08,.023,.07);
+ fringe.rotation.z=-.13;
+ const glasses=new T.Group();h.add(glasses);
+ for(const side of[-1,1])ell(glasses,FACE_STYLE.pupil,side*.045,.179,.119,.03,.018,.005);
+ for(const leg of u.Lg){
+  const sole=new T.Mesh(new T.BoxGeometry(.11,.014,.22),FACE_STYLE.sole);
+  sole.position.set(0,-.475,.05);leg.kn.add(sole);
+ }
+ const belt=new T.Mesh(new T.CylinderGeometry(.18,.18,.025,8),m.shoe);
+ belt.scale.z=.62;belt.position.y=.058;u.hips.add(belt);
+ u.appearance={hairBack,hairTail,glasses,fringe};applyCharacterDetails(root,o)
+}
 function applyCharacterDetails(h,o){const a=h.userData.appearance;if(!a)return;const long=o.longHair===true||o.shirt===0xff6ec7;a.hairBack.visible=long;a.hairTail.visible=long;a.glasses.visible=!!o.glasses;a.fringe.scale.set(long?.086:.082,long?.022:.033,long?.064:.075)}
 
 function makeHuman(o){
@@ -1732,11 +1745,11 @@ function makeHuman(o){
  const hips=new T.Group();hips.position.y=.93;root.add(hips);
  mk(new T.BoxGeometry(.34,.2,.21),m.pants,hips,0,0,0);
  const spine=new T.Group();spine.position.y=.08;hips.add(spine);
- const torso=mk(new T.CylinderGeometry(.232,.188,.52,12),m.shirt,spine,0,.3,0);torso.scale.z=.58;
+ const torso=mk(new T.CylinderGeometry(.232,.188,.52,8),m.shirt,spine,0,.3,0);torso.scale.z=.58;
  const headP=new T.Group();headP.position.y=.6;spine.add(headP);
  mk(new T.CylinderGeometry(.045,.05,.08,6),m.skin,headP,0,.02,0);
- const head=mk(new T.SphereGeometry(.115,20,16),m.skin,headP,0,.16,0);head.scale.set(.95,1.12,1);
- const hairM=mk(new T.SphereGeometry(.122,16,12,0,TAU,0,Math.PI*.55),m.hair,headP,0,.17,-.005);hairM.scale.set(.98,1.12,1.03);
+ const head=mk(new T.SphereGeometry(.115,12,8),m.skin,headP,0,.16,0);head.scale.set(.95,1.12,1);
+ const hairM=mk(new T.SphereGeometry(.122,10,7,0,TAU,0,Math.PI*.55),m.hair,headP,0,.17,-.005);hairM.scale.set(.98,1.12,1.03);
  // Rounded hair is attached after rig construction.
  let cap=null;if(o.cap){const cm=new T.MeshStandardMaterial({color:o.cap,roughness:.7,map:TEX.shirt});cap=mk(new T.CylinderGeometry(.125,.13,.07,12),cm,headP,0,.25,0);mk(new T.BoxGeometry(.17,.015,.1),cm,headP,0,.225,.12);hairM.visible=false}
  // Eyewear handled by applyCharacterDetails().
@@ -1783,11 +1796,10 @@ function setHumanLook(h,o){
  m.pants.color.setHex(o.pants);
  m.hair.color.setHex(o.hair);
  m.shoe.color.setHex(o.shoe||0x202020);
- // swap fabric maps for variety when outfits change
- if(TEX.stripe&&(o.shirt&0xff)>(o.shirt>>16&0xff))m.shirt.map=TEX.stripe;
- else if(TEX.shirt)m.shirt.map=TEX.shirt;
- if(TEX.cargo&&(o.pants===0x8a7a62||o.pants===0xd9d2c3))m.pants.map=TEX.cargo;
- else if(TEX.denim)m.pants.map=TEX.denim;
+ // Clothing stays clean and lightweight; each pedestrian gets independent colors.
+ m.shirt.color.setHex(o.shirt);
+ m.pants.color.setHex(o.pants);
+ m.shoe.color.setHex(o.shoe||0x202020);
 }
 // animate: s={speed,aim,punch,dead,weapon}
 function animHuman(h,dt,s){
@@ -1797,10 +1809,16 @@ function animHuman(h,dt,s){
  const lean=.03+run*.2;
  if(s.dead){u.dead=Math.min(1,u.dead+dt*3.2);const d=u.dead;h.rotation.x=-d*Math.PI/2*.97;h.position.y=(s.baseY||0)+d*.16;A[0].sh.rotation.set(-.5*d,0,.9*d);A[1].sh.rotation.set(-.3*d,0,-.9*d);Lg[0].hp.rotation.x=-.3*d;Lg[1].hp.rotation.x=.2*d;return}
  u.dead=0;h.rotation.x=0;
- hips.position.y=.93-.02*moving+Math.abs(Math.sin(u.ph))*.035*moving;spine.rotation.x=lean;spine.rotation.z=Math.sin(u.ph)*.03*moving;
+ const idleBreath=Math.sin(u.ph*.8)*.008*(1-moving);
+ hips.position.y=.93-.02*moving+Math.abs(Math.sin(u.ph))*.035*moving+idleBreath;
+ spine.rotation.x=lean+Math.sin(u.ph*.8)*.012*(1-moving);
+ spine.rotation.z=Math.sin(u.ph)*.035*moving;
+ u.headP.rotation.x=Math.sin(u.ph*.8+.5)*.018*(1-moving);
  const lk=sw;Lg[0].hp.rotation.x=-lk;Lg[1].hp.rotation.x=lk;
  Lg[0].kn.rotation.x=Math.max(0,Math.sin(u.ph+1.2))*(.5+.8*run)*Math.min(moving,1.2);Lg[1].kn.rotation.x=Math.max(0,Math.sin(u.ph+1.2+Math.PI))*(.5+.8*run)*Math.min(moving,1.2);
- A[0].sh.rotation.set(sw*.9,0,.06);A[1].sh.rotation.set(-sw*.9,0,-.06);A[0].el.rotation.x=-(.2+.55*run);A[1].el.rotation.x=-(.2+.55*run);
+ const idleSway=Math.sin(u.ph*.8)*.035*(1-moving);
+ A[0].sh.rotation.set(sw*.9+idleSway,0,.06);A[1].sh.rotation.set(-sw*.9-idleSway,0,-.06);
+ A[0].el.rotation.x=-(.12+.55*run);A[1].el.rotation.x=-(.12+.55*run);
  for(const k in u.guns)u.guns[k].visible=k===s.weapon;
  if(s.aim&&s.weapon){const long=s.weapon!=='pistol';A[1].sh.rotation.set(-1.5,0,-.04);A[1].el.rotation.x=-.08;A[0].sh.rotation.set(-1.25-(long?.1:0),0,long?.35:.5);A[0].el.rotation.x=-.4;spine.rotation.x=.04}
  else if(s.punch>0){const p=Math.sin(Math.min(s.punch,1)*Math.PI);A[1].sh.rotation.set(-1.45*p,0,-.1);A[1].el.rotation.x=-.2-.1*p;A[0].sh.rotation.x=.4*p;spine.rotation.y=-.5*p}
