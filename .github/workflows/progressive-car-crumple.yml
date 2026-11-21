@@ -1,0 +1,82 @@
+name: Progressive visual car crumpling
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/progressive-car-crumple.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: progressive-car-crumple
+  cancel-in-progress: false
+jobs:
+  crumple:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install matching Three.js for geometry tests only
+        run: npm install --prefix "$RUNNER_TEMP/crumple-check" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Add guarded collision visuals and test deformation
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, os, re, subprocess, tempfile
+          p=Path('index.html');s=p.read_text(encoding='utf-8');report={'ok':False}
+          try:
+              if '// CAR_CRUMPLE_V2' in s: raise RuntimeError('Crumpling upgrade already exists.')
+              code="// CAR_CRUMPLE_V2\nfunction crumpleParts(c){\n if(c._crumple)return c._crumple;\n const ch=c.v.ch,skip=new Set([c.v.beam,...(c.v.bar||[])]);for(const w of c.v.wheels||[]){skip.add(w.w);skip.add(w.piv)}\n ch.updateWorldMatrix(true,true);const inverse=new T.Matrix4().copy(ch.matrixWorld).invert(),parts=[];\n const meshes=new Set([c.v.body,c.v.trim,c.v.head,c.v.tail,...ch.children]);\n for(const mesh of meshes){if(!mesh||!mesh.isMesh||skip.has(mesh)||!mesh.geometry||!mesh.geometry.attributes.position)continue;\n  let parent=mesh,blocked=false;while(parent&&parent!==ch){if(skip.has(parent))blocked=true;parent=parent.parent}if(parent!==ch||blocked)continue;\n  const geometry=mesh.geometry.clone();geometry.attributes.position.setUsage(T.DynamicDrawUsage);mesh.geometry=geometry;\n  const toCh=new T.Matrix4().multiplyMatrices(inverse,mesh.matrixWorld);parts.push({geometry,base:new Float32Array(geometry.attributes.position.array),from:null,to:null,toCh,fromCh:toCh.clone().invert()});\n }\n return c._crumple={parts,dirty:false,morph:false,start:0};\n}\nfunction crumpleCrash(c,imp,contact){\n if(!c||c.dead||c.t.boat||c.t.aircraft||imp<3.2||Math.hypot(c.x-pl.x,c.z-pl.z)>90)return;\n const state=crumpleParts(c);if(G.time-(state.last??-99)<.18)return;state.last=G.time;\n const sn=Math.sin(c.h),cs=Math.cos(c.h),forward=c.vf<0?-1:1,info=contact||{x:c.x+sn*c.t.L*.45*forward,z:c.z+cs*c.t.L*.45*forward,nx:-sn*forward,nz:-cs*forward};\n let nx=Number(info.nx)||0,nz=Number(info.nz)||0,n=Math.hypot(nx,nz);if(n<.001){nx=-sn*forward;nz=-cs*forward;n=1}nx/=n;nz/=n;\n const dx=info.x-c.x,dz=info.z-c.z,lx=dx*cs-dz*sn,lz=dx*sn+dz*cs,ix=nx*cs-nz*sn,iz=nx*sn+nz*cs,along=Math.abs(iz)>=Math.abs(ix),side=(along?lz:lx)>=0?1:-1,L=c.t.L,W=c.t.W,strength=clamp((imp-3.2)/22,0,1),amount=.035+.46*strength;\n const smooth=x=>{x=clamp(x,0,1);return x*x*(3-2*x)},base=new T.Vector3(),point=new T.Vector3();\n for(const part of state.parts){const a=part.geometry.attributes.position.array;part.from=new Float32Array(a);part.to=new Float32Array(a);\n  for(let i=0;i<a.length;i+=3){base.fromArray(part.base,i).applyMatrix4(part.toCh);point.fromArray(a,i).applyMatrix4(part.toCh);\n   const zone=along?smooth((side*base.z-L*.12)/(L*.36)):smooth((side*base.x-W*.08)/(W*.42));\n   const spread=along?Math.exp(-Math.pow((base.x-lx)/(W*.72),2)*.7):Math.exp(-Math.pow((base.z-lz)/(L*.28),2));\n   const weight=zone*spread*clamp((1.9-base.y)/1.1,.08,1),lift=along?Math.sin(Math.PI*zone)*amount*.5*spread*clamp(1.5-base.y,0,1):amount*.09*weight;\n   point.x=clamp(point.x+ix*amount*weight,base.x-Math.min(.45,W*.22),base.x+Math.min(.45,W*.22));\n   point.z=clamp(point.z+iz*amount*weight,base.z-Math.min(.95,L*.22),base.z+Math.min(.95,L*.22));\n   point.y=clamp(point.y+lift,base.y-.06,base.y+.38);point.applyMatrix4(part.fromCh).toArray(part.to,i);\n  }\n }\n state.dirty=true;state.morph=true;state.start=G.time;\n}\nconst crumpleOriginalPlace=Car.prototype.place;\nCar.prototype.place=function(){\n const result=crumpleOriginalPlace.apply(this,arguments),state=this._crumple;if(!state||!state.dirty)return result;\n const full=typeof maxHp==='function'?maxHp(this):this.t.hp;\n if(this.hp>=full-.01){for(const p of state.parts){p.geometry.attributes.position.array.set(p.base);p.geometry.attributes.position.needsUpdate=true;p.geometry.computeVertexNormals();p.geometry.computeBoundingSphere();p.geometry.computeBoundingBox();p.from=p.to=null}state.dirty=state.morph=false;return result}\n if(!state.morph)return result;\n const k=clamp((G.time-state.start)/.16,0,1),ease=k*k*(3-2*k);\n for(const p of state.parts){const a=p.geometry.attributes.position;for(let i=0;i<a.array.length;i++)a.array[i]=p.from[i]+(p.to[i]-p.from[i])*ease;a.needsUpdate=true;p.geometry.computeVertexNormals();if(k===1){p.geometry.computeBoundingSphere();p.geometry.computeBoundingBox();p.from=p.to=null}}\n if(k===1)state.morph=false;return result;\n};\nconst crumpleOriginalRemove=removeCar;\nremoveCar=function(c){if(c&&c._crumple){for(const p of c._crumple.parts)p.geometry.dispose();c._crumple=null}return crumpleOriginalRemove.apply(this,arguments)};\n"
+              setup="const T=require(process.env.RUNNER_TEMP+'/crumple-check/node_modules/three'),assert=require('assert'),clamp=T.MathUtils.clamp,G={time:0},pl={x:0,z:0};let removed=0;function maxHp(){return 100}function removeCar(){removed++;return'removed'}class Car{place(){return'placed'}}\nconst shared=new T.BoxGeometry(2,.8,4,4,2,8);shared.translate(0,.5,0);const original=new Float32Array(shared.attributes.position.array);\nfunction car(){const c=new Car();Object.assign(c,{t:{L:4,W:2,hp:100},hp:90,x:0,z:0,h:0,vf:10,vx:0,vz:10,dead:false});const g=new T.Group(),ch=new T.Group();g.add(ch);const body=new T.Mesh(shared,new T.MeshBasicMaterial());ch.add(body);const roof=new T.Mesh(new T.BoxGeometry(1.5,.35,2),body.material);roof.position.set(0,1.1,-.1);roof.rotation.y=.12;ch.add(roof);const piv=new T.Group(),wheel=new T.Mesh(new T.BoxGeometry(.2,.3,.3),body.material);piv.add(wheel);ch.add(piv);c.v={g,ch,body,wheels:[{piv,w:wheel}]};return c}\n"
+              checks="function settle(c){G.time+=.17;assert(c.place()==='placed')}\nconst a=car(),b=car(),hp=a.hp,vz=a.vz;crumpleCrash(a,25,{x:0,z:2,nx:0,nz:-1});settle(a);assert(a.v.body.geometry!==shared&&b.v.body.geometry===shared);assert(Array.from(shared.attributes.position.array).every((x,i)=>x===original[i]));assert(a.hp===hp&&a.vz===vz);const pos=a.v.body.geometry.attributes.position.array;let front=0,rear=0;for(let i=0;i<pos.length;i+=3){if(original[i+2]>1.9)front=Math.max(front,original[i+2]-pos[i+2]);if(original[i+2]<-1.9)rear=Math.max(rear,Math.abs(original[i+2]-pos[i+2]))}assert(front>.25&&rear<.00001);\nconst r=car();G.time+=.3;crumpleCrash(r,25,{x:0,z:-2,nx:0,nz:1});settle(r);let rearCrush=0;const ra=r.v.body.geometry.attributes.position.array;for(let i=0;i<ra.length;i+=3)if(original[i+2]<-1.9)rearCrush=Math.max(rearCrush,ra[i+2]-original[i+2]);assert(rearCrush>.25);\nconst side=car();G.time+=.3;crumpleCrash(side,25,{x:1,z:0,nx:-1,nz:0});settle(side);let dent=0;const sa=side.v.body.geometry.attributes.position.array;for(let i=0;i<sa.length;i+=3)dent=Math.max(dent,original[i]-sa[i]);assert(dent>.2);\nfor(let n=0;n<20;n++){G.time+=.3;crumpleCrash(a,30,{x:0,z:2,nx:0,nz:-1});settle(a)}for(const p of a._crumple.parts){const base=new T.Vector3(),now=new T.Vector3(),arr=p.geometry.attributes.position.array;for(let i=0;i<arr.length;i+=3){base.fromArray(p.base,i).applyMatrix4(p.toCh);now.fromArray(arr,i).applyMatrix4(p.toCh);assert(Number.isFinite(now.x+now.y+now.z));assert(Math.abs(now.x-base.x)<=.441&&Math.abs(now.z-base.z)<=.881&&Math.abs(now.y-base.y)<=.381)}}\nassert(a.v.wheels[0].w.geometry.attributes.position.count===24);a.hp=100;a.place();for(const p of a._crumple.parts)assert(Array.from(p.geometry.attributes.position.array).every((x,i)=>x===p.base[i]));const plane=car();plane.t.aircraft=true;crumpleCrash(plane,30,{x:0,z:2,nx:0,nz:-1});assert(!plane._crumple);let disposed=0;for(const p of a._crumple.parts)p.geometry.addEventListener('dispose',()=>disposed++);const count=a._crumple.parts.length;assert(removeCar(a)==='removed'&&removed===1&&disposed===count);\nconsole.log(JSON.stringify({front_crush:true,rear_crush:true,side_dent:true,progressive_bounded_damage:true,shared_geometry_safe:true,transformed_parts_supported:true,wheels_preserved:true,repair_restores_shape:true,physics_fields_unchanged:true,aircraft_excluded:true,owned_geometry_cleanup:true}));"
+              result=subprocess.run(['node','-e',setup+code+checks],check=True,capture_output=True,text=True)
+              report.update(json.loads(result.stdout))
+              original=s
+              def once(old,new):
+                  global s
+                  if s.count(old)!=1: raise RuntimeError('Unexpected collision hook: '+old[:100])
+                  s=s.replace(old,new,1)
+              legacy='// CRASH_ANIMATION_V1' in s
+              if legacy:
+                  code+="\nconst crumpleLegacyAnimate=animateCrash;animateCrash=function(c,imp,contact){if(!c||c.t.boat||c.t.aircraft)return;c._crashParts=[];const result=crumpleLegacyAnimate.apply(this,arguments);crumpleCrash(c,imp,contact);return result};\n"
+              else:
+                  once('carCircles(c,_cc);const r=hw+.08;let hit=0;','carCircles(c,_cc);const r=hw+.08;let hit=0,crumpleContact=null;')
+                  once('const imp=-vn;hit=Math.max(hit,imp);','const imp=-vn;if(imp>hit)crumpleContact={x:p[0]-ct.nx*r,z:p[1]-ct.nz*r,nx:ct.nx,nz:ct.nz};hit=Math.max(hit,imp);')
+                  once('if(hit>2.5){carImpact(c,hit)}','if(hit>2.5){crumpleCrash(c,hit,crumpleContact);carImpact(c,hit)}')
+                  once("const imp=-vrel;if(imp>3){damageCar(a,","const imp=-vrel;if(imp>3){const crumplePoint={x:(_ca[i][0]+_cb[j][0])*.5,z:(_ca[i][1]+_cb[j][1])*.5,nx,nz};crumpleCrash(a,imp,crumplePoint);crumpleCrash(b,imp,{x:crumplePoint.x,z:crumplePoint.z,nx:-nx,nz:-nz});damageCar(a,")
+              if s.count('boot();')!=1: raise RuntimeError('Expected one game boot call.')
+              s=s.replace('boot();',code+'\nboot();',1)
+              checked=0
+              for js in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I):
+                  if not js.strip(): continue
+                  with tempfile.NamedTemporaryFile(mode='w',suffix='.js',delete=False) as f:
+                      f.write(js);name=f.name
+                  try: subprocess.run(['node','--check',name],check=True,capture_output=True)
+                  finally: os.unlink(name)
+                  checked+=1
+              if not checked: raise RuntimeError('No inline JavaScript found.')
+              p.write_text(s,encoding='utf-8');report.update(ok=True,checked_scripts=checked,legacy_effects_preserved=legacy,scope='Road-vehicle visual crumpling only; original collision response and health damage preserved')
+          except Exception as exc:
+              report['error']=str(exc)
+              if isinstance(exc,subprocess.CalledProcessError): report['stderr']=(exc.stderr or b'').decode(errors='replace')[-3000:]
+          Path('scripts').mkdir(exist_ok=True)
+          Path('scripts/car-crumple-status.json').write_text(json.dumps(report,indent=2)+'\n')
+          print(json.dumps(report))
+          PY
+      - name: Commit tested crumpling or diagnostic report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html scripts/car-crumple-status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Add progressive directional car crumpling with repair reset'
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Require successful crumpling upgrade
+        run: node -e "if(!require('./scripts/car-crumple-status.json').ok)process.exit(1)"
