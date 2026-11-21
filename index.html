@@ -100,10 +100,11 @@ small{color:#b9cce0}
 
 /* ===== VC3D Homescreen (fullscreen) ===== */
 #overlay{
-  position:fixed;inset:0;z-index:50;
+  position:fixed;inset:0;z-index:200 !important;
   display:flex !important;align-items:center;justify-content:center;
   place-items:unset;
   background:#050810;
+  pointer-events:auto !important;
 }
 .home-card{
   width:100% !important;height:100% !important;
@@ -192,6 +193,8 @@ small{color:#b9cce0}
   .continue-btn{grid-column:auto}
   .home-foot{bottom:12px;font-size:11px;padding:0 12px}
 }
+.home-card,.home-actions,.home-btn,#start,#multiplayerOpen,#cont{pointer-events:auto !important;position:relative;z-index:201}
+canvas{position:relative;z-index:1 !important}
 /* ===== end homescreen ===== */
 </style><style>
 
@@ -2151,7 +2154,7 @@ const keys={};let mouseLocked=false,camYaw=0,camPitch=.2,mouseIdle=0,mouseDown=f
 
 let mouseLockPending=false;const mousePrompt=document.createElement('button');mousePrompt.textContent='Click to lock mouse and look around';mousePrompt.style.cssText='display:none;position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);z-index:75;padding:18px 26px;border:1px solid #ffffff88;border-radius:12px;background:#071426ed;color:white;font:bold 18px Arial;cursor:pointer;max-width:85vw';document.body.appendChild(mousePrompt);
 function refreshMousePrompt(){mousePrompt.style.display=G.state==='play'&&!G.phoneOpen&&!G.mapOpen&&!mouseLocked?'block':'none'}
-function requestGameMouseLock(){if(G.state!=='play'||G.phoneOpen||G.mapOpen||mouseLockPending||mouseLocked)return;if(!renderer.domElement.requestPointerLock){mousePrompt.textContent='Open the game in its own browser tab for mouse look';return}mouseLockPending=true;mouseDown=false;const fail=()=>{mouseLockPending=false;mousePrompt.textContent='Click to retry mouse lock — open the HTML in its own tab if blocked';refreshMousePrompt()};try{const p=renderer.domElement.requestPointerLock();if(p&&p.then)p.then(()=>{mouseLockPending=false;refreshMousePrompt()}).catch(fail)}catch(e){fail()}setTimeout(()=>{mouseLockPending=false;refreshMousePrompt()},700)}
+function requestGameMouseLock(){const ov=document.getElementById('overlay');if(ov&&ov.style.display!=='none'&&getComputedStyle(ov).display!=='none')return;if(G.state!=='play'||G.phoneOpen||G.mapOpen||mouseLockPending||mouseLocked)return;if(!renderer.domElement.requestPointerLock){mousePrompt.textContent='Open the game in its own browser tab for mouse look';return}mouseLockPending=true;mouseDown=false;const fail=()=>{mouseLockPending=false;mousePrompt.textContent='Click to retry mouse lock — open the HTML in its own tab if blocked';refreshMousePrompt()};try{const p=renderer.domElement.requestPointerLock();if(p&&p.then)p.then(()=>{mouseLockPending=false;refreshMousePrompt()}).catch(fail)}catch(e){fail()}setTimeout(()=>{mouseLockPending=false;refreshMousePrompt()},700)}
 mousePrompt.onclick=e=>{e.stopPropagation();requestGameMouseLock()};setInterval(refreshMousePrompt,200);renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
 
 addEventListener('keydown',e=>{if(e.repeat)return;const k=e.key.toLowerCase();keys[k]=true;if(['arrowup','arrowdown',' '].includes(k)&&G.state==='play')e.preventDefault();onKey(k,e)});
@@ -4260,7 +4263,7 @@ function boot(){
  requestAnimationFrame(frame)}
 function begin(cont){audio.init();audio.setStation(G.station);$('#overlay').style.display='none';G.state='play';
  const sv=cont?readSave():null;if(sv){newGame();MS.active=null;ring.visible=false;$('#goal').classList.remove('on');applySave(sv);if(!MS.active&&!pl.missions.m0&&!G.work)startMission(MISSIONS[0]);toast('Game loaded')}else{newGame();toast('Welcome to Vice City. C = switch Jason/Lucia · P = phone · R = jobs · F = focus',5500)}
- requestGameMouseLock();setInterval(()=>{if(G.state==='play'&&pl.alive&&!MS.active&&!SJ.kind&&!G.work&&!pl.car&&pl.wanted===0&&!pl.inside&&!G.robbery&&!G.mugging)saveGame(false)},30000)}
+ setTimeout(()=>{if(G.state==='play')requestGameMouseLock()},250);setInterval(()=>{if(G.state==='play'&&pl.alive&&!MS.active&&!SJ.kind&&!G.work&&!pl.car&&pl.wanted===0&&!pl.inside&&!G.robbery&&!G.mugging)saveGame(false)},30000)}
 Object.assign(G,{pl,audio,tick:(dt)=>{simulate(dt);updateParticles(dt);updateTracers(dt);updateCamera(dt);updateHUD(dt);if(!pl.inside)updateSignals(G.time);envLighting(dt)},queryCols,colAll,fireWeapon,enterCar,ejectPlayer,spawnCar,spawnTraffic,spawnCopCar,addCrime,hurtPlayer,startMission,MISSIONS,MS,saveGame,readSave,applySave,openShop,closeShop,enterInterior,exitInterior,INT,doors,cars,peds,cops,camera,scene,heightAt,roads,nodes,keys,SK,castRay,activatePed,hurtPed,explodeCar,damageCar,pickups,WEAP,setQuality,newGame,begin,renderer,setCam:(y,p)=>{camYaw=y;camPitch=p},ext:EXT,zoneName,switchChar,WX,gators});
 
 const CITY_JOBS={courier:{name:'Courier Route',stops:3,pay:250,bonus:250,limit:180},repair:{name:'Roadside Mechanic',stops:3,pay:180,bonus:300,limit:240},salvage:{name:'Lost Cargo Recovery',stops:5,pay:100,bonus:400,limit:240}};
@@ -4511,5 +4514,22 @@ document.getElementById('cont').onclick=()=>{G.multiplayer=false;mpActive=false;
 
 
 </script>
-<script src="soundtrack.js"></script>
+<script src="soundtrack.js">
+
+(function(){
+  function wireMenuBtn(id, fn){
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.addEventListener('click', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      if(document.pointerLockElement){document.exitPointerLock?.()}
+      fn();
+    }, true);
+  }
+  wireMenuBtn('start', function(){G.multiplayer=false;mpActive=false;begin(false)});
+  wireMenuBtn('cont', function(){G.multiplayer=false;mpActive=false;begin(true)});
+})();
+
+</script>
 </body></html>
