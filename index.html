@@ -4131,12 +4131,14 @@ const EXT={heli,gangs,gators,stashes,GAS,PROPS,RACES,BOAT_SPOTS,cctv,DEALER,get 
 
 // ================= BOOT =================
 function boot(){
- buildWorld();buildAllInteriors();buildMarkers();buildGivers();
+ try{buildWorld();buildAllInteriors();buildMarkers();buildGivers();
  initRain();spawnGators();buildExtras();initBoatSpots();
  G.stats={nodes:nodes.length,roads:roads.length};
  skyUpdate(8);updateEnv();setQuality(1);resizePost();bindMapControls();
  const sv=readSave();if(sv){$('#cont').style.display='inline-block'}
- $('#loadmsg').innerHTML='<small>World ready — '+nodes.length+' intersections · '+roads.length+' roads · all systems online</small>';
+ }catch(e){console.error('boot subsystem error',e);const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small>Loaded with warnings — tap Singleplayer</small>';}
+ try{$('#loadmsg').innerHTML='<small>World ready — '+(typeof nodes!=='undefined'?nodes.length:'?')+' intersections · '+(typeof roads!=='undefined'?roads.length:'?')+' roads · all systems online</small>';}catch(_e){}
+ 
  $('#start').onclick=()=>begin(false);$('#cont').onclick=()=>begin(true);
  $('#controlsToggle').onclick=()=>{const panel=$('#help'),open=panel.hidden;panel.hidden=!open;$('#controlsToggle').textContent=open?'CONTROLS ▴':'CONTROLS ▾';$('#controlsToggle').setAttribute('aria-expanded',String(open))};
  $('#shopclose').onclick=closeShop;$('#pResume').onclick=()=>pauseGame(false);$('#pSave').onclick=()=>saveGame(true);
@@ -4507,58 +4509,16 @@ function mountDevFlightMenu(){
 }
 mountDevFlightMenu();
 
-boot();
-// boot() wires the legacy buttons, so re-apply the new menu actions after boot.
-document.getElementById('start').onclick=()=>{G.multiplayer=false;mpActive=false;begin(false)};
-document.getElementById('cont').onclick=()=>{G.multiplayer=false;mpActive=false;begin(true)};
+try{boot()}catch(err){console.error('boot failed',err);const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small style="color:#ff8">Boot error — check console. You can still try Singleplayer.</small>'}
+// Expose for menu handlers
+window.G=G;window.begin=begin;window.mpActive=typeof mpActive!=='undefined'?mpActive:false;
+window.__vcBegin=function(cont){try{const ov=document.getElementById('overlay');if(ov){ov.classList.add('home-hidden');ov.style.setProperty('display','none','important')}G.multiplayer=false;window.mpActive=false;begin(!!cont)}catch(e){console.error(e)}};
+document.getElementById('start')&&(document.getElementById('start').onclick=()=>window.__vcBegin(false));
+document.getElementById('cont')&&(document.getElementById('cont').onclick=()=>window.__vcBegin(true));
 })();
 
 
 </script>
-<script src="js/soundtrack.js">
-
-(function(){
-  function wireMenuBtn(id, fn){
-    const el=document.getElementById(id);
-    if(!el)return;
-    el.addEventListener('click', function(e){
-      e.preventDefault();
-      e.stopPropagation();
-      if(document.pointerLockElement){document.exitPointerLock?.()}
-      fn();
-    }, true);
-  }
-  wireMenuBtn('start', function(){G.multiplayer=false;mpActive=false;begin(false)});
-  wireMenuBtn('cont', function(){G.multiplayer=false;mpActive=false;begin(true)});
-})();
-
-
-
-(function(){
-  function hideHome(){
-    const ov=document.getElementById('overlay');
-    if(ov){ov.classList.add('home-hidden');ov.style.setProperty('display','none','important');}
-  }
-  function wire(id, fn){
-    const el=document.getElementById(id);
-    if(!el||el.__vcWired)return;
-    el.__vcWired=true;
-    el.addEventListener('click', function(e){
-      e.preventDefault();e.stopPropagation();
-      if(document.pointerLockElement)document.exitPointerLock?.();
-      hideHome();
-      fn();
-    }, true);
-  }
-  function ready(){
-    wire('start', function(){G.multiplayer=false;if(typeof mpActive!=='undefined')mpActive=false;begin(false)});
-    wire('cont', function(){G.multiplayer=false;if(typeof mpActive!=='undefined')mpActive=false;begin(true)});
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded', ready);
-  else ready();
-  setTimeout(ready, 0);
-  setTimeout(ready, 500);
-})();
-
-</script>
-</body></html>
+<script src="js/soundtrack.js"></script>
+</body>
+</html>
