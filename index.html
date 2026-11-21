@@ -262,7 +262,7 @@ function resizePost(){
  postU.camNear.value=camera.near;postU.camFar.value=camera.far;
 }
 function renderFrame(){
- if(G.quality===0){renderer.render(scene,camera);return}
+ if(G.quality<2){renderer.render(scene,camera);return}
  renderer.setRenderTarget(postRT);renderer.render(scene,camera);
  renderer.setRenderTarget(null);
  postU.tDiffuse.value=postRT.texture;
@@ -2851,7 +2851,7 @@ function updateHUD(dt){hudT-=dt;
 // ================= INPUT HANDLING =================
 function pauseGame(on){if(G.state==='play'&&on){G.state='paused';mouseDown=false;for(const k in keys)keys[k]=false;$('#pause').style.display='grid';$('#pQual').textContent='Quality: '+['Low','Medium','High'][G.quality];if(mouseLocked)document.exitPointerLock?.()}else if(G.state==='paused'&&!on){G.state='play';$('#pause').style.display='none';requestGameMouseLock()}refreshMousePrompt()}
 
-function setQuality(q){G.quality=q;const pr=[.75,1,Math.min(devicePixelRatio,2)][q];renderer.setPixelRatio(pr);renderer.setSize(innerWidth,innerHeight);pU.vh.value=innerHeight*pr;
+function setQuality(q){G.quality=q;const pr=[.75,1,Math.min(devicePixelRatio,1.5)][q];renderer.setPixelRatio(pr);renderer.setSize(innerWidth,innerHeight);pU.vh.value=innerHeight*pr;
  sun.castShadow=q>0;sun.shadow.mapSize.set([512,1024,2048][q],[512,1024,2048][q]);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null}renderer.shadowMap.needsUpdate=true;scene.fog.far=[900,1200,1600][q];resizePost()}
 function nearestDoor(){if(pl.inside||pl.car)return null;let b=null,bd=3.6;for(const d of doors){const q=Math.hypot(d.x-pl.x,d.z-pl.z);if(q<bd){bd=q;b=d}}return b}
 function onKey(k,e){
@@ -3519,7 +3519,7 @@ function boot(){
  buildWorld();buildAllInteriors();buildMarkers();buildGivers();
  initRain();spawnGators();buildExtras();initBoatSpots();
  G.stats={nodes:nodes.length,roads:roads.length};
- skyUpdate(8);updateEnv();setQuality(2);resizePost();bindMapControls();
+ skyUpdate(8);updateEnv();setQuality(1);resizePost();bindMapControls();
  const sv=readSave();if(sv){$('#cont').style.display='inline-block'}
  $('#loadmsg').innerHTML='<small>World ready — '+nodes.length+' intersections · '+roads.length+' roads · all systems online</small>';
  $('#start').onclick=()=>begin(false);$('#cont').onclick=()=>begin(true);
