@@ -13,7 +13,7 @@ The game is built with [Three.js](https://threejs.org/) and currently runs as a 
 ### Explore the city
 - Eight districts to explore: Neon Beach downtown, Port Calusa docks, Palmetto Grove suburbs, Grassrun Bayou, Mount Orrin, Kestrel Keys, the North Outskirts, and the East Highway.
 - A downtown park with winding paths, a reflecting pond and fountain, a pavilion, benches, trees, and flower beds.
-- An airport with a runway, taxiways, airport buildings, a prop plane, and a small jet.
+- An airport with a runway, taxiways, airport buildings, a lightweight low-poly prop plane, and a small jet.
 - City traffic, pedestrians, parked vehicles, streetlights, traffic signals, and marked zebra crosswalks at city intersections.
 - A day-and-night cycle, changing weather, rain, fog, storms, and wet-looking roads.
 
@@ -149,7 +149,6 @@ vice-city-game/
 ├── favicon.svg                Browser tab icon
 ├── graphics-test.html         Standalone graphics test page
 ├── assets/
-│   └── plane.fbx              Imported prop-plane model
 ├── scripts/
 │   ├── patch-post-processing.js
 │   └── patch-shared-world.js
@@ -164,7 +163,7 @@ vice-city-game/
 ## Technology
 
 - **Three.js r128** — 3D rendering, city, vehicles, lighting, and effects.
-- **FBXLoader** — loads the imported prop-plane model from `assets/plane.fbx`.
+- **Procedural Three.js geometry** — lightweight aircraft and vehicle models generated directly by the game.
 - **Web Audio API** — vehicle sounds, sirens, effects, and generated radio audio.
 - **Express + Socket.IO** — server prototype for future online multiplayer.
 - **localStorage** — browser-based save data.

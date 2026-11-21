@@ -141,8 +141,6 @@ small{color:#b9cce0}
 <div id="overlay"><div class="card home-card"><div class="home-kicker">WELCOME TO</div><h1 class="home-title">VICE CITY <span>3D</span></h1><p class="home-sub">A living coastal city. Your story starts here.</p><div class="home-actions"><button id="start" class="home-btn">SINGLEPLAYER <small>Play your own save</small></button><button id="multiplayerOpen" class="home-btn alt">MULTIPLAYER <small>Play online with friends</small></button><button id="cont" class="home-btn continue-btn" style="display:none">CONTINUE SAVED GAME</button></div><div id="loadmsg" class="home-status"><small>Generating Vice City…</small></div><div class="home-foot">WASD to move · Mouse to look · Desktop Chrome recommended</div></div></div>
 <div id="mpLobby" class="mp-screen" style="display:none"><div class="mp-card"><button id="mpBack" class="mp-back">← BACK</button><div class="home-kicker">ONLINE SESSION</div><h2>PLAY ONLINE</h2><label for="mpName">PLAYER NAME</label><input id="mpName" maxlength="16" value="Player" autocomplete="nickname"><div class="mp-actions"><button id="mpHost">JOIN WORLD</button></div><div id="mpOnline" class="mp-room" style="display:block">Players online: …</div><div id="mpStatus" class="mp-status">Everyone joins the same shared city. No codes needed.</div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fflate@0.6.9/umd/index.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
 <script>
 (()=>{'use strict';
 if(!window.THREE){document.querySelector('.card').innerHTML='<h2>Could not load 3D engine</h2><p>Check your internet connection and reload.</p>';return;}
@@ -1527,45 +1525,7 @@ function carGeos(tk){
  // light beam cone (additive) pointing forward
  const bg=new T.ConeGeometry(2.6,16,10,1,true);bg.rotateX(-Math.PI/2);bg.translate(0,0,8.4);o.beam=bg;
  return carGeoCache[tk]=o}
-let propPlaneFBX=null;
-function makeLoadedPropPlaneVisual(color){
- const t=CAR_TYPES.propPlane,g=new T.Group(),ch=new T.Group();g.add(ch);
- const model=propPlaneFBX.clone(true);
- const box=new T.Box3().setFromObject(model),size=box.getSize(new T.Vector3()),center=box.getCenter(new T.Vector3());
- const wide=Math.max(size.x,size.z),long=Math.min(size.x,size.z);
- const scale=Math.min(t.W/Math.max(wide,.001),t.L/Math.max(long,.001),2.8/Math.max(size.y,.001))*.9;
- model.position.set(-center.x*scale,-box.min.y*scale,-center.z*scale);
- model.scale.setScalar(scale);
- // Keep the wings across the X axis and the nose pointing along the game's +Z axis.
- if(size.z>size.x)model.rotation.y=Math.PI/2;
- model.traverse(o=>{
-  if(!o.isMesh)return;
-  o.castShadow=true;o.receiveShadow=true;
-  const name=(o.name||"").toLowerCase();
-  const recolor=m=>{
-   const mat=m.clone();
-   if(mat.color){
-    if(/glass|window|canopy|windshield/.test(name)){mat.color.set(0x18394f);mat.metalness=.45;mat.roughness=.2;mat.transparent=false}
-    else if(/prop|blade|tire|wheel|rubber/.test(name)){mat.color.set(0x18212a);mat.roughness=.72}
-    else {mat.color.set(0xe9e5dc);mat.metalness=.28;mat.roughness=.48}
-   }
-   return mat;
-  };
-  o.material=Array.isArray(o.material)?o.material.map(recolor):recolor(o.material);
- });
- ch.add(model);
- let prop=ch.getObjectByName("propeller");
- if(!prop){
-  prop=new T.Group();prop.name="propeller";
-  const bladeMat=new T.MeshStandardMaterial({color:0x18212a,metalness:.25,roughness:.6});
-  for(let i=0;i<2;i++){const blade=new T.Mesh(new T.BoxGeometry(.13,2.15,.11),bladeMat);blade.rotation.z=i*Math.PI/2;prop.add(blade)}
-  prop.position.set(0,.25,t.L*.48);ch.add(prop);
- }
- const body=new T.Mesh(new T.BoxGeometry(.01,.01,.01),new T.MeshBasicMaterial({visible:false}));
- return{g,ch,body,wheels:[],beam:{visible:false},tail:{material:new T.MeshStandardMaterial({color:0x18212a})},head:{material:new T.MeshStandardMaterial({color:0xe9e5dc})},bar:null,pm:new T.MeshStandardMaterial({color:0xe9e5dc})};
-}
 function makeAircraftVisual(tk,color){
- if(tk!=='smallJet'&&propPlaneFBX)return makeLoadedPropPlaneVisual(color);
  const t=CAR_TYPES[tk],g=new T.Group(),ch=new T.Group();g.add(ch);
  const paint=new T.MeshStandardMaterial({color,metalness:.38,roughness:.38}),white=new T.MeshStandardMaterial({color:0xe9f1f5,metalness:.25,roughness:.38}),glass=new T.MeshStandardMaterial({color:0x15384f,metalness:.55,roughness:.16}),dark=new T.MeshStandardMaterial({color:0x18212a,roughness:.78}),rubber=new T.MeshStandardMaterial({color:0x090b0d,roughness:.95});
  const fus=new T.Mesh(new T.CylinderGeometry(tk==='smallJet'?.7:.46,tk==='smallJet'?.76:.5,t.L*.78,16),paint);fus.rotation.x=Math.PI/2;ch.add(fus);
@@ -1597,19 +1557,6 @@ function makeAircraftVisual(tk,color){
  const noseStrut=new T.Mesh(new T.CylinderGeometry(.05,.06,.5,8),white);noseStrut.position.set(0,-.38,t.L*.39);ch.add(noseStrut);
  const noseWheel=new T.Mesh(new T.CylinderGeometry(.16,.16,.14,12),rubber);noseWheel.rotation.z=Math.PI/2;noseWheel.position.set(0,-.65,t.L*.39);ch.add(noseWheel);wheels.push({w:noseWheel,front:true});
  return{g,ch,body:fus,wheels,beam:{visible:false},tail:{material:dark},head:{material:white},bar:null,pm:paint};
-}
-function loadPropPlaneModel(){
- if(!window.THREE||!THREE.FBXLoader)return;
- const loader=new THREE.FBXLoader();
- loader.load('assets/plane.fbx',model=>{
-  propPlaneFBX=model;
-  for(const c of cars.slice())if(c.tk==='propPlane'){
-   const wasPlayer=pl.car===c;
-   world.remove(c.g);c.v=makeLoadedPropPlaneVisual(c.color);c.g=c.v.g;world.add(c.g);c.place();
-   if(wasPlayer)pl.car=c;
-  }
-  toast('Prop plane model loaded',2200);
- },undefined,error=>{console.warn('Could not load assets/plane.fbx; keeping the built-in prop plane.',error)});
 }
 function makeCarVisual(tk,color){
  if(CAR_TYPES[tk].aircraft)return makeAircraftVisual(tk,color);
@@ -1981,7 +1928,6 @@ class Car{
  }
 }
 function spawnCar(tk,x,z,h,mode='parked',color){const t=CAR_TYPES[tk],c=new Car(tk,color??pick2(t.colors),x,z,h,mode);cars.push(c);c.place();return c}
-loadPropPlaneModel();
 function removeCar(c){const i=cars.indexOf(c);if(i>=0)cars.splice(i,1);world.remove(c.g);if(pl.car===c)pl.car=null}
 const _p2=[0,0];
 function carCircles(c,out){const t=c.t,sn=Math.sin(c.h),cs=Math.cos(c.h),o=t.L/2-.95;out[0]=[c.x+sn*o,c.z+cs*o];out[1]=[c.x,c.z];out[2]=[c.x-sn*o,c.z-cs*o];return out}
