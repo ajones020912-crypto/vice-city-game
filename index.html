@@ -1748,9 +1748,9 @@ const _p2=[0,0];
 function carCircles(c,out){const t=c.t,sn=Math.sin(c.h),cs=Math.cos(c.h),o=t.L/2-.95;out[0]=[c.x+sn*o,c.z+cs*o];out[1]=[c.x,c.z];out[2]=[c.x-sn*o,c.z-cs*o];return out}
 const _cc=[null,null,null];
 function stepAircraft(c,dt){
- const t=c.t,inp=c.inp,ground=heightAt(c.x,c.z)+.38;
+ const t=c.t,inp=c.inp,ground=heightAt(c.x,c.z)+.9;
  let speed=c.speed,throttle=inp.thr>0?inp.thr:0;
- if(inp.thr<0)speed=Math.max(0,speed-30*dt);else speed=Math.min(t.top,speed+throttle*(t.tk==='smallJet'?12:8)*dt);
+ if(inp.thr<0)speed=Math.max(0,speed-30*dt);else speed=Math.min(t.top,speed+throttle*(c.tk==='smallJet'?12:8)*dt);
  if(!c.airborne&&speed>20&&keys[' '])c.airborne=true;
  if(c.airborne){const climb=(keys[' ']?1:0)-(keys['shift']?1:0);c.vy=(c.vy||0)+(climb*8-1.8)*dt;c.vy=clamp(c.vy,-12,13);c.y+=c.vy*dt;if(c.y<=ground){c.y=ground;c.vy=0;c.airborne=false;c.pitch=0}else c.pitch=lerp(c.pitch,climb*.16,dt*2.4)}
  else{c.y=ground;c.vy=0;c.pitch=0}
@@ -1859,7 +1859,7 @@ function enterCar(c){
   if(c.cops>0)addWanted(2,'jack');else addWanted(c.mode==='parked'?0:1,'jack');
   const p=activatePed(c.x+Math.cos(c.h)*2.4,c.z-Math.sin(c.h)*2.4);if(p){p.flee(c.x,c.z,10)}toast('Carjacked!');
  }
- c.occ='player';c.mode='player';c.ai=null;pl.car=c;c.owned=true;if(!c.t.boat)G.ownedCar=c;
+ c.occ='player';c.mode='player';c.ai=null;pl.car=c;c.owned=true;if(!c.t.boat)G.ownedCar=c;if(c.t.aircraft)toast('Aircraft controls: W throttle · A/D turn · Space take off / climb · Shift descend · E exit after landing',6000);
  plH.visible=false;$('#vehicle').textContent=c.t.name;$('#speedo').style.display='block';
  audio.door();G.hudDirty=true;if(c.cops>0)c.cops=0;onEnterVehicle(c);}
 function ejectPlayer(force){const c=pl.car;if(!c)return;const sn=Math.sin(c.h),cs=Math.cos(c.h);
@@ -2901,7 +2901,7 @@ function simulate(dt){
   if(pl.car&&pl.car.dead)ejectPlayer(true);
   // vehicles
   for(const c of cars){if(c.mode==='player'){}else if(c.ai)controlAI(c,dt);else if(c.mode!=='parked'||c.speed>.05||c.dead){c.inp.thr=0;if(!c.occ){c.inp.hb=c.speed<8?1:0}}
-   if(c.t.boat||c.speed>.05||c.inp.thr||c.mode==='player'||c.ai||c.dead||c.fire>0||Math.abs(c.pV)>.01){stepCar(c,dt)}
+   if(c.t.aircraft||c.t.boat||c.speed>.05||c.inp.thr||c.mode==='player'||c.ai||c.dead||c.fire>0||Math.abs(c.pV)>.01){stepCar(c,dt)}
    if(c.speed>1.5)carHitPeds(c)}
   collideNearbyCars();
   for(const c of cars)c.place();
