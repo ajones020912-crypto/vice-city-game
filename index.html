@@ -119,7 +119,7 @@ small{color:#b9cce0}
 <div id="shop"><div class="card" style="min-width:340px"><h2 id="shoptitle" style="margin:0 0 6px"></h2><div id="shopcash" style="color:#7fff9a;margin-bottom:6px"></div><div id="shopitems"></div><button class="alt" id="shopclose">Leave</button></div></div>
 <div id="pause"><div class="card"><h2 style="margin-top:0">PAUSED</h2><button id="pResume">Resume</button><br><button class="alt" id="pSave">Save game</button><button class="alt" id="pLoad">Load game</button><br><button class="alt" id="pQual">Quality: High</button><button class="alt" id="pNew">New game</button><p><small>Autosaves safely on foot every 30s outside jobs and missions. Saved story missions restart.</small></p></div></div>
 <div id="overlay"><div class="card home-card"><div class="home-kicker">WELCOME TO</div><h1 class="home-title">VICE CITY <span>3D</span></h1><p class="home-sub">A living coastal city. Your story starts here.</p><div class="home-actions"><button id="start" class="home-btn">SINGLEPLAYER <small>Play your own save</small></button><button id="multiplayerOpen" class="home-btn alt" type="button" aria-label="Multiplayer — Play online with friends">MULTIPLAYER <small>Play online with friends</small></button><button id="cont" class="home-btn continue-btn" style="display:none">CONTINUE SAVED GAME</button></div><div id="loadmsg" class="home-status"><small>Generating Vice City…</small></div><div class="home-foot">WASD to move · Mouse to look · Desktop Chrome recommended</div></div></div>
-<div id="mpLobby" class="mp-screen" style="display:none"><div class="mp-card"><button id="mpBack" class="mp-back">← BACK</button><div class="home-kicker">ONLINE SESSION</div><h2>PLAY WITH FRIENDS</h2><label for="mpName">PLAYER NAME</label><input id="mpName" maxlength="16" value="Player" autocomplete="nickname"><div class="mp-actions"><button id="mpHost">CREATE ROOM</button><div class="mp-or">OR JOIN A ROOM</div><input id="mpCode" maxlength="6" placeholder="ROOM CODE" autocomplete="off"><button id="mpJoin" class="alt">JOIN ROOM</button></div><div id="mpStatus" class="mp-status">Up to 4 players per room.</div><div id="mpRoom" class="mp-room" style="display:none"></div></div></div>
+<div id="mpLobby" class="mp-screen" style="display:none"><div class="mp-card"><button id="mpBack" class="mp-back">← BACK</button><div class="home-kicker">ONLINE SESSION</div><h2>PLAY ONLINE</h2><label for="mpName">PLAYER NAME</label><input id="mpName" maxlength="16" value="Player" autocomplete="nickname"><div class="mp-actions"><button id="mpHost">JOIN WORLD</button></div><div id="mpOnline" class="mp-room" style="display:block">Players online: …</div><div id="mpStatus" class="mp-status">Everyone joins the same shared city. No codes needed.</div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 (()=>{'use strict';
@@ -3674,31 +3674,48 @@ function mpMakeAvatar(name){
 }
 function mpUpsert(id,data){if(!data||id===mpSocket?.id)return;let peer=mpPeers.get(id);if(!peer){peer={g:mpMakeAvatar(data.name||'PLAYER'),car:mpMakeCar(),target:new T.Vector3(),heading:0,name:data.name||'PLAYER'};mpPeers.set(id,peer)}peer.target.set(Number(data.x)||0,Number(data.y)||0,Number(data.z)||0);peer.heading=Number(data.h)||0;peer.name=data.name||peer.name;peer.vehicle=!!data.vehicle;peer.g.visible=!peer.vehicle;peer.car.visible=peer.vehicle;}
 function mpRemove(id){const p=mpPeers.get(id);if(!p)return;scene.remove(p.g);scene.remove(p.car);p.car.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material)o.material.dispose()});p.g.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose()}});p.g.userData.labelTex?.dispose();mpPeers.delete(id)}
-function mpConnect(action,code=''){
+function mpSetOnline(n){
+ const el=document.getElementById('mpOnline');
+ if(el)el.textContent='Players online: '+Math.max(0,Number(n)||0);
+}
+function mpConnect(){
  const name=(document.getElementById('mpName').value||'Player').trim().slice(0,16)||'Player';
  mpStatus('Connecting to the multiplayer server…');
  const load=()=>{
   if(!window.io){mpStatus('Could not load the online connection library. Make sure the game is deployed on its multiplayer server.');return}
   if(mpSocket){mpSocket.disconnect();mpSocket=null}
   mpSocket=window.io({transports:['websocket','polling']});
-  mpSocket.on('connect',()=>{mpStatus('Connected. Setting up your room…');mpSocket.emit(action,{code,name})});
-  mpSocket.on('connect_error',()=>mpStatus('Could not reach the server. Deploy the server first, then open the hosted game URL.'));
-  mpSocket.on('room-error',d=>mpStatus(d?.message||'Could not join that room.'));
-  mpSocket.on('room-created',d=>mpEntered(d));mpSocket.on('room-joined',d=>mpEntered(d));
-  mpSocket.on('player-joined',d=>{if(d?.id)mpUpsert(d.id,d.player);mpStatus('Room '+mpRoomCode+' · '+(mpPeers.size+1)+' players connected.')});
-  mpSocket.on('player-left',d=>{mpRemove(d.id);mpStatus('A player left. Room '+mpRoomCode)});
+  mpSocket.on('connect',()=>{mpStatus('Connected. Joining the shared world…');mpSocket.emit('join-world',{name})});
+  mpSocket.on('connect_error',()=>mpStatus('Could not reach the server. Deploy as a Node Web Service, then open the hosted game URL.'));
+  mpSocket.on('room-error',d=>mpStatus(d?.message||'Could not join online.'));
+  mpSocket.on('room-full',()=>mpStatus('The world is full right now. Try again in a moment.'));
+  mpSocket.on('online-count',d=>mpSetOnline(d?.count));
+  mpSocket.on('world-joined',d=>mpEntered(d));
+  mpSocket.on('player-joined',d=>{if(d?.id)mpUpsert(d.id,d.player);mpStatus((mpPeers.size+1)+' players in the city.')});
+  mpSocket.on('player-left',d=>{mpRemove(d.id);mpStatus(Math.max(1,mpPeers.size+1)+' players in the city.')});
   mpSocket.on('state-update',d=>{if(d?.id)mpUpsert(d.id,d.player)});
-  mpSocket.on('room-full',()=>mpStatus('That room is full (maximum 4 players).'));
  };
  if(window.io){load();return}
- let script=document.getElementById('socketIoClient');if(!script){script=document.createElement('script');script.id='socketIoClient';script.src='/socket.io/socket.io.js';script.onload=load;script.onerror=()=>mpStatus('Multiplayer server not found. Open the game from its deployed server address.');document.head.appendChild(script)}else{script.addEventListener('load',load,{once:true});if(script.dataset.failed)mpStatus('Multiplayer server not found.');}
+ let script=document.getElementById('socketIoClient');
+ if(!script){
+  script=document.createElement('script');script.id='socketIoClient';script.src='/socket.io/socket.io.js';
+  script.onload=load;
+  script.onerror=()=>mpStatus('Multiplayer server not found. Open the game from its deployed server address.');
+  document.head.appendChild(script);
+ }else{
+  script.addEventListener('load',load,{once:true});
+  if(script.dataset.failed)mpStatus('Multiplayer server not found.');
+ }
 }
 function mpEntered(d){
- mpRoomCode=d.code||'';mpActive=true;mpPeers.clear();(d.players||[]).forEach(p=>mpUpsert(p.id,p));
- const room=document.getElementById('mpRoom');room.style.display='block';room.textContent='ROOM CODE: '+mpRoomCode;
- mpStatus('Room ready. Share the code with friends. Starting Vice City…');
- document.getElementById('mpLobby').style.display='none';document.getElementById('overlay').style.display='none';
- G.multiplayer=true;begin(false);toast('Online room '+mpRoomCode+' · share the code with friends',4500);
+ mpActive=true;mpPeers.clear();
+ (d.players||[]).forEach(p=>mpUpsert(p.id,p));
+ mpSetOnline(d.count!=null?d.count:(mpPeers.size+1));
+ mpStatus('You are online. Explore the shared city with everyone else.');
+ document.getElementById('mpLobby').style.display='none';
+ const ov=document.getElementById('overlay');if(ov)ov.style.display='none';
+ G.multiplayer=true;begin(false);
+ toast('Online · '+(d.count!=null?d.count:(mpPeers.size+1))+' player(s) in the city',4500);
 }
 function mpTick(dt){
  if(!mpActive||!mpSocket?.connected||G.state!=='play')return;
@@ -3708,10 +3725,14 @@ function mpTick(dt){
  for(const peer of mpPeers.values()){peer.g.position.lerp(peer.target,.32);peer.car.position.lerp(peer.target,.32);peer.g.rotation.y+=(peer.heading-peer.g.rotation.y)*.3;peer.car.rotation.y+=(peer.heading-peer.car.rotation.y)*.3;}
 }
 // Main menu and lobby controls.
-document.getElementById('multiplayerOpen').onclick=()=>{document.getElementById('mpLobby').style.display='grid';mpStatus('Create a room or enter a friend’s room code.');};
+document.getElementById('multiplayerOpen').onclick=()=>{
+ document.getElementById('mpLobby').style.display='grid';
+ mpStatus('Everyone joins the same shared city. No codes needed.');
+ mpSetOnline('…');
+ (async()=>{try{const r=await fetch('/api/online',{cache:'no-store'});if(r.ok){const j=await r.json();mpSetOnline(j.count)}}catch(e){}})();
+};
 document.getElementById('mpBack').onclick=()=>{document.getElementById('mpLobby').style.display='none'};
-document.getElementById('mpHost').onclick=()=>mpConnect('create-room');
-document.getElementById('mpJoin').onclick=()=>{const code=document.getElementById('mpCode').value.trim().toUpperCase();if(code.length<4){mpStatus('Enter the room code your friend shared.');return}mpConnect('join-room',code)};
+document.getElementById('mpHost').onclick=()=>mpConnect();
 document.getElementById('start').onclick=()=>{G.multiplayer=false;mpActive=false;begin(false)};
 document.getElementById('cont').onclick=()=>{G.multiplayer=false;mpActive=false;begin(true)};
 
