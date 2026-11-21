@@ -2181,7 +2181,7 @@ const pl={x:11.2,z:36,y:0,h:0,vx:0,vz:0,vy:0,hp:100,armor:0,cash:500,rep:0,car:n
 G.pl=pl;G.cars=cars;G.peds=peds;G.cops=cops;
 const CHAR={
   jason:{name:'JASON',skin:0xc98e68,shirt:0x626a68,pants:0x6a593f,hair:0x2d211b,glasses:false,shoe:0x5a4330},
-  lucia:{name:'LUCIA',longHair:true,skin:0xb9784e,shirt:0x999d98,pants:0x7497b3,hair:0x35251f,glasses:false,shoe:0xf6f6f6}
+  lucia:{name:'LUCIA',longHair:true,skin:0xb9784e,shirt:0x303338,pants:0x7497b3,hair:0x35251f,glasses:false,shoe:0xf6f6f6}
 };
 const plH=makeHuman({design:'jasonC',skin:CHAR.jason.skin,shirt:CHAR.jason.shirt,pants:CHAR.jason.pants,hair:CHAR.jason.hair});scene.add(plH);G.plH=plH;
 function switchChar(){
@@ -3179,7 +3179,7 @@ function readSave(){try{const s=localStorage.getItem(SAVEKEY);if(!s)return null;
 function applySave(d){
  if(pl.inside){pl.inside=null;world.visible=true;intGroup.visible=false;sun.visible=true;interiorLight.intensity=interiorFill.intensity=interiorAmb.intensity=0;skyDome.visible=true;scene.background=null;G.busy=false}if(pl.car)ejectPlayer();
  Object.assign(pl,d.pl);G.mapMarks=Array.isArray(d.mapMarks)?d.mapMarks.slice(0,30):[];ensurePl();if(d.batt!=null)G.batt=d.batt;if(d.station!=null){G.station=d.station;audio.setStation(G.station)}pl.alive=true;pl.car=null;pl.y=heightAt(pl.x,pl.z);pl.vx=pl.vz=pl.vy=0;pl.crime=Math.max(0,d.pl.crime||0);pl.wanted=clamp(d.pl.wanted||0,0,6);pl.heat=Object.assign({face:0,clothes:0,vehicle:0,weapon:0,partner:0,cctv:0},d.pl.heat||{});pl.sightT=0;pl.profScore=d.pl.profScore||0;updateProfile();G.clock=d.clock;
- {const cc=CHAR[pl.char]||CHAR.jason;setHumanLook(plH,cc);$('#char').textContent=cc.name;if([0x20b6a4,0xff6ec7,0x3c3e44,0x1e1f23].includes(pl.shirt)||(pl.char==='jason'&&pl.shirt===0xf2f1ec)||(pl.char==='lucia'&&pl.shirt===0x0b0b0d))pl.shirt=cc.shirt;if(([0x26344f,0x2a2f3a].includes(pl.pants)||(pl.char==='lucia'&&[0x1f2228,0x5c89ae].includes(pl.pants))||(pl.char==='jason'&&pl.pants===0xb39b6e))&&!pl.boughtPants)pl.pants=cc.pants}plH.userData.m.shirt.color.setHex(pl.shirt);plH.userData.m.pants.color.setHex(pl.pants);plH.visible=true;
+ {const cc=CHAR[pl.char]||CHAR.jason;setHumanLook(plH,cc);$('#char').textContent=cc.name;if([0x20b6a4,0xff6ec7,0x3c3e44,0x1e1f23].includes(pl.shirt)||(pl.char==='jason'&&pl.shirt===0xf2f1ec)||(pl.char==='lucia'&&[0x0b0b0d,0x999d98].includes(pl.shirt)))pl.shirt=cc.shirt;if(([0x26344f,0x2a2f3a].includes(pl.pants)||(pl.char==='lucia'&&[0x1f2228,0x5c89ae].includes(pl.pants))||(pl.char==='jason'&&pl.pants===0xb39b6e))&&!pl.boughtPants)pl.pants=cc.pants}plH.userData.m.shirt.color.setHex(pl.shirt);plH.userData.m.pants.color.setHex(pl.pants);plH.visible=true;
  G.ownedCar=null;for(const c of cars.slice())removeCar(c);spawnAirportPlanes();for(const p of allPeds())p.kill();
  if(MS.active)failMission('game loaded');MS.active=null;ring.visible=false;
  if(d.car){const c=spawnCar(d.car.tk,d.car.x,d.car.z,d.car.h,'parked',d.car.color);c.up=d.car.up||null;c.gid=d.car.gid||null;if(c.gid)c.keep=true;c.hp=d.car.hp;c.fuel=clamp(d.car.fuel??100,0,100);c.owned=true;G.ownedCar=c;if(d.car.in)enterCar(c)}

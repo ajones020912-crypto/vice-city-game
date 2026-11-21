@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "dark_grey_tank": true,
+  "hood_sleeves_drawstrings_removed": true,
+  "fuller_hips_and_thighs": true,
+  "defined_waist": true,
+  "shorts_refitted": true,
+  "face_and_ponytail_unchanged": true,
+  "animation_joints_unchanged": true,
+  "merged_model_valid": true,
+  "other_characters_unchanged": true,
+  "finite_geometry": true,
+  "checked_scripts": 1,
+  "scope": "Lucia-only covered body silhouette and fitted tank top; other character designs and gameplay unchanged",
+  "retry_version": 3,
+  "copied_geometry_test_fixed": true,
+  "error_reporting_fixed": true,
+  "reorganized_paths_supported": true
+}
