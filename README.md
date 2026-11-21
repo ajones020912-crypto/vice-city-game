@@ -1,6 +1,6 @@
 # Vice City 3D
 
-An open-world crime game that runs in your browser. Drive, race boats across the water, pull jobs, dodge a six-star heat system and explore a neon coastal city — on your own or online with up to three friends.
+An open-world crime game that runs in your browser. Drive, race boats across the water, pull jobs, dodge a six-star heat system and explore a neon coastal city. Online multiplayer is on the way.
 
 **Play it:** https://vice-city-game-3tn7.onrender.com/
 
@@ -49,8 +49,8 @@ Map, radio, Scooter Bros, WAINK vehicle scanner, texts, jobs, criminal profile, 
 ### Four radio stations (T)
 NEON FM (synthwave), Palm Beat 98 (reggaeton), Bass Coast (Miami bass) and Gulf Lo-Fi — all generated live in the browser.
 
-### Online multiplayer
-Create a room, share the code, and up to **4 players** explore the same city together — you'll see each other walking, driving and boating, with name tags and minimap markers.
+### Online multiplayer — coming soon
+A single shared online world for up to **24 players** is in development. The server is already in this repo; the **Multiplayer** button on the title screen stays disabled until the game side is finished.
 
 ---
 
@@ -81,15 +81,18 @@ Create a room, share the code, and up to **4 players** explore the same city tog
 
 ---
 
-## Playing online
+## Multiplayer status
 
-1. Open the game and choose **Multiplayer**.
-2. Enter your name and click **Create room**.
-3. Share the 5-letter **room code** — friends enter it and click **Join room**.
+Multiplayer is **in development** and currently disabled in the game.
 
-Each player keeps their own traffic, police, missions and money; you share the city and can see each other. Online sessions never overwrite your single-player save.
+The plan is one **shared world** — no room codes. Pick a name, hit **Join world**, and you're in the same city as everyone else online, with a live player count on the title screen.
 
-> Multiplayer needs the Node server in this repo (see below). A plain static host can only run single-player.
+What's ready:
+- `server.js` — Express + Socket.IO server for one shared world (up to 24 players), relaying each player's position, heading, character and whether they're in a vehicle.
+- `GET /api/online` — returns the current player count.
+- `GET /healthz` — health check for hosting.
+
+Still to do: switching the game's lobby from room codes to the shared world (`scripts/patch-shared-world.js`) and enabling the Multiplayer button.
 
 ---
 
@@ -104,7 +107,7 @@ npm start
 
 Then open http://localhost:3000.
 
-Single-player also works by simply opening `index.html` in a browser — only multiplayer needs the server.
+Single-player also works by simply opening `index.html` in a browser — the server is only needed for multiplayer.
 
 ---
 
@@ -119,23 +122,29 @@ Create a **Web Service** (not a Static Site) from this repo:
 | Start command | `npm start` |
 | Health check path | `/healthz` |
 
-On the free plan the server sleeps after ~15 minutes without visitors, so the first player may wait up to a minute for it to wake up.
+On the free plan the server sleeps after ~15 minutes without visitors, so the first visitor may wait up to a minute for it to wake up.
 
 ---
 
 ## Project structure
 
 ```
-index.html     The whole game: rendering, world, AI, missions, UI and the multiplayer client
-server.js      Node + Socket.IO server: serves the game and relays players in online rooms
-package.json   Server dependencies and start script
+index.html            The whole game: rendering, world, AI, missions, UI and the multiplayer client
+server.js             Express + Socket.IO server: serves the game and runs the shared online world
+package.json          Server dependencies and start script
+graphics-test.html    Small standalone page for testing the graphics stack
+scripts/              One-off patch scripts that update index.html
+  patch-post-processing.js   Post-processing upgrade (SSAO, FXAA, bloom, color grade)
+  patch-shared-world.js      Converts the room-code lobby to the shared world
+.github/workflows/    Manually-run GitHub Actions that apply game updates
+                      (graphics, traffic signals, crash animations, multiplayer)
 ```
 
 ## Tech
 
 - **three.js r128** (loaded from cdnjs) — rendering, with custom shaders for sky, water and post-processing (bloom, ambient occlusion, color grading)
 - **Web Audio API** — engine, sirens, effects and procedurally generated radio music
-- **Socket.IO** — online rooms
+- **Express + Socket.IO** — game server and online world
 - **localStorage** — save games (stored in your browser)
 
 ## Saving
