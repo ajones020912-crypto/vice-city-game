@@ -48,7 +48,7 @@ Optional environment variables:
 - Graceful shutdown on SIGTERM/SIGINT
 - Fully backward-compatible with the original client events
 
-**Client (`mp.js`)**
+**Client (`js/mp.js`)**
 - Velocity-assisted smooth interpolation (far less rubber-banding)
 - Character-coloured avatars + accent stripes
 - Name tags with health bar + wanted stars
@@ -57,12 +57,12 @@ Optional environment variables:
 - Automatic reconnection with backoff
 - Graceful fallback if richer fields are missing
 
-## Integrating `mp.js` into the game
+## Integrating `js/mp.js` into the game
 
 Add this line near the end of `index.html` (just before the closing `</body>` or after the main game script):
 
 ```html
-<script src="/mp.js"></script>
+<script src="/js/mp.js"></script>
 ```
 
 The enhanced module overwrites the original `mpConnect`, `mpTick`, `mpUpsert`, etc., so existing calls automatically upgrade.  
@@ -92,7 +92,7 @@ If you prefer not to touch `index.html`, you can still run the new server — th
 
 ## Tips for the best experience
 
-1. Always open the game from the **same origin** as the Node server (so `/socket.io/socket.io.js` and `/mp.js` resolve).
+1. Always open the game from the **same origin** as the Node server (so `/socket.io/socket.io.js` and `/js/mp.js` resolve).
 2. Desktop Chrome / Edge recommended (same as single-player).
 3. For larger player counts, lower `INTEREST_RADIUS` or raise `TICK_MS` slightly.
 4. Chat is currently global. Changing it to proximity is a 5-line change in the server’s `chat` handler if you ever want it.

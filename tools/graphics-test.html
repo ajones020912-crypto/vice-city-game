@@ -37,7 +37,7 @@ const renderer=g.renderer,render=renderer.render.bind(renderer);
 renderer.render=function(scene,camera){if(scene===g.scene&&camera===g.camera){renderer.shadowMap.enabled=controls.shadows.checked;if(lastQuality!==g.quality){lastQuality=g.quality;syncMaterials()}if(!controls.post.checked){const target=renderer.getRenderTarget();skipPost=!!target;if(target)renderer.setRenderTarget(null);try{return render(scene,camera)}finally{if(target)renderer.setRenderTarget(target)}}skipPost=false;return render(scene,camera)}if(camera&&camera.isOrthographicCamera&&scene&&scene.children){const passes=scene.children.filter(o=>o.material&&o.material.uniforms&&o.material.uniforms.tDiffuse&&o.material.uniforms.tDepth);if(passes.length){if(skipPost){skipPost=false;return}for(const o of passes){const u=o.material.uniforms;if(u.aoStrength&&!controls.ao.checked)u.aoStrength.value=0}}}return render(scene,camera)};
 attached=true;lastQuality=g.quality;apply();return true}
 let attempts=0;const timer=setInterval(()=>{attempts++;if(attach()){clearInterval(timer);setInterval(()=>{if(attached){syncMaterials();describe()}},1000)}else if(attempts>=240){clearInterval(timer);status.textContent='Could not find the game renderer. The original game has not been changed. Check that index.html loads successfully and exposes window.__vc.'}},250);
-frame.src='./index.html';
+frame.src='../index.html';
 })();
 </script>
 </html>
