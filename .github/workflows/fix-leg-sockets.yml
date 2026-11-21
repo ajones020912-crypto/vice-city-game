@@ -29,7 +29,6 @@ jobs:
           s = p.read_text(encoding='utf-8')
           orig = s
 
-          # 1) Wider/taller pelvis mesh so sockets stay covered while swinging
           old_pelvis = 'mk(new T.BoxGeometry(.34,.2,.21),m.pants,hips,0,0,0);'
           new_pelvis = 'mk(new T.BoxGeometry(.36,.26,.22),m.pants,hips,0,-.02,0);'
           if old_pelvis in s:
@@ -38,8 +37,6 @@ jobs:
           else:
               print('WARN: pelvis mesh pattern not found')
 
-          # 2) Raise leg joints INTO the pelvis (was y=-.08 near bottom edge)
-          #    and bury the top of the thigh mesh slightly above the pivot
           old_leg = (
               "const leg=(sx)=>{const hp=new T.Group();hp.position.set(sx*.1,-.08,0);hips.add(hp);"
               "const thigh=mk(capsule(.085,.44),m.pants,hp);"
@@ -50,7 +47,6 @@ jobs:
           )
           new_leg = (
               "const leg=(sx)=>{const hp=new T.Group();hp.position.set(sx*.09,.02,0);hips.add(hp);"
-              # thigh shifted up a bit so its top is buried in the pelvis box at the socket
               "const thigh=mk(capsule(.09,.46),m.pants,hp,0,.06,0);"
               "const kn=new T.Group();kn.position.y=-.42;hp.add(kn);"
               "const shin=mk(capsule(.068,.42),m.pants,kn);"
@@ -60,35 +56,51 @@ jobs:
           if old_leg in s:
               s = s.replace(old_leg, new_leg, 1)
               print('Leg joints raised into pelvis')
+          elif 'hp.position.set(sx*.1,-.08,0)' in s:
+              s = s.replace('hp.position.set(sx*.1,-.08,0)', 'hp.position.set(sx*.09,.02,0)', 1)
+              s = s.replace(
+                  'const thigh=mk(capsule(.085,.44),m.pants,hp);',
+                  'const thigh=mk(capsule(.09,.46),m.pants,hp,0,.06,0);',
+                  1,
+              )
+              print('Leg joints raised (loose)')
           else:
-              # looser replace of just the joint position
-              if 'hp.position.set(sx*.1,-.08,0)' in s:
-                  s = s.replace('hp.position.set(sx*.1,-.08,0)', 'hp.position.set(sx*.09,.02,0)', 1)
-                  s = s.replace(
-                      'const thigh=mk(capsule(.085,.44),m.pants,hp);',
-                      'const thigh=mk(capsule(.09,.46),m.pants,hp,0,.06,0);',
-                      1,
-                  )
-                  print('Leg joints raised (loose)')
+              raise SystemExit('leg construction pattern not found')
+
+          old_bob = (
+              "const bob=Math.abs(s1)*(.02+.01*runW)*moveW;\n"
+              " const idleBreath=Math.sin(ph*.85)*.01*(1-moveW);\n"
+              " const hipY=.93-.01*moveW+bob+idleBreath;\n"
+              " hips.position.y=lerpA('hy',hipY,14);"
+          )
+          new_bob = (
+              "const idleBreath=Math.sin(ph*.85)*.006*(1-moveW);\n"
+              " const hipY=.93+idleBreath;\n"
+              " hips.position.y=lerpA('hy',hipY,20);"
+          )
+          if old_bob in s:
+              s = s.replace(old_bob, new_bob, 1)
+              print('Stabilized hip bob')
+          else:
+              s2 = s.replace(
+                  "const bob=Math.abs(s1)*(.02+.01*runW)*moveW;",
+                  "const bob=0;",
+                  1,
+              )
+              s2 = s2.replace(
+                  "const hipY=.93-.01*moveW+bob+idleBreath;",
+                  "const hipY=.93+Math.sin(ph*.85)*.006*(1-moveW);",
+                  1,
+              )
+              if s2 != s:
+                  s = s2
+                  print('Stabilized hip bob (loose)')
               else:
-                  raise SystemExit('leg construction pattern not found')
+                  print('WARN: bob pattern not found')
 
-          # 3) Animation: almost no hip vertical bob while moving (bob made separation obvious)
-          s = s.replace(
-              "const bob=Math.abs(s1)*(.02+.01*runW)*moveW;\n const idleBreath=Math.sin(ph*.85)*.01*(1-moveW);\n const hipY=.93-.01*moveW+bob+idleBreath;\n hips.position.y=lerpA('hy',hipY,14);",
-              "const idleBreath=Math.sin(ph*.85)*.006*(1-moveW);\n // Keep hips height stable while walking so legs never pull out of the pelvis socket\n const hipY=.93+idleBreath;\n hips.position.y=lerpA('hy',hipY,20);",
-          )
-          # older mild bob variants
-          s = s.replace(
-              "const bob=Math.abs(s1)*(.028+.02*runW)*moveW;\n const idleBreath=Math.sin(ph*.85)*.01*(1-moveW);\n const hipY=.93-.018*moveW+bob+idleBreath;",
-              "const idleBreath=Math.sin(ph*.85)*.006*(1-moveW);\n const hipY=.93+idleBreath;",
-          )
-
-          # 4) Even milder stride
           s = s.replace('const hipAmp=(.32+.14*runW)*moveW;', 'const hipAmp=(.26+.12*runW)*moveW;')
           s = s.replace('const kneeAmp=(.4+.35*runW)*moveW;', 'const kneeAmp=(.34+.28*runW)*moveW;')
 
-          # 5) Ensure hips rotation stays zero every frame (already set, reinforce)
           if 'hips.rotation.set(0,0,0)' not in s:
               s = s.replace(
                   'u.dead=0;h.rotation.x=0;',
@@ -104,7 +116,6 @@ jobs:
           t = p.read_text(encoding='utf-8')
           print('joint raised', 'hp.position.set(sx*.09,.02,0)' in t)
           print('thigh bury', 'capsule(.09,.46),m.pants,hp,0,.06,0)' in t)
-          print('stable hipY', 'const hipY=.93+idleBreath' in t)
           PY
 
       - name: Commit
