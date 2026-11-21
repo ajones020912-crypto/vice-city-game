@@ -1256,24 +1256,76 @@ function forceShopDoors(){
  for(const shop of forced)ensureSafeForcedShop(shop);
 }
 function buildAirport(){
- const cx=-1270,cz=-35,ground=heightAt(cx,cz)+.35;
- decks.push({x0:cx-250,x1:cx+250,z0:cz-125,z1:cz+125,y:ground});
- const asphalt=new T.MeshStandardMaterial({color:0x343b43,roughness:.92}),concrete=new T.MeshStandardMaterial({color:0xaaaead,roughness:.86}),yellow=new T.MeshStandardMaterial({color:0xf2c94c,roughness:.8}),glass=new T.MeshStandardMaterial({color:0x31566a,metalness:.35,roughness:.25}),white=new T.MeshStandardMaterial({color:0xe8edf0,roughness:.55});
+ // Move the field east into the Mount Orrin foothills, clear of the old far-west location.
+ const cx=-790,cz=-45,ground=heightAt(cx,cz)+.65;
+ const runwayL=500,runwayW=54,taxiZ=cz+105;
+ decks.push({x0:cx-290,x1:cx+290,z0:cz-205,z1:cz+205,y:ground});
+ const asphaltTex=makeNoiseTex(512,76,48,[1.02,1.04,1.08],5);
+ const taxiTex=makeNoiseTex(512,92,36,[1.08,1.07,1.02],4);
+ const concreteTexMap=makeNoiseTex(512,142,34,[1.02,1.01,.98],4);
+ const asphalt=new T.MeshStandardMaterial({map:asphaltTex,color:0xffffff,roughness:.94,metalness:.02});
+ const taxiMat=new T.MeshStandardMaterial({map:taxiTex,color:0xffffff,roughness:.92,metalness:.02});
+ const concrete=new T.MeshStandardMaterial({map:concreteTexMap,color:0xffffff,roughness:.9});
+ const yellow=new T.MeshStandardMaterial({color:0xf4c72f,roughness:.78});
+ const white=new T.MeshStandardMaterial({color:0xf4f3e9,roughness:.76});
+ const hangarMat=new T.MeshStandardMaterial({color:0x9ca8ad,roughness:.72,metalness:.28});
+ const roofMat=new T.MeshStandardMaterial({color:0x48545c,roughness:.86,metalness:.18});
+ const glass=new T.MeshStandardMaterial({color:0x24495d,metalness:.45,roughness:.22});
+ const dark=new T.MeshStandardMaterial({color:0x252d33,roughness:.82});
  const slab=(w,h,d,mat,x,y,z)=>{const m=new T.Mesh(new T.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);m.receiveShadow=true;m.castShadow=true;world.add(m);return m};
- slab(480,.32,250,concrete,cx,ground-.2,cz);
- slab(430,.16,38,asphalt,cx,ground+.04,cz);
- for(let z=-17;z<=17;z+=8)slab(5,.025,.45,yellow,cx,ground+.13,cz+z);
- for(const x of[-210,210]){slab(3,.03,42,white,cx+x,ground+.14,cz);}
- slab(160,.14,62,asphalt,cx+120,ground+.04,cz+65);
- // Terminal and two hangars
- slab(58,7,24,white,cx-110,ground+3.5,cz+82);slab(54,4,1.2,glass,cx-110,ground+2.4,cz+69.5);
- for(const x of[cx+20,cx+105]){slab(48,10,34,white,x,ground+5,cz-78);slab(42,7,.8,asphalt,x,ground+3.5,cz-60.5);slab(49,.7,35,concrete,x,ground+10.2,cz-78)}
- for(let x=-225;x<=225;x+=30)for(const z of[-132,132]){const pole=slab(.25,7,.25,white,cx+x,ground+3.5,cz+z);const lamp=new T.PointLight(0xffe7b2,1.1,28,2);lamp.position.set(cx+x,ground+7.3,cz+z);world.add(lamp)}
- // Runway threshold bars and apron markings
- for(const side of[-1,1])for(let i=0;i<6;i++)slab(1.2,.025,7,white,cx+side*(18+i*3),ground+.14,cz-14);
- const terminalBeacon=new T.Mesh(new T.BoxGeometry(3,.5,3),yellow);terminalBeacon.position.set(cx-110,ground+7.4,cz+82);world.add(terminalBeacon);
- spawnCar('propPlane',cx-35,cz+8,0,'parked',0xe8e5d8);
- spawnCar('smallJet',cx+115,cz+65,Math.PI/2,'parked',0xf1f3f5);
+ const line=(w,d,mat,x,z,y=ground+.19)=>slab(w,.035,d,mat,x,y,z);
+ // Broad textured airport apron base.
+ slab(560,.45,390,concrete,cx,ground-.24,cz);
+ // Main runway, oriented east-west, with proper threshold and centerline markings.
+ slab(runwayL,.2,runwayW,asphalt,cx,ground+.08,cz-45);
+ line(3,runwayW-3,white,cx-runwayL/2+4,cz-45);
+ line(3,runwayW-3,white,cx+runwayL/2-4,cz-45);
+ for(let x=-220;x<=220;x+=28)line(12, .85, white,cx+x,cz-45);
+ for(const side of[-1,1])for(let i=0;i<8;i++)line(1.5,9,white,cx+side*(runwayL/2-18-i*4),cz-45+(side*1)*(i%2?0:0));
+ // Runway edge lights.
+ for(const x of[-235,-175,-115,-55,5,65,125,185,235])for(const side of[-1,1]){
+  const lamp=new T.PointLight(0x9bbcff,.42,8,2);lamp.position.set(cx+x,ground+.55,cz-45+side*30);world.add(lamp);
+  slab(.32,.22,.32,white,cx+x,ground+.35,cz-45+side*30);
+ }
+ // Parallel taxiway with a clear connecting spur to the runway and apron.
+ slab(430,.16,25,taxiMat,cx+5,ground+.12,taxiZ);
+ slab(24,.16,115,taxiMat,cx+175,ground+.12,(taxiZ+cz-45)/2);
+ // Yellow taxiway centerlines, with a lead-in to the hangar apron.
+ for(let x=-205;x<=205;x+=12)line(7,.28,yellow,cx+x,taxiZ,ground+.23);
+ line(1,115,yellow,cx+175,(taxiZ+cz-45)/2,ground+.23);
+ slab(155,.18,94,taxiMat,cx+170,ground+.13,cz+132);
+ for(let x=-65;x<=65;x+=12)line(7,.28,yellow,cx+170+x,cz+132,ground+.24);
+ // Terminal apron and passenger terminal.
+ slab(150,.18,76,concrete,cx-145,ground+.12,cz+132);
+ const term=slab(78,10,28,white,cx-175,ground+5.1,cz+170);
+ slab(72,5,.9,glass,cx-175,ground+3.3,cz+155.4);
+ slab(84,.9,34,roofMat,cx-175,ground+10.5,cz+170);
+ for(let x=-207;x<=-143;x+=16)slab(.35,8,.35,dark,cx+x,ground+4,cz+154);
+ // Large aircraft hangar: metal walls, pitched-looking roof, wide sliding doors.
+ const hx=cx+205,hz=cz+140;
+ slab(112,1,88,concrete,hx,ground+.55,hz);
+ slab(112,19,3,hangarMat,hx,ground+10,hz-43);
+ slab(3,19,88,hangarMat,hx-56,ground+10,hz);
+ slab(3,19,88,hangarMat,hx+56,ground+10,hz);
+ slab(112,2,88,roofMat,hx,ground+20,hz);
+ // Large front opening and two ribbed sliding door panels.
+ slab(4,15,1.3,hangarMat,hx-28,ground+7.8,hz-44.7);
+ slab(4,15,1.3,hangarMat,hx+28,ground+7.8,hz-44.7);
+ slab(52,1.2,1.5,dark,hx,ground+16,hz-44.5);
+ for(let x=-48;x<=48;x+=8)slab(.35,14,.3,white,hx+x,ground+7.8,hz-45.4);
+ // Hangar signage and exterior lights.
+ slab(30,2,.8,glass,hx,ground+18,hz-45.8);
+ for(const x of[hx-48,hx+48]){const l=new T.PointLight(0xffdfa0,1.3,32,2);l.position.set(x,ground+17,hz-50);world.add(l)}
+ // Small service building and perimeter lights.
+ slab(34,5,18,white,cx+70,ground+2.5,cz+165);
+ slab(30,2,.7,glass,cx+70,ground+2.5,cz+155.5);
+ for(let x=-260;x<=260;x+=40)for(const z of[-185,185]){
+  const pole=slab(.3,8,.3,dark,cx+x,ground+4,cz+z);
+  const l=new T.PointLight(0xffe6b7,.8,30,2);l.position.set(cx+x,ground+8,cz+z);world.add(l);
+ }
+ // Place the stealable aircraft on the hangar-side apron, facing down the runway.
+ spawnCar('propPlane',cx+105,cz+132,Math.PI/2,'parked',0xe8e5d8);
+ spawnCar('smallJet',cx+225,cz+85,Math.PI/2,'parked',0xf1f3f5);
  airport={x:cx,z:cz,ground};
 }
 let airport=null;
