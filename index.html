@@ -2212,7 +2212,7 @@ function animHuman(h,dt,s){
 }
 
 // ================= INPUT =================
-const keys={};let mouseLocked=false,camYaw=0,camPitch=.2,mouseIdle=0,mouseDown=false,camMode=0;
+const keys={};let camZoom=1;let mouseLocked=false,camYaw=0,camPitch=.2,mouseIdle=0,mouseDown=false,camMode=0;
 
 let mouseLockPending=false;const mousePrompt=document.createElement('button');mousePrompt.textContent='Click to lock mouse and look around';mousePrompt.style.cssText='display:none;position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);z-index:75;padding:18px 26px;border:1px solid #ffffff88;border-radius:12px;background:#071426ed;color:white;font:bold 18px Arial;cursor:pointer;max-width:85vw';document.body.appendChild(mousePrompt);
 function refreshMousePrompt(){mousePrompt.style.display=G.state==='play'&&!G.phoneOpen&&!G.mapOpen&&!mouseLocked?'block':'none'}
@@ -2475,6 +2475,7 @@ function updateCamera(dt){
  else{tx=pl.x;ty=pl.y+1.65;tz=pl.z;dist=pl.weapon!=='fists'&&pl.aim>0?2.6:4.4;height=.2;
   // over the shoulder
   const rx=Math.cos(camYaw),rz=-Math.sin(camYaw);const so=pl.weapon!=='fists'?.55:.25;tx+=rx*so;tz+=rz*so}
+ if(!pl.inside){dist*=camZoom;height*=Math.min(1.5,camZoom)} // trackpad pinch zoom
  const cp=Math.cos(camPitch),sp2=Math.sin(camPitch);
  let dx=Math.sin(camYaw)*cp,dz=Math.cos(camYaw)*cp,dy=sp2*(pl.car?1:.9);
  const dd=dist;let ok=dd;
@@ -4164,7 +4165,14 @@ function updateExtras(dt){
  for(const s of G.bills)if(hyp(s.position.x,s.position.z,camera.position.x,camera.position.z)<160)s.rotation.y=Math.atan2(camera.position.x-s.position.x,camera.position.z-s.position.z);
  const on=Math.floor(G.time*2)%2===0;for(const c of cctv)c.ld.visible=on;
  for(const g of G.lotCars)g.rotation.y+=dt*.15}
-addEventListener('wheel',e=>{if(G.state!=='play'||G.mapOpen||G.phoneOpen||pl.car)return;const order=['fists','pistol','smg','shot','rifle'].filter(w=>pl.weapons[w]);if(order.length<2)return;let i=order.indexOf(pl.weapon);i=(i+(e.deltaY>0?1:-1)+order.length)%order.length;pl.weapon=order[i];G.hudDirty=true},{passive:true});
+// Trackpad pinch zooms the game camera instead of the page. Chrome/Edge/Firefox send a pinch as a wheel event with
+// ctrlKey set; Safari sends gesture events. On the full map the map's own handler zooms the map.
+addEventListener('wheel',e=>{if(!e.ctrlKey)return;e.preventDefault();if(G.mapOpen)return;camZoom=clamp(camZoom*Math.exp(e.deltaY*.01),.45,2.4)},{passive:false});
+let gestureZoom0=1;
+addEventListener('gesturestart',e=>{e.preventDefault();gestureZoom0=camZoom},{passive:false});
+addEventListener('gesturechange',e=>{e.preventDefault();if(!G.mapOpen)camZoom=clamp(gestureZoom0/(e.scale||1),.45,2.4)},{passive:false});
+addEventListener('gestureend',e=>e.preventDefault(),{passive:false});
+addEventListener('wheel',e=>{if(e.ctrlKey||G.state!=='play'||G.mapOpen||G.phoneOpen||pl.car)return;const order=['fists','pistol','smg','shot','rifle'].filter(w=>pl.weapons[w]);if(order.length<2)return;let i=order.indexOf(pl.weapon);i=(i+(e.deltaY>0?1:-1)+order.length)%order.length;pl.weapon=order[i];G.hudDirty=true},{passive:true});
 
 // ---------- phone: jobs app + profile rows ----------
 function renderJobsApp(panel,back){const medal=id=>['','🥉','🥈','🥇'][pl.medals[id]||0],best=id=>pl.best[id]?fmtT(pl.best[id]):'—';
