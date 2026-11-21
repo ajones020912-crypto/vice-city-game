@@ -1010,11 +1010,24 @@ let roadId=0;
 function addRoad(o,c,a,b,w,type,sig=false){const r={id:roadId++,o,c,a,b,w,hw:w/2,type,sig,cross:[]};roads.push(r);return r}
 const nodes=[];
 const LIM={city:12,hwy:26,dirt:7};
+// Downtown layout: street segments left out of the grid. Superblocks remove the crossing streets inside a 2x2
+// group of blocks (a plaza goes there); merges remove one segment between two blocks (one long block).
+const CITY_SUPER=[[-120,210],[180,-150],[-60,-210]];            // plaza centres
+const CITY_MERGE=[['v',60,210],['h',-90,-300],['v',-120,30],['v',180,150]]; // [orientation, street, start of the removed 60 m segment]
+const CITY_PROMENADE=[[60,30,0,-30],[180,150,300,270]];          // diagonal walkway legs through blocks (x0,z0,x1,z1)
+const CITY_CUTS=(()=>{const c={v:{},h:{}},add=(o,k,a,b)=>(c[o][k]=c[o][k]||[]).push([a,b]);
+ add('v',120,30,150);add('h',90,60,180);                         // the downtown park
+ for(const [x,z] of CITY_SUPER){add('v',x,z-60,z+60);add('h',z,x-60,x+60)}
+ for(const [o,k,a] of CITY_MERGE)add(o,k,a,a+60);return c})();
 function defineRoads(){
  const xr=[],zr=[];for(let i=-300;i<=300;i+=60)xr.push(i);for(let i=-330;i<=330;i+=60)zr.push(i);
  G.xr=xr;G.zr=zr;
- for(const x of xr){if(x===120){addRoad('v',x,-330,30,18,'city',true);addRoad('v',x,150,420,18,'city',true)}else addRoad('v',x,-330,420,18,'city',true)}
- for(const z of zr){if(z===90){addRoad('h',z,-300,60,18,'city',true);addRoad('h',z,180,380,18,'city',true)}else if(z===-330)addRoad('h',z,-900,1100,18,'city',true);else if(z===-30)addRoad('h',z,-640,380,18,'city',true);else addRoad('h',z,-300,380,18,'city',true)}
+ // Less of a grid: some street segments are left out, which makes plaza superblocks, long blocks and T-junctions.
+ // Race routes (x=±240, -180, 300; z=±270), the start area and the main avenues keep all their segments.
+ const seg=(o,c,a,b,w,type,sig)=>{const cuts=(CITY_CUTS[o][c]||[]).slice().sort((p,q)=>p[0]-q[0]);let s0=a;
+  for(const [g0,g1] of cuts){if(g0>s0)addRoad(o,c,s0,g0,w,type,sig);s0=Math.max(s0,g1)}if(b>s0)addRoad(o,c,s0,b,w,type,sig)};
+ for(const x of xr)seg('v',x,-330,420,18,'city',true);
+ for(const z of zr){if(z===-330)seg('h',z,-900,1100,18,'city',true);else if(z===-30)seg('h',z,-640,380,18,'city',true);else seg('h',z,-300,380,18,'city',true)}
  addRoad('v',380,-980,1400,30,'hwy');          // Interstate 1 — longer causeway to the Keys
  addRoad('h',420,-1400,1500,28,'hwy');         // Gulf Expressway extended
  addRoad('h',-820,-420,1500,14,'city');        // Keys road extended
@@ -1169,7 +1182,14 @@ function makeParcels(){
    else{H=7+rnd()*14;style=pick(['deco','apt'])}
    parcels.push({x0:a,z0:b,x1:c,z1:e,cx,cz,H,style,mode,edgeS:j===nz-1,cityId:mode==='port'?'port':'dt'})}};
  const xr=G.xr,zr=G.zr.concat([420]);
- for(let i=0;i<xr.length-1;i++)for(let j=0;j<zr.length-1;j++){const hz0=zr[j]===-330?9:9,hz1=zr[j+1]===420?14:9;
+ const used=new Set(),K=(x,z)=>x+','+z;G.plazas=[];
+ for(const [cx,cz] of CITY_SUPER){for(const x of[cx-60,cx])for(const z of[cz-60,cz])used.add(K(x,z));
+  const X0=cx-60+11.9,X1=cx+60-11.9,Z0=cz-60+11.9,Z1=cz+60-11.9,g=13;
+  lot(X0,Z0,cx-g,cz-g,'core');lot(cx+g,Z0,X1,cz-g,'core');lot(X0,cz+g,cx-g,Z1,'core');lot(cx+g,cz+g,X1,Z1,'core');
+  G.plazas.push({cx,cz,X0,X1,Z0,Z1,g})}
+ for(const [o,c,a] of CITY_MERGE){if(o==='v'){used.add(K(c-60,a));used.add(K(c,a));lot(c-60+11.9,a+11.9,c+60-11.9,a+60-11.9,'core')}
+  else{used.add(K(a,c-60));used.add(K(a,c));lot(a+11.9,c-60+11.9,a+60-11.9,c+60-11.9,'core')}}
+ for(let i=0;i<xr.length-1;i++)for(let j=0;j<zr.length-1;j++){if(used.has(K(xr[i],zr[j])))continue;const hz0=zr[j]===-330?9:9,hz1=zr[j+1]===420?14:9;
   const x0=xr[i]+9+2.9,x1=xr[i+1]-9-2.9,z0=zr[j]+9+2.9,z1=zr[j+1]-hz1-2.9;
   lot(x0,z0,x1,z1,zr[j+1]===420?'low':'core')}
  // port blocks
@@ -1397,6 +1417,42 @@ function ensureSafeForcedShop(shop){
 }
 
 
+function promenadeHits(x0,z0,x1,z1,pad){for(const [ax,az,bx,bz] of CITY_PROMENADE){const L=Math.hypot(bx-ax,bz-az);
+  for(let t=0;t<=L;t+=2){const x=ax+(bx-ax)*t/L,z=az+(bz-az)*t/L;if(x>x0-pad&&x<x1+pad&&z>z0-pad&&z<z1+pad)return true}}return false}
+function clearPromenadeParcels(){for(let i=parcels.length-1;i>=0;i--){const p=parcels[i];if(promenadeHits(p.x0,p.z0,p.x1,p.z1,5))parcels.splice(i,1)}}
+function buildPlazasAndPromenade(){
+ const pave=[.8,.77,.7],trim=[.6,.58,.55],wood=[.46,.3,.18],metal=[.2,.21,.24];
+ const bench=(x,z,ry)=>{bakeG('plain',GEO.box,x,.48,z,ry,2.2,.1,.55,wood);bakeG('plain',GEO.box,x,.8,z-Math.cos(ry)*.26,ry,2.2,.5,.08,wood);
+  for(const s of[-.9,.9])bakeG('plain',GEO.box,x+Math.cos(ry)*s,.24,z-Math.sin(ry)*s,ry,.08,.48,.5,metal)};
+ const lampPost=(x,z)=>{bakeG('plain',GEO.cyl6,x,2.1,z,0,.09,4.2,.09,metal);bakeG('lamp',GEO.box,x,4.3,z,0,.42,.22,.42,[1,.92,.75])};
+ // ---- three plazas where the crossing streets used to be
+ G.plazas.forEach((p,i)=>{const {cx,cz,X0,X1,Z0,Z1,g}=p,ax=X1-X0+18,az=Z1-Z0+18;
+  bakeG('walk',GEO.box,cx,.07,cz,0,ax,.12,2*g,pave);bakeG('walk',GEO.box,cx,.075,cz,0,2*g,.12,az,pave);
+  bakeG('walk',GEO.box,cx,.08,cz,0,2*g-4,.12,2*g-4,trim);                        // centre square
+  // centrepiece: fountain / reflecting pool with an obelisk / neon sculpture
+  if(i===0){bakeG('plain',GEO.cyl6,cx,.35,cz,0,5.2,.5,5.2,[.72,.74,.72]);bakeG('water2',GEO.cyl6,cx,.62,cz,0,4.6,.12,4.6,[.2,.6,.72]);
+   bakeG('plain',GEO.cyl6,cx,1.4,cz,0,1.1,2,1.1,[.74,.76,.74]);bakeG('water2',GEO.cyl6,cx,2.5,cz,0,1.6,.18,1.6,[.3,.75,.88])}
+  else if(i===1){bakeG('plain',GEO.box,cx,.3,cz,0,17,.4,9,[.7,.72,.7]);bakeG('water2',GEO.box,cx,.52,cz,0,15.6,.1,7.6,[.18,.55,.7]);
+   bakeG('plain',GEO.box,cx,4,cz,0,1.2,8,1.2,[.88,.86,.8]);bakeG('plain',GEO.cone4,cx,8.6,cz,Math.PI/4,.85,1.2,.85,[.88,.86,.8])}
+  else{bakeG('plain',GEO.box,cx,.5,cz,0,4,1,4,[.3,.3,.34]);
+   bakeG('neon',GEO.box,cx-.6,3,cz,.4,.6,5,.6,[1,.25,.65],0,.25);bakeG('neon',GEO.box,cx+.7,2.6,cz+.3,-.5,.6,4.2,.6,[.15,.95,.9],0,-.3);bakeG('neon',GEO.box,cx,2.2,cz-.8,1.2,.6,3.4,.6,[1,.75,.2],.3,0)}
+  // palms, benches and lamps along both arms
+  for(let t=-46;t<=46;t+=11.5){if(Math.abs(t)<12)continue;
+   palm(cx+t,cz-g+2.2,.85);palm(cx+t,cz+g-2.2,.85);palm(cx-g+2.2,cz+t,.85);palm(cx+g-2.2,cz+t,.85)}
+  for(const t of[-30,30]){bench(cx+t,cz-g+5,0);bench(cx+t,cz+g-5,Math.PI);bench(cx-g+5,cz+t,Math.PI/2);bench(cx+g-5,cz+t,-Math.PI/2)}
+  for(const t of[-40,-17,17,40]){lampPost(cx+t,cz);lampPost(cx,cz+t)}
+  // bollards at the four arm ends keep cars out
+  for(const [ex,ez,alongX] of[[cx,Z0-8.5,true],[cx,Z1+8.5,true],[X0-8.5,cz,false],[X1+8.5,cz,false]])
+   for(let k=-g+1;k<=g-1;k+=2.2){const bx=alongX?ex+k:ex,bz=alongX?ez:ez+k;bakeG('plain',GEO.cyl6,bx,.5,bz,0,.18,1,.18,[.85,.85,.82]);addCol(bx-.2,bz-.2,bx+.2,bz+.2,1)}
+ });
+ // ---- diagonal promenade through the blocks (continues the park's diagonal paths)
+ for(const [ax,az,bx,bz] of CITY_PROMENADE){const sx=Math.sign(bx-ax),sz=Math.sign(bz-az),n=Math.round(Math.abs(bx-ax)/60);
+  for(let c=0;c<n;c++){const x0=ax+sx*(60*c+11.9),z0=az+sz*(60*c+11.9),x1=ax+sx*(60*(c+1)-11.9),z1=az+sz*(60*(c+1)-11.9);
+   const mx=(x0+x1)/2,mz=(z0+z1)/2,len=Math.hypot(x1-x0,z1-z0),ry=Math.atan2(x1-x0,z1-z0),px=Math.cos(ry),pz=-Math.sin(ry);
+   bakeG('walk',GEO.box,mx,.1,mz,ry,7,.12,len,pave);
+   for(let t=-len/2+4;t<=len/2-4;t+=8.5){const ux=mx+(x1-x0)/len*t,uz=mz+(z1-z0)/len*t;palm(ux+px*5.2,uz+pz*5.2,.8);palm(ux-px*5.2,uz-pz*5.2,.8)}
+   for(const t of[-len/4,len/4]){const ux=mx+(x1-x0)/len*t,uz=mz+(z1-z0)/len*t;lampPost(ux+px*3.9,uz+pz*3.9);bench(ux-px*3.6,uz-pz*3.6,ry+Math.PI/2)}}}
+}
 function buildDowntownPark(){
  // A two-by-two downtown park replacing four city blocks and their internal crossing streets.
  const x0=66,z0=36,x1=174,z1=144,cx=120,cz=90;
@@ -1528,9 +1584,10 @@ function buildWorld(){
  makeParcels();houses();
  // Reserve one complete 2-by-2 downtown block for the park.
  for(let i=parcels.length-1;i>=0;i--){const p=parcels[i];if(p.cx>60&&p.cx<180&&p.cz>30&&p.cz<150)parcels.splice(i,1)}
- filterRoadParcels();assignShops();
+ filterRoadParcels();clearPromenadeParcels();assignShops();
  for(const p of parcels){if(p.style==='house')buildHouse(p);else{const built=building(p);if(built!==false&&p.shop)placeShopDoor(p)}}
  buildDowntownPark();
+ buildPlazasAndPromenade();
  forceShopDoors();
  portExtras();streetProps();addOuterStreetlights();beachProps();swampProps();hillProps();keysProps();buildSignals();buildAirport();
  finalizeBatches();buildBaseMap();
