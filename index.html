@@ -40,6 +40,19 @@ canvas{display:block}
 #phone .ph-panel button.alt:hover,#phone .ph-back:hover{background:#3a5f94}
 #phone .ph-msg{background:#0c1a2e;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:12px;line-height:1.4;color:#cfe0f5}
 #phone .ph-msg .from{color:#ff83bd;font-weight:bold;font-size:11px;margin-bottom:2px}
+#phone .social-post{background:linear-gradient(145deg,#10233a,#0b192b);border:1px solid #ffffff18;border-radius:12px;padding:9px;margin:7px 0;color:#dceaff}
+#phone .social-top{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+#phone .social-avatar{width:29px;height:29px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#ff4f9a,#4b8dce);font-size:16px;flex:none}
+#phone .social-name{font-size:11px;font-weight:800;color:#fff}
+#phone .social-handle{font-size:9px;color:#8fa9c7}
+#phone .social-copy{font-size:11px;line-height:1.4;color:#d7e4f5}
+#phone .social-photo{height:65px;border-radius:8px;margin:7px 0;display:grid;place-items:center;font-size:30px;background:linear-gradient(135deg,#234b68,#17263b);border:1px solid #ffffff16}
+#phone .social-meta{font-size:9px;color:#819ab8;margin:5px 0}
+#phone .social-actions{display:flex;align-items:center;gap:6px}
+#phone .social-actions button{width:auto;flex:1;margin:0;padding:6px 4px;font-size:10px}
+#phone .social-actions button.liked{background:#b83270}
+#phone .social-refresh{background:#2c4a73!important}
+
 #phone .ph-dock{display:flex;justify-content:center;padding-top:6px}
 #phone .ph-homebtn{width:36px;height:5px;background:#ffffff44;border-radius:4px;cursor:pointer}
 #weather{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:#071426aa;padding:4px 12px;border-radius:8px;font-size:12px;display:none}
@@ -104,6 +117,7 @@ small{color:#b9cce0}
   <div id="phHome" class="ph-home">
     <div class="ph-app" data-app="map"><span class="ico">🗺️</span>Map</div>
     <div class="ph-app" data-app="radio"><span class="ico">📻</span>Radio</div>
+    <div class="ph-app" data-app="vicefeed"><span class="ico">📱</span>ViceFeed</div>
     <div class="ph-app" data-app="scooter"><span class="ico">🛵</span>Scooter Bros</div>
     <div class="ph-app" data-app="waink"><span class="ico">🔍</span>WAINK</div>
     <div class="ph-app" data-app="texts"><span class="ico">💬</span>Texts</div>
@@ -3718,6 +3732,45 @@ function boot(){
     <div class="ph-msg">Accessible vehicle<br>No active tracker<br>Fuel ~${Math.round(nearest.fuel||70)}% · HP ${Math.round(nearest.hp/maxHp(nearest)*100)}%${G.exp&&G.exp.tk===nearest.tk?'<br>📦 On the export list — up to $'+G.exp.pay:''}</div>
     <button class="alt" id="phWBack">Back</button>`;
    $('#phWBack').onclick=back;return}
+  if(app==='vicefeed'){
+   const names=['Mia Solis','Dre Williams','Tony Rivas','Kayla Brooks','Rico Vega','Jasmine Cole','Marco Diaz','Tasha Reed','Eddie Cruz','Nina Flores','Big Al','Skye Morgan','Luis Torres','Bree Carter'];
+   const handles=['@miamood','@dreonthego','@tonyrides','@kaylac','@ricov','@jazzlife','@marco305','@tashatalks','@eddiecruz','@ninaf','@bigal305','@skyem','@luist','@breeb'];
+   const avatars=['🌴','🛹','🚗','🌺','🕶️','🎧','🏖️','📸','🌆','🧢','🍔','🛥️','🎤','✨'];
+   const ideas=[
+    ['🌴','Beach check: the water is looking unreal today. Who's heading down to the shore?'],
+    ['🚗','Ocean Drive is packed again. Took me forever to get across town.'],
+    ['🍔','Late-night burger run. This place never disappoints.'],
+    ['🌆','Sunset over the skyline is something else. Vice City, you are ridiculous.'],
+    ['🎶','Heard a new track on the radio and now it is stuck in my head.'],
+    ['🛥️','Boats everywhere by the marina today. Living the good life.'],
+    ['🌧️','Weather switched up fast. Should have brought a jacket.'],
+    ['🛍️','Found a little shop downtown with some seriously good stuff.'],
+    ['🏀','Pickup game at the park. We need a rematch tomorrow.'],
+    ['☕','Coffee first, questions later. Good morning, VC.'],
+    ['📸','Found the perfect spot for a photo. Keeping this one for the memories.'],
+    ['🚦','Why does every light turn red when I am in a hurry?'],
+    ['🎣','Quiet afternoon by the water. Exactly what I needed.'],
+    ['🎉','Everybody is out tonight. The whole city has a different energy.'],
+    ['🐊','Pretty sure I just saw a gator near the canal. Florida is Florida.'],
+    ['📰','Local chatter is wild today. Everybody has a story.']
+   ];
+   const contextual=[];
+   if(pl.wanted>0)contextual.push(['🚓','Police activity has everyone talking. Maybe avoid the busy streets for a bit.']);
+   if(WX.mode==='rain'||WX.mode==='storm')contextual.push(['🌧️','Rain is coming down hard. Roads are getting slick out there.']);
+   if(WX.mode==='fog')contextual.push(['🌫️','Coastal fog rolled in. Can barely see the skyline.']);
+   if(pl.car)contextual.push(['🚘','Just saw a sweet ride cruising around town. Vice City has taste.']);
+   if(G.clock>=18||G.clock<5)contextual.push(['🌃','Vice City after dark hits different. Where is everybody going tonight?']);
+   if(pl.wanted>=3)contextual.push(['🚨','Helicopters overhead and sirens all over. Something big must be happening.']);
+   const pool=ideas.concat(contextual),picked=[];
+   while(pool.length&&picked.length<8){const i=Math.floor(Math.random()*pool.length);picked.push(pool.splice(i,1)[0])}
+   const order=Array.from({length:names.length},(_,i)=>i).sort(()=>Math.random()-.5);
+   const feed=picked.map((post,i)=>{const n=order[i],mins=1+Math.floor(Math.random()*58),likes=12+Math.floor(Math.random()*480);return{emoji:post[0],copy:post[1],name:names[n],handle:handles[n],avatar:avatars[n],mins,likes,liked:false}});
+   const draw=()=>{panel.innerHTML=`<h4>📱 VICEFEE​D <span style="float:right;color:#8fa9c7;font-size:9px">LIVE IN VC</span></h4><div class="ph-msg">What's happening around Vice City? New local posts are generated each time you open this feed.</div>`+feed.map((p,i)=>`<article class="social-post"><div class="social-top"><div class="social-avatar">${p.avatar}</div><div><div class="social-name">${p.name}</div><div class="social-handle">${p.handle} · ${p.mins}m ago</div></div></div><div class="social-copy">${p.copy}</div><div class="social-photo">${p.emoji}</div><div class="social-meta">${p.likes} likes · ${2+Math.floor(p.likes/19)} comments</div><div class="social-actions"><button class="${p.liked?'liked':'alt'}" data-like="${i}">${p.liked?'♥ Liked':'♡ Like'}</button><button class="alt" data-comment="${i}">💬 Comment</button></div></article>`).join('')+`<button class="social-refresh" id="vfRefresh">↻ New posts</button><button class="alt" id="vfBack">Back</button>`;
+    panel.querySelectorAll('[data-like]').forEach(b=>b.onclick=()=>{const p=feed[+b.dataset.like];p.liked=!p.liked;p.likes+=p.liked?1:-1;draw()});
+    panel.querySelectorAll('[data-comment]').forEach(b=>b.onclick=()=>toast('Comments are coming soon',1600));
+    $('#vfRefresh').onclick=()=>phoneOpenApp('vicefeed');$('#vfBack').onclick=back};
+   draw();return
+  }
   if(app==='texts'){
    const partner=titleCase(pl.char==='jason'?CHAR.lucia.name:CHAR.jason.name);
    const msgs=[
