@@ -219,7 +219,8 @@ const postMat=new T.ShaderMaterial({
     if(dot(n,vp)>0.)n=-n;
     float lum0=dot(col,vec3(.299,.587,.114));
     float sat=max(col.r,max(col.g,col.b))-min(col.r,min(col.g,col.b));
-    float mask=smoothstep(.86,.97,dot(n,viewUp))*smoothstep(.55,.12,lum0)*(1.-smoothstep(.07,.24,sat))*(1.-smoothstep(120.,220.,lin));
+    float paint=1.-step(.15,abs(texture2D(tDiffuse,uvD).a-.5)); // crosswalks and lane lines
+    float mask=smoothstep(.86,.97,dot(n,viewUp))*mix(smoothstep(.55,.12,lum0)*(1.-smoothstep(.07,.24,sat)),.8,paint)*(1.-smoothstep(120.,220.,lin));
     if(mask>.01){
      vec3 v=normalize(vp),rd=reflect(v,n),p=vp,hit=vec3(0.);
      float stepL=.3+lin*.01,found=0.;
@@ -231,7 +232,8 @@ const postMat=new T.ShaderMaterial({
       if(dz>0.&&dz<stepL*2.5+.5){vec2 e=min(suv,1.-suv);found=smoothstep(0.,.1,min(e.x,e.y))*(1.-float(i)/28.);hit=texture2D(tDiffuse,suv).rgb;break;}
      }
      float fres=.2+.8*pow(1.-max(dot(-v,n),0.),4.);
-     col=mix(col,hit,found*mask*fres*ssr);
+     float kk=found*mask*fres*ssr;
+     col=paint>.5?col*(1.-.22*kk)+hit*.7*kk:mix(col,hit,kk);
     }
    }
    // --- SSAO (depth-only, 16 samples) ---
@@ -876,7 +878,7 @@ function initMaterials(){
  ]){const m=new T.MeshStandardMaterial(roadMat(args[0],args[1]));m.userData.baseRough=args[1];m.userData.baseMetal=.04;m.userData.baseEnv=.4;_rm.push(m);defMat(key,POFF(m,po),false)}
  {const m=new T.MeshStandardMaterial({map:intersectionAsphaltTexture(),vertexColors:true,roughness:.84,metalness:.04,envMapIntensity:.4});m.userData.baseRough=.84;m.userData.baseMetal=.04;m.userData.baseEnv=.4;_rm.push(m);defMat('asph',POFF(m,1),false)}
  roadMats.push(..._rm);
- defMat('mark',POFF(new T.MeshStandardMaterial({vertexColors:true,roughness:.7,envMapIntensity:.25}),4),false);
+ defMat('mark',POFF(new T.MeshStandardMaterial({vertexColors:true,roughness:.7,envMapIntensity:.25,opacity:.5}),4),false); // opacity .5 = 'road paint' tag for Ultra reflections (material stays opaque)
  // concrete sidewalk with joints
  defMat('walk',PLAIN({map:conc,roughness:.88,envMapIntensity:.25}),false,true);
  // building facades
@@ -3956,12 +3958,13 @@ function updateEconomy(dt){if(G.state!=='play')return;
 // ---------- lights ----------
 // Ultra: lamps light the road. A fixed pool of lights (added once when Ultra turns on, so shaders compile once):
 // red glow + white reverse light behind the player's car, and headlight beams + taillight glow for the nearest traffic.
-const ultraCarL={on:false,pr:null,pw:null,ts:[],tr:[]};
+const ultraCarL={on:false,pr:null,pw:null,ts:[],tr:[],sg:[]};let sigHeadList=null;
 function setUltraCarLights(on){
  if(on===ultraCarL.on)return;ultraCarL.on=on;
  if(on){ultraCarL.pr=new T.PointLight(0xff1a2a,0,9,1.6);ultraCarL.pw=new T.PointLight(0xf4f6ff,0,8,1.6);scene.add(ultraCarL.pr,ultraCarL.pw);
-  for(let i=0;i<3;i++){const sp=new T.SpotLight(0xfff0d0,0,48,.42,.6,1.3);scene.add(sp,sp.target);ultraCarL.ts.push(sp);const r=new T.PointLight(0xff1a2a,0,8,1.6);scene.add(r);ultraCarL.tr.push(r)}}
- else{for(const l of[ultraCarL.pr,ultraCarL.pw,...ultraCarL.ts,...ultraCarL.tr]){scene.remove(l);if(l.target)scene.remove(l.target);l.dispose&&l.dispose()}ultraCarL.pr=ultraCarL.pw=null;ultraCarL.ts=[];ultraCarL.tr=[]}
+  for(let i=0;i<3;i++){const sp=new T.SpotLight(0xfff0d0,0,48,.42,.6,1.3);scene.add(sp,sp.target);ultraCarL.ts.push(sp);const r=new T.PointLight(0xff1a2a,0,8,1.6);scene.add(r);ultraCarL.tr.push(r)}
+  for(let i=0;i<4;i++){const l=new T.PointLight(0xff2010,0,17,1.5);scene.add(l);ultraCarL.sg.push(l)}}
+ else{for(const l of[ultraCarL.pr,ultraCarL.pw,...ultraCarL.ts,...ultraCarL.tr,...ultraCarL.sg]){scene.remove(l);if(l.target)scene.remove(l.target);l.dispose&&l.dispose()}ultraCarL.pr=ultraCarL.pw=null;ultraCarL.ts=[];ultraCarL.tr=[];ultraCarL.sg=[]}
 }
 function rearOf(c,back,y){const sn=Math.sin(c.h),cs=Math.cos(c.h),d=c.t.L/2+back;return[c.x-sn*d,(c.y||0)+y,c.z-cs*d]}
 function updateUltraCarLights(){
@@ -3976,6 +3979,14 @@ function updateUltraCarLights(){
   const sn=Math.sin(o.h),cs=Math.cos(o.h),f=o.t.L/2;
   sp.position.set(o.x+sn*(f+.2),(o.y||0)+.75,o.z+cs*(f+.2));sp.target.position.set(o.x+sn*(f+22),(o.y||0)-.6,o.z+cs*(f+22));sp.intensity=2.2;
   r.position.set(...rearOf(o,.6,.45));r.intensity=o.braking?2.6:.9}
+ // signal heads: glow in the colour they show, cast just in front of each head toward the stop line
+ if(!sigHeadList&&G.sigNodes){sigHeadList=[];for(const nd of G.sigNodes)for(const axis of['h','v'])for(const dir of[1,-1]){
+  const hx=axis==='h'?nd.x+dir*(nd.v.hw+1.8):nd.x-dir*nd.v.w*.25,hz=axis==='h'?nd.z+dir*nd.h.w*.25:nd.z+dir*(nd.h.hw+1.8);
+  sigHeadList.push({nd,axis,x:hx+(axis==='h'?-dir:0)*2.4,z:hz+(axis==='v'?-dir:0)*2.4})}}
+ const cx=camera.position.x,cz=camera.position.z,heads=inside||!sigHeadList?[]:sigHeadList.filter(h=>(h.x-cx)**2+(h.z-cz)**2<90*90).sort((a,b)=>((a.x-cx)**2+(a.z-cz)**2)-((b.x-cx)**2+(b.z-cz)**2)).slice(0,4);
+ const glow=(.3+2.3*(SK.night||0))*(1+.5*(WX.rain||0));
+ for(let i=0;i<4;i++){const l=ultraCarL.sg[i],h=heads[i];if(!h){l.intensity=0;continue}
+  const c=SCOL[sigState(h.nd,G.time,h.axis)];l.color.setRGB(c[0],c[1],c[2]);l.position.set(h.x,heightAt(h.x,h.z)+3.2,h.z);l.intensity=glow}
 }
 const carSpots=[-1,1].map(()=>{const light=new T.SpotLight(0xfff0d0,0,82,.34,.42,1.2);scene.add(light,light.target);return light});
 function updateCarLights(){const c=pl.car,on=carLightsOn(c);updateUltraCarLights();
