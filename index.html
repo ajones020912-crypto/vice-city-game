@@ -214,6 +214,15 @@ small{color:#b9cce0}
 }
 .home-logo-wrap object.home-logo-obj,.home-logo-wrap img{width:100%;height:100%;object-fit:cover;display:block;border:0}
 /* ===== end homescreen ===== */
+#cine{position:fixed;inset:0;pointer-events:none;z-index:90}
+#cine .cine-bar{position:absolute;left:0;right:0;height:0;background:#000;transition:height .9s cubic-bezier(.2,.8,.2,1)}
+#cine .cine-top{top:0}#cine .cine-bot{bottom:0}
+body.cine #cine .cine-bar{height:11vh}
+#cineTitle{position:absolute;left:0;right:0;top:34%;text-align:center;font:900 clamp(34px,7vw,92px)/1 Arial Black,Arial,sans-serif;letter-spacing:.12em;color:#fff;text-shadow:0 0 28px #ff5fa2aa,0 4px 18px #000c;opacity:0;transition:opacity 1.2s}
+#cineSub{position:absolute;left:8%;right:8%;bottom:calc(11vh + 18px);text-align:center;font:600 clamp(15px,2vw,22px)/1.4 Arial,sans-serif;color:#fff;text-shadow:0 2px 6px #000;opacity:0;transition:opacity .6s}
+#cineSkip{position:absolute;right:22px;bottom:calc(11vh - 30px);font:700 11px Arial,sans-serif;letter-spacing:.14em;color:#ffffffaa;opacity:0;transition:opacity .6s}
+body.cine #cineSkip{opacity:1}
+body.cine #hud,body.cine #mini,body.cine #goal,body.cine #controlsDock,body.cine #stars,body.cine #wpn,body.cine #weather,body.cine #radioName,body.cine #toast,body.cine #prompt,body.cine #actionHint,body.cine #actionPanel,body.cine #cross,body.cine #banner,body.cine #heat,body.cine #regenStatus,body.cine #legend{opacity:0!important;pointer-events:none!important;transition:opacity .6s}
 </style><style>
 
 
@@ -229,7 +238,7 @@ small{color:#b9cce0}
 <div class="vital-head"><span>HEALTH</span><span id="hpValue">100 / 100</span></div><div id="healthTrack" class="vital-track" role="progressbar" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i id="hpTrail"></i><i id="hpb"></i></div><div id="regenStatus">Healthy</div><div class="vital-head armor-head"><span>ARMOR</span><span id="armorValue">0 / 100</span></div><div class="vital-track armor-track" role="progressbar" aria-label="Armor" id="armorTrack" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="arb" style="width:0"></i></div><div class="bar" id="fuelbar" style="display:none"><i id="fuelb" style="width:100%"></i></div>
 <div id="stars">★★★★★★</div><div id="heat"></div><div id="wpn">Fists</div><small id="zone"></small></div>
 <div id="goal" class="panel"><b style="color:#ffe17a" id="mtitle">OBJECTIVE</b><br><span id="objective">Find the glowing checkpoint and drive through it.</span></div>
-<div id="controlsDock"><div class="controls-actions"><button id="controlsToggle" type="button" aria-expanded="false">CONTROLS ▾</button></div><div id="help" class="panel" hidden>WASD · Move<br>Mouse · Look around · LMB shoot<br>1–5 / Mouse wheel · Weapons<br>E · Enter/use · R · Jobs/rob store · K · Work board<br>B · Nonlethal hold-up · Shift · Run · Space · Jump/handbrake<br>H · Lights · M · Map · T · Radio · V · Camera · Q · Quality<br>C · Switch Jason/Lucia · P · Phone · F · Focus · Esc · Pause · J · Save<br>U · Release / recapture mouse</div></div>
+<div id="cine" aria-live="polite"><div class="cine-bar cine-top"></div><div class="cine-bar cine-bot"></div><div id="cineTitle"></div><div id="cineSub"></div><div id="cineSkip">SPACE to skip</div></div><div id="controlsDock"><div class="controls-actions"><button id="controlsToggle" type="button" aria-expanded="false">CONTROLS ▾</button></div><div id="help" class="panel" hidden>WASD · Move<br>Mouse · Look around · LMB shoot<br>1–5 / Mouse wheel · Weapons<br>E · Enter/use · R · Jobs/rob store · K · Work board<br>B · Nonlethal hold-up · Shift · Run · Space · Jump/handbrake<br>H · Lights · M · Map · T · Radio · V · Camera · Q · Quality<br>C · Switch Jason/Lucia · P · Phone · F · Focus · Esc · Pause · J · Save<br>U · Release / recapture mouse</div></div>
 <div id="weather"></div><div id="actionPanel"><div id="actionTitle"></div><div id="actionHint"></div><div class="action-track"><i id="actionFill"></i></div></div>
 <div id="phone"><div class="ph-bezel">
   <div class="ph-status"><span id="phClock">12:00</span><b>VICE CITY</b><span id="phBatt">🔋 100%</span></div>
@@ -275,7 +284,8 @@ const hash2=(x,y)=>{const h=Math.sin(x*127.1+y*311.7)*43758.5453;return h-Math.f
 const vnoise=(x,y)=>{const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);return lerp(lerp(hash2(xi,yi),hash2(xi+1,yi),u),lerp(hash2(xi,yi+1),hash2(xi+1,yi+1),u),v)};
 const fbm=(x,y)=>vnoise(x,y)*.5+vnoise(x*2.1+7,y*2.1+3)*.25+vnoise(x*4.3+1,y*4.3+9)*.125+.06;
 const mrand=Math.random;
-const G={quality:2}; // global game state container (also exposed for debugging)
+const G={quality:2};
+const CINE={active:false,shots:null,i:0,t:0,onEnd:null}; // cutscene player state // global game state container (also exposed for debugging)
 window.__vc=G;
 
 // ---------- renderer / scene ----------
@@ -2220,7 +2230,7 @@ function animHuman(h,dt,s){
 const keys={};let camZoom=1;let mouseLocked=false,camYaw=0,camPitch=.2,mouseIdle=0,mouseDown=false,camMode=0;
 
 let mouseLockPending=false;const mousePrompt=document.createElement('button');mousePrompt.textContent='Click to lock mouse and look around';mousePrompt.style.cssText='display:none;position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);z-index:75;padding:18px 26px;border:1px solid #ffffff88;border-radius:12px;background:#071426ed;color:white;font:bold 18px Arial;cursor:pointer;max-width:85vw';document.body.appendChild(mousePrompt);
-function refreshMousePrompt(){mousePrompt.style.display=G.state==='play'&&!G.phoneOpen&&!G.mapOpen&&!mouseLocked?'block':'none'}
+function refreshMousePrompt(){mousePrompt.style.display=G.state==='play'&&!CINE.active&&!G.phoneOpen&&!G.mapOpen&&!mouseLocked?'block':'none'}
 function requestGameMouseLock(){const ov=document.getElementById('overlay');if(ov&&!ov.classList.contains('home-hidden')&&getComputedStyle(ov).display!=='none')return;if(ov&&ov.style.display!=='none'&&getComputedStyle(ov).display!=='none')return;if(G.state!=='play'||G.phoneOpen||G.mapOpen||mouseLockPending||mouseLocked)return;if(!renderer.domElement.requestPointerLock){mousePrompt.textContent='Open the game in its own browser tab for mouse look';return}mouseLockPending=true;mouseDown=false;const fail=()=>{mouseLockPending=false;mousePrompt.textContent='Click to retry mouse lock — open the HTML in its own tab if blocked';refreshMousePrompt()};try{const p=renderer.domElement.requestPointerLock();if(p&&p.then)p.then(()=>{mouseLockPending=false;refreshMousePrompt()}).catch(fail)}catch(e){fail()}setTimeout(()=>{mouseLockPending=false;refreshMousePrompt()},700)}
 mousePrompt.onclick=e=>{e.stopPropagation();requestGameMouseLock()};setInterval(refreshMousePrompt,200);renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
 
@@ -2470,7 +2480,30 @@ function resolveFoot(o,r){
  o.x=_fp[0];o.z=_fp[1]}
 // ================= CAMERA =================
 const camPos=new T.Vector3(),camTgt=new T.Vector3();let camInit=false;G.shake=0;
+// ================= CUTSCENES =================
+// A cutscene is a list of camera shots: {dur, from:[x,y,z], to:[x,y,z], look:[x,y,z] (or lookFrom/lookTo), fov, title, sub}.
+// The world keeps running (traffic and pedestrians move); player input is held; Space / Enter / Esc skips.
+const _cv1=new T.Vector3(),_cv2=new T.Vector3();
+function cineText(s){const ti=$('#cineTitle'),su=$('#cineSub');ti.textContent=s.title||'';ti.style.opacity=s.title?1:0;su.textContent=s.sub||'';su.style.opacity=s.sub?1:0}
+function playCutscene(shots,onEnd){CINE.active=true;CINE.shots=shots;CINE.i=0;CINE.t=0;CINE.onEnd=onEnd||null;document.body.classList.add('cine');
+ for(const k in keys)keys[k]=false;mouseDown=false;cineText(shots[0]);refreshMousePrompt()}
+function endCutscene(){if(!CINE.active)return;CINE.active=false;document.body.classList.remove('cine');cineText({});camYaw=Math.PI+pl.h;camPitch=.2;G.hudDirty=true;refreshMousePrompt();const f=CINE.onEnd;CINE.onEnd=null;if(f)f()}
+function updateCutscene(dt){const s=CINE.shots[CINE.i];if(!s){endCutscene();return}CINE.t+=dt;for(const k in keys)keys[k]=false;
+ const u=clamp(CINE.t/s.dur,0,1),e=u*u*(3-2*u);
+ _cv1.set(lerp(s.from[0],s.to[0],e),lerp(s.from[1],s.to[1],e),lerp(s.from[2],s.to[2],e));
+ const la=s.lookFrom||s.look,lb=s.lookTo||s.look;_cv2.set(lerp(la[0],lb[0],e),lerp(la[1],lb[1],e),lerp(la[2],lb[2],e));
+ camera.position.copy(_cv1);camera.lookAt(_cv2);const f=s.fov||55;if(Math.abs(camera.fov-f)>.01){camera.fov=lerp(camera.fov,f,Math.min(1,dt*4));camera.updateProjectionMatrix()}
+ if(CINE.t>=s.dur){CINE.i++;CINE.t=0;if(CINE.i>=CINE.shots.length)endCutscene();else cineText(CINE.shots[CINE.i])}}
+// Opening scene for a new game: the coast, the main boulevard, the park, then down behind the player into play.
+function playOpening(){const px=pl.x,pz=pl.z,py=pl.y||0,sz=Math.min(shoreZ(0),-340),yaw=Math.PI+pl.h,bx=px+Math.sin(yaw)*4.6,bz=pz+Math.cos(yaw)*4.6;
+ playCutscene([
+  {dur:6.5,from:[-260,9,sz-70],to:[40,13,sz-55],lookFrom:[-120,40,40],lookTo:[40,45,60],fov:50,title:'VICE CITY',sub:''},
+  {dur:6,from:[6,3,-325],to:[6,72,-160],lookFrom:[6,8,-200],lookTo:[6,30,80],fov:56,sub:'Every street in this city has a price.'},
+  {dur:5,from:[200,32,40],to:[60,20,150],look:[120,3,90],fov:54,sub:'Some people come here for the sun.'},
+  {dur:5,from:[px+38,42,pz+58],to:[bx,py+2.3,bz],lookFrom:[px,py+4,pz],lookTo:[px,py+1.6,pz],fov:68,sub:'We came for the score.'}
+ ])}
 function updateCamera(dt){
+ if(CINE.active){updateCutscene(dt);return}
  let tx,ty,tz,dist,height,fov=70;
  if(pl.inside){tx=pl.x;ty=pl.y+1.45;tz=pl.z;dist=2.8;height=.25}
  else if(pl.car){const c=pl.car;tx=c.x;ty=c.y+1.2;tz=c.z;const sp=c.speed;
@@ -3415,6 +3448,7 @@ function setQuality(q){G.quality=q;const pr=[.75,1,Math.min(devicePixelRatio,1.5
  sun.castShadow=q>0;sun.shadow.mapSize.set([512,1024,2048,2048][q],[512,1024,2048,2048][q]);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null}renderer.shadowMap.needsUpdate=true;scene.fog.far=[900,1200,1600,2000][q];resizePost();setUltraReflections(q>=3);setUltraCarLights(q>=3)}
 function nearestDoor(){if(pl.inside||pl.car)return null;let b=null,bd=3.6;for(const d of doors){const q=Math.hypot(d.x-pl.x,d.z-pl.z);if(q<bd){bd=q;b=d}}return b}
 function onKey(k,e){
+ if(CINE.active){if(k===' '||k==='enter'||k==='escape')endCutscene();return}
  if(G.state==='shop'){if(k==='escape'||k==='e')closeShop();else if(k==='r'&&pl.inside)robStore();return}
  if(k==='m'&&(G.state==='play'||G.mapOpen)){
   G.mapOpen=!G.mapOpen;$('#mapfull').style.display=G.mapOpen?'grid':'none';
@@ -4356,7 +4390,7 @@ function boot(){
  },1000);
  addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();resizePost()});
  requestAnimationFrame(frame)}
-function begin(cont){audio.init();audio.setStation(G.station);const __ov=document.getElementById('overlay');if(__ov){__ov.classList.add('home-hidden');__ov.style.setProperty('display','none','important');}if(__ov){__ov.classList.add('home-hidden');__ov.style.setProperty('display','none','important');}G.state='play';
+function begin(cont){if(!cont)setTimeout(()=>{if(G.state==='play'&&!pl.car)playOpening()},700);audio.init();audio.setStation(G.station);const __ov=document.getElementById('overlay');if(__ov){__ov.classList.add('home-hidden');__ov.style.setProperty('display','none','important');}if(__ov){__ov.classList.add('home-hidden');__ov.style.setProperty('display','none','important');}G.state='play';
  const sv=cont?readSave():null;if(sv){newGame();MS.active=null;ring.visible=false;$('#goal').classList.remove('on');applySave(sv);if(!MS.active&&!pl.missions.m0&&!G.work)startMission(MISSIONS[0]);toast('Game loaded')}else{newGame();toast('Welcome to Vice City. C = switch Jason/Lucia · P = phone · R = jobs · F = focus',5500)}
  setTimeout(()=>{if(G.state==='play')requestGameMouseLock()},250);setInterval(()=>{if(G.state==='play'&&pl.alive&&!MS.active&&!SJ.kind&&!G.work&&!pl.car&&pl.wanted===0&&!pl.inside&&!G.robbery&&!G.mugging)saveGame(false)},30000)}
 Object.assign(G,{pl,audio,tick:(dt)=>{simulate(dt);updateParticles(dt);updateTracers(dt);updateCamera(dt);updateHUD(dt);if(!pl.inside)updateSignals(G.time);envLighting(dt)},queryCols,colAll,fireWeapon,enterCar,ejectPlayer,spawnCar,spawnTraffic,spawnCopCar,addCrime,hurtPlayer,startMission,MISSIONS,MS,saveGame,readSave,applySave,openShop,closeShop,enterInterior,exitInterior,INT,doors,cars,peds,cops,camera,scene,heightAt,roads,nodes,keys,SK,castRay,activatePed,hurtPed,explodeCar,damageCar,pickups,WEAP,setQuality,newGame,begin,renderer,setCam:(y,p)=>{camYaw=y;camPitch=p},ext:EXT,zoneName,switchChar,WX,gators});
