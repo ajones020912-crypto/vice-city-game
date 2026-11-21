@@ -505,7 +505,7 @@
       const back = new T.CylinderGeometry(0.105, 0.135, 0.36, 20, 1, true, Math.PI * 0.6, Math.PI * 0.8); back.translate(0, -0.18, 0);
       const bk = add(headP, back, m.hair, 0, 0.24, -0.006); bk.scale.set(1, 1, 0.9); // shell opening faces forward, hair sits behind the head
       bk.material = m.hair.clone(); bk.material.side = T.DoubleSide;
-      for (const sx of [-1, 1]) { const st = add(headP, ball(0.03), m.hair, sx * 0.088, 0.08, 0.02, 0.7, 4.0, 1.1); st.rotation.z = sx * 0.12; } // strands framing the face
+      for (const sx of [-1, 1]) { const st = add(headP, ball(0.03), m.hair, sx * 0.094, 0.1, -0.012, 0.42, 3.2, 0.8); st.rotation.z = sx * 0.06; } // strands framing the face
       const fr = add(headP, ball(0.06), m.hair, 0.018, 0.255, 0.07, 1.4, 0.45, 0.6); fr.rotation.z = -0.25; // side-swept fringe
     }
 
@@ -519,8 +519,13 @@
       add(el, ball(F ? 0.036 : 0.044), m.skin);
       const fore = F ? [[0.037, 0], [0.04, -0.06], [0.034, -0.16], [0.026, -0.25], [0.025, -0.27]] : [[0.045, 0], [0.05, -0.07], [0.043, -0.16], [0.032, -0.25], [0.03, -0.27]];
       add(el, lathe(fore), m.skin);
-      add(el, ball(F ? 0.036 : 0.042), m.skin, 0, -0.315, 0.004, 0.75, 1.25, 0.5);             // hand
-      add(el, ball(F ? 0.014 : 0.017), m.skin, sx * -0.022, -0.298, 0.02, 0.9, 1.7, 0.9);        // thumb
+      const hs2 = F ? 0.85 : 1;
+      add(el, ball(0.036 * hs2), m.skin, 0, -0.3, 0.004, 0.55, 1.05, 0.95);                       // palm
+      [-0.018, -0.006, 0.006, 0.018].forEach((z, i) => {                                         // fingers, slightly curled
+        const len = (i === 0 || i === 3 ? 0.044 : 0.052) * hs2, fg = add(el, lathe([[0.0085 * hs2, 0], [0.0082 * hs2, -len * 0.5], [0.007 * hs2, -len], [0.001, -len - 0.006]], 8), m.skin, 0, -0.33 * hs2 - 0.003, z * hs2 + 0.004);
+        fg.rotation.x = 0.12 + i * 0.03; fg.rotation.z = sx * 0.12;
+      });
+      const th = add(el, lathe([[0.011 * hs2, 0], [0.0095 * hs2, -0.03], [0.001, -0.042]], 8), m.skin, sx * -0.008, -0.292, 0.032 * hs2); th.rotation.x = 0.75; // thumb
       A.push({ sh, el });
     }
 
@@ -552,6 +557,57 @@
     if (ex.includes('bracelets')) for (const y of [-0.245, -0.257]) add(A[0].el, new T.TorusGeometry(0.03, 0.003, 6, 16), m.metal, 0, y, 0).rotation.x = Math.PI / 2;
     if (ex.includes('necklace')) { add(spine, new T.TorusGeometry(0.056, 0.002, 6, 24), m.metal, 0, 0.555, 0.02, 1, 1.25, 1).rotation.x = 1.15; add(spine, ball(0.006), m.metal, 0, 0.51, 0.1); }
 
+    // ---- fine detail
+    {
+      const skinShade = mat(tone(d.skin, 0.82), 0.65), seamC = mat(tone(d.legs.color, F ? 2.4 : 0.72), 0.9), pantsDark = mat(tone(d.legs.color, 0.82), 0.92);
+      // face
+      for (const sx of [-1, 1]) {
+        add(headP, ball(0.016, 10, 6, 0, Math.PI * 2, Math.PI * 0.55, Math.PI * 0.45), skinShade, sx * 0.036, 0.177, 0.088, 1.1, 0.45, 0.45); // lower lid crease
+        add(headP, ball(0.005), m.pupil, sx * 0.009, 0.137, 0.106, 1, 0.7, 0.6);                    // nostrils
+        add(headP, ball(0.013), skinShade, sx * (F ? 0.094 : 0.098), 0.165, 0.004, 0.25, 0.75, 0.55); // inner ear
+        if (F) {
+          const lash = add(headP, box(0.032, 0.004, 0.006), m.pupil, sx * 0.038, 0.186, 0.094); lash.rotation.z = sx * -0.15;
+          add(headP, ball(0.022), mat(0xd9806f, 0.8, { transparent: true, opacity: 0.18 }), sx * 0.052, 0.142, 0.08, 1, 0.6, 0.4); // cheek colour
+        } else {
+          add(headP, box(0.012, 0.05, 0.014), m.hair, sx * 0.094, 0.18, 0.02);                    // sideburns
+        }
+      }
+      add(headP, ball(0.012), skinShade, 0, 0.124, 0.1, 0.6, 0.5, 0.3);                           // philtrum
+      // collarbones
+      for (const sx of [-1, 1]) { const cb = add(spine, ball(0.012), m.skin, sx * 0.065, 0.54, F ? 0.07 : 0.075, 4.2, 0.8, 0.8); cb.rotation.z = sx * -0.15; }
+      // tank top: hem band and armhole trim
+      add(spine, new T.TorusGeometry(F ? 0.146 : 0.158, 0.006, 6, 32), mat(tone(d.top.color, 0.9), 0.9), 0, 0.0, 0, 1, DEPTH * 1.05, 1).rotation.x = Math.PI / 2;
+      // hair detail
+      if (d.hairStyle === 'buzz') {
+        add(headP, ball(0.035), m.hair, 0, 0.255, 0.085, 1.6, 0.3, 0.35);                          // softer hairline at the front
+        add(headP, ball(0.09, 16, 8, 0, Math.PI * 2, Math.PI * 0.6, Math.PI * 0.25), m.hair, 0, 0.2, -0.03, 1.08, 1.0, 1.05); // tapered nape
+      }
+      if (d.hairStyle === 'longdown') {
+        const hl = mat(tone(d.hair, 1.25), 0.7);
+        for (const [x, y, z, sy, rz, mm] of [[-0.06, 0.06, -0.085, 3.2, 0.08, hl], [0.06, 0.06, -0.085, 3.1, -0.08, hl], [0, 0.05, -0.1, 3.4, 0, m.hair]])
+          { const c = add(headP, ball(0.045), mm, x, y, z, 1, sy, 0.5); c.rotation.z = rz; }       // layered strands down the back
+        add(headP, box(0.004, 0.003, 0.09), m.skin, 0.02, 0.306, 0.02).rotation.y = 0.1;           // parting
+      }
+      // pants: waistband, loops, pockets, seams, rivets, hems
+      for (const a of [-1.25, -0.5, 0.5, 1.25, Math.PI]) add(hips, box(0.012, 0.045, 0.008), F ? pantsDark : mat(0x3b2a1c, 0.55), Math.sin(a) * (F ? 0.135 : 0.147), 0.075, Math.cos(a) * (F ? 0.097 : 0.103));
+      add(hips, box(0.004, 0.1, 0.004), seamC, 0, -0.01, (F ? 0.122 : 0.112));                  // fly stitch
+      for (const sx of [-1, 1]) {
+        const fp = add(hips, box(0.07, 0.004, 0.004), seamC, sx * 0.105, 0.02, F ? 0.108 : 0.1); fp.rotation.z = sx * 0.75; fp.rotation.y = sx * -0.5; // front pocket
+        add(hips, box(0.07, 0.075, 0.008), pantsDark, sx * 0.07, -0.025, -(F ? 0.116 : 0.11));    // back pocket
+        if (F) add(hips, ball(0.004), m.metal, sx * 0.135, 0.045, 0.06);                          // rivets
+      }
+      Lg.forEach(({ hp, kn }, i) => {
+        const sx = i ? 1 : -1;
+        add(hp, box(0.004, 0.42, 0.004), seamC, sx * (F ? 0.082 : 0.086), -0.21, 0);             // outer seam, thigh
+        add(kn, box(0.004, 0.36, 0.004), seamC, sx * (F ? 0.055 : 0.06), -0.18, 0);              // outer seam, shin
+        add(kn, new T.TorusGeometry(F ? 0.045 : 0.05, 0.006, 6, 20), pantsDark, 0, -0.355, 0).rotation.x = Math.PI / 2; // hem
+        // shoes: laces + eyelets, toe cap, heel
+        for (let k = 0; k < 4; k++) add(kn, box(0.034, 0.004, 0.008), d.shoes.kind === 'boots' ? mat(0xc49a5c, 0.8) : m.white, 0, -0.395 - k * 0.009, 0.06 + k * 0.016);
+        add(kn, ball(0.046), mat(tone(d.shoes.color, 0.9), 0.6), 0, -0.448, 0.135, 1.15, 0.55, 0.8); // toe cap
+        add(kn, box(0.1, 0.04, 0.05), mat(tone(d.shoes.sole, 0.85), 0.9), 0, -0.455, -0.055);     // heel
+        if (d.shoes.kind === 'boots') add(kn, box(0.025, 0.035, 0.008), m.shoe, 0, -0.31, -0.06); // pull tab
+      });
+    }
     // ---- weapon mount (same as the game rig)
     const gun = new T.Group(); gun.position.set(0, -0.3, 0); A[1].el.add(gun);
     const gm = mat(0x1b1d22, 0.4, { metalness: 0.6 });
