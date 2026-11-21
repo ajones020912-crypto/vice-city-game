@@ -18,7 +18,7 @@ The game is built with [Three.js](https://threejs.org/) and currently runs as a 
 - A day-and-night cycle, changing weather, rain, fog, storms, and wet-looking roads.
 
 ### Vehicles
-- Road vehicles include a sedan, sports car, SUV, van, taxi, and police cruiser.
+- Road vehicles include a sedan, sports car, SUV, van, taxi, police cruiser, and a rare low-poly supercar with 20 possible paint colors. The supercar can appear in traffic or parked around the city, with a very low spawn chance.
 - Watercraft include speedboats and airboats.
 - Aircraft include a prop plane and a small jet.
 - Enter and exit vehicles, change camera views, use headlights, and visit garages.
