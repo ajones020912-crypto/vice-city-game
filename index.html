@@ -414,11 +414,16 @@ const ultraCube=new T.CubeCamera(.5,450,ultraCubeRT);
 let ultraNext=0,ultraOn=false;
 function ultraMats(){return Object.values(paintCache).concat([glassMat])}
 function setUltraReflections(on){ultraOn=on;for(const m of ultraMats()){m.envMap=on?ultraCubeRT.texture:null;m.needsUpdate=true}ultraNext=0}
+// One cube face every other frame (a full refresh about every 12 frames), so the probe never causes a frame spike.
+let ultraFace=0,ultraTick=0;
 function updateUltraReflections(){
- if(!ultraOn||pl.inside)return;const now=performance.now();if(now<ultraNext)return;ultraNext=now+220;
+ if(!ultraOn||pl.inside)return;if((ultraTick++)&1)return;
+ if(ultraFace===0){ultraCube.position.set(pl.car?pl.car.x:pl.x,(pl.car?pl.car.y||0:pl.y||0)+1.3,pl.car?pl.car.z:pl.z);ultraCube.updateMatrixWorld(true)}
  const hide=[];if(pl.car&&pl.car.g&&pl.car.g.visible){pl.car.g.visible=false;hide.push(pl.car.g)}if(G.plH&&G.plH.visible){G.plH.visible=false;hide.push(G.plH)}
- ultraCube.position.set(pl.car?pl.car.x:pl.x,(pl.car?pl.car.y||0:pl.y||0)+1.3,pl.car?pl.car.z:pl.z);
- const auto=renderer.shadowMap.autoUpdate;renderer.shadowMap.autoUpdate=false;ultraCube.update(renderer,scene);renderer.shadowMap.autoUpdate=auto;
+ const rt=ultraCubeRT,prev=renderer.getRenderTarget(),auto=renderer.shadowMap.autoUpdate,mips=rt.texture.generateMipmaps;
+ renderer.shadowMap.autoUpdate=false;rt.texture.generateMipmaps=mips&&ultraFace===5;   // build mipmaps once per full cube
+ renderer.setRenderTarget(rt,ultraFace);renderer.render(scene,ultraCube.children[ultraFace]);
+ rt.texture.generateMipmaps=mips;renderer.setRenderTarget(prev);renderer.shadowMap.autoUpdate=auto;ultraFace=(ultraFace+1)%6;
  for(const o of hide)o.visible=true;
  for(const m of ultraMats())if(m.envMap!==ultraCubeRT.texture){m.envMap=ultraCubeRT.texture;m.needsUpdate=true} // paint created since
 }
@@ -3408,8 +3413,8 @@ function updateHUD(dt){hudT-=dt;
 // ================= INPUT HANDLING =================
 function pauseGame(on){if(G.state==='play'&&on){G.state='paused';mouseDown=false;for(const k in keys)keys[k]=false;$('#pause').style.display='grid';$('#pQual').textContent='Quality: '+['Low','Medium','High','Ultra'][G.quality];if(mouseLocked)document.exitPointerLock?.()}else if(G.state==='paused'&&!on){G.state='play';$('#pause').style.display='none';requestGameMouseLock()}refreshMousePrompt()}
 
-function setQuality(q){G.quality=q;const pr=[.75,1,Math.min(devicePixelRatio,1.5),Math.min(devicePixelRatio,2)][q];renderer.setPixelRatio(pr);renderer.setSize(innerWidth,innerHeight);pU.vh.value=innerHeight*pr;
- sun.castShadow=q>0;sun.shadow.mapSize.set([512,1024,2048,4096][q],[512,1024,2048,4096][q]);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null}renderer.shadowMap.needsUpdate=true;scene.fog.far=[900,1200,1600,2000][q];resizePost();setUltraReflections(q>=3);setUltraCarLights(q>=3)}
+function setQuality(q){G.quality=q;const pr=[.75,1,Math.min(devicePixelRatio,1.5),Math.min(devicePixelRatio,1.5)][q];renderer.setPixelRatio(pr);renderer.setSize(innerWidth,innerHeight);pU.vh.value=innerHeight*pr;
+ sun.castShadow=q>0;sun.shadow.mapSize.set([512,1024,2048,2048][q],[512,1024,2048,2048][q]);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null}renderer.shadowMap.needsUpdate=true;scene.fog.far=[900,1200,1600,2000][q];resizePost();setUltraReflections(q>=3);setUltraCarLights(q>=3)}
 function nearestDoor(){if(pl.inside||pl.car)return null;let b=null,bd=3.6;for(const d of doors){const q=Math.hypot(d.x-pl.x,d.z-pl.z);if(q<bd){bd=q;b=d}}return b}
 function onKey(k,e){
  if(G.state==='shop'){if(k==='escape'||k==='e')closeShop();else if(k==='r'&&pl.inside)robStore();return}
