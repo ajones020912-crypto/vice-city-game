@@ -58,8 +58,25 @@ canvas{display:block}
 #weather{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:#071426aa;padding:4px 12px;border-radius:8px;font-size:12px;display:none}
 #mini{position:fixed;right:14px;bottom:14px;width:190px;height:190px;border-radius:50%;border:3px solid #ffffffaa;box-shadow:0 0 18px #000a;overflow:hidden;background:#123;pointer-events:none}
 #mini canvas{width:100%;height:100%}
-#speedo{position:fixed;right:22px;bottom:216px;width:154px;padding:12px 14px 10px;border-radius:18px;background:linear-gradient(145deg,#071426ed,#10243aeb);border:1px solid #9bc7d66b;box-shadow:0 12px 28px #0008;display:none;text-align:center;z-index:12;backdrop-filter:blur(8px)}#speedo .speedo-head{font-size:9px;letter-spacing:2px;color:#9fc0d8;font-weight:800;margin-bottom:8px}#speedo .speedo-ring{width:112px;height:70px;margin:0 auto 5px;border-radius:70px 70px 12px 12px;border:5px solid #ff83bd;border-bottom-color:#ffffff25;border-left-color:#ffd23a;border-right-color:#ffd23a;box-shadow:0 0 14px #ff4f9a33;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px;box-sizing:border-box}#speedo .speedo-read{display:flex;align-items:baseline;gap:4px}#speedo #spd{font-size:38px;line-height:1;font-weight:900;color:#fff;text-shadow:0 2px 8px #000}#speedo .speed-unit{font-size:10px;color:#ffb5d4;font-weight:800;letter-spacing:1px}#speedo .speedo-foot{display:flex;justify-content:space-between;font-size:10px;color:#c5d8e8;font-weight:700;letter-spacing:.5px}
-#speedo small{font-size:13px;color:#cfe}
+#speedo{position:fixed;right:22px;bottom:216px;width:200px;padding:6px 8px 9px;border-radius:24px;background:radial-gradient(circle at 50% 42%,#14243deb 0%,#0a1323f2 62%,#060b15f5 100%);border:1px solid #ffffff1f;box-shadow:0 12px 34px #000a,inset 0 1px 0 #ffffff14;display:none;z-index:12;font-family:inherit;user-select:none;backdrop-filter:blur(8px)}
+#speedo .sp-svg{display:block;width:100%;height:auto;overflow:visible}
+#speedo .sp-track{fill:none;stroke:#ffffff14;stroke-width:9;stroke-linecap:round}
+#speedo .sp-fill{fill:none;stroke:url(#spGrad);stroke-width:9;stroke-linecap:round;filter:url(#spGlow);transition:stroke-dashoffset .12s linear}
+#speedo .sp-tick{stroke:#cfe3f5b0;stroke-width:1.3;stroke-linecap:round}#speedo .sp-tick.maj{stroke:#eef6ff;stroke-width:2.2}#speedo .sp-tick.red{stroke:#ff4d6d}
+#speedo .sp-lab{fill:#a9c2d8;font-size:9.5px;font-weight:800;text-anchor:middle;dominant-baseline:middle;letter-spacing:.2px}#speedo .sp-lab.red{fill:#ff6b85}
+#speedo #spNeedle{transform-origin:100px 96px;transition:transform .12s linear}
+#speedo .sp-needle{fill:#ff5f8f;filter:url(#spGlow)}
+#speedo .sp-hub{fill:#0b1424;stroke:#ff5f8f;stroke-width:2.2}
+#speedo #spdGear{fill:#fff;font-size:12px;font-weight:900;text-anchor:middle;dominant-baseline:central}
+#speedo #spd{fill:#fff;font-size:34px;font-weight:900;text-anchor:middle;letter-spacing:-.5px;paint-order:stroke;stroke:#00000066;stroke-width:3px}
+#speedo #spd.hot{fill:#ff8fb1}
+#speedo .sp-unit{fill:#ffb3d0;font-size:9px;font-weight:800;text-anchor:middle;letter-spacing:1.6px}
+#speedo .sp-bars{display:flex;gap:10px;padding:0 8px}
+#speedo .sp-bar{flex:1;display:flex;align-items:center;gap:5px;font-size:8.5px;font-weight:800;letter-spacing:1px;color:#9fc0d8}
+#speedo .sp-bar b{flex:1;height:5px;border-radius:3px;background:#ffffff18;overflow:hidden}
+#speedo .sp-bar b span{display:block;height:100%;width:100%;border-radius:3px;background:linear-gradient(90deg,#3fd1c4,#7ef0c8);transition:width .3s}
+#speedo .sp-bar b span.low{background:linear-gradient(90deg,#ff3d6e,#ff9e4f)}
+
 #toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none}
 #toast div{background:#071426dd;border:1px solid #ffffff55;padding:8px 16px;border-radius:10px;margin:6px;font-size:15px;animation:tin .25s}
 @keyframes tin{from{opacity:0;transform:translateY(-8px)}}
@@ -233,7 +250,7 @@ small{color:#b9cce0}
   <div class="ph-dock"><div class="ph-homebtn" id="phHomeBtn" title="Home"></div></div>
 </div></div>
 <div id="mini"><canvas id="minic" width="472" height="520"></canvas></div>
-<div id="speedo"><div class="speedo-head">VEHICLE SPEED</div><div class="speedo-ring"><div class="speedo-read"><span id="spd">0</span><span class="speed-unit">KM/H</span></div></div><div class="speedo-foot"><span id="spdMph">0 MPH</span><span id="spdGear">DRIVE</span></div></div><button id="vehicleToggle" class="vehicle-toggle">🚘 VEHICLES</button><div id="vehiclePanel"><div class="vehicle-panel-head"><b>MY VEHICLES</b><button id="vehicleClose" class="alt">×</button></div><div id="vehicleList"></div></div>
+<div id="speedo"><svg class="sp-svg" viewBox="0 0 200 178" aria-hidden="true"><defs><linearGradient id="spGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3fd1c4"/><stop offset=".55" stop-color="#ff9e4f"/><stop offset="1" stop-color="#ff3d6e"/></linearGradient><filter id="spGlow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><path id="spTrack" class="sp-track"/><path id="spFill" class="sp-fill"/><g id="spTicks"></g><g id="spNeedle"><polygon class="sp-needle" points="100,92.5 166,96 100,99.5 92,96"/></g><circle class="sp-hub" cx="100" cy="96" r="13"/><text id="spdGear" x="100" y="96.5">N</text><text id="spd" x="100" y="160">0</text><text id="spdMph" class="sp-unit" x="100" y="174">KM/H · 0 MPH</text></svg><div class="sp-bars"><div class="sp-bar">FUEL<b><span id="spFuel"></span></b></div><div class="sp-bar">CAR<b><span id="spHp"></span></b></div></div></div><button id="vehicleToggle" class="vehicle-toggle">🚘 VEHICLES</button><div id="vehiclePanel"><div class="vehicle-panel-head"><b>MY VEHICLES</b><button id="vehicleClose" class="alt">×</button></div><div id="vehicleList"></div></div>
 <div id="toast"></div><div id="banner"><div id="bnT"></div><div id="bnS"></div></div><div id="radioName"></div><div id="prompt"></div><div id="cross"></div><div id="fade"></div><div id="big"><div id="bigt">WASTED</div></div>
 <div id="mapfull"><canvas id="mapc" width="900" height="900"></canvas><div id="legend">Drag to pan · Scroll to zoom · M to close · ◆ Mission<br>🍔 Food · 👕 Clothes · 🔫 Guns · 🏠 Safehouse · ⛽ Fuel · 🔧 Garage · 🚘 Dealer · 🏥 Hospital · 🚓 Police</div></div>
 <div id="shop"><div class="card" style="min-width:340px"><h2 id="shoptitle" style="margin:0 0 6px"></h2><div id="shopcash" style="color:#7fff9a;margin-bottom:6px"></div><div id="shopitems"></div><button class="alt" id="shopclose">Leave</button></div></div>
@@ -3404,7 +3421,7 @@ function updateHUD(dt){hudT-=dt;
   const w=WEAP[pl.weapon];$('#wpn').textContent=pl.weapon==='fists'?'Fists':w.name+' · '+pl.ammo[pl.weapon];$('#zone').textContent=zoneName(pl.x,pl.z)+(pl.car?' · HP '+Math.max(0,Math.round(pl.car.hp/maxHp(pl.car)*100))+'%':'');
   // fuel bar
   if(pl.car&&pl.car.fuel!=null&&!pl.car.t.boat){$('#fuelbar').style.display='block';$('#fuelb').style.width=Math.max(0,pl.car.fuel)+'%'}else $('#fuelbar').style.display='none'}
- if(pl.car){const km=Math.round(pl.car.speed*3.6);$('#spd').textContent=km;$('#spdMph').textContent=Math.round(km*.621371)+' MPH';$('#spdGear').textContent=pl.car.t.aircraft?'AIR':km<1?'IDLE':km<25?'1ST':km<50?'2ND':km<85?'3RD':km<125?'4TH':'5TH'}}
+ if(pl.car)updateSpeedo(pl.car)}
 // ================= INPUT HANDLING =================
 function pauseGame(on){if(G.state==='play'&&on){G.state='paused';mouseDown=false;for(const k in keys)keys[k]=false;$('#pause').style.display='grid';$('#pQual').textContent='Quality: '+['Low','Medium','High','Ultra'][G.quality];if(mouseLocked)document.exitPointerLock?.()}else if(G.state==='paused'&&!on){G.state='play';$('#pause').style.display='none';requestGameMouseLock()}refreshMousePrompt()}
 
@@ -3566,6 +3583,24 @@ function envLighting(dt){
  if(!pl.inside&&G.hemiBase!=null)hemi.intensity=G.hemiBase+(G.lightning||0)*2.4;
  skyDome.position.copy(camera.position);waterU.time.value=G.time;waterU.fogNear.value=scene.fog.near;waterU.fogFar.value=scene.fog.far}
 let last=performance.now();
+// ---------- speedometer: analog dial scaled to the car's top speed, needle, glowing arc, gear in the hub ----------
+const SPD={cx:100,cy:96,r:80,a0:150,sweep:240,max:0,len:80*240*Math.PI/180,last:{}};
+const spPt=(ang,r)=>{const a=ang*Math.PI/180;return[(SPD.cx+r*Math.cos(a)).toFixed(1),(SPD.cy+r*Math.sin(a)).toFixed(1)]};
+(function initSpeedo(){const [x0,y0]=spPt(SPD.a0,SPD.r),[x1,y1]=spPt(SPD.a0+SPD.sweep,SPD.r),d=`M${x0} ${y0}A${SPD.r} ${SPD.r} 0 1 1 ${x1} ${y1}`;
+ const tr=$('#spTrack'),fi=$('#spFill');if(!tr)return;tr.setAttribute('d',d);fi.setAttribute('d',d);fi.style.strokeDasharray=SPD.len;fi.style.strokeDashoffset=SPD.len})();
+function speedoScale(max){if(SPD.max===max)return;SPD.max=max;const step=max>300?50:20,maj=max>300?100:40;let h='';
+ for(let v=0;v<=max+.1;v+=step){const f=v/max,ang=SPD.a0+SPD.sweep*f,isM=v%maj===0,red=f>.84?' red':'';const [ax,ay]=spPt(ang,SPD.r-9),[bx,by]=spPt(ang,SPD.r-(isM?18:14));
+  h+=`<line class="sp-tick${isM?' maj':''}${red}" x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}"/>`;if(isM){const [lx,ly]=spPt(ang,SPD.r-29);h+=`<text class="sp-lab${red}" x="${lx}" y="${ly}">${v}</text>`}}
+ $('#spTicks').innerHTML=h}
+function updateSpeedo(c){const t=c.t,km=Math.max(0,Math.round(c.speed*3.6)),air=!!t.aircraft;
+ speedoScale(air?Math.max(400,Math.ceil(t.top*3.6/100)*100):Math.max(120,Math.ceil(t.top*3.6*1.05/40)*40));
+ const f=Math.min(1,km/SPD.max),L=SPD.last;
+ if(L.km!==km){L.km=km;$('#spd').textContent=km;$('#spdMph').textContent='KM/H · '+Math.round(km*.621371)+' MPH';$('#spd').classList.toggle('hot',f>.84);
+  $('#spFill').style.strokeDashoffset=(SPD.len*(1-f)).toFixed(1);$('#spNeedle').style.transform=`rotate(${(SPD.a0+SPD.sweep*f).toFixed(1)}deg)`}
+ const gear=air?'AIR':c.reversing?'R':km<1?'N':km<25?'1':km<50?'2':km<85?'3':km<125?'4':'5';if(L.gear!==gear){L.gear=gear;$('#spdGear').textContent=gear;$('#spdGear').style.fontSize=gear.length>1?'8.5px':'13px'}
+ const fuel=Math.round(clamp(c.fuel??100,0,100)),hp=Math.round(clamp(100*c.hp/(typeof maxHp==='function'?maxHp(c):100),0,100));
+ if(L.fuel!==fuel){L.fuel=fuel;const e=$('#spFuel');e.style.width=fuel+'%';e.classList.toggle('low',fuel<20)}
+ if(L.hp!==hp){L.hp=hp;const e=$('#spHp');e.style.width=hp+'%';e.classList.toggle('low',hp<30)}}
 function frame(now){requestAnimationFrame(frame);const rdt=Math.min((now-last)/1000,.05);last=now;G.rdt=rdt;
  const dt=rdt*((pl.focusT>0&&G.state==='play')?.45:G.state==='dead'?.35:1);updateFx(rdt);
  try{
