@@ -898,13 +898,13 @@ function buildRoadMeshes(){
     for(const side of[-1,1])bakeG('walk',GEO.box,mid,.10,r.c+side*1.82,0,len,.28,.18,[.72,.72,.66]);
     const edge=B('mark',mid,r.c),yy=.115;
     for(const side of[-1,1]){const zc=r.c+side*1.98;edge.quad([a,yy,zc-.09],[b,yy,zc-.09],[b,yy,zc+.09],[a,yy,zc+.09],0,1,0,0,0,1,1,[1,.78,.08])}
-    for(let p=a+7;p<b-4;p+=12)for(const side of[-1,1])bakeG('plain',GEO.ico,p,.30,r.c+side*.48,rnd()*TAU,.78,.48,.62,pick([[.14,.34,.15],[.18,.42,.17],[.23,.4,.16]]));
+    for(let p=a+7;p<b-4;p+=12)for(const side of[-1,1]){const bx=p,bz=r.c+side*.48;if(!(bx>-56&&bx<-4&&bz>-27&&bz<27))bakeG('plain',GEO.ico,bx,.30,bz,rnd()*TAU,.78,.48,.62,pick([[.14,.34,.15],[.18,.42,.17],[.23,.4,.16]]));}
    }else{
     bakeG('walk',GEO.box,r.c,.08,mid,0,3.4,.22,len,[.34,.39,.31]);
     for(const side of[-1,1])bakeG('walk',GEO.box,r.c+side*1.82,.10,mid,0,.18,.28,len,[.72,.72,.66]);
     const edge=B('mark',r.c,mid),yy=.115;
     for(const side of[-1,1]){const xc=r.c+side*1.98;edge.quad([xc-.09,yy,b],[xc+.09,yy,b],[xc+.09,yy,a],[xc-.09,yy,a],0,1,0,0,0,1,1,[1,.78,.08])}
-    if(!(r.o==='v'&&r.c===0))for(let p=a+7;p<b-4;p+=12)for(const side of[-1,1])bakeG('plain',GEO.ico,r.c+side*.48,.30,p,rnd()*TAU,.62,.48,.78,pick([[.14,.34,.15],[.18,.42,.17],[.23,.4,.16]]));
+    for(let p=a+7;p<b-4;p+=12)for(const side of[-1,1]){const bx=r.c+side*.48,bz=p;if(!(bx>-56&&bx<-4&&bz>-27&&bz<27))bakeG('plain',GEO.ico,bx,.30,bz,rnd()*TAU,.62,.48,.78,pick([[.14,.34,.15],[.18,.42,.17],[.23,.4,.16]]));}
    }
   }
  }
@@ -914,6 +914,8 @@ const bulbCol=[1,.9,.6];
 
 const streetLampSites=[];
 function lamp(x,z,face){
+ // Keep streetlight poles out of the central park's surrounding carriageways.
+ if(x>-56&&x<-4&&z>-27&&z<27)return;
  if(footprintHitsRoad(x-.2,z-.2,x+.2,z+.2,0))return;
  if(queryCols(x,z,.3).some(c=>c.h>2&&x>c.x0&&x<c.x1&&z>c.z0&&z<c.z1))return;
  const y=heightAt(x,z);if(y<WL+.15)return;
@@ -1286,10 +1288,8 @@ function buildCentralPark(){
   bakeG('plain',GEO.box,x,.55,z,0,3.2,.18,.7,[.48,.29,.16]);
   bakeG('plain',GEO.box,x,.92,z,0,3.2,.12,.7,[.35,.23,.14]);
  }
- for(const [x,z] of [[-51,0],[-9,0],[-30,-22],[-30,22]]){
-  for(let k=-1;k<=1;k++)bakeG('plain',GEO.ico,x+k*.8,.42,z,0,.58,.42,.58,pick([[.16,.36,.16],[.2,.43,.19],[.24,.4,.16]]));
- }
- for(const [x,z] of [[-52,-25],[-8,-25],[-52,25],[-8,25]]){
+ // Removed perimeter shrub clusters so they do not spill into nearby road space.
+ for(const [x,z] of [[-46,-16],[-14,-16],[-46,16],[-14,16]]){
   bakeG('plain',GEO.cyl6,x,.05,z,0,.12,2.8,.12,[.17,.2,.22]);
   bakeG('lamp',GEO.sph,x,2.9,z,0,.28,.28,.28,[1,.82,.55]);
  }
