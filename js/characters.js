@@ -474,6 +474,9 @@
       ? [[0.001, 0.09], [0.13, 0.085], [0.16, 0.03], [0.172, -0.03], [0.165, -0.08], [0.12, -0.11], [0.001, -0.115]]
       : [[0.001, 0.09], [0.145, 0.085], [0.158, 0.03], [0.162, -0.03], [0.155, -0.08], [0.115, -0.11], [0.001, -0.115]]).map(([r, y]) => [r * W, y]);
     add(hips, lathe(pelvis, 22, 0.93), m.pants, 0, 0, 0, 1, 0.92, 0.66);
+    // City cast: a seat piece in the trouser/shorts fabric that widens out over the tops of the thighs,
+    // so the legs run into the hips instead of starting under a narrower hip block.
+    if (!/^(Jason|Lucia)$/.test(d.name)) add(hips, lathe([[0.15, 0.06], [0.175, 0.0], [0.194, -0.05], [0.197, -0.09], [0.186, -0.12], [0.152, -0.148], [0.085, -0.164], [0.001, -0.168]], 24, W * (F ? 1.02 : 1)), m.pants, 0, 0, 0, 1, 1, 0.62);
     add(spine, lathe([[0.052, 0.54], [0.048, 0.6], [0.046, 0.66], [0.05, 0.72]]), m.skin);                               // neck
     const shX = (F ? 0.18 : 0.215) * W;
     for (const sx of [-1, 1]) add(spine, ball(F ? 0.05 : 0.06 * W), m.skin, sx * (shX - 0.02), 0.5, 0, 1.05, 0.8, 0.85);  // deltoids
