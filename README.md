@@ -76,6 +76,7 @@ An original score plays alongside the radio, synthesized live in the browser by 
 ### Controls and interface
 - A clickable **CONTROLS** panel in the lower-left corner opens and closes the keyboard guide.
 - **RELEASE MOUSE** unlocks the cursor without pausing the game. Click back into the game to capture the mouse again.
+- **Ultra graphics** (press **Q** or use the pause menu): screen-space reflections on the roads (stronger in rain), live street reflections in car paint and glass, ambient occlusion, stronger bloom and sharper shadows. Meant for strong computers.
 - Use the pause menu and in-game phone for additional options.
 
 ---
@@ -101,7 +102,7 @@ An original score plays alongside the radio, synthesized live in the browser by 
 | **T** | Change radio station |
 | **H** | Headlights (auto / on / off) |
 | **V** | Change camera view |
-| **Q** | Graphics quality |
+| **Q** | Graphics quality (Low / Medium / High / Ultra) |
 | **J** | Quick save |
 | **Esc** | Pause |
 | **N** | Soundtrack on / off |
