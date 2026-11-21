@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "crop_top_geometry": true,
+  "denim_shorts_geometry": true,
+  "refined_face": true,
+  "animation_rig_preserved": true,
+  "merged_model_valid": true,
+  "other_designs_unchanged": true,
+  "finite_geometry": true,
+  "checked_scripts": 1,
+  "scope": "Playable Lucia appearance and default clothing colours only; other characters, animations and gameplay unchanged"
+}

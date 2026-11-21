@@ -1,3 +1,4 @@
+// LUCIA_SUMMER_V1
 /*
  * Vice City 3D — character designs.
  * Builds stylized low-poly characters on the game's existing human rig
@@ -56,12 +57,12 @@
       extras: ['watch'], realistic: true,
     },
     luciaC: {
-      name: 'Lucia', role: 'Lead · option C', build: 'slim',
+      name: 'Lucia', role: 'Lead · player model', build: 'slim',
       skin: 0xb9784e, hair: 0x4a2c1a, hairStyle: 'longdown',
-      top: { kind: 'tank', color: 0x0b0b0d },
-      legs: { kind: 'jeans', color: 0x1f2228, highWaist: true },
+      top: { kind: 'crop', color: 0x0b0b0d },
+      legs: { kind: 'shorts', color: 0x5c89ae, highWaist: true },
       shoes: { color: 0xf6f6f6, sole: 0xe2e2e2, accent: 0x0b0b0d },
-      extras: ['hoops', 'bracelets', 'ring', 'necklace'], realistic: true, female: true,
+      extras: ['hoops', 'bracelets', 'ring', 'necklace'], realistic: true, female: true, luciaSummer: true,
     },
     officer: {
       name: 'Officer', role: 'Police',
@@ -432,14 +433,15 @@
   // Smooth, lathe-turned body parts with natural proportions and clothes that
   // follow the body. Same rig as build(), so the game's animations drive it.
   function buildHuman(T, d) {
+    const luciaLook = !!d.luciaSummer;
     const F = !!d.female, Bk = d.build || 'regular';
     const W = F ? 1 : Bk === 'stocky' ? 1.1 : Bk === 'slim' ? 0.94 : 1;
     const ex = d.extras || [];
     const mat = (color, rough = 0.75, extra = {}) => new T.MeshStandardMaterial(Object.assign({ color, roughness: rough, metalness: 0 }, extra));
     const tone = (hex, f) => { const c = new T.Color(hex); c.multiplyScalar(f); return c.getHex(); };
     const m = {
-      skin: mat(d.skin, 0.62), hair: mat(d.hair, 0.7), shirt: mat(d.top.color, 0.88), pants: mat(d.legs.color, 0.9),
-      shoe: mat(d.shoes.color, 0.55), sole: mat(d.shoes.sole, 0.9), lip: mat(tone(d.skin, 0.8) | 0x180606, 0.5),
+      skin: mat(d.skin, luciaLook ? 0.72 : 0.62), hair: mat(d.hair, luciaLook ? 0.8 : 0.7), shirt: mat(d.top.color, 0.88), pants: mat(d.legs.color, 0.9),
+      shoe: mat(d.shoes.color, 0.55), sole: mat(d.shoes.sole, 0.9), lip: mat(luciaLook ? 0x92594f : (tone(d.skin, 0.8) | 0x180606), luciaLook ? 0.65 : 0.5),
       brow: mat(tone(d.hair, 0.9), 0.8), eyeW: mat(0xf2eee6, 0.35), iris: mat(0x3b2616, 0.3), pupil: mat(0x0c0c0c, 0.3),
       metal: mat(0xd6b25a, 0.3, { metalness: 0.7 }), steel: mat(0xb9bec4, 0.3, { metalness: 0.7 }), dark: mat(0x18191c, 0.45), white: mat(0xf4f2ec, 0.5),
       jacket: d.jacket ? mat(d.jacket.color, 0.85) : null,
@@ -479,14 +481,17 @@
 
     // ---- tops
     const tk = d.top.kind;
-    const sleeves = { tank: 'none', tee: 'short', uniform: 'short', aloha: 'short', polo: 'short', shirt: 'long', hoodie: 'long' }[tk] || 'short';
+    const sleeves = { crop: 'none', tank: 'none', tee: 'short', uniform: 'short', aloha: 'short', polo: 'short', shirt: 'long', hoodie: 'long' }[tk] || 'short';
     const loose = tk === 'hoodie' ? 1.08 : tk === 'aloha' ? 1.06 : 1.035;
-    const topEnd = tk === 'tank' ? (F ? 0.46 : 0.47) : 0.53;
-    const shell = slice(torso, -0.03, topEnd).map(([r, y]) => [r * loose + 0.002, y]);
-    if (tk === 'tank') { const R = interp(shell, topEnd); shell.push([R * 0.97, topEnd + 0.007], [R * 0.88, topEnd + 0.013], [(F ? 0.11 : 0.13) * W, topEnd + 0.017], [0.001, topEnd + 0.018]); }
+    const crop = luciaLook && tk === 'crop';
+    const topEnd = tk === 'tank' || crop ? (F ? 0.46 : 0.47) : 0.53;
+    const shell = slice(torso, crop ? 0.19 : -0.03, topEnd).map(([r, y]) => [r * loose + 0.002, y]);
+    if (crop) shell.unshift([interp(torso, 0.19) * loose + 0.002, 0.19]);
+    if (tk === 'tank' || crop) { const R = interp(shell, topEnd); shell.push([R * 0.97, topEnd + 0.007], [R * 0.88, topEnd + 0.013], [(F ? 0.11 : 0.13) * W, topEnd + 0.017], [0.001, topEnd + 0.018]); }
     else shell.push([0.075, 0.555], [0.001, 0.556]);
-    add(spine, lathe(shell, 24), m.shirt, 0, 0, 0, 1, 1, DEPTH);
-    if (tk === 'tank') for (const sx of [-1, 1]) for (const sz of [1, -1]) {
+    const topMesh = add(spine, lathe(shell, 24), m.shirt, 0, 0, 0, 1, 1, DEPTH);
+    if (crop) { topMesh.name = 'lucia-crop-top'; add(spine, new T.TorusGeometry(interp(torso, 0.19) * loose + 0.003, 0.004, 6, 28), m.trim, 0, 0.195, 0, 1, DEPTH, 1).rotation.x = Math.PI / 2; }
+    if (tk === 'tank' || crop) for (const sx of [-1, 1]) for (const sz of [1, -1]) {
       const st = add(spine, box(F ? 0.026 : 0.034, 0.085, 0.012), m.shirt, sx * (F ? 0.075 : 0.085), 0.51, sz * (F ? 0.088 : 0.095)); st.rotation.x = sz * -0.35;
     }
     if (['uniform', 'shirt', 'polo', 'aloha'].includes(tk)) for (const sx of [-1, 1]) {                                   // collar points
@@ -527,7 +532,8 @@
     // ---- head: egg-shaped skull, narrower jaw
     const skull = [[0.001, 0.035], [0.04, 0.04], [0.068, 0.062], [0.084, 0.095], [0.096, 0.135], [0.103, 0.175], [0.104, 0.205], [0.097, 0.245], [0.08, 0.278], [0.052, 0.298], [0.001, 0.306]];
     const HX = F ? 0.9 : 0.94;
-    add(headP, lathe(skull, 24), m.skin, 0, 0, 0.004, HX, 1, 1.06);
+    const faceMesh = add(headP, lathe(skull, luciaLook ? 32 : 24), m.skin, 0, 0, 0.004, HX, 1, 1.06);
+    if (luciaLook) faceMesh.name = 'lucia-refined-face';
     for (const sx of [-1, 1]) {
       add(headP, ball(0.026), m.skin, sx * (F ? 0.092 : 0.096), 0.165, -0.004, 0.42, 1, 0.75);                   // ears
       add(headP, ball(0.013), m.skinShade, sx * (F ? 0.094 : 0.098), 0.165, 0.004, 0.25, 0.75, 0.55);           // inner ear
@@ -583,12 +589,12 @@
       add(headP, ball(0.075, 16, 10, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.3), m.hair, 0, 0.2, -0.04, 1.1, 1, 1.1);
     }
     if (hs === 'longdown') {
-      add(headP, lathe(cap(0.18, 1.06), 24), m.hair, 0, 0, -0.002, 0.93, 1, 1.08);
+      add(headP, lathe(cap(0.18, 1.06), luciaLook ? 32 : 24), m.hair, 0, 0, -0.002, 0.93, 1, 1.08);
       const back = new T.CylinderGeometry(0.105, 0.135, 0.36, 20, 1, true, Math.PI * 0.6, Math.PI * 0.8); back.translate(0, -0.18, 0);
       const bk = add(headP, back, m.hair.clone(), 0, 0.24, -0.006); bk.scale.set(1, 1, 0.9); bk.material.side = T.DoubleSide;
       for (const sx of [-1, 1]) { const st = add(headP, ball(0.03), m.hair, sx * 0.094, 0.1, -0.012, 0.42, 3.2, 0.8); st.rotation.z = sx * 0.06; }
       const fr = add(headP, ball(0.06), m.hair, 0.018, 0.262, 0.068, 1.3, 0.28, 0.55); fr.rotation.z = -0.22;
-      const hl = mat(tone(d.hair, 1.25), 0.7);
+      const hl = mat(tone(d.hair, luciaLook ? 1.1 : 1.25), luciaLook ? 0.8 : 0.7);
       for (const [x, y, z, sy, rz, mm] of [[-0.06, 0.06, -0.085, 3.2, 0.08, hl], [0.06, 0.06, -0.085, 3.1, -0.08, hl], [0, 0.05, -0.1, 3.4, 0, m.hair]]) { const c = add(headP, ball(0.045), mm, x, y, z, 1, sy, 0.5); c.rotation.z = rz; }
       add(headP, box(0.004, 0.003, 0.09), m.skin, 0.02, 0.306, 0.02).rotation.y = 0.1;
     }
@@ -676,8 +682,11 @@
       add(hp, lathe(thigh), long ? m.pants : m.skin);
       if (long && lk === 'cargo') add(hp, lathe(thigh.map(([r, y]) => [r * 1.08, y]), 18), m.pants);
       if (shortLen) {
-        add(hp, lathe(slice(thigh, -shortLen, 0.03).map(([r, y]) => [r * 1.12 + 0.004, y]), 18), m.pants);
-        add(hp, new T.TorusGeometry(interp(thigh, -shortLen) * 1.12 + 0.004, 0.006, 6, 20), pantsDark, 0, -shortLen, 0).rotation.x = Math.PI / 2;
+        const shortsProfile = slice(thigh, -shortLen, 0.03).map(([r, y]) => [r * 1.12 + 0.004, y]);
+        if (luciaLook) shortsProfile.push([interp(thigh, -shortLen) * 1.12 + 0.004, -shortLen]);
+        const shortsMesh = add(hp, lathe(shortsProfile, luciaLook ? 24 : 18), m.pants);
+        if (luciaLook) shortsMesh.name = 'lucia-denim-shorts-' + sx;
+        add(hp, new T.TorusGeometry(interp(thigh, -shortLen) * 1.12 + 0.004, 0.006, 6, 20), luciaLook ? mat(tone(d.legs.color, 1.18), 0.95) : pantsDark, 0, -shortLen, 0).rotation.x = Math.PI / 2;
       }
       if (lk === 'cargo') add(hp, box(0.035, 0.1, 0.08), pantsDark, sx * 0.09 * W, -0.24, 0.0);                   // cargo pocket
       const kn = new T.Group(); kn.position.y = -0.43; hp.add(kn);
@@ -712,11 +721,11 @@
       if (long && !F) add(hips, box(0.04, 0.03, 0.01), m.steel, 0, 0.075, wr * 0.7 + 0.002);
       for (const a of [-1.25, -0.5, 0.5, 1.25, Math.PI]) add(hips, box(0.012, 0.03, 0.008), long && !F ? mat(0x3b2a1c, 0.55) : pantsDark, Math.sin(a) * wr, 0.075, Math.cos(a) * wr * (F ? 0.72 : 0.7));
     }
-    if (long) {
+    if (long || luciaLook) {
       for (const sx of [-1, 1]) {
         
-        add(hips, box(0.07, 0.075, 0.008), pantsDark, sx * 0.07 * W, -0.025, -(F ? 0.116 : 0.11) * W);
-        if (lk === 'jeans') add(hips, ball(0.004), m.metal, sx * 0.13 * W, 0.045, 0.06);
+        add(hips, box(0.07, 0.075, 0.008), pantsDark, sx * 0.07 * W, -0.025, -(luciaLook ? 0.095 : F ? 0.116 : 0.11) * W);
+        if (lk === 'jeans' || luciaLook) add(hips, ball(0.004), m.metal, sx * 0.13 * W, 0.045, 0.06);
       }
     }
 
