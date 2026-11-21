@@ -1922,7 +1922,7 @@ function stepAircraft(c,dt){
  c.fuel=Math.max(0,c.fuel-dt*(throttle>0?.1:0));
  if(c.fuel<=0){c.inp.thr=0;c.vx*=.995;c.vz*=.995}
  c.roll=lerp(c.roll,-inp.steer*(c.airborne?.32:.07),Math.min(1,dt*3));
- const prop=c.v.getObjectByName('propeller');if(prop)prop.rotation.z+=(7+speed*.65)*dt;
+ const prop=c.v?.ch?.getObjectByName('propeller');if(prop)prop.rotation.z+=(7+speed*.65)*dt;
  c.age+=dt;
 }
 function stepCar(c,dt){
