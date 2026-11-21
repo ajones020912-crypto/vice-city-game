@@ -1311,12 +1311,12 @@ function buildSignals(){
    const px=axis==='h'?hx:nd.x-dir*(nd.v.hw+1.8);
    const pz=axis==='h'?nd.z+dir*(nd.h.hw+1.8):hz;
    const nx=axis==='h'?-dir:0,nz=axis==='v'?-dir:0,angle=Math.atan2(nx,nz),baseY=5.7;
-   const metal=[.9,.58,.035],black=[.025,.032,.038];
-   bakeG('plain',GEO.cyl6,px,0,pz,0,.14,8.15,.14,metal);
-   bakeG('plain',GEO.cyl6,px,0,pz,0,.27,.48,.27,metal);addCol(px-.2,pz-.2,px+.2,pz+.2,8.15);
+   const metal=[.9,.58,.035],black=[.025,.032,.038];const signalPoleGreen=[.025,.12,.065];
+   bakeG('plain',GEO.cyl6,px,0,pz,0,.14,8.15,.14,signalPoleGreen);
+   bakeG('plain',GEO.cyl6,px,0,pz,0,.27,.48,.27,signalPoleGreen);addCol(px-.2,pz-.2,px+.2,pz+.2,8.15);
    const dx=hx-px,dz=hz-pz,span=Math.hypot(dx,dz);
-   bakeG('plain',GEO.box,(hx+px)/2,7.95,(hz+pz)/2,Math.atan2(dx,dz),.18,.18,span+.4,metal);
-   bakeG('plain',GEO.cyl6,hx,baseY+1.72,hz,0,.065,.60,.065,metal);
+   bakeG('plain',GEO.box,(hx+px)/2,7.95,(hz+pz)/2,Math.atan2(dx,dz),.18,.18,span+.4,signalPoleGreen);
+   bakeG('plain',GEO.cyl6,hx,baseY+1.72,hz,0,.065,.60,.065,signalPoleGreen);
    bakeG('plain',GEO.box,hx,baseY,hz,angle,.72,1.72,.36,metal);
    bakeG('plain',GEO.box,hx+nx*.19,baseY+.06,hz+nz*.19,angle,.62,1.60,.018,black);
    bakeG('plain',GEO.box,hx-nx*.205,baseY+.6,hz-nz*.205,angle,.12,.50,.035,[.15,.17,.14]);
