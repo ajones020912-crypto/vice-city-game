@@ -240,9 +240,9 @@ small{color:#b9cce0}
 <div id="overlay"><div class="card home-card"><div class="home-logo-wrap"><img src="/assets/vc3d-logo.svg" alt="Vice City 3D" width="1200" height="640" draggable="false"><div class="home-logo-fade"></div></div><div class="home-kicker">Welcome to the coast</div><h1 class="home-title">VICE CITY <span>3D</span></h1><p class="home-sub">A living neon coastal city.</p><div class="home-actions"><button id="start" class="home-btn">SINGLEPLAYER <small>Play your own save</small></button><button id="multiplayerOpen" class="home-btn alt multiplayer-soon" type="button" disabled aria-label="Multiplayer — Coming Soon">MULTIPLAYER <small>Online play is in development</small></button><button id="cont" class="home-btn continue-btn" style="display:none">CONTINUE SAVED GAME</button></div><div id="loadmsg" class="home-status"><small>Generating Vice City…</small></div><div class="home-foot">WASD to move · Mouse to look · Desktop Chrome recommended</div></div></div>
 <div id="mpLobby" class="mp-screen" style="display:none"><div class="mp-card"><button id="mpBack" class="mp-back">← BACK</button><div class="home-kicker">ONLINE SESSION</div><h2>PLAY ONLINE</h2><label for="mpName">PLAYER NAME</label><input id="mpName" maxlength="16" value="Player" autocomplete="nickname"><div class="mp-actions"><button id="mpHost">JOIN WORLD</button></div><div id="mpOnline" class="mp-room" style="display:block">Players online: …</div><div id="mpStatus" class="mp-status">Everyone joins the same shared city. No codes needed.</div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="characters.js"></script>
-<script src="reference-characters.js"></script>
-<script src="supercar.js"></script>
+<script src="js/characters.js"></script>
+<script src="js/reference-characters.js"></script>
+<script src="js/supercar.js"></script>
 <script>
 (()=>{'use strict';
 if(!window.THREE){document.querySelector('.card').innerHTML='<h2>Could not load 3D engine</h2><p>Check your internet connection and reload.</p>';return;}
@@ -4514,7 +4514,7 @@ document.getElementById('cont').onclick=()=>{G.multiplayer=false;mpActive=false;
 
 
 </script>
-<script src="soundtrack.js">
+<script src="js/soundtrack.js">
 
 (function(){
   function wireMenuBtn(id, fn){

@@ -66,7 +66,7 @@ Four original in-game radio stations play procedurally generated audio:
 - Gulf Lo-Fi
 
 ### Soundtrack
-An original score plays alongside the radio, synthesized live in the browser by `soundtrack.js` (no audio files):
+An original score plays alongside the radio, synthesized live in the browser by `js/soundtrack.js` (no audio files):
 - **Neon Overture** on the title screen.
 - **Sunlit Boulevard** (day), **Midnight Causeway** (night) and **Grassrun Shuffle** (bayou) underneath the city when you're on foot.
 - **Six Stars** during police chases at 2+ stars, getting busier as the wanted level rises, and **Coastal Clash** during the race. The car radio pauses for these and comes back after.
@@ -153,20 +153,24 @@ The currently linked game page is hosted separately as a static site. A static s
 
 ```text
 vice-city-game/
-├── index.html                 Main game: 3D world, vehicles, missions, UI, and gameplay
-├── soundtrack.js              Original procedural soundtrack and in-game music switching
-├── server.js                  Express + Socket.IO server prototype
-├── package.json               Node dependencies and start scripts
-├── favicon.svg                Browser tab icon
-├── graphics-test.html         Standalone graphics test page
-├── assets/
-├── scripts/
-│   ├── patch-post-processing.js
-│   └── patch-shared-world.js
-├── race/
-│   ├── race-cooldown-status.json
-│   └── street-race-status.json
-└── .github/workflows/          Game update and maintenance workflows
+├── index.html            Main game: 3D world, vehicles, missions, UI and gameplay
+├── server.js             Express + Socket.IO server (serves the game and multiplayer)
+├── package.json          Node dependencies and start scripts
+├── favicon.svg           Browser tab icon
+├── js/                   Game modules loaded by index.html
+│   ├── characters.js            Player, police, gang and pedestrian character models
+│   ├── reference-characters.js  Jason and Lucia player models
+│   ├── supercar.js              Low-poly supercar body and its 20 colours
+│   ├── soundtrack.js            Original procedural soundtrack and music switching
+│   └── mp.js                    Multiplayer client
+├── assets/               Images (logo)
+├── docs/
+│   └── MULTIPLAYER.md    Multiplayer server and client guide
+├── tools/
+│   └── graphics-test.html  Standalone graphics test page
+├── scripts/              Patch scripts used by the update workflows
+├── status/               Progress files written by the update workflows
+└── .github/workflows/    Game update and maintenance workflows
 ```
 
 ---

@@ -3,7 +3,7 @@
  * -------------------------------------------------
  * Drop-in upgrade over the original inline mp* functions.
  * Load AFTER Three.js and the main game script, or include
- * via a <script src="/mp.js"> tag near the end of index.html.
+ * via a <script src="/js/mp.js"> tag near the end of index.html.
  *
  * Features:
  *  • Smoother Hermite / velocity-aware interpolation
