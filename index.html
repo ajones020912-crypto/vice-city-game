@@ -975,6 +975,26 @@ function building(p){
    if(style!=='glass')bakeG('plain',GEO.box,(ax0+ax1)/2,y+th,(az0+az1)/2,0,ax1-ax0+.5,.4,az1-az0+.5,[.93,.9,.82])}
   y+=th;if(t<tiers-1){const ins=3+rnd()*2;ax0+=ins;az0+=ins;ax1-=ins;az1-=ins}}
  rooftop(ax0,az0,ax1,az1,y,H>60&&rnd()<.6);
+ // Give each building type a recognizable street-level silhouette.
+ const front=(ax0+ax1)/2,fw=Math.max(3,Math.min(ax1-ax0-2,9)),frontZ=az1+.28;
+ if(style==='apt'&&H>12){
+  for(let fy=7;fy<Math.min(H-2,30);fy+=8){
+   bakeG('plain',GEO.box,front,fy,frontZ+.55,0,fw,.22,1.35,[.62,.62,.58]);
+   bakeG('plain',GEO.box,front,fy+1.05,frontZ+1.12,0,fw,.12,.12,[.24,.29,.31]);
+   for(const bx of[front-fw*.48,front+fw*.48])bakeG('plain',GEO.box,bx,fy+.55,frontZ+1.12,0,.12,1.1,.12,[.24,.29,.31]);
+  }
+ }else if(style==='deco'){
+  bakeG('plain',GEO.box,front,y+.18,frontZ-.08,0,ax1-ax0+.35,.34,.38,[.83,.76,.62]);
+  if(H>20)for(const bx of[ax0+.7,ax1-.7])bakeG('plain',GEO.box,bx,H*.48,frontZ-.08,0,.34,H*.94,.28,[.78,.72,.62]);
+ }else if(style==='ware'){
+  for(let bx=ax0+3;bx<ax1-2;bx+=Math.max(5,(ax1-ax0)/3)){
+   bakeG('plain',GEO.box,bx,2.2,frontZ,0,Math.min(3.8,ax1-bx),3.8,.18,[.22,.27,.3]);
+   bakeG('plain',GEO.box,bx,4.2,frontZ+.05,0,Math.min(4,ax1-bx),.16,.28,[.82,.65,.35]);
+  }
+ }else if(style==='glass'&&H>35){
+  bakeG('plain',GEO.box,front,y+.25,az1+.18,0,fw,.5,.28,[.52,.65,.7]);
+  bakeG('neon',GEO.box,front,y+.65,az1+.2,0,fw*.72,.12,.08,pick([[.2,.8,1],[1,.35,.65],[1,.78,.3]]));
+ }
  if(H>20&&rnd()<.3){const c=pick([[1,.2,.65],[.1,.9,1],[1,.8,.1],[.6,.3,1]]);const w=ax1-ax0;bakeG('neon',GEO.box,(ax0+ax1)/2,y+1.3,az1-.2,0,w*.7,.5,.25,c);bakeG('neon',GEO.box,(ax0+ax1)/2,y+2.5,az1-.2,0,w*.45,.5,.25,c)}
  if(H>18&&H<=34&&rnd()<.5){const c=pick([[1,.2,.65],[.1,.9,1],[.6,.3,1]]);for(const sx of[x0,x1])bakeG('neon',GEO.box,sx,H*.1,p.cz>0?z0:z1,0,.3,H*.8,.3,c)}
  addCol(x0,z0,x1,z1,H);BLD.push(p);
