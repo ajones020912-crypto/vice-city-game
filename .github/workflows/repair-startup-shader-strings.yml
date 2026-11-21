@@ -1,0 +1,55 @@
+name: Repair startup shader string syntax
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/repair-startup-shader-strings.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: repair-game-startup
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Repair three strings and validate complete inline scripts
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile, os
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          blob=subprocess.check_output(['git','hash-object','index.html'],text=True).strip()
+          if blob!='46dc468a587950d1b91695fb2f04b6c406c0d06a':
+              raise SystemExit('Game changed since review; refusing to overwrite it.')
+          fixes=[("shader.vertexShader='varying vec3 cityWorld;varying float citySlope;\n'+shader.vertexShader;", "shader.vertexShader='varying vec3 cityWorld;varying float citySlope;\\n'+shader.vertexShader;"), ("shader.vertexShader=shader.vertexShader.replace('#include <worldpos_vertex>','#include <worldpos_vertex>\ncityWorld=(modelMatrix*vec4(transformed,1.)).xyz;citySlope=1.-abs(normal.y);');", "shader.vertexShader=shader.vertexShader.replace('#include <worldpos_vertex>','#include <worldpos_vertex>\\ncityWorld=(modelMatrix*vec4(transformed,1.)).xyz;citySlope=1.-abs(normal.y);');"), ("shader.fragmentShader='varying vec3 cityWorld;varying float citySlope;uniform sampler2D citySand,cityGrass,cityRock;uniform float cityWater;\n'+shader.fragmentShader;", "shader.fragmentShader='varying vec3 cityWorld;varying float citySlope;uniform sampler2D citySand,cityGrass,cityRock;uniform float cityWater;\\n'+shader.fragmentShader;")]
+          for old,new in fixes:
+              if s.count(old)!=1: raise SystemExit('Expected exactly one broken shader-string anchor.')
+              s=s.replace(old,new,1)
+          blocks=re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I)
+          checked=0
+          for code in blocks:
+              if not code.strip(): continue
+              with tempfile.NamedTemporaryFile(mode='w',suffix='.js',delete=False) as f:
+                  f.write(code); name=f.name
+              try: subprocess.run(['node','--check',name],check=True)
+              finally: os.unlink(name)
+              checked+=1
+          if not checked: raise SystemExit('No inline JavaScript found; refusing to write.')
+          p.write_text(s,encoding='utf-8')
+          print('Repaired exactly three shader strings; all inline JavaScript passed syntax checks.')
+          PY
+      - name: Commit only the validated startup repair
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html
+          git commit -m 'Fix three shader strings blocking Vice City startup'
+          git push origin HEAD:main
