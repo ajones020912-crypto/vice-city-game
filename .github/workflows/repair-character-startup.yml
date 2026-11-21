@@ -1,0 +1,74 @@
+name: Repair character startup blocker
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/repair-character-startup.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: simple-character-models
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Repair the precise syntax error and run approved character patch
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile, os, json, textwrap
+          report={'ok':False,'stage':'startup_quote_repair'}
+          try:
+              wf=Path('.github/workflows/simple-character-models.yml')
+              blob=subprocess.check_output(['git','hash-object',str(wf)],text=True).strip()
+              if blob!='971031ebf3ef2ebe6690282face8f14a3e1a417e':
+                  raise RuntimeError('Character workflow changed since approval; refusing to execute different code.')
+              p=Path('index.html');s=p.read_text(encoding='utf-8')
+              post="Beach check: the water is looking unreal today. Who's heading down to the shore?"
+              bad="'"+post+"'";good=json.dumps(post)
+              count=s.count(bad)
+              if count==1:
+                  s=s.replace(bad,good,1);repaired=True
+              elif count==0 and s.count(good)==1:
+                  repaired=False
+              else:
+                  raise RuntimeError('Expected exactly one known ViceFeed post; refusing a broad quote replacement.')
+              checked=0
+              for code in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I):
+                  if not code.strip(): continue
+                  with tempfile.NamedTemporaryFile(mode='w',suffix='.js',delete=False) as f:
+                      f.write(code);name=f.name
+                  try:
+                      result=subprocess.run(['node','--check',name],capture_output=True,text=True)
+                      if result.returncode: raise RuntimeError(result.stderr[:3000])
+                  finally: os.unlink(name)
+                  checked+=1
+              if not checked: raise RuntimeError('No inline JavaScript found.')
+              p.write_text(s,encoding='utf-8')
+              m=re.search(r"(?ms)^          python3 - <<'PY'\n(.*?)^          PY\s*$",wf.read_text(encoding='utf-8'))
+              if not m: raise RuntimeError('Cannot locate the approved character patch script.')
+              exec(compile(textwrap.dedent(m.group(1)),'approved-character-patch','exec'),{})
+              report=json.loads(Path('character-model-status.json').read_text(encoding='utf-8'))
+              report['startup_quote_repaired']=repaired
+          except Exception as exc:
+              report.update(ok=False,error=str(exc))
+          Path('character-model-status.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(report))
+          PY
+      - name: Commit validated game changes and diagnostic result
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html character-model-status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Repair ViceFeed startup syntax and apply simple character models'
+          git push origin HEAD:main
+      - name: Verify successful character patch
+        run: node -e "if(!require('./character-model-status.json').ok)process.exit(1)"
