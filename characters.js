@@ -29,6 +29,24 @@
       shoes: { color: 0xfafafa, sole: 0xff6f5e, chunky: true },
       extras: ['hoops', 'shades'],
     },
+    jasonB: {
+      name: 'Jason', role: 'Lead · option B',
+      skin: 0xc48a63, hair: 0x2a1a10, hairStyle: 'messy', beard: true,
+      top: { kind: 'tank', color: 0x8e9096 },
+      jacket: { kind: 'campshirt', color: 0x2f7f86, trim: 0xe9d9a6, print: 0xe9d9a6 },
+      legs: { kind: 'cargoshorts', color: 0x6b6a4a },
+      shoes: { kind: 'boots', color: 0x5a4330, sole: 0x2a2018 },
+      extras: ['watch'],
+    },
+    luciaB: {
+      name: 'Lucia', role: 'Lead · option B', build: 'slim',
+      skin: 0xb07650, hair: 0x140c08, hairStyle: 'lowbun',
+      top: { kind: 'tank', color: 0xd9a52b },
+      jacket: { kind: 'denim', color: 0x6f93c2, trim: 0x52739e },
+      legs: { kind: 'bikeshorts', color: 0x1d1d22 },
+      shoes: { kind: 'hightops', color: 0xf4f4f4, sole: 0xe6e6e6 },
+      extras: ['hoops', 'shades'],
+    },
     officer: {
       name: 'Officer', role: 'Police',
       skin: 0xe0ac69, hair: 0x3b2314, hairStyle: 'short',
@@ -145,16 +163,28 @@
 
     // ---- jackets (open layers over the top)
     if (d.jacket) {
-      const k = d.jacket.kind, J = m.jacket, len = k === 'cropjacket' ? 0.3 : k === 'vest' ? 0.42 : 0.5, y0 = 0.55 - len;
-      const back = new T.CylinderGeometry(0.218 * W, (k === 'blazer' ? 0.19 : 0.182) * W, len, 8, 1, false, Math.PI * 0.62, Math.PI * 1.76);
+      const k = d.jacket.kind, J = m.jacket, len = k === 'cropjacket' ? 0.3 : k === 'vest' ? 0.42 : k === 'denim' ? 0.56 : 0.5, y0 = 0.55 - len, JW = k === 'denim' ? 1.1 : 1;
+      // shell wraps around the back; the opening is centred on the front (theta 0 = +z in three.js)
+      const gap = (k === 'campshirt' || k === 'denim') ? 0.3 : k === 'vest' ? 0.22 : 0.14;
+      const back = new T.CylinderGeometry(0.218 * W * JW, (k === 'blazer' ? 0.19 : 0.182) * W * JW, len, 10, 1, true, Math.PI * gap, Math.PI * (2 - 2 * gap));
       back.translate(0, y0 + len / 2, 0); add(spine, back, J, 0, 0, 0, 1, 1, 0.7);
       for (const sx of [-1, 1]) { // front panels leave a gap that shows the top
-        const p = add(spine, box(0.11 * W, len, 0.03), J, sx * 0.12 * W, y0 + len / 2, 0.118);
+        const open = k === 'campshirt' || k === 'denim', pw = open ? 0.085 : 0.11, px = open ? 0.145 : 0.12;
+        const p = add(spine, box(pw * W * JW, len, 0.03), J, sx * px * W * JW, y0 + len / 2, 0.118 * JW);
         p.rotation.y = sx * -0.35;
       }
       if (k === 'bomber') { add(spine, new T.TorusGeometry(0.19 * W, 0.025, 4, 10), m.trim, 0, 0.06, 0, 1, 0.4, 0.66).rotation.x = Math.PI / 2; add(spine, new T.TorusGeometry(0.11, 0.03, 4, 10), m.trim, 0, 0.56, 0, 1, 1, 0.8).rotation.x = Math.PI / 2; }
       if (k === 'blazer') for (const sx of [-1, 1]) { const l = add(spine, box(0.05, 0.2, 0.02), J, sx * 0.07, 0.45, 0.14); l.rotation.z = sx * 0.35; }
       if (k === 'vest') for (const sx of [-1, 1]) for (const y of [0.22, 0.36]) add(spine, box(0.07, 0.06, 0.03), m.trim, sx * 0.13 * W, y, 0.13);
+      if (k === 'campshirt') {
+        const pm = mat(d.jacket.print, 0.85);
+        for (const [x, y] of [[-0.15, 0.42], [0.14, 0.3], [-0.12, 0.16], [0.16, 0.47], [0.12, 0.12], [-0.17, 0.3]]) { const leaf = add(spine, box(0.05, 0.015, 0.006), pm, x * W, y, 0.135); leaf.rotation.z = (x * 31) % 1.2; }
+        for (const sx of [-1, 1]) { const c = add(spine, box(0.1, 0.05, 0.03), J, sx * 0.07, 0.54, 0.09); c.rotation.z = sx * 0.6; }
+      }
+      if (k === 'denim') {
+        for (const sx of [-1, 1]) { add(spine, box(0.07, 0.06, 0.015), m.trim, sx * 0.13 * W, 0.4, 0.14); const c = add(spine, box(0.11, 0.05, 0.04), J, sx * 0.075, 0.55, 0.1); c.rotation.z = sx * 0.55; }
+        add(spine, box(0.42 * W, 0.04, 0.27), m.trim, 0, 0.07, 0, 1, 1, 0.7);
+      }
       if (k === 'cropjacket') add(spine, new T.TorusGeometry(0.11, 0.03, 4, 10), mat(d.jacket.trim, 0.9), 0, 0.56, 0, 1, 1, 0.8).rotation.x = Math.PI / 2;
     }
     if (d.extras.includes('tie')) { add(spine, box(0.045, 0.24, 0.014), mat(0xb43b4b, 0.7), 0, 0.38, 0.138); add(spine, box(0.05, 0.04, 0.02), mat(0xb43b4b, 0.7), 0, 0.51, 0.135); }
@@ -189,6 +219,8 @@
       const tail = add(headP, limb(0.04, 0.018, 0.3, 6), m.hair, 0, 0.28, -0.12); tail.rotation.x = 0.45;
       add(headP, box(0.2, 0.05, 0.05), m.hair, 0, 0.255, 0.075).rotation.z = 0.08; // side-swept fringe
     }
+    if (hs === 'messy') { scalp(1.03, 0.17); for (const [x, y, z, r] of [[-0.06, 0.29, 0.05, 0.05], [0.05, 0.3, 0.04, 0.055], [0.0, 0.31, -0.03, 0.06], [0.08, 0.27, -0.02, 0.045], [-0.08, 0.27, -0.04, 0.045], [0.02, 0.27, 0.09, 0.045]]) add(headP, new T.IcosahedronGeometry(r, 0), m.hair, x, y, z); }
+    if (hs === 'lowbun') { scalp(1.02, 0.17); add(headP, ball(0.058, 7, 5), m.hair, 0, 0.13, -0.135); add(headP, box(0.2, 0.04, 0.05), m.hair, 0, 0.262, 0.07).rotation.z = -0.06; }
     if (hs === 'bun') { scalp(1.0, 0.17); add(headP, ball(0.055, 7, 5), m.hair, 0, 0.32, -0.04); }
     if (hs === 'bald') { for (const sx of [-1, 1]) add(headP, ball(0.06, 6, 4), m.hair, sx * 0.09, 0.17, -0.04, 0.6, 0.9, 1.1); }
 
@@ -217,17 +249,21 @@
 
     // ---- arms
     const sleeve = { tee: 'short', crop: 'short', tank: 'none', aloha: 'short', polo: 'short', shirt: 'long', uniform: 'short', hoodie: 'long' }[d.top.kind] || 'short';
-    const jacketSleeves = d.jacket && d.jacket.kind !== 'vest';
+    const jacketSleeves = d.jacket && d.jacket.kind !== 'vest' && d.jacket.kind !== 'campshirt';
+    const campSleeves = d.jacket && d.jacket.kind === 'campshirt';
+    const baggy = d.jacket && d.jacket.kind === 'denim' ? 1.18 : 1;
     const A = [];
     for (const sx of [-1, 1]) {
       const sh = new T.Group(); sh.position.set(sx * 0.255 * W, 0.52, 0); spine.add(sh);
-      add(sh, ball(0.07 * W, 6, 5), jacketSleeves ? m.jacket : sleeve === 'none' ? m.skin : m.shirt, 0, -0.01, 0); // shoulder cap
+      add(sh, ball(0.07 * W * baggy, 6, 5), jacketSleeves || campSleeves ? m.jacket : sleeve === 'none' ? m.skin : m.shirt, 0, -0.01, 0); // shoulder cap
       const upperMat = jacketSleeves ? m.jacket : sleeve === 'none' ? m.skin : m.shirt;
-      add(sh, limb(0.062 * W, 0.052 * W, 0.29), sleeve === 'short' && !jacketSleeves ? m.skin : upperMat);
+      add(sh, limb(0.062 * W * baggy, 0.052 * W * baggy, 0.29), (sleeve === 'short' || sleeve === 'none' || campSleeves) && !jacketSleeves ? m.skin : upperMat);
+      if (campSleeves) add(sh, limb(0.078 * W, 0.074 * W, 0.17), m.jacket);
       if (sleeve === 'short' && !jacketSleeves) add(sh, limb(0.07 * W, 0.064 * W, 0.15), m.shirt);
       const el = new T.Group(); el.position.y = -0.29; sh.add(el);
       const longSleeve = jacketSleeves || sleeve === 'long';
-      add(el, limb(0.05 * W, 0.042 * W, 0.26), longSleeve ? (jacketSleeves ? m.jacket : m.shirt) : m.skin);
+      add(el, limb(0.05 * W * baggy, 0.042 * W * baggy, 0.26), longSleeve ? (jacketSleeves ? m.jacket : m.shirt) : m.skin);
+      if (baggy > 1) { add(el, limb(0.062, 0.062, 0.07), m.trim, 0, -0.14, 0); add(el, limb(0.041, 0.038, 0.12), m.skin, 0, -0.17, 0); }
       if (d.jacket && d.jacket.kind === 'bomber') add(el, limb(0.048, 0.048, 0.04), m.trim, 0, -0.22, 0);
       add(el, ball(0.05, 6, 5), m.skin, 0, -0.3, 0.005, 0.85, 1.1, 0.75); // hand
       if (sx > 0 && ex.includes('watch')) add(el, limb(0.047, 0.047, 0.03, 8), m.metal, 0, -0.235, 0);
@@ -239,13 +275,15 @@
     if (ex.includes('rod')) { const r = add(leftHand, limb(0.008, 0.004, 1.6, 5), mat(0x3a2a1a, 0.6), 0, -0.3, 0.02); r.rotation.x = -2.6; }
 
     // ---- legs
-    const lk = d.legs.kind, shortsK = lk === 'shorts' || lk === 'runshorts';
+    const lk = d.legs.kind, shortsK = lk === 'shorts' || lk === 'runshorts' || lk === 'cargoshorts' || lk === 'bikeshorts';
     const Lg = [];
     for (const sx of [-1, 1]) {
       const hp = new T.Group(); hp.position.set(sx * 0.1 * W, -0.08, 0); hips.add(hp);
       const thighR = (lk === 'cargo' ? 0.098 : 0.088) * W;
       if (shortsK) {
-        add(hp, limb(thighR + 0.008, thighR - 0.004, lk === 'runshorts' ? 0.17 : 0.25), m.pants);
+        const sl = { runshorts: 0.17, bikeshorts: 0.27, cargoshorts: 0.36 }[lk] || 0.25, sr = lk === 'bikeshorts' ? -0.004 : lk === 'cargoshorts' ? 0.014 : 0.008;
+        add(hp, limb(thighR + sr, thighR - 0.004 + sr, sl), m.pants);
+        if (lk === 'cargoshorts') add(hp, box(0.04, 0.09, 0.1), m.pants, sx * 0.1, -0.24, 0.0);
         add(hp, limb(thighR - 0.01, 0.068, 0.43), m.skin);
       } else add(hp, limb(thighR, 0.072 * W, 0.43), m.pants);
       if (lk === 'cargo') add(hp, box(0.035, 0.1, 0.09), m.pants, sx * 0.09, -0.25, 0.01);
@@ -257,6 +295,7 @@
       if (sandals) { add(kn, box(0.1, 0.02, 0.24), m.sole, 0, -0.47, 0.045); add(kn, ball(0.05, 6, 4), m.skin, 0, -0.44, 0.06, 1, 0.5, 2); add(kn, box(0.1, 0.015, 0.03), m.shoe, 0, -0.44, 0.08); }
       else {
         if (boots) add(kn, limb(0.062, 0.064, 0.12), m.shoe, 0, -0.33, 0);
+        if (s.kind === 'hightops') { add(kn, limb(0.06, 0.063, 0.11), m.shoe, 0, -0.34, 0); add(kn, limb(0.064, 0.064, 0.015), mat(0xd23c4a, 0.7), 0, -0.34, 0); }
         add(kn, ball(0.062, 7, 5), m.shoe, 0, -0.435, 0.05, 0.95, chunky ? 0.75 : 0.6, 2.0);
         add(kn, box(0.115, chunky ? 0.04 : 0.025, 0.25), m.sole, 0, chunky ? -0.47 : -0.465, 0.05);
       }
