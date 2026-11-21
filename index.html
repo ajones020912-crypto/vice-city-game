@@ -1560,6 +1560,13 @@ const glassMat=new T.MeshPhysicalMaterial({color:0x0a1520,roughness:.02,metalnes
 const trimMat=new T.MeshStandardMaterial({vertexColors:true,roughness:.4,metalness:.55,envMapIntensity:.9});
 const headMat=new T.MeshStandardMaterial({color:0xfff6e0,emissive:0xffe8b0,emissiveIntensity:.55,roughness:.15,metalness:.3});
 const tailOff=new T.MeshStandardMaterial({color:0x6a0810,emissive:0xaa0014,emissiveIntensity:.4,roughness:.35}),tailOn=new T.MeshStandardMaterial({color:0xff2a3a,emissive:0xff1020,emissiveIntensity:2.4,roughness:.25});
+// Lamp states (work like real cars): headlights on/off, taillights dark / running glow / brake, white reverse lamps.
+const headOn=headMat.clone();headOn.emissiveIntensity=2.2;headMat.emissiveIntensity=.08;
+const tailDark=new T.MeshStandardMaterial({color:0x4a060c,emissive:0x5a0010,emissiveIntensity:.05,roughness:.35});
+const revOff=new T.MeshStandardMaterial({color:0xbfc4c9,emissive:0xffffff,emissiveIntensity:.02,roughness:.2,metalness:.2}),revOn=new T.MeshStandardMaterial({color:0xffffff,emissive:0xf4f6ff,emissiveIntensity:2.6,roughness:.2});
+const revGeo=new T.BoxGeometry(.18,.09,.04);
+function carDark(){return SK.night>.3||WX.mode==='rain'||WX.mode==='storm'||WX.mode==='fog'}
+function carLightsOn(c){if(!c||c.dead||!c.occ||c.t.aircraft||c.t.boat)return false;if(c===pl.car)return G.lights==='on'||(G.lights==='auto'&&carDark());return carDark()}
 const beamMat=new T.MeshBasicMaterial({color:0xfff0c0,transparent:true,opacity:0,blending:T.AdditiveBlending,depthWrite:false,side:T.DoubleSide});
 function paintMat(hex){
  if(!paintCache[hex]){
@@ -1670,6 +1677,7 @@ function makeCarVisual(tk,color){
  const body=new T.Mesh(sg?sg.body:gs.body,pm),gh=new T.Mesh(sg?sg.gh:gs.gh,glassMat),trim=new T.Mesh(sg?sg.trim:gs.trim,trimMat),head=new T.Mesh(sg?sg.head:gs.head,headMat),tail=new T.Mesh(sg?sg.tail:gs.tail,tailOff),beam=new T.Group();
  for(const m of[body,gh,trim])m.castShadow=true;body.receiveShadow=true;ch.add(body,gh,trim,head,tail);
  for(const side of[-1,1]){const cone=new T.Mesh(gs.beam,beamMat);cone.position.x=side*.72;beam.add(cone)}beam.visible=false;beam.position.y=.7;g.add(beam);
+ const rev=[];if(!t.aircraft&&!t.boat)for(const side of[-1,1]){const r=new T.Mesh(revGeo,revOff);if(sg)r.position.set(side*.32,.58,-t.L/2-.02);else r.position.set(side*(t.W/2-.72),.78,-t.L/2-.065);ch.add(r);rev.push(r)}
  let bar=null;
  if(tk==='police'){const bg=new T.BoxGeometry(1.2,.14,.3),mr=new T.MeshBasicMaterial({color:0xff1010,toneMapped:false}),mb=new T.MeshBasicMaterial({color:0x1030ff,toneMapped:false});
   const a=new T.Mesh(bg,mr),b=new T.Mesh(bg,mb);a.scale.x=b.scale.x=.5;a.position.set(.32,t.gh[2][1]+.1,t.gh[2][0]-.4);b.position.set(-.32,t.gh[2][1]+.1,t.gh[2][0]-.4);ch.add(a,b);bar=[a,b];
@@ -1710,7 +1718,7 @@ function makeCarVisual(tk,color){
    const crease=add(new T.BoxGeometry(.035,.025,1.18),accent,side*.48,.79,.72);crease.rotation.x=-.035;
   }
  }
- return{g,ch,body,tail,head,beam,bar,wheels,pm}}
+ return{g,ch,body,tail,head,beam,bar,wheels,pm,rev}}
 
 // ================= HUMANS =================
 const capCache={};
@@ -3236,7 +3244,7 @@ function updateHUD(dt){hudT-=dt;
 function pauseGame(on){if(G.state==='play'&&on){G.state='paused';mouseDown=false;for(const k in keys)keys[k]=false;$('#pause').style.display='grid';$('#pQual').textContent='Quality: '+['Low','Medium','High','Ultra'][G.quality];if(mouseLocked)document.exitPointerLock?.()}else if(G.state==='paused'&&!on){G.state='play';$('#pause').style.display='none';requestGameMouseLock()}refreshMousePrompt()}
 
 function setQuality(q){G.quality=q;const pr=[.75,1,Math.min(devicePixelRatio,1.5),Math.min(devicePixelRatio,2)][q];renderer.setPixelRatio(pr);renderer.setSize(innerWidth,innerHeight);pU.vh.value=innerHeight*pr;
- sun.castShadow=q>0;sun.shadow.mapSize.set([512,1024,2048,4096][q],[512,1024,2048,4096][q]);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null}renderer.shadowMap.needsUpdate=true;scene.fog.far=[900,1200,1600,2000][q];resizePost();setUltraReflections(q>=3)}
+ sun.castShadow=q>0;sun.shadow.mapSize.set([512,1024,2048,4096][q],[512,1024,2048,4096][q]);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null}renderer.shadowMap.needsUpdate=true;scene.fog.far=[900,1200,1600,2000][q];resizePost();setUltraReflections(q>=3);setUltraCarLights(q>=3)}
 function nearestDoor(){if(pl.inside||pl.car)return null;let b=null,bd=3.6;for(const d of doors){const q=Math.hypot(d.x-pl.x,d.z-pl.z);if(q<bd){bd=q;b=d}}return b}
 function onKey(k,e){
  if(G.state==='shop'){if(k==='escape'||k==='e')closeShop();else if(k==='r'&&pl.inside)robStore();return}
@@ -3342,7 +3350,12 @@ function simulate(dt){
   collideNearbyCars();
   for(const c of cars)c.place();
   for(const c of cars){const v=c.v;if(c.dead&&c.mode==='wreck')continue;for(const w of v.wheels){if(w.w)w.w.rotation.x=c.wheelRot;if(w.front&&w.piv)w.piv.rotation.y=c.steer}
-   const tm=c.braking?tailOn:tailOff;if(!c.t.aircraft&&v.tail.material!==tm)v.tail.material=tm;const lit=SK.night>.3&&(c.occ||c.mode==='parked'&&false);v.beam.visible=!!(lit&&c.occ);
+   if(!c.t.aircraft){const eng=!!c.occ&&!c.dead,lo=carLightsOn(c),vf=c.vx*Math.sin(c.h)+c.vz*Math.cos(c.h);
+    c.lightsOn=lo;c.reversing=eng&&c.inp.thr<0&&vf<-.3;
+    const tm=eng&&c.braking?tailOn:lo?tailOff:tailDark;if(v.tail.material!==tm)v.tail.material=tm;
+    const hm=lo?headOn:headMat;if(v.head.material!==hm)v.head.material=hm;
+    if(v.rev)for(const r of v.rev){const rm=c.reversing?revOn:revOff;if(r.material!==rm)r.material=rm}
+    v.beam.visible=lo}
    if(v.bar&&(c.mode==='cop'||c.mode==='parked')&&!c.dead&&c.occ){const f=Math.floor(G.time*6)%2;v.bar[0].visible=!!f;v.bar[1].visible=!f}else if(v.bar&&!c.occ){v.bar[0].visible=v.bar[1].visible=false}}
   for(const p of peds)if(p.active)p.update(dt);for(const p of cops)if(p.active)p.update(dt);for(const p of gangs)if(p.active)p.update(dt);
   updatePopulation(dt);updatePickups(dt);updateWeather(dt);updateGators(dt);updateExtras(dt);
@@ -3374,7 +3387,7 @@ function simulate(dt){
  pl.lastHit+=dt;
 }
 function envLighting(dt){
- skyT-=dt;if(skyT<=0){skyT=.2;skyUpdate(G.clock);G.hemiBase=hemi.intensity;const n=SK.night;for(const m of emis)m.emissiveIntensity=.04+n*1.5;emis.lamp.emissiveIntensity=.1+n*2.6;emis.pool.opacity=n*.55;beamMat.opacity=.04+n*.11;headMat.emissiveIntensity=.4+n*2.2;
+ skyT-=dt;if(skyT<=0){skyT=.2;skyUpdate(G.clock);G.hemiBase=hemi.intensity;const n=SK.night;for(const m of emis)m.emissiveIntensity=.04+n*1.5;emis.lamp.emissiveIntensity=.1+n*2.6;emis.pool.opacity=n*.55;beamMat.opacity=.04+n*.11;headOn.emissiveIntensity=1.6+n*1.4;
   // wet night roads: lower roughness, higher metalness + env reflections
   for(const m of roadMats){
    const br=m.userData.baseRough??.85,bm=m.userData.baseMetal??.04,be=m.userData.baseEnv??.35;
@@ -3941,11 +3954,34 @@ function updateEconomy(dt){if(G.state!=='play')return;
   toast('💬 '+titleCase(pl.char==='jason'?CHAR.lucia.name:CHAR.jason.name)+': "Sent you $'+amt+' — stay safe out there."',4200);G.hudDirty=true}}}
 
 // ---------- lights ----------
+// Ultra: lamps light the road. A fixed pool of lights (added once when Ultra turns on, so shaders compile once):
+// red glow + white reverse light behind the player's car, and headlight beams + taillight glow for the nearest traffic.
+const ultraCarL={on:false,pr:null,pw:null,ts:[],tr:[]};
+function setUltraCarLights(on){
+ if(on===ultraCarL.on)return;ultraCarL.on=on;
+ if(on){ultraCarL.pr=new T.PointLight(0xff1a2a,0,9,1.6);ultraCarL.pw=new T.PointLight(0xf4f6ff,0,8,1.6);scene.add(ultraCarL.pr,ultraCarL.pw);
+  for(let i=0;i<3;i++){const sp=new T.SpotLight(0xfff0d0,0,48,.42,.6,1.3);scene.add(sp,sp.target);ultraCarL.ts.push(sp);const r=new T.PointLight(0xff1a2a,0,8,1.6);scene.add(r);ultraCarL.tr.push(r)}}
+ else{for(const l of[ultraCarL.pr,ultraCarL.pw,...ultraCarL.ts,...ultraCarL.tr]){scene.remove(l);if(l.target)scene.remove(l.target);l.dispose&&l.dispose()}ultraCarL.pr=ultraCarL.pw=null;ultraCarL.ts=[];ultraCarL.tr=[]}
+}
+function rearOf(c,back,y){const sn=Math.sin(c.h),cs=Math.cos(c.h),d=c.t.L/2+back;return[c.x-sn*d,(c.y||0)+y,c.z-cs*d]}
+function updateUltraCarLights(){
+ if(!ultraCarL.on)return;const c=pl.car,inside=!!pl.inside;
+ if(c&&!c.t.aircraft&&!c.t.boat&&!inside){const brake=!!c.occ&&!c.dead&&c.braking;ultraCarL.pr.position.set(...rearOf(c,.7,.45));ultraCarL.pr.intensity=brake?3.4:c.lightsOn?1.2:0;
+  ultraCarL.pw.position.set(...rearOf(c,.9,.4));ultraCarL.pw.intensity=c.reversing?2.4:0}
+ else ultraCarL.pr.intensity=ultraCarL.pw.intensity=0;
+ const near=inside?[]:cars.filter(o=>o!==pl.car&&o.lightsOn&&!o.dead&&(o.x-camera.position.x)**2+(o.z-camera.position.z)**2<75*75)
+  .sort((a,b)=>((a.x-camera.position.x)**2+(a.z-camera.position.z)**2)-((b.x-camera.position.x)**2+(b.z-camera.position.z)**2)).slice(0,3);
+ for(let i=0;i<3;i++){const sp=ultraCarL.ts[i],r=ultraCarL.tr[i],o=near[i];
+  if(!o){sp.intensity=r.intensity=0;continue}
+  const sn=Math.sin(o.h),cs=Math.cos(o.h),f=o.t.L/2;
+  sp.position.set(o.x+sn*(f+.2),(o.y||0)+.75,o.z+cs*(f+.2));sp.target.position.set(o.x+sn*(f+22),(o.y||0)-.6,o.z+cs*(f+22));sp.intensity=2.2;
+  r.position.set(...rearOf(o,.6,.45));r.intensity=o.braking?2.6:.9}
+}
 const carSpots=[-1,1].map(()=>{const light=new T.SpotLight(0xfff0d0,0,82,.34,.42,1.2);scene.add(light,light.target);return light});
-function updateCarLights(){const on=G.lights==='on'||(G.lights==='auto'&&SK.night>.3),c=pl.car;
+function updateCarLights(){const c=pl.car,on=carLightsOn(c);updateUltraCarLights();
  if(c&&!c.dead&&on&&!pl.inside&&!c.t.aircraft&&!c.t.boat){const sn=Math.sin(c.h),cs=Math.cos(c.h);for(let i=0;i<2;i++){const side=i===0?-1:1,l=carSpots[i];l.position.set(c.x+sn*2.1+cs*side*.72,c.y+.9,c.z+cs*2.1-sn*side*.72);l.target.position.set(c.x+sn*28+cs*side*1.15,c.y-.8,c.z+cs*28-sn*side*1.15);l.intensity=SK.night>.3?2.7:1.0}}
  else for(const l of carSpots)l.intensity=0;
- if(c&&c.v.beam)c.v.beam.visible=on&&!c.dead&&!c.t.aircraft&&!c.t.boat}
+ if(c&&c.v.beam)c.v.beam.visible=on}
 
 // ---------- per-frame hook ----------
 function updateExtras(dt){
