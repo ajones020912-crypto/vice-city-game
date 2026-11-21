@@ -1,7 +1,7 @@
 {
   "name": "vice-city-game",
-  "version": "1.0.0",
-  "description": "Vice City 3D — browser open-world game with online multiplayer",
+  "version": "2.0.0",
+  "description": "Vice City 3D — browser open-world game with production multiplayer",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
