@@ -961,15 +961,16 @@ function initPalm(){
   if(pl){const c1=[.2,.5,.18],c2=[.3,.62,.22];fb.quad(pl[1],pl[0],cur[0],cur[1],0,1,0,0,0,1,1,c1);fb.quad(pl[0],pl[2],cur[2],cur[0],0,1,0,0,0,1,1,c2)}pl=cur}
  PALM.frond=fb.toGeometry();
 }
-function palm(x,z,s=1){const rot=rnd()*TAU,bx=Math.cos(rot)*PALM.top[0]*s,bz=Math.sin(rot)*PALM.top[0]*s;
+function treeClear(x,z,r=3){return !BLD.some(b=>x+r>b.x0&&x-r<b.x1&&z+r>b.z0&&z-r<b.z1)}
+function palm(x,z,s=1){if(!treeClear(x,z,3.2*s))return;const rot=rnd()*TAU,bx=Math.cos(rot)*PALM.top[0]*s,bz=Math.sin(rot)*PALM.top[0]*s;
  bakeG('plain',PALM.trunk,x,0,z,-rot,s,s,s,WH);
  const nf=9+Math.floor(rnd()*3);for(let i=0;i<nf;i++){bakeG('palm',PALM.frond,x+bx,PALM.top[1]*s,z+bz,i/nf*TAU+rnd()*.4,s*(.85+rnd()*.3),s,s,[.8+rnd()*.3,.85+rnd()*.2,.8],0,rr(-.15,.35))}
  addCol(x-.3,z-.3,x+.3,z+.3,6)}
-function oak(x,z,s=1){bakeG('plain',GEO.cyl6,x,0,z,0,.28*s,3.4*s,.28*s,[.34,.26,.18]);for(let i=0;i<4;i++){const a=rnd()*TAU;bakeG('plain',GEO.ico,x+Math.cos(a)*1.3*s,3.6*s+rnd()*1.2*s,z+Math.sin(a)*1.3*s,rnd()*6,2.1*s,1.6*s,2.1*s,[.16+rnd()*.12,.4+rnd()*.15,.14])}addCol(x-.3,z-.3,x+.3,z+.3,6)}
-function cypress(x,z,s=1){const h=7+rnd()*5;bakeG('plain',GEO.cyl6,x,0,z,0,.55*s,h*s,.3*s,[.4,.34,.27]);bakeG('plain',GEO.cyl6,x,0,z,0,.95*s,1.2*s,.95*s,[.36,.3,.24]);
+function oak(x,z,s=1){if(!treeClear(x,z,3*s))return;bakeG('plain',GEO.cyl6,x,0,z,0,.28*s,3.4*s,.28*s,[.34,.26,.18]);for(let i=0;i<4;i++){const a=rnd()*TAU;bakeG('plain',GEO.ico,x+Math.cos(a)*1.3*s,3.6*s+rnd()*1.2*s,z+Math.sin(a)*1.3*s,rnd()*6,2.1*s,1.6*s,2.1*s,[.16+rnd()*.12,.4+rnd()*.15,.14])}addCol(x-.3,z-.3,x+.3,z+.3,6)}
+function cypress(x,z,s=1){if(!treeClear(x,z,3.6*s))return;const h=7+rnd()*5;bakeG('plain',GEO.cyl6,x,0,z,0,.55*s,h*s,.3*s,[.4,.34,.27]);bakeG('plain',GEO.cyl6,x,0,z,0,.95*s,1.2*s,.95*s,[.36,.3,.24]);
  for(let i=0;i<3;i++)bakeG('plain',GEO.ico,x+rr(-1,1),h*s+rr(-.5,1),z+rr(-1,1),rnd()*6,rr(2.4,3.4)*s,1.2*s,rr(2.4,3.4)*s,[.2+rnd()*.06,.34+rnd()*.08,.22]);
  for(let i=0;i<5;i++){const a=rnd()*TAU;bakeG('palm',GEO.box,x+Math.cos(a)*2,h*s-1.7,z+Math.sin(a)*2,a,.05,1+rnd()*1.8,.5,[.62,.68,.52],0,0)}addCol(x-.5,z-.5,x+.5,z+.5,8)}
-function pine(x,z,s=1){const h=5+rnd()*4;bakeG('plain',GEO.cyl6,x,0,z,0,.25*s,h*.5*s,.25*s,[.3,.22,.15]);for(let i=0;i<4;i++){const r=(2.3-i*.45)*s;bakeG('plain',GEO.cone,x,(1+i*h*.2)*s,z,rnd()*3,r,h*.32*s,r,[.1+rnd()*.04,.27+rnd()*.08,.14])}addCol(x-.3,z-.3,x+.3,z+.3,6)}
+function pine(x,z,s=1){if(!treeClear(x,z,2.8*s))return;const h=5+rnd()*4;bakeG('plain',GEO.cyl6,x,0,z,0,.25*s,h*.5*s,.25*s,[.3,.22,.15]);for(let i=0;i<4;i++){const r=(2.3-i*.45)*s;bakeG('plain',GEO.cone,x,(1+i*h*.2)*s,z,rnd()*3,r,h*.32*s,r,[.1+rnd()*.04,.27+rnd()*.08,.14])}addCol(x-.3,z-.3,x+.3,z+.3,6)}
 function rock(x,z,s=1){bakeG('plain',GEO.ico,x,.2*s,z,rnd()*6,s*1.4,s*.8,s*1.1,[.42+rnd()*.1,.4+rnd()*.08,.36]);addCol(x-s,z-s,x+s,z+s,1.2)}
 // --- buildings
 const PAL=[[.94,.7,.56],[.94,.85,.66],[.62,.77,.82],[.9,.65,.73],[.78,.75,.91],[.85,.85,.79],[.56,.67,.73],[.9,.76,.55],[.98,.9,.82],[.6,.85,.78]];
@@ -1027,7 +1028,7 @@ function building(p){
  }
  if(H>20&&rnd()<.3){const c=pick([[1,.2,.65],[.1,.9,1],[1,.8,.1],[.6,.3,1]]);const w=ax1-ax0;bakeG('neon',GEO.box,(ax0+ax1)/2,y+1.3,az1-.2,0,w*.7,.5,.25,c);bakeG('neon',GEO.box,(ax0+ax1)/2,y+2.5,az1-.2,0,w*.45,.5,.25,c)}
  if(H>18&&H<=34&&rnd()<.5){const c=pick([[1,.2,.65],[.1,.9,1],[.6,.3,1]]);for(const sx of[x0,x1])bakeG('neon',GEO.box,sx,H*.1,p.cz>0?z0:z1,0,.3,H*.8,.3,c)}
- addCol(x0,z0,x1,z1,H);BLD.push(p);
+ addCol(x0,z0,x1,z1,H);BLD.push({...p,x0,z0,x1,z1});
 }
 
 function footprintHitsRoad(x0,z0,x1,z1,margin=.8){for(const r of roads){const a=r.o==='h'?r.a:r.c-r.hw,b=r.o==='h'?r.c-r.hw:r.a,c=r.o==='h'?r.b:r.c+r.hw,d=r.o==='h'?r.c+r.hw:r.b;if(x1+margin>a&&x0-margin<c&&z1+margin>b&&z0-margin<d)return true}return false}
@@ -1095,8 +1096,9 @@ function buildHouse(p){
  const fy=p.row?hz0-2.5:hz1+2.5;
  bakeG('walk',GEO.box,p.cx-hw*.25,0,dz+sgn*4,0,3.4,.05,9,[.75,.75,.72]);
  if(rnd()<.5)bakeG('water2',GEO.box,p.cx,0,p.row?hz0-3.5:hz1+3.5,0,Math.min(hw*.6,7),.1,4,[.2,.8,.9]);
+ addCol(hx0,hz0,hx1,hz1,H);BLD.push({...p,x0:hx0,z0:hz0,x1:hx1,z1:hz1});
+ // Plant the optional yard tree only when its full canopy clears every building footprint.
  if(rnd()<.6)(rnd()<.5?palm:oak)(x0+2,p.row?z1-1.2:z0+1.2,rr(.8,1));
- addCol(hx0,hz0,hx1,hz1,H);BLD.push(p);
  if(p.shop){const s=p.shop;const fx=p.cx+hw*.2,fz2=dz+sgn*1.4;doors.push({x:fx,z:fz2,kind:s.k,name:s.name,col:s.col,ret:{x:fx,z:fz2+sgn*2.5}});
   const sg=new T.Mesh(new T.PlaneGeometry(4.5,1.1),new T.MeshBasicMaterial({map:signTex(s.name,s.col),toneMapped:false}));sg.position.set(fx,3.9,dz+sgn*.35);if(!p.row)sg.rotation.y=Math.PI;world.add(sg)}
 }
