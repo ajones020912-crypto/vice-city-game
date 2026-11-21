@@ -1,0 +1,120 @@
+name: Shared world multiplayer UI
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/shared-world-mp.yml']
+permissions:
+  contents: write
+concurrency:
+  group: shared-world-mp
+  cancel-in-progress: true
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch index.html for shared world (no codes + online count)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          old_lobby = (
+              'id="mpLobby" class="mp-screen" style="display:none"><div class="mp-card">'
+              '<button id="mpBack" class="mp-back">\u2190 BACK</button>'
+              '<div class="home-kicker">ONLINE SESSION</div><h2>PLAY WITH FRIENDS</h2>'
+              '<label for="mpName">PLAYER NAME</label>'
+              '<input id="mpName" maxlength="16" value="Player" autocomplete="nickname">'
+              '<div class="mp-actions"><button id="mpHost">CREATE ROOM</button>'
+              '<div class="mp-or">OR JOIN A ROOM</div>'
+              '<input id="mpCode" maxlength="6" placeholder="ROOM CODE" autocomplete="off">'
+              '<button id="mpJoin" class="alt">JOIN ROOM</button></div>'
+              '<div id="mpStatus" class="mp-status">Up to 4 players per room.</div>'
+              '<div id="mpRoom" class="mp-room" style="display:none"></div></div></div>'
+          )
+          new_lobby = (
+              'id="mpLobby" class="mp-screen" style="display:none"><div class="mp-card">'
+              '<button id="mpBack" class="mp-back">\u2190 BACK</button>'
+              '<div class="home-kicker">ONLINE SESSION</div><h2>PLAY ONLINE</h2>'
+              '<label for="mpName">PLAYER NAME</label>'
+              '<input id="mpName" maxlength="16" value="Player" autocomplete="nickname">'
+              '<div class="mp-actions"><button id="mpHost">JOIN WORLD</button></div>'
+              '<div id="mpOnline" class="mp-room" style="display:block">Players online: \u2026</div>'
+              '<div id="mpStatus" class="mp-status">Everyone joins the same shared city. No codes needed.</div>'
+              '</div></div>'
+          )
+
+          # Normalize unicode arrow variants
+          s_norm = s.replace('\u2190', '\u2190').replace('\xe2\x86\x90', '\u2190')
+          if 'id="mpCode"' in s:
+              s2, n = re.subn(
+                  r'id="mpLobby"[^>]*>.*?</div></div>(?=\s*<script)',
+                  new_lobby,
+                  s,
+                  count=1,
+                  flags=re.S,
+              )
+              if n != 1:
+                  raise SystemExit('Failed to replace mpLobby HTML')
+              s = s2
+              print('Lobby HTML updated')
+          else:
+              print('Lobby already without mpCode')
+
+          start = s.find('function mpConnect(')
+          if start < 0:
+              raise SystemExit('mpConnect not found')
+          end = s.find('function mpTick(', start)
+          if end < 0:
+              raise SystemExit('mpTick not found')
+
+          new_connect = '''function mpSetOnline(n){\n const el=document.getElementById('mpOnline');\n if(el)el.textContent='Players online: '+Math.max(0,Number(n)||0);\n}\nfunction mpConnect(){\n const name=(document.getElementById('mpName').value||'Player').trim().slice(0,16)||'Player';\n mpStatus('Connecting to the multiplayer server\u2026');\n const load=()=>{\n  if(!window.io){mpStatus('Could not load the online connection library. Make sure the game is deployed on its multiplayer server.');return}\n  if(mpSocket){mpSocket.disconnect();mpSocket=null}\n  mpSocket=window.io({transports:['websocket','polling']});\n  mpSocket.on('connect',()=>{mpStatus('Connected. Joining the shared world\u2026');mpSocket.emit('join-world',{name})});\n  mpSocket.on('connect_error',()=>mpStatus('Could not reach the server. Deploy as a Node Web Service, then open the hosted game URL.'));\n  mpSocket.on('room-error',d=>mpStatus(d?.message||'Could not join online.'));\n  mpSocket.on('room-full',()=>mpStatus('The world is full right now. Try again in a moment.'));\n  mpSocket.on('online-count',d=>mpSetOnline(d?.count));\n  mpSocket.on('world-joined',d=>mpEntered(d));\n  mpSocket.on('player-joined',d=>{if(d?.id)mpUpsert(d.id,d.player);mpStatus((mpPeers.size+1)+' players in the city.')});\n  mpSocket.on('player-left',d=>{mpRemove(d.id);mpStatus(Math.max(1,mpPeers.size+1)+' players in the city.')});\n  mpSocket.on('state-update',d=>{if(d?.id)mpUpsert(d.id,d.player)});\n };\n if(window.io){load();return}\n let script=document.getElementById('socketIoClient');\n if(!script){\n  script=document.createElement('script');script.id='socketIoClient';script.src='/socket.io/socket.io.js';\n  script.onload=load;\n  script.onerror=()=>mpStatus('Multiplayer server not found. Open the game from its deployed server address.');\n  document.head.appendChild(script);\n }else{\n  script.addEventListener('load',load,{once:true});\n  if(script.dataset.failed)mpStatus('Multiplayer server not found.');\n }\n}\nfunction mpEntered(d){\n mpActive=true;mpPeers.clear();\n (d.players||[]).forEach(p=>mpUpsert(p.id,p));\n mpSetOnline(d.count!=null?d.count:(mpPeers.size+1));\n mpStatus('You are online. Explore the shared city with everyone else.');\n document.getElementById('mpLobby').style.display='none';\n const ov=document.getElementById('overlay');if(ov)ov.style.display='none';\n G.multiplayer=true;begin(false);\n toast('Online \u00b7 '+(d.count!=null?d.count:(mpPeers.size+1))+' player(s) in the city',4500);\n}\n'''
+
+          s = s[:start] + new_connect + s[end:]
+          print('mpConnect/mpEntered replaced')
+
+          # Handlers
+          s2, n = re.subn(
+              r"document\.getElementById\('multiplayerOpen'\)\.onclick=[\s\S]*?document\.getElementById\('mpJoin'\)\.onclick=[\s\S]*?;\n",
+              "document.getElementById('multiplayerOpen').onclick=()=>{\n document.getElementById('mpLobby').style.display='grid';\n mpStatus('Everyone joins the same shared city. No codes needed.');\n mpSetOnline('\u2026');\n (async()=>{try{const r=await fetch('/api/online',{cache:'no-store'});if(r.ok){const j=await r.json();mpSetOnline(j.count)}}catch(e){}})();\n};\ndocument.getElementById('mpBack').onclick=()=>{document.getElementById('mpLobby').style.display='none'};\ndocument.getElementById('mpHost').onclick=()=>mpConnect();\n",
+              s,
+              count=1,
+          )
+          if n != 1:
+              # maybe already patched
+              if "mpConnect()" in s and "id=\"mpCode\"" not in s:
+                  print('Handlers may already be updated')
+              else:
+                  raise SystemExit('Failed to replace multiplayer handlers')
+          else:
+              s = s2
+              print('Handlers replaced')
+
+          if 'id="mpCode"' in s:
+              raise SystemExit('mpCode still present')
+          if 'JOIN WORLD' not in s:
+              raise SystemExit('JOIN WORLD missing')
+          if 'join-world' not in s:
+              raise SystemExit('join-world missing')
+          if 'Players online' not in s:
+              raise SystemExit('Players online missing')
+
+          p.write_text(s, encoding='utf-8')
+          print('OK', p.stat().st_size)
+          PY
+
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if git diff --cached --quiet; then echo 'No changes'; exit 0; fi
+          git commit -m 'Client: shared world multiplayer, no room codes, live online count'
+          git push origin HEAD:main
