@@ -100,34 +100,33 @@ small{color:#b9cce0}
 
 /* ===== VC3D Homescreen (GTA VI–inspired) ===== */
 #overlay{background:radial-gradient(ellipse at 50% 30%,#3a1548cc 0%,#0a0e1cf2 55%,#050810f5 100%)}
-.home-card{width:min(520px,90vw);max-width:520px;padding:0 0 28px;background:linear-gradient(165deg,#0d1526f5 0%,#121f35f2 40%,#0a1220f8 100%);border:1px solid #ff4f9a44;border-radius:22px;box-shadow:0 28px 90px #000c,0 0 0 1px #ffffff08,inset 0 1px 0 #ffffff12;text-align:center;position:relative;overflow:hidden}
+.home-card{width:min(420px,90vw);max-width:420px;padding:22px 22px 24px;background:linear-gradient(165deg,#0d1526f5 0%,#121f35f2 40%,#0a1220f8 100%);border:1px solid #ff4f9a44;border-radius:20px;box-shadow:0 28px 90px #000c,0 0 0 1px #ffffff08,inset 0 1px 0 #ffffff12;text-align:center;position:relative;overflow:hidden}
 .home-card:before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#ff2d88,#ffd23a,#48e0d1,#ff2d88);background-size:200% 100%;animation:homeShimmer 6s linear infinite}
 @keyframes homeShimmer{0%{background-position:0% 0}100%{background-position:200% 0}}
-.home-logo-wrap{position:relative;width:100%;aspect-ratio:1200/640;max-height:220px;overflow:hidden;background:linear-gradient(180deg,#2a0a4a,#ff6b3d 70%,#1a1030)}
+.home-logo-wrap{position:relative;width:min(280px,72%);margin:4px auto 14px;aspect-ratio:1200/640;max-height:120px;overflow:hidden;border-radius:12px;background:linear-gradient(180deg,#2a0a4a,#ff6b3d 70%,#1a1030);box-shadow:0 8px 24px #0007,0 0 0 1px #ffffff15}
 .home-logo-wrap img,.home-logo-wrap object{width:100%;height:100%;object-fit:cover;display:block}
-.home-logo-fade{position:absolute;left:0;right:0;bottom:0;height:48px;background:linear-gradient(transparent,#0d1526f5);pointer-events:none}
-.home-kicker{color:#ff83bd;letter-spacing:6px;font-size:10px;font-weight:900;margin:18px 24px 0;text-transform:uppercase}
+.home-logo-fade{display:none}
+.home-kicker{display:none}
 .home-title{display:none}
-.home-sub{color:#c5d8e8;margin:10px 28px 22px;font-size:14px;line-height:1.45;font-weight:500}
-.home-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 22px}
-.home-btn{margin:0;min-height:72px;text-align:left;padding:14px 16px;border-radius:12px;background:linear-gradient(135deg,#e83f8c,#ff6e9f);font-size:14px;letter-spacing:1.2px;border:1px solid #ffffff22;box-shadow:0 6px 20px #ff4f9a33;transition:transform .12s,box-shadow .12s,filter .12s}
+.home-sub{display:none}
+.home-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0;margin:0}
+.home-btn{margin:0;min-height:68px;text-align:left;padding:12px 14px;border-radius:12px;background:linear-gradient(135deg,#e83f8c,#ff6e9f);font-size:13px;letter-spacing:1px;border:1px solid #ffffff22;box-shadow:0 6px 20px #ff4f9a33;transition:transform .12s,box-shadow .12s,filter .12s}
 .home-btn:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 10px 28px #ff4f9a55}
 .home-btn.alt{background:linear-gradient(135deg,#167e83,#27b5a7);box-shadow:0 6px 20px #27b5a733}
 .home-btn.alt:hover{box-shadow:0 10px 28px #27b5a755}
-.home-btn small{display:block;color:#fff;opacity:.82;font-size:11px;font-weight:normal;letter-spacing:0;margin-top:4px}
-.home-btn.multiplayer-soon{position:relative;opacity:.7;cursor:not-allowed;background:linear-gradient(135deg,#294c59,#426875);padding-top:24px;box-shadow:none}
-.home-btn.multiplayer-soon:after{content:'COMING SOON';position:absolute;top:7px;right:8px;padding:3px 7px;border-radius:4px;background:#ffd23a;color:#17232b;font-size:8px;font-weight:900;letter-spacing:1.1px;box-shadow:0 2px 8px #0005}
+.home-btn small{display:block;color:#fff;opacity:.82;font-size:10px;font-weight:normal;letter-spacing:0;margin-top:4px}
+.home-btn.multiplayer-soon{position:relative;opacity:.7;cursor:not-allowed;background:linear-gradient(135deg,#294c59,#426875);padding-top:22px;box-shadow:none}
+.home-btn.multiplayer-soon:after{content:'COMING SOON';position:absolute;top:6px;right:7px;padding:3px 6px;border-radius:4px;background:#ffd23a;color:#17232b;font-size:8px;font-weight:900;letter-spacing:1px;box-shadow:0 2px 8px #0005}
 .home-btn.multiplayer-soon:hover{filter:none;transform:none;background:linear-gradient(135deg,#294c59,#426875);box-shadow:none}
-.continue-btn{grid-column:1/-1;min-height:46px;text-align:center;background:linear-gradient(135deg,#2c4a73,#3a5f94);box-shadow:0 4px 16px #0005}
-.home-status{margin:16px 22px 0;color:#b8d3df;min-height:18px;font-size:12px}
-.home-foot{border-top:1px solid #ffffff14;margin:18px 22px 0;padding-top:12px;color:#7a96a8;font-size:11px;letter-spacing:.3px}
+.continue-btn{grid-column:1/-1;min-height:44px;text-align:center;background:linear-gradient(135deg,#2c4a73,#3a5f94);box-shadow:0 4px 16px #0005}
+.home-status{margin:14px 0 0;color:#b8d3df;min-height:16px;font-size:11px}
+.home-foot{border-top:1px solid #ffffff14;margin:14px 0 0;padding-top:10px;color:#7a96a8;font-size:10px;letter-spacing:.3px}
 @media(max-width:560px){
-  .home-card{padding-bottom:22px}
-  .home-logo-wrap{max-height:160px}
-  .home-actions{grid-template-columns:1fr;padding:0 16px}
-  .home-btn{min-height:62px}
+  .home-card{padding:18px 16px 20px;width:min(360px,92vw)}
+  .home-logo-wrap{max-height:100px;width:min(240px,70%)}
+  .home-actions{grid-template-columns:1fr}
+  .home-btn{min-height:58px}
   .continue-btn{grid-column:auto}
-  .home-kicker,.home-sub,.home-status,.home-foot{margin-left:16px;margin-right:16px}
 }
 /* ===== end homescreen ===== */
 </style><style>
@@ -171,7 +170,7 @@ small{color:#b9cce0}
 <div id="mapfull"><canvas id="mapc" width="900" height="900"></canvas><div id="legend">Drag to pan · Scroll to zoom · M to close · ◆ Mission<br>🍔 Food · 👕 Clothes · 🔫 Guns · 🏠 Safehouse · ⛽ Fuel · 🔧 Garage · 🚘 Dealer · 🏥 Hospital · 🚓 Police</div></div>
 <div id="shop"><div class="card" style="min-width:340px"><h2 id="shoptitle" style="margin:0 0 6px"></h2><div id="shopcash" style="color:#7fff9a;margin-bottom:6px"></div><div id="shopitems"></div><button class="alt" id="shopclose">Leave</button></div></div>
 <div id="pause"><div class="card"><h2 style="margin-top:0">PAUSED</h2><button id="pResume">Resume</button><br><button class="alt" id="pSave">Save game</button><button class="alt" id="pLoad">Load game</button><br><button class="alt" id="pQual">Quality: High</button><button class="alt" id="pNew">New game</button><p><small>Autosaves safely on foot every 30s outside jobs and missions. Saved story missions restart.</small></p></div></div>
-<div id="overlay"><div class="card home-card"><div class="home-logo-wrap"><img src="/assets/vc3d-logo.svg" alt="Vice City 3D" width="1200" height="640" draggable="false"><div class="home-logo-fade"></div></div><div class="home-kicker">Welcome to the coast</div><h1 class="home-title">VICE CITY <span>3D</span></h1><p class="home-sub">A living neon coastal city. Missions, races, heat — your story starts here.</p><div class="home-actions"><button id="start" class="home-btn">SINGLEPLAYER <small>Play your own save</small></button><button id="multiplayerOpen" class="home-btn alt multiplayer-soon" type="button" disabled aria-label="Multiplayer — Coming Soon">MULTIPLAYER <small>Online play is in development</small></button><button id="cont" class="home-btn continue-btn" style="display:none">CONTINUE SAVED GAME</button></div><div id="loadmsg" class="home-status"><small>Generating Vice City…</small></div><div class="home-foot">WASD to move · Mouse to look · Desktop Chrome recommended</div></div></div>
+<div id="overlay"><div class="card home-card"><div class="home-logo-wrap"><img src="/assets/vc3d-logo.svg" alt="Vice City 3D" width="1200" height="640" draggable="false"><div class="home-logo-fade"></div></div><div class="home-kicker">Welcome to the coast</div><h1 class="home-title">VICE CITY <span>3D</span></h1><p class="home-sub">A living neon coastal city.</p><div class="home-actions"><button id="start" class="home-btn">SINGLEPLAYER <small>Play your own save</small></button><button id="multiplayerOpen" class="home-btn alt multiplayer-soon" type="button" disabled aria-label="Multiplayer — Coming Soon">MULTIPLAYER <small>Online play is in development</small></button><button id="cont" class="home-btn continue-btn" style="display:none">CONTINUE SAVED GAME</button></div><div id="loadmsg" class="home-status"><small>Generating Vice City…</small></div><div class="home-foot">WASD to move · Mouse to look · Desktop Chrome recommended</div></div></div>
 <div id="mpLobby" class="mp-screen" style="display:none"><div class="mp-card"><button id="mpBack" class="mp-back">← BACK</button><div class="home-kicker">ONLINE SESSION</div><h2>PLAY ONLINE</h2><label for="mpName">PLAYER NAME</label><input id="mpName" maxlength="16" value="Player" autocomplete="nickname"><div class="mp-actions"><button id="mpHost">JOIN WORLD</button></div><div id="mpOnline" class="mp-room" style="display:block">Players online: …</div><div id="mpStatus" class="mp-status">Everyone joins the same shared city. No codes needed.</div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="characters.js"></script>
