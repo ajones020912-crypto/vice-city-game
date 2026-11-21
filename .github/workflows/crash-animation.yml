@@ -1,0 +1,140 @@
+name: Improve car crash animations
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/crash-animation.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: car-crash-animation
+  cancel-in-progress: false
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install guarded crash animation upgrade
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess, re, tempfile, os
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          if '// CRASH_ANIMATION_V1' in s:
+              print('Crash animation upgrade already applied.')
+              raise SystemExit(0)
+          blob=subprocess.check_output(['git','hash-object','index.html'],text=True).strip()
+          if blob!='0e57630e534ed7b892f672cdc7678119bb1646d3':
+              raise SystemExit('Game changed since review; refusing to overwrite it.')
+          def replace_once(old,new):
+              global s
+              if s.count(old)!=1: raise SystemExit('Unexpected patch anchor: '+old[:80])
+              s=s.replace(old,new,1)
+          def function_span(name):
+              start=s.index('function '+name+'('); brace=s.index('{',start)
+              depth=0; quote=None; comment=None; i=brace
+              while i<len(s):
+                  ch=s[i]; pair=s[i:i+2]
+                  if comment=='line':
+                      if ch=='\n': comment=None
+                  elif comment=='block':
+                      if pair=='*/': comment=None; i+=1
+                  elif quote:
+                      if ch=='\\': i+=1
+                      elif ch==quote: quote=None
+                  elif pair=='//': comment='line'; i+=1
+                  elif pair=='/*': comment='block'; i+=1
+                  elif ch in "'\"`": quote=ch
+                  elif ch=='{': depth+=1
+                  elif ch=='}':
+                      depth-=1
+                      if depth==0: return start,i+1
+                  i+=1
+              raise SystemExit('Cannot locate function end: '+name)
+          def replace_in_function(name,old,new):
+              global s
+              a,b=function_span(name); part=s[a:b]
+              if part.count(old)!=1: raise SystemExit('Unexpected anchor in '+name)
+              s=s[:a]+part.replace(old,new,1)+s[b:]
+          replace_once('return{g,ch,body,tail,head,beam,bar,wheels,pm}', 'return{g,ch,body,trim,tail,head,beam,bar,wheels,pm}')
+          replace_in_function('stepCar','carCircles(c,_cc);const r=hw+.08;let hit=0;','carCircles(c,_cc);const r=hw+.08;let hit=0,hitInfo=null;')
+          replace_in_function('stepCar','const imp=-vn;hit=Math.max(hit,imp);','const imp=-vn;if(imp>hit){hit=imp;hitInfo={x:p[0]-ct.nx*r,z:p[1]-ct.nz*r,nx:ct.nx,nz:ct.nz};}')
+          replace_in_function('stepCar','if(hit>2.5){carImpact(c,hit)}','if(hit>2.5){carImpact(c,hit,hitInfo)}')
+          replace_in_function('carCarCollide','const imp=-vrel;if(imp>3){damageCar(a,','const imp=-vrel;if(imp>3){const point={x:(_ca[i][0]+_cb[j][0])*.5,z:(_ca[i][1]+_cb[j][1])*.5,nx,nz};animateCrash(a,imp,point);animateCrash(b,imp,{x:point.x,z:point.z,nx:-nx,nz:-nz});damageCar(a,')
+          crash_upgrade=r'''
+          // CRASH_ANIMATION_V1: visual impact response; no extra physics damage or chassis tilt.
+          const crashBitGeo=new T.BoxGeometry(.09,.045,.16),crashBitMats=[new T.MeshStandardMaterial({color:0x9cabb3,roughness:.4,metalness:.7}),new T.MeshStandardMaterial({color:0xb4dfec,roughness:.22,metalness:.15}),new T.MeshStandardMaterial({color:0x242b32,roughness:.8})],crashBits=[];
+          function crashEnsureParts(c){
+           if(c._crashParts)return;
+           c._crashParts=[];
+           for(const name of['body','trim']){const mesh=c.v[name];if(!mesh||!mesh.geometry||!mesh.geometry.attributes.position)continue;
+            const geometry=mesh.geometry.clone(),base=new Float32Array(geometry.attributes.position.array);mesh.geometry=geometry;c._crashParts.push({geometry,base,from:null,to:null});
+           }
+          }
+          function spawnCrashBits(x,y,z,nx,nz,imp){
+           const limit=G.quality===0?18:36,count=Math.min(8,3+Math.floor(imp/5));
+           for(let i=0;i<count;i++){
+            let p=crashBits.find((p,index)=>index<limit&&p.life<=0);
+            if(!p&&crashBits.length<limit){const mesh=new T.Mesh(crashBitGeo,crashBitMats[crashBits.length%3]);world.add(mesh);p={mesh,life:0};crashBits.push(p)}
+            if(!p)break;
+            p.life=1.4+Math.random()*1.2;p.size=.7+Math.random()*1.2;p.x=x;p.y=y;p.z=z;p.vx=nx*(1+Math.min(5,imp*.18))+(Math.random()-.5)*3;p.vz=nz*(1+Math.min(5,imp*.18))+(Math.random()-.5)*3;p.vy=1.5+Math.random()*Math.min(4,imp*.2);p.spin=(Math.random()-.5)*12;p.mesh.visible=true;p.mesh.position.set(x,y,z);p.mesh.scale.setScalar(p.size);
+           }
+          }
+          function updateCrashBits(dt){for(const p of crashBits){if(p.life<=0)continue;p.life-=dt;if(p.life<=0){p.mesh.visible=false;continue}p.vy-=9.8*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.z+=p.vz*dt;const ground=heightAt(p.x,p.z)+.025;if(p.y<ground){p.y=ground;p.vy=Math.abs(p.vy)*.28;p.vx*=.68;p.vz*=.68}p.mesh.position.set(p.x,p.y,p.z);p.mesh.rotation.x+=p.spin*dt;p.mesh.rotation.z+=p.spin*.7*dt;p.mesh.scale.setScalar(p.size*Math.min(1,p.life/.4))}}
+          function animateCrash(c,imp,contact){
+           if(!c||c.dead||c.t.boat||imp<3.1||Math.hypot(c.x-pl.x,c.z-pl.z)>90)return;
+           const now=G.time||0;if(now-(c._crashAt??-99)<.18)return;c._crashAt=now;
+           const sn=Math.sin(c.h),cs=Math.cos(c.h),front=c.vf<0?-1:1;
+           const info=contact||{x:c.x+sn*c.t.L*.45*front,z:c.z+cs*c.t.L*.45*front,nx:-sn*front,nz:-cs*front};
+           let nx=Number(info.nx)||0,nz=Number(info.nz)||0,n=Math.hypot(nx,nz);if(n<.001){nx=-sn*front;nz=-cs*front;n=1}nx/=n;nz/=n;
+           const dx=info.x-c.x,dz=info.z-c.z,lx=dx*cs-dz*sn,lz=dx*sn+dz*cs,inX=nx*cs-nz*sn,inZ=nx*sn+nz*cs,strength=clamp((imp-3)/18,.12,1),dent=.035+strength*.28;
+           crashEnsureParts(c);
+           for(const part of c._crashParts){const a=part.geometry.attributes.position.array;part.from=new Float32Array(a);part.to=new Float32Array(a);
+            for(let j=0;j<a.length;j+=3){const bx=part.base[j],by=part.base[j+1],bz=part.base[j+2],r=((bx-lx)/1.05)**2+((bz-lz)/1.2)**2,w=Math.exp(-r*1.7)*clamp((1.8-by)/1.4,.1,1);
+             part.to[j]=clamp(a[j]+inX*dent*w,bx-.42,bx+.42);part.to[j+2]=clamp(a[j+2]+inZ*dent*w,bz-.42,bz+.42);part.to[j+1]=clamp(a[j+1]+dent*w*.22,by,by+.12);
+            }
+           }
+           c._crashDented=true;c._crashMorph={time:0};c._crashJolt={time:0,x:inX,z:inZ,strength};c._crashPlaceTime=now;
+           const px=info.x,pz=info.z,py=c.y+.6;spawnCrashBits(px,py,pz,nx,nz,imp);
+           for(let i=0;i<Math.min(12,4+Math.floor(imp/3));i++)emit(px,py,pz,nx*2+(Math.random()-.5)*4,1+Math.random()*3,nz*2+(Math.random()-.5)*4,.25+Math.random()*.25,.11,.025,SPK,FIRE2,8,1);
+           if(imp>7)emit(px,c.y+.2,pz,nx,1,nz,.6,.35,1.2,DUST,SMK,0,.35);
+           if(c===pl.car){G.shake=Math.max(G.shake||0,strength*.8)}
+           if(Math.hypot(c.x-pl.x,c.z-pl.z)<40)audio.noise(.08+strength*.09,.025+strength*.06,1100+strength*1300,'bandpass',.7);
+          }
+          const crashOriginalPlace=Car.prototype.place;
+          Car.prototype.place=function(){crashOriginalPlace.call(this);if(this.t.boat)return;
+           const now=G.time||0,dt=clamp(now-(this._crashPlaceTime??now),0,.05);this._crashPlaceTime=now;
+           if(this._crashParts&&this._crashDented&&this.hp>=maxHp(this)-.01){for(const p of this._crashParts){const a=p.geometry.attributes.position;a.array.set(p.base);a.needsUpdate=true;if(p.from||p.to){p.geometry.computeVertexNormals();p.geometry.computeBoundingSphere()}p.from=p.to=null}this._crashMorph=null;this._crashJolt=null;this._crashDented=false}
+           if(this._crashMorph){const morph=this._crashMorph;morph.time+=dt;const k=clamp(morph.time/.14,0,1),smooth=k*k*(3-2*k);for(const p of this._crashParts){if(!p.from||!p.to)continue;const a=p.geometry.attributes.position;for(let j=0;j<a.array.length;j++)a.array[j]=p.from[j]+(p.to[j]-p.from[j])*smooth;a.needsUpdate=true;p.geometry.computeVertexNormals();if(k===1)p.geometry.computeBoundingSphere()}if(k===1)this._crashMorph=null}
+           this.v.ch.position.x=0;this.v.ch.position.z=0;
+           if(this._crashJolt){const j=this._crashJolt;j.time+=dt;const fade=Math.exp(-j.time*10),pulse=Math.sin(Math.min(1,j.time/.25)*Math.PI)*fade*.11*j.strength;this.v.ch.position.x=j.x*pulse;this.v.ch.position.z=j.z*pulse;this.v.ch.position.y+=Math.max(0,Math.sin(j.time*28))*fade*.045*j.strength;if(j.time>.45)this._crashJolt=null}
+          };
+          const crashOriginalImpact=carImpact;carImpact=function(c,imp,contact){animateCrash(c,imp,contact);return crashOriginalImpact(c,imp)};
+          const crashOriginalSimulate=simulate;simulate=function(dt){crashOriginalSimulate(dt);updateCrashBits(dt)};
+          const crashOriginalRemove=removeCar;removeCar=function(c){if(c._crashParts){for(const p of c._crashParts)p.geometry.dispose();c._crashParts=null}return crashOriginalRemove(c)};
+          const crashOriginalNewGame=newGame;newGame=function(){for(const p of crashBits){p.life=0;p.mesh.visible=false}return crashOriginalNewGame()};
+          '''
+          replace_once('boot();\n})();',crash_upgrade+'\nboot();\n})();')
+          for code in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I):
+              if not code.strip(): continue
+              with tempfile.NamedTemporaryFile(mode='w',suffix='.js',delete=False) as f:
+                  f.write(code); name=f.name
+              try: subprocess.run(['node','--check',name],check=True)
+              finally: os.unlink(name)
+          p.write_text(s,encoding='utf-8')
+          print('Validated directional crash deformation, upright recoil, pooled debris, sparks and repair reset; no added physics damage.')
+          PY
+      - name: Commit the validated crash animation
+        shell: bash
+        run: |
+          if git diff --quiet -- index.html; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html
+          git commit -m 'Add directional crash crumpling, upright recoil, debris and repair reset'
+          git push origin HEAD:main
