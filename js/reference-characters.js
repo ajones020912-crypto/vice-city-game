@@ -1,3 +1,4 @@
+// LUCIA_SHAPE_V2
 // LUCIA_TANK_FIT_V1
 /* Reference-inspired Jason and Lucia. Load after characters.js, before the game. */
 (function(){
@@ -33,9 +34,9 @@
   const u=h.userData;
   function fit(mesh,region){if(!mesh.isMesh||!mesh.geometry||!mesh.geometry.attributes.position)return;mesh.updateMatrix();const to=mesh.matrix.clone(),from=to.clone().invert(),old=mesh.geometry,g=old.clone(),a=g.attributes.position,v=new T.Vector3();
    for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(to);const y=v.y;let xScale=1,zScale=1;
-    if(region==='spine'&&y<.5){const waist=Math.exp(-Math.pow((y-.10)/.09,2)),chest=Math.exp(-Math.pow((y-.375)/.065,2))*Math.min(1,Math.max(0,(.5-y)/.05));xScale=1-.07*waist+.07*chest;zScale=1-.045*waist+(v.z>0?.10:.04)*chest}
-    else if(region==='hips'){const hip=Math.exp(-Math.pow((y+.035)/.085,2)),waist=Math.exp(-Math.pow((y-.13)/.045,2));xScale=1+.16*hip-.025*waist;zScale=1+.10*hip-.015*waist}
-    else if(region==='thigh'){let k=Math.max(0,Math.min(1,(y+.45)/.4));k=k*k*(3-2*k);xScale=1+.12*k;zScale=1+.10*k}
+    if(region==='spine'&&y<.5){const waist=Math.exp(-Math.pow((y-.10)/.09,2)),chest=Math.exp(-Math.pow((y-.375)/.065,2))*Math.min(1,Math.max(0,(.5-y)/.05));xScale=1-.12*waist+.17*chest;zScale=1-.08*waist+(v.z>0?.24:.06)*chest}
+    else if(region==='hips'){const hip=Math.exp(-Math.pow((y+.035)/.085,2)),waist=Math.exp(-Math.pow((y-.13)/.045,2));xScale=1+.36*hip-.04*waist;zScale=1+(v.z<0?.30:.14)*hip-.025*waist}
+    else if(region==='thigh'){let k=Math.max(0,Math.min(1,(y+.45)/.4));k=k*k*(3-2*k);xScale=1+.26*k;zScale=1+.20*k}
     v.x*=xScale;v.z*=zScale;v.applyMatrix4(from);a.setXYZ(i,v.x,v.y,v.z)
    }a.needsUpdate=true;g.computeVertexNormals();g.computeBoundingSphere();g.computeBoundingBox();mesh.geometry=g;old.dispose()
   }
