@@ -1,0 +1,81 @@
+name: Reference-inspired Jason and Lucia without bandanas
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/reference-characters.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: reference-characters
+  cancel-in-progress: false
+jobs:
+  reference-leads:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install matching Three.js for model tests only
+        run: npm install --prefix "$RUNNER_TEMP/reference-check" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Validate reference models and install game integration
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, json, subprocess, tempfile
+          p=Path('index.html');s=p.read_text(encoding='utf-8');report={'ok':False}
+          try:
+              module_path=Path('reference-characters.js')
+              if not module_path.is_file(): raise RuntimeError('Reference module is missing.')
+              if 'reference-characters.js' in s: raise RuntimeError('Reference module already installed.')
+              marker='<script src="characters.js"></script>'
+              if s.count(marker)!=1: raise RuntimeError('Cannot locate character-module script include.')
+              s=s.replace(marker,marker+'\n<script src="reference-characters.js"></script>',1)
+              defaults={'jason':{'shirt':'0x626a68','pants':'0x6a593f','hair':'0x2d211b'},'lucia':{'shirt':'0x999d98','pants':'0x7497b3','hair':'0x35251f'}}
+              for actor,fields in defaults.items():
+                  for field,value in fields.items():
+                      pattern='('+actor+r":\{name:'"+actor.upper()+r"'[^\n]*?\b"+field+r':)0x[0-9a-fA-F]+'
+                      s,count=re.subn(pattern,lambda m:m.group(1)+value,s)
+                      if count!=1: raise RuntimeError('Cannot uniquely locate player default: '+actor+'.'+field)
+              def once(old,new):
+                  global s
+                  if s.count(old)!=1: raise RuntimeError('Unexpected clothing-default anchor: '+old[:100])
+                  s=s.replace(old,new,1)
+              once('shirt:0xf2f1ec,pants:0xb39b6e,missions','shirt:0x626a68,pants:0x6a593f,missions')
+              once('shirt:0x20b6a4,pants:0x26344f,missions','shirt:0x626a68,pants:0x6a593f,missions')
+              once('if([0x20b6a4,0xff6ec7,0x3c3e44,0x1e1f23].includes(pl.shirt))pl.shirt=cc.shirt;',"if([0x20b6a4,0xff6ec7,0x3c3e44,0x1e1f23].includes(pl.shirt)||(pl.char==='jason'&&pl.shirt===0xf2f1ec)||(pl.char==='lucia'&&pl.shirt===0x0b0b0d))pl.shirt=cc.shirt;")
+              once("if(([0x26344f,0x2a2f3a].includes(pl.pants)||(pl.char==='lucia'&&pl.pants===0x1f2228))&&!pl.boughtPants)pl.pants=cc.pants","if(([0x26344f,0x2a2f3a].includes(pl.pants)||(pl.char==='lucia'&&[0x1f2228,0x5c89ae].includes(pl.pants))||(pl.char==='jason'&&pl.pants===0xb39b6e))&&!pl.boughtPants)pl.pants=cc.pants")
+              test="const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/reference-check/node_modules/three');const box={window:{},console,Math};vm.createContext(box);vm.runInContext(fs.readFileSync('characters.js','utf8'),box);const api=box.window.VCCharacters;\nfunction signature(h){const a=[];h.traverse(o=>{if(o.isMesh)a.push([o.geometry.attributes.position.count,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>m.color?m.color.getHex():null)])});return JSON.stringify(a)}\nconst nonLeads={};for(const id of Object.keys(api.DESIGNS))if(!['jasonC','luciaC'].includes(id))nonLeads[id]=signature(api.build(T,id));const rigs={};for(const id of['jasonC','luciaC']){const u=api.build(T,id).userData;rigs[id]=[u.hips.position.toArray(),u.spine.position.toArray(),u.headP.position.toArray(),...u.A.flatMap(a=>[a.sh.position.toArray(),a.el.position.toArray()]),...u.Lg.flatMap(l=>[l.hp.position.toArray(),l.kn.position.toArray()])]}\nvm.runInContext(fs.readFileSync(process.argv[1],'utf8'),box);assert(api.referenceLeadsInstalled);const metrics={};\nfor(const id of['jasonC','luciaC']){const h=api.build(T,id),u=h.userData;assert(u.faceUncovered&&!api.DESIGNS[id].extras.some(x=>['bandana','shades'].includes(x)));const offsets=[u.hips.position.toArray(),u.spine.position.toArray(),u.headP.position.toArray(),...u.A.flatMap(a=>[a.sh.position.toArray(),a.el.position.toArray()]),...u.Lg.flatMap(l=>[l.hp.position.toArray(),l.kn.position.toArray()])];assert(JSON.stringify(offsets)===JSON.stringify(rigs[id]),'Rig offsets changed');assert(u.guns.pistol&&u.guns.rifle&&u.m.shirt&&u.m.pants);if(id==='luciaC'){assert(h.getObjectByName('lucia-reference-hoodie')&&h.getObjectByName('lucia-reference-ponytail')&&h.getObjectByName('lucia-reference-denim-shorts-0')&&h.getObjectByName('lucia-reference-denim-shorts-1'))}else assert(h.getObjectByName('jason-reference-tee')&&h.getObjectByName('jason-reference-shirt-graphic'));\n for(const merged of[false,true]){const m=api.build(T,id,{merge:merged}),r=m.userData;r.A[0].sh.rotation.x=.6;r.A[1].el.rotation.x=1.1;r.Lg[0].hp.rotation.x=-.45;r.Lg[1].kn.rotation.x=.7;m.updateMatrixWorld(true);let meshes=0,triangles=0;m.traverse(o=>{if(o.isMesh){meshes++;const a=o.geometry.attributes;assert(Array.from(a.position.array).every(Number.isFinite));if(a.normal)assert(Array.from(a.normal.array).every(Number.isFinite));if(a.uv)assert(Array.from(a.uv.array).every(Number.isFinite));triangles+=(o.geometry.index?o.geometry.index.count:a.position.count)/3}});assert(Number.isFinite(triangles)&&triangles>0);if(merged){assert(meshes<100,'Batching failed');metrics[id]={meshes,triangles}}const bounds=new T.Box3().setFromObject(m);assert(Number.isFinite(bounds.min.y+bounds.max.y)&&bounds.max.y-bounds.min.y<2.7)}\n}\nfor(const id of Object.keys(nonLeads))assert(signature(api.build(T,id))===nonLeads[id],'Unrelated character changed: '+id);console.log(JSON.stringify({both_leads_updated:true,no_bandanas:true,hoodie_and_ponytail:true,frayed_denim_shorts:true,jason_graphic_tee:true,rig_offsets_preserved:true,weapon_mounts_preserved:true,finite_geometry:true,merged_models_valid:true,npc_designs_unchanged:true,metrics}));"
+              subprocess.run(['node','--check',str(module_path)],check=True,capture_output=True)
+              result=subprocess.run(['node','-e',test,str(module_path)],check=True,capture_output=True,text=True);report.update(json.loads(result.stdout))
+              with tempfile.TemporaryDirectory() as d:
+                  checked=0
+                  for js in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I):
+                      if not js.strip(): continue
+                      path=Path(d)/'game.js';path.write_text(js);subprocess.run(['node','--check',str(path)],check=True,capture_output=True);checked+=1
+                  if not checked: raise RuntimeError('No inline JavaScript found.')
+              p.write_text(s,encoding='utf-8');report.update(ok=True,checked_scripts=checked,scope='Reference-inspired lead-character visuals and default clothing colours only; no face coverings; game systems unchanged')
+          except Exception as exc:
+              report['error']=str(exc)
+              if isinstance(exc,subprocess.CalledProcessError): report['stderr']=(exc.stderr or b'').decode(errors='replace')[-3000:]
+          Path('scripts').mkdir(exist_ok=True)
+          Path('scripts/reference-characters-status.json').write_text(json.dumps(report,indent=2)+'\n')
+          print(json.dumps(report))
+          PY
+      - name: Commit tested integration or diagnostic report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html scripts/reference-characters-status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Install tested reference character redesign and outfit defaults'
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Require successful reference-character update
+        run: node -e "if(!require('./scripts/reference-characters-status.json').ok)process.exit(1)"
