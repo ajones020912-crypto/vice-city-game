@@ -14,6 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -37,7 +40,7 @@ jobs:
               if gzip.decompress(packed)!=asset: raise RuntimeError('Compressed asset does not round-trip exactly.')
               target=Path('assets/plane.fbx.gz')
               if target.exists(): raise RuntimeError('Compressed plane asset already exists; refusing to overwrite it.')
-              patch=run(['git','diff',removed+'^',removed,'--','index.html'])
+              patch=run(['git','diff','--unified=1',removed+'^',removed,'--','index.html'])
               if not patch: raise RuntimeError('Historical loader patch is empty.')
               run(['git','apply','--reverse','--check','-'],input=patch)
               run(['git','apply','--reverse','-'],input=patch)
@@ -78,6 +81,7 @@ jobs:
           if node -e "if(!require('./scripts/plane-asset-status.json').ok)process.exit(1)"; then git add -- assets/plane.fbx.gz; fi
           if git diff --cached --quiet; then exit 0; fi
           git commit -m 'Restore original plane with lossless compressed asset download'
+          git pull --rebase origin main
           git push origin HEAD:main
       - name: Require successful compressed restoration
         run: node -e "if(!require('./scripts/plane-asset-status.json').ok)process.exit(1)"
