@@ -1,0 +1,32 @@
+name: Enhance post-processing
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/enhance-post.yml'
+      - 'scripts/patch-post-processing.js'
+permissions:
+  contents: write
+concurrency:
+  group: enhance-post
+  cancel-in-progress: true
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply post-processing enhancements
+        run: node scripts/patch-post-processing.js
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if git diff --cached --quiet; then echo 'No changes'; exit 0; fi
+          git commit -m 'Enhance post-processing: SSAO, FXAA, stronger Vice grade, quality-scaled bloom'
+          git push origin HEAD:main
