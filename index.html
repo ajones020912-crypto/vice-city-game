@@ -208,7 +208,7 @@ small{color:#b9cce0}
 <div class="vital-head"><span>HEALTH</span><span id="hpValue">100 / 100</span></div><div id="healthTrack" class="vital-track" role="progressbar" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i id="hpTrail"></i><i id="hpb"></i></div><div id="regenStatus">Healthy</div><div class="vital-head armor-head"><span>ARMOR</span><span id="armorValue">0 / 100</span></div><div class="vital-track armor-track" role="progressbar" aria-label="Armor" id="armorTrack" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="arb" style="width:0"></i></div><div class="bar" id="fuelbar" style="display:none"><i id="fuelb" style="width:100%"></i></div>
 <div id="stars">★★★★★★</div><div id="heat"></div><div id="wpn">Fists</div><small id="zone"></small></div>
 <div id="goal" class="panel"><b style="color:#ffe17a" id="mtitle">OBJECTIVE</b><br><span id="objective">Find the glowing checkpoint and drive through it.</span></div>
-<div id="controlsDock"><div class="controls-actions"><button id="controlsToggle" type="button" aria-expanded="false">CONTROLS ▾</button><button id="releaseMouse" type="button" title="Unlock the mouse without pausing">RELEASE MOUSE</button></div><div id="help" class="panel" hidden>WASD · Move<br>Mouse · Look around · LMB shoot<br>1–5 / Mouse wheel · Weapons<br>E · Enter/use · R · Jobs/rob store · K · Work board<br>B · Nonlethal hold-up · Shift · Run · Space · Jump/handbrake<br>H · Lights · M · Map · T · Radio · V · Camera · Q · Quality<br>C · Switch Jason/Lucia · P · Phone · F · Focus · Esc · Pause · J · Save</div></div>
+<div id="controlsDock"><div class="controls-actions"><button id="controlsToggle" type="button" aria-expanded="false">CONTROLS ▾</button><button id="releaseMouse" type="button" title="Unlock the mouse without pausing">RELEASE MOUSE (U)</button></div><div id="help" class="panel" hidden>WASD · Move<br>Mouse · Look around · LMB shoot<br>1–5 / Mouse wheel · Weapons<br>E · Enter/use · R · Jobs/rob store · K · Work board<br>B · Nonlethal hold-up · Shift · Run · Space · Jump/handbrake<br>H · Lights · M · Map · T · Radio · V · Camera · Q · Quality<br>C · Switch Jason/Lucia · P · Phone · F · Focus · Esc · Pause · J · Save<br>U · Release / recapture mouse</div></div>
 <div id="weather"></div><div id="actionPanel"><div id="actionTitle"></div><div id="actionHint"></div><div class="action-track"><i id="actionFill"></i></div></div>
 <div id="phone"><div class="ph-bezel">
   <div class="ph-status"><span id="phClock">12:00</span><b>VICE CITY</b><span id="phBatt">🔋 100%</span></div>
@@ -3355,6 +3355,7 @@ function onKey(k,e){
 
  if(k==='escape'){if(G.phoneOpen){closePhone();return}if(G.state==='play'&&!mouseLocked)pauseGame(true);return}
  if(G.state!=='play')return;
+ if(k==='u'){if(mouseLocked)releaseGameMouse();else requestGameMouseLock();return} // U: release / recapture the mouse
  if(k==='e'){
   if(pl.inside){const o=pl.inside.o;if(Math.hypot(pl.x-o.counter.x,pl.z-o.counter.z)<3.2){openShop(pl.inside.door.kind)}else if(Math.hypot(pl.x-o.exit.x,pl.z-o.exit.z)<3.4)exitInterior();return}
   if(pl.car){if(pl.car.t.aircraft&&pl.car.airborne){toast('Land the aircraft before exiting');return}if(pl.car.speed<12)ejectPlayer();else toast('Slow down before exiting');return}
