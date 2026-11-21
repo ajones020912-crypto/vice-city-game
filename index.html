@@ -877,13 +877,9 @@ function buildRoadMeshes(){
   for(let p=r.a;p<r.b;p+=150){const q=Math.min(p+150,r.b),y=.05;
    if(r.o==='h'){const x0=p,x1=q,z0=r.c-r.hw,z1=r.c+r.hw;B(key+'_h',(x0+x1)/2,r.c).quad([x0,y,z1],[x1,y,z1],[x1,y,z0],[x0,y,z0],0,1,0,(x0-r.a)/per,0,(x1-r.a)/per,1,col)}
    else{const z0=p,z1=q,x0=r.c-r.hw,x1=r.c+r.hw;B(key+'_v',r.c,(z0+z1)/2).quad([x0,y,z1],[x1,y,z1],[x1,y,z0],[x0,y,z0],0,1,0,0,(z1-r.a)/per,1,(z0-r.a)/per,col)}}}
- // intersections, crosswalks, stop lines
- const wm=[.93,.93,.9];
+ // plain dark asphalt intersection patches: no painted lines or crosswalks
  for(const n of nodes){const hw=n.v.hw,hh=n.h.hw,y=.058;
-  B('asph',n.x,n.z).quad([n.x-hw,y,n.z+hh],[n.x+hw,y,n.z+hh],[n.x+hw,y,n.z-hh],[n.x-hw,y,n.z-hh],0,1,0,0,0,hw/3,hh/3,col);
-  if(n.h.type==='city'&&n.v.type==='city'){const mk=B('mark',n.x,n.z),yy=.065;
-   for(const sx of[-1,1])for(let k=-hh+1.2;k<=hh-1.2;k+=1.5){const zc=n.z+k,xa=n.x+sx*(hw+1.2),xb=n.x+sx*(hw+4.2);mk.quad([Math.min(xa,xb),yy,zc+.35],[Math.max(xa,xb),yy,zc+.35],[Math.max(xa,xb),yy,zc-.35],[Math.min(xa,xb),yy,zc-.35],0,1,0,0,0,1,1,wm)}
-   for(const sz of[-1,1])for(let k=-hw+1.2;k<=hw-1.2;k+=1.5){const xc=n.x+k,za=n.z+sz*(hh+1.2),zb=n.z+sz*(hh+4.2);mk.quad([xc-.35,yy,Math.max(za,zb)],[xc+.35,yy,Math.max(za,zb)],[xc+.35,yy,Math.min(za,zb)],[xc-.35,yy,Math.min(za,zb)],0,1,0,0,0,1,1,wm)}}}
+  B('asph',n.x,n.z).quad([n.x-hw,y,n.z+hh],[n.x+hw,y,n.z+hh],[n.x+hw,y,n.z-hh],[n.x-hw,y,n.z-hh],0,1,0,0,0,hw/3,hh/3,col)}
  // sidewalks with gaps at crossings
  for(const r of roads){if(r.type!=='city')continue;let s=r.a;const gaps=r.cross.map(c=>[c.p-c.other.hw-.3,c.p+c.other.hw+.3]);gaps.push([r.b,r.b+1]);
   const seg=(s0,s1)=>{if(s1-s0<3)return;for(const side of[-1,1]){const off=side*(r.hw+1.4);
