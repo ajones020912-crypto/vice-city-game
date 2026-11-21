@@ -84,7 +84,7 @@ small{color:#b9cce0}
 </style><style>
 .home-card{width:min(620px,88vw);max-width:620px;padding:38px 42px;background:linear-gradient(145deg,#0b1c2cF2,#142d40F2);border:1px solid #9ce9df55;box-shadow:0 24px 80px #0009;text-align:left;position:relative;overflow:hidden}
 .home-card:before{content:"";position:absolute;inset:0 0 auto;height:4px;background:linear-gradient(90deg,#ff4f9a,#ffd23a,#48e0d1)}
-.home-kicker{color:#78e7d6;letter-spacing:5px;font-size:11px;font-weight:900}.home-title{font:900 clamp(42px,8vw,68px)/.95 Impact,'Arial Black',sans-serif;letter-spacing:2px;margin:12px 0;color:#fff;text-shadow:0 5px 0 #0008}.home-title span{color:#ff5a9e}.home-sub{color:#b9d4df;margin:12px 0 26px;font-size:15px}.home-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px}.home-btn{margin:0;min-height:76px;text-align:left;padding:15px 18px;background:linear-gradient(135deg,#e83f8c,#ff6e9f);font-size:15px;letter-spacing:1px}.home-btn.alt{background:linear-gradient(135deg,#167e83,#27b5a7)}.home-btn.multiplayer-soon{position:relative;opacity:.72;cursor:not-allowed;background:linear-gradient(135deg,#294c59,#426875);padding-top:25px}.home-btn.multiplayer-soon:after{content:'COMING SOON';position:absolute;top:8px;right:10px;padding:4px 8px;border-radius:4px;background:#ffd23a;color:#17232b;font-size:9px;font-weight:900;letter-spacing:1.2px;box-shadow:0 2px 8px #0005}.home-btn small{display:block;color:#fff;opacity:.8;font-size:11px;font-weight:normal;letter-spacing:0;margin-top:5px}.continue-btn{grid-column:1/-1;min-height:46px;text-align:center;background:#2c4a73}.home-status{margin-top:20px;color:#b8d3df;min-height:18px;font-size:12px}.home-foot{border-top:1px solid #ffffff22;margin-top:20px;padding-top:13px;color:#8ba9b9;font-size:11px}
+.home-kicker{color:#78e7d6;letter-spacing:5px;font-size:11px;font-weight:900}.home-title{font:900 clamp(42px,8vw,68px)/.95 Impact,'Arial Black',sans-serif;letter-spacing:2px;margin:12px 0;color:#fff;text-shadow:0 5px 0 #0008}.home-title span{color:#ff5a9e}.home-sub{color:#b9d4df;margin:12px 0 26px;font-size:15px}.home-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px}.home-btn{margin:0;min-height:76px;text-align:left;padding:15px 18px;background:linear-gradient(135deg,#e83f8c,#ff6e9f);font-size:15px;letter-spacing:1px}.home-btn.alt{background:linear-gradient(135deg,#167e83,#27b5a7)}.home-btn small{display:block;color:#fff;opacity:.8;font-size:11px;font-weight:normal;letter-spacing:0;margin-top:5px}.continue-btn{grid-column:1/-1;min-height:46px;text-align:center;background:#2c4a73}.home-status{margin-top:20px;color:#b8d3df;min-height:18px;font-size:12px}.home-foot{border-top:1px solid #ffffff22;margin-top:20px;padding-top:13px;color:#8ba9b9;font-size:11px}
 .mp-screen{position:fixed;inset:0;z-index:100;background:linear-gradient(135deg,#06121eee,#0c2838ee);display:grid;place-items:center}.mp-card{width:min(440px,90vw);padding:30px;background:#10263a;border:1px solid #78e7d655;border-radius:18px;box-shadow:0 20px 70px #000b;position:relative}.mp-card h2{font:900 30px Impact,'Arial Black',sans-serif;letter-spacing:2px;margin:8px 0 22px}.mp-card label{display:block;font-size:10px;letter-spacing:2px;color:#9cc8d4;margin:12px 0 6px}.mp-card input{box-sizing:border-box;width:100%;padding:13px 14px;background:#071725;border:1px solid #4c7585;border-radius:9px;color:#fff;font-size:15px;outline:none}.mp-card input:focus{border-color:#65e4d3}.mp-actions{display:grid;gap:9px;margin-top:18px}.mp-actions button{margin:0}.mp-or{text-align:center;color:#91b4c1;font-size:11px;letter-spacing:2px;margin:4px}.mp-back{position:absolute;right:22px;top:20px;background:#29475d;padding:8px 12px;font-size:11px}.mp-status{color:#a9c7d2;font-size:12px;margin-top:18px;min-height:18px}.mp-room{margin-top:12px;padding:12px;border-radius:10px;background:#071725;color:#77e7d5;font-weight:bold;letter-spacing:3px;text-align:center;font-size:23px}
 @media(max-width:560px){.home-card{padding:30px 22px}.home-actions{grid-template-columns:1fr}.home-btn{min-height:62px}.continue-btn{grid-column:auto}}
 </style></head>
@@ -118,7 +118,7 @@ small{color:#b9cce0}
 <div id="mapfull"><canvas id="mapc" width="900" height="900"></canvas><div id="legend">Drag to pan · Scroll to zoom · M to close · ◆ Mission<br>🍔 Food · 👕 Clothes · 🔫 Guns · 🏠 Safehouse · ⛽ Fuel · 🔧 Garage · 🚘 Dealer · 🏥 Hospital · 🚓 Police</div></div>
 <div id="shop"><div class="card" style="min-width:340px"><h2 id="shoptitle" style="margin:0 0 6px"></h2><div id="shopcash" style="color:#7fff9a;margin-bottom:6px"></div><div id="shopitems"></div><button class="alt" id="shopclose">Leave</button></div></div>
 <div id="pause"><div class="card"><h2 style="margin-top:0">PAUSED</h2><button id="pResume">Resume</button><br><button class="alt" id="pSave">Save game</button><button class="alt" id="pLoad">Load game</button><br><button class="alt" id="pQual">Quality: High</button><button class="alt" id="pNew">New game</button><p><small>Autosaves safely on foot every 30s outside jobs and missions. Saved story missions restart.</small></p></div></div>
-<div id="overlay"><div class="card home-card"><div class="home-kicker">WELCOME TO</div><h1 class="home-title">VICE CITY <span>3D</span></h1><p class="home-sub">A living coastal city. Your story starts here.</p><div class="home-actions"><button id="start" class="home-btn">SINGLEPLAYER <small>Play your own save</small></button><button id="multiplayerOpen" class="home-btn alt multiplayer-soon" type="button" disabled aria-label="Multiplayer — Coming Soon">MULTIPLAYER <small>Online play is in development</small></button><button id="cont" class="home-btn continue-btn" style="display:none">CONTINUE SAVED GAME</button></div><div id="loadmsg" class="home-status"><small>Generating Vice City…</small></div><div class="home-foot">WASD to move · Mouse to look · Desktop Chrome recommended</div></div></div>
+<div id="overlay"><div class="card home-card"><div class="home-kicker">WELCOME TO</div><h1 class="home-title">VICE CITY <span>3D</span></h1><p class="home-sub">A living coastal city. Your story starts here.</p><div class="home-actions"><button id="start" class="home-btn">SINGLEPLAYER <small>Play your own save</small></button><button id="multiplayerOpen" class="home-btn alt">MULTIPLAYER <small>Play online with friends</small></button><button id="cont" class="home-btn continue-btn" style="display:none">CONTINUE SAVED GAME</button></div><div id="loadmsg" class="home-status"><small>Generating Vice City…</small></div><div class="home-foot">WASD to move · Mouse to look · Desktop Chrome recommended</div></div></div>
 <div id="mpLobby" class="mp-screen" style="display:none"><div class="mp-card"><button id="mpBack" class="mp-back">← BACK</button><div class="home-kicker">ONLINE SESSION</div><h2>PLAY WITH FRIENDS</h2><label for="mpName">PLAYER NAME</label><input id="mpName" maxlength="16" value="Player" autocomplete="nickname"><div class="mp-actions"><button id="mpHost">CREATE ROOM</button><div class="mp-or">OR JOIN A ROOM</div><input id="mpCode" maxlength="6" placeholder="ROOM CODE" autocomplete="off"><button id="mpJoin" class="alt">JOIN ROOM</button></div><div id="mpStatus" class="mp-status">Up to 4 players per room.</div><div id="mpRoom" class="mp-room" style="display:none"></div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -883,26 +883,6 @@ function buildRoadMeshes(){
   const seg=(s0,s1)=>{if(s1-s0<3)return;for(const side of[-1,1]){const off=side*(r.hw+1.4);
     if(r.o==='h')bakeG('walk',GEO.box,(s0+s1)/2,0,r.c+off,0,s1-s0,.17,2.8,[.78,.76,.72]);else bakeG('walk',GEO.box,r.c+off,0,(s0+s1)/2,0,2.8,.17,s1-s0,[.78,.76,.72])}};
   for(const g of gaps){seg(s,g[0]);s=Math.max(s,g[1])}}
- // Landscaped medians on selected downtown boulevards, stopping before intersections.
- for(const r of roads){
-  if(r.type!=='city'||r.w<18)continue;
-  const arterial=(r.o==='v'&&(r.c===0||r.c===180))||(r.o==='h'&&r.c===-330);
-  if(!arterial)continue;
-  for(let i=0;i<r.cross.length-1;i++){
-   const a=r.cross[i].p+r.cross[i].other.hw+2.5,b=r.cross[i+1].p-r.cross[i+1].other.hw-2.5;
-   if(b-a<20)continue;
-   const mid=(a+b)/2,len=b-a;
-   if(r.o==='h'){
-    bakeG('walk',GEO.box,mid,.08,r.c,0,len,.22,2.6,[.34,.39,.31]);
-    for(const side of[-1,1])bakeG('walk',GEO.box,mid,.10,r.c+side*1.42,0,len,.28,.18,[.72,.72,.66]);
-    for(let p=a+7;p<b-4;p+=12)for(const side of[-1,1])bakeG('plain',GEO.ico,p,.30,r.c+side*.48,rnd()*TAU,.78,.48,.62,pick([[.14,.34,.15],[.18,.42,.17],[.23,.4,.16]]));
-   }else{
-    bakeG('walk',GEO.box,r.c,.08,mid,0,2.6,.22,len,[.34,.39,.31]);
-    for(const side of[-1,1])bakeG('walk',GEO.box,r.c+side*1.42,.10,mid,0,.18,.28,len,[.72,.72,.66]);
-    for(let p=a+7;p<b-4;p+=12)for(const side of[-1,1])bakeG('plain',GEO.ico,r.c+side*.48,.30,p,rnd()*TAU,.62,.48,.78,pick([[.14,.34,.15],[.18,.42,.17],[.23,.4,.16]]));
-   }
-  }
- }
 }
 // --- props
 const bulbCol=[1,.9,.6];
@@ -975,26 +955,6 @@ function building(p){
    if(style!=='glass')bakeG('plain',GEO.box,(ax0+ax1)/2,y+th,(az0+az1)/2,0,ax1-ax0+.5,.4,az1-az0+.5,[.93,.9,.82])}
   y+=th;if(t<tiers-1){const ins=3+rnd()*2;ax0+=ins;az0+=ins;ax1-=ins;az1-=ins}}
  rooftop(ax0,az0,ax1,az1,y,H>60&&rnd()<.6);
- // Give each building type a recognizable street-level silhouette.
- const front=(ax0+ax1)/2,fw=Math.max(3,Math.min(ax1-ax0-2,9)),frontZ=az1+.28;
- if(style==='apt'&&H>12){
-  for(let fy=7;fy<Math.min(H-2,30);fy+=8){
-   bakeG('plain',GEO.box,front,fy,frontZ+.55,0,fw,.22,1.35,[.62,.62,.58]);
-   bakeG('plain',GEO.box,front,fy+1.05,frontZ+1.12,0,fw,.12,.12,[.24,.29,.31]);
-   for(const bx of[front-fw*.48,front+fw*.48])bakeG('plain',GEO.box,bx,fy+.55,frontZ+1.12,0,.12,1.1,.12,[.24,.29,.31]);
-  }
- }else if(style==='deco'){
-  bakeG('plain',GEO.box,front,y+.18,frontZ-.08,0,ax1-ax0+.35,.34,.38,[.83,.76,.62]);
-  if(H>20)for(const bx of[ax0+.7,ax1-.7])bakeG('plain',GEO.box,bx,H*.48,frontZ-.08,0,.34,H*.94,.28,[.78,.72,.62]);
- }else if(style==='ware'){
-  for(let bx=ax0+3;bx<ax1-2;bx+=Math.max(5,(ax1-ax0)/3)){
-   bakeG('plain',GEO.box,bx,2.2,frontZ,0,Math.min(3.8,ax1-bx),3.8,.18,[.22,.27,.3]);
-   bakeG('plain',GEO.box,bx,4.2,frontZ+.05,0,Math.min(4,ax1-bx),.16,.28,[.82,.65,.35]);
-  }
- }else if(style==='glass'&&H>35){
-  bakeG('plain',GEO.box,front,y+.25,az1+.18,0,fw,.5,.28,[.52,.65,.7]);
-  bakeG('neon',GEO.box,front,y+.65,az1+.2,0,fw*.72,.12,.08,pick([[.2,.8,1],[1,.35,.65],[1,.78,.3]]));
- }
  if(H>20&&rnd()<.3){const c=pick([[1,.2,.65],[.1,.9,1],[1,.8,.1],[.6,.3,1]]);const w=ax1-ax0;bakeG('neon',GEO.box,(ax0+ax1)/2,y+1.3,az1-.2,0,w*.7,.5,.25,c);bakeG('neon',GEO.box,(ax0+ax1)/2,y+2.5,az1-.2,0,w*.45,.5,.25,c)}
  if(H>18&&H<=34&&rnd()<.5){const c=pick([[1,.2,.65],[.1,.9,1],[.6,.3,1]]);for(const sx of[x0,x1])bakeG('neon',GEO.box,sx,H*.1,p.cz>0?z0:z1,0,.3,H*.8,.3,c)}
  addCol(x0,z0,x1,z1,H);BLD.push(p);
@@ -1016,7 +976,7 @@ function makeParcels(){
    else{H=7+rnd()*14;style=pick(['deco','apt'])}
    parcels.push({x0:a,z0:b,x1:c,z1:e,cx,cz,H,style,mode,edgeS:j===nz-1,cityId:mode==='port'?'port':'dt'})}};
  const xr=G.xr,zr=G.zr.concat([420]);
- for(let i=0;i<xr.length-1;i++)for(let j=0;j<zr.length-1;j++){if(xr[i]===-60&&xr[i+1]===0&&zr[j]===-30&&zr[j+1]===30)continue;const hz0=zr[j]===-330?9:9,hz1=zr[j+1]===420?14:9;
+ for(let i=0;i<xr.length-1;i++)for(let j=0;j<zr.length-1;j++){const hz0=zr[j]===-330?9:9,hz1=zr[j+1]===420?14:9;
   const x0=xr[i]+9+2.9,x1=xr[i+1]-9-2.9,z0=zr[j]+9+2.9,z1=zr[j+1]-hz1-2.9;
   lot(x0,z0,x1,z1,zr[j+1]===420?'low':'core')}
  // port blocks
@@ -1260,36 +1220,12 @@ function forceShopDoors(){
  ];
  for(const shop of forced)ensureSafeForcedShop(shop);
 }
-// --- Central downtown park: a green break in the city grid.
-function buildCentralPark(){
- const cx=-30,cz=0,w=48,d=48;
- bakeG('plain',GEO.box,cx,.015,cz,0,w,.10,d,[.22,.43,.25]);
- bakeG('walk',GEO.box,cx,.075,cz,0,3,.08,d-4,[.78,.75,.66]);
- bakeG('walk',GEO.box,cx,.078,cz,0,w-4,.08,3,[.78,.75,.66]);
- bakeG('walk',GEO.box,cx,.13,cz,0,10,.12,10,[.69,.69,.63]);
- bakeG('plain',GEO.cyl,cx,.25,cz,0,2.8,.32,2.8,[.55,.68,.7]);
- bakeG('water2',GEO.cyl,cx,.58,cz,0,2.25,.12,2.25,[.2,.72,.82]);
- bakeG('plain',GEO.cyl,cx,.7,cz,0,.32,.8,.32,[.78,.83,.82]);
- for(const [x,z,sc] of [[-49,-19,.9],[-11,-19,1],[-49,19,1],[-11,19,.9],[-41,-5,.8],[-19,5,.85]])oak(x,z,sc);
- for(const [x,z] of [[-45,-10],[-15,-10],[-45,10],[-15,10]]){
-  bakeG('plain',GEO.box,x,.12,z,0,4,.24,1.5,[.25,.31,.23]);
-  bakeG('plain',GEO.box,x,.55,z,0,3.2,.18,.7,[.48,.29,.16]);
-  bakeG('plain',GEO.box,x,.92,z,0,3.2,.12,.7,[.35,.23,.14]);
- }
- for(const [x,z] of [[-51,0],[-9,0],[-30,-22],[-30,22]]){
-  for(let k=-1;k<=1;k++)bakeG('plain',GEO.ico,x+k*.8,.42,z,0,.58,.42,.58,pick([[.16,.36,.16],[.2,.43,.19],[.24,.4,.16]]));
- }
- for(const [x,z] of [[-52,-25],[-8,-25],[-52,25],[-8,25]]){
-  bakeG('plain',GEO.cyl6,x,.05,z,0,.12,2.8,.12,[.17,.2,.22]);
-  bakeG('lamp',GEO.sph,x,2.9,z,0,.28,.28,.28,[1,.82,.55]);
- }
-}
 function buildWorld(){
  initMaterials();initPalm();defineRoads();buildNodes();bakeTerrain();buildTerrainMesh();buildRoadMeshes();
  makeParcels();houses();filterRoadParcels();assignShops();
  for(const p of parcels){if(p.style==='house')buildHouse(p);else{const built=building(p);if(built!==false&&p.shop)placeShopDoor(p)}}
  forceShopDoors();
- portExtras();streetProps();addOuterStreetlights();beachProps();swampProps();hillProps();keysProps();buildSignals();buildCentralPark();
+ portExtras();streetProps();addOuterStreetlights();beachProps();swampProps();hillProps();keysProps();buildSignals();
  finalizeBatches();buildBaseMap();
 }
 
@@ -1442,87 +1378,7 @@ function makeCarVisual(tk,color){
  const pm=paintMat(color);
  const body=new T.Mesh(gs.body,pm),gh=new T.Mesh(gs.gh,glassMat),trim=new T.Mesh(gs.trim,trimMat),head=new T.Mesh(gs.head,headMat),tail=new T.Mesh(gs.tail,tailOff),beam=new T.Mesh(gs.beam,beamMat);
  for(const m of[body,gh,trim])m.castShadow=true;body.receiveShadow=true;ch.add(body,gh,trim,head,tail);
- // Detailed exterior kit: fascia, glass divisions, handles, mirrors and lamps.
- // Side glazing is built from the exact cabin profile, not floating
- // rectangular blocks. This makes the glass follow each vehicle's roofline.
- const cabinSide=(t.W-.42)/2+.012;
- const part=(geo,mat,x,y,z,rx=0,ry=0,rz=0)=>{const m=new T.Mesh(geo,mat);m.position.set(x,y,z);m.rotation.set(rx,ry,rz);m.castShadow=true;ch.add(m);return m};
- const mat=(color,rough=.5,metal=.25,emissive=0)=>new T.MeshStandardMaterial({color,roughness:rough,metalness:metal,emissive,emissiveIntensity:emissive?1.4:0});
- const dark=mat(0x171c22,.68,.18),chrome=mat(0x9ba5ad,.32,.78),rubber=mat(0x17191c,.86,.04),lamp=mat(0xfff2cf,.2,.22,0xffd88a),redLamp=mat(0xc41425,.28,.18,0x65000a);
- // Front and rear bumper details plus a proper inset grille.
- part(new T.BoxGeometry(t.W*.52,.16,.09),dark,0,.57,t.L/2+.17);
- part(new T.BoxGeometry(t.W*.32,.19,.055),chrome,0,.62,t.L/2+.225);
- for(let y of[.57,.63,.69])part(new T.BoxGeometry(t.W*.29,.018,.018),dark,0,y,t.L/2+.26);
- part(new T.BoxGeometry(t.W*.7,.12,.09),dark,0,.48,-t.L/2-.16);
- for(const sx of[-1,1]){
-  // Headlamp bezels and separate fog lamps.
-  part(new T.BoxGeometry(.54,.23,.10),dark,sx*(t.W*.34),.72,t.L/2+.105);
-  part(new T.BoxGeometry(.43,.145,.045),lamp,sx*(t.W*.34),.735,t.L/2+.17);
-  part(new T.BoxGeometry(.18,.10,.045),lamp,sx*(t.W*.36),.52,t.L/2+.20);
-  // Tail-light housings and red lenses.
-  part(new T.BoxGeometry(.52,.20,.075),dark,sx*(t.W*.34),.78,-t.L/2-.09);
-  part(new T.BoxGeometry(.43,.13,.035),redLamp,sx*(t.W*.34),.79,-t.L/2-.14);
-  // Custom side-window pane: inset the real cabin outline slightly so the
-  // glass sits inside a painted frame and follows sloped windshields/roof.
-  const profile=t.gh,center=profile.reduce((q,p)=>[q[0]+p[0]/profile.length,q[1]+p[1]/profile.length],[0,0]);
-  const pane=profile.map(([z,y])=>[center[0]+(z-center[0])*.91,center[1]+(y-center[1])*.84]);
-  const sideShape=new T.Shape();
-  pane.forEach(([z,y],i)=>i?sideShape.lineTo(sx>0?-z:z,y):sideShape.moveTo(sx>0?-z:z,y));
-  sideShape.closePath();
-  const sideGlass=new T.Mesh(new T.ShapeGeometry(sideShape),new T.MeshPhysicalMaterial({color:0x173247,roughness:.12,metalness:.48,transparent:true,opacity:.9,clearcoat:1,side:T.DoubleSide}));
-  sideGlass.rotation.y=sx*Math.PI/2;sideGlass.position.x=sx*cabinSide;ch.add(sideGlass);
-  const framePts=pane.map(([z,y])=>new T.Vector3(sx*cabinSide,y,z));
-  const frameGeo=new T.BufferGeometry().setFromPoints([...framePts,framePts[0]]);
-  ch.add(new T.Line(frameGeo,new T.LineBasicMaterial({color:0x252b31})));
-  // A slim B-pillar separates the front and rear door glass.
-  const splitZ=(pane.reduce((q,p)=>q+p[0],0)/pane.length)*.12;
-  const pillarPts=[new T.Vector3(sx*(cabinSide+.006),center[1]-.10,splitZ),new T.Vector3(sx*(cabinSide+.006),center[1]+.25,splitZ)];
-  ch.add(new T.Line(new T.BufferGeometry().setFromPoints(pillarPts),new T.LineBasicMaterial({color:0x20262c})));
-  // Door handle sits on the painted door skin below the window line.
-  part(new T.BoxGeometry(.035,.065,.16),chrome,sx*(t.W/2-.015),.78,-.35);
-  // Mirror housings and dark mirror glass.
-  part(new T.BoxGeometry(.23,.14,.25),pm,sx*(cabinSide+.14),t.gh[2][1]-.04,.62,0,0,sx*.12);
-  part(new T.BoxGeometry(.025,.09,.16),dark,sx*(cabinSide+.265),t.gh[2][1]-.025,.62);
-  // Front/rear wheel arch accent strips and lower side sill.
-  part(new T.BoxGeometry(.055,.10,t.wb*.66),rubber,sx*(t.W/2-.025),.43,0);
- }
- // Roof panel and subtle roof rails for taller utility vehicles.
- if(tk==='suv'||tk==='van'){
-  for(const sx of[-1,1])part(new T.BoxGeometry(.055,.055,t.L*.68),chrome,sx*(t.W*.39),t.gh[2][1]+.035,-.25);
- }
- if(tk==='sports'){
-  part(new T.BoxGeometry(t.W*.82,.09,.24),dark,0,.94,-t.L*.38);
-  for(const sx of[-1,1])part(new T.BoxGeometry(.07,.34,.08),chrome,sx*t.W*.32,1.10,-t.L*.38);
- }
- if(tk==='sedan'||tk==='taxi'||tk==='police'){
-  part(new T.BoxGeometry(.46,.12,.035),dark,0,.98,-t.L*.37);
- }
- // Front and rear registration plates.
- part(new T.BoxGeometry(.48,.15,.035),mat(0xe5e7e8,.7,.05),0,.55,t.L/2+.24);
- part(new T.BoxGeometry(.48,.15,.035),mat(0xe5e7e8,.7,.05),0,.55,-t.L/2-.205);
-
- // Twin low-beam headlights: two distinct, narrow cones aligned with the actual lamps.
- const beamPair=new T.Group();beamPair.visible=false;
- const beamGeo=new T.ConeGeometry(1.05,19,14,1,true);beamGeo.rotateX(-Math.PI/2);beamGeo.translate(0,0,9.5);
- for(const sx of[-1,1]){
-  const cone=new T.Mesh(beamGeo,beamMat);cone.position.set(sx*t.W*.34,.7,t.L/2+.18);beamPair.add(cone);
- }
- g.add(beamPair);
- // Hood character lines, windshield wipers and clean door shut-lines add scale and definition.
- for(const sx of[-1,1]){
-  part(new T.BoxGeometry(.035,.025,t.L*.29),chrome,sx*t.W*.23,.91,t.L*.27,0,0,0);
-  part(new T.BoxGeometry(.035,.025,.72),dark,sx*(t.W*.19),t.gh[2][1]+.015,t.gh[2][0]+.18,-.08,0,0);
-  part(new T.BoxGeometry(.018,.34,.018),dark,sx*(t.W/2+.025),.93,-.18);
- }
- // Machined alloy faces on all four wheels.
- for(const sz of[1,-1])for(const sx of[1,-1]){
-  const pivotX=sx*(t.W/2-.2),wheelZ=sz*t.wb/2;
-  const rimMat=mat(0xaeb9c2,.28,.82),hubMat=mat(0x3b4650,.35,.72);
-  const rim=new T.Mesh(new T.CylinderGeometry(.245,.245,.035,20),rimMat);
-  rim.rotation.z=Math.PI/2;rim.position.set(pivotX+(sx>0?.125:-.125),t.wr,wheelZ);ch.add(rim);
-  const hub=new T.Mesh(new T.CylinderGeometry(.075,.075,.045,16),hubMat);
-  hub.rotation.z=Math.PI/2;hub.position.set(pivotX+(sx>0?.15:-.15),t.wr,wheelZ);ch.add(hub);
- }
+ beam.visible=false;beam.position.y=.7;g.add(beam);
  let bar=null;
  if(tk==='police'){const bg=new T.BoxGeometry(1.2,.14,.3),mr=new T.MeshBasicMaterial({color:0xff1010,toneMapped:false}),mb=new T.MeshBasicMaterial({color:0x1030ff,toneMapped:false});
   const a=new T.Mesh(bg,mr),b=new T.Mesh(bg,mb);a.scale.x=b.scale.x=.5;a.position.set(.32,t.gh[2][1]+.1,t.gh[2][0]-.4);b.position.set(-.32,t.gh[2][1]+.1,t.gh[2][0]-.4);ch.add(a,b);bar=[a,b];
@@ -1531,7 +1387,7 @@ function makeCarVisual(tk,color){
  if(tk==='taxi'){const s=new T.Mesh(new T.BoxGeometry(.7,.22,.3),new T.MeshStandardMaterial({color:0xfff2a0,emissive:0xffe066,emissiveIntensity:.95,roughness:.4}));s.position.set(0,t.gh[2][1]+.12,t.gh[2][0]-.4);ch.add(s)}
  const wheels=[],gm=wheelGeo(t.wr);
  for(const sz of[1,-1])for(const sx of[1,-1]){const piv=new T.Group();piv.position.set(sx*(t.W/2-.2),t.wr,sz*t.wb/2);const w=new T.Mesh(gm,wheelMat);w.castShadow=true;if(sx<0)w.rotation.y=Math.PI;piv.add(w);ch.add(piv);wheels.push({piv,w,front:sz>0})}
- return{g,ch,body,tail,head,beam:beamPair,bar,wheels,pm}}
+ return{g,ch,body,tail,head,beam,bar,wheels,pm}}
 
 // ================= HUMANS =================
 const capCache={};
