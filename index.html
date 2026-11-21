@@ -967,7 +967,8 @@ function roadClear(x,z,r=3){
   : z+r>rd.a&&z-r<rd.b&&Math.abs(x-rd.c)<rd.hw+r);
 }
 function treeClear(x,z,r=3){
- return roadClear(x,z,r)&&!BLD.some(b=>x+r>b.x0&&x-r<b.x1&&z+r>b.z0&&z-r<b.z1);
+ // Test the full tree footprint against every road rectangle, not just its center point.
+ return !footprintHitsRoad(x-r,z-r,x+r,z+r,.8)&&!BLD.some(b=>x+r>b.x0&&x-r<b.x1&&z+r>b.z0&&z-r<b.z1);
 }
 function palm(x,z,s=1){if(!treeClear(x,z,3.2*s))return;const rot=rnd()*TAU,bx=Math.cos(rot)*PALM.top[0]*s,bz=Math.sin(rot)*PALM.top[0]*s;
  bakeG('plain',PALM.trunk,x,0,z,-rot,s,s,s,WH);
@@ -1373,7 +1374,7 @@ function buildCentralPark(){
  // Garden beds and flower borders, deliberately varied in shape and placement.
  for(const [x,z,rx,rz] of [[-95,-20,8,4],[-58,12,8,3],[-9,12,10,3],[39,-27,7,5],[4,-69,11,3]]){
   // Keep every planted bed completely inside the park parcel and away from road surfaces.
-  if(x-rx-1<-109||x+rx+1>49||z-rz-1<-79||z+rz+1>19||!roadClear(x,z,Math.max(rx,rz)+1))continue;
+  if(x-rx-1<-109||x+rx+1>49||z-rz-1<-79||z+rz+1>19||footprintHitsRoad(x-rx-1,z-rz-1,x+rx+1,z+rz+1,1.2))continue;
   bakeG('plain',GEO.cyl,x,.07,z,0,rx,.10,rz,[.24,.34,.20]);
   for(let i=0;i<9;i++){
    const a=i/9*Math.PI*2;
@@ -2227,8 +2228,17 @@ class Ped{
   else if(!this.cop){const o=randomHumanOpts(x,z);setHumanLook(this.h,o);this.speed=1.1+Math.random()*.7;this.scale=.93+Math.random()*.12;this.h.scale.setScalar(this.scale)}else{setHumanLook(this.h,copOpts());this.scale=1;this.h.scale.setScalar(1)}
   this.dir=Math.random()*TAU;this.pick()}
  kill(){this.active=false;this.h.visible=false}
- pick(){ // wander: continue along current heading, sometimes turn
-  const a=this.dir+(Math.random()<.3?(Math.random()-.5)*2.4:(Math.random()-.5)*.5),d=10+Math.random()*24;this.tx=this.x+Math.sin(a)*d;this.tz=this.z+Math.cos(a)*d;this.t=d/this.speed+2}
+ pick(){ // Civilian pedestrians follow the sidewalk of their assigned road segment.
+  if(this.walkRoad&&!this.cop&&!this.gang&&this.state==='walk'){
+   const r=this.walkRoad,along=r.o==='h'?this.x:this.z;let lo=r.a+7,hi=r.b-7;
+   for(const c of r.cross){if(c.p<along)lo=Math.max(lo,c.p+c.other.hw+5);else hi=Math.min(hi,c.p-c.other.hw-5)}
+   if(hi-lo>8){const dir=Math.random()<.5?-1:1,target=clamp(along+dir*(10+Math.random()*22),lo,hi),offset=r.hw+1.4;
+    if(r.o==='h'){this.tx=target;this.tz=r.c+this.walkSide*offset}else{this.tx=r.c+this.walkSide*offset;this.tz=target}
+    this.t=Math.abs(target-along)/Math.max(.5,this.speed)+2;return;
+   }
+  }
+  const a=this.dir+(Math.random()<.3?(Math.random()-.5)*2.4:(Math.random()-.5)*.5),d=10+Math.random()*24;this.tx=this.x+Math.sin(a)*d;this.tz=this.z+Math.cos(a)*d;this.t=d/this.speed+2;
+ }
  flee(fx,fz,t=8){if(this.dead||this.cop||this.gang)return;this.state='flee';this.fx=fx;this.fz=fz;this.t=t;this.speed=5.8}
  update(dt){
   const d2=(this.x-pl.x)**2+(this.z-pl.z)**2;if(d2>150*150){this.kill();return}
@@ -2281,19 +2291,22 @@ function hurtPed(p,d,sx,sz,src,byP){if(p.dead)return;p.hp-=d;
  else if(src==='car'){p.state='down';p.t=1.5+Math.random()*2;let dx=p.x-sx,dz=p.z-sz;const l=Math.hypot(dx,dz)||1;p.vx=dx/l*4;p.vz=dz/l*4;p.fx=sx;p.fz=sz}
  else if(!p.cop){p.flee(sx,sz,10)}
  if(src==='gun'||src==='punch')for(const o of peds)if(o.active&&!o.dead&&o!==p&&!o.cop&&(o.x-p.x)**2+(o.z-p.z)**2<400)o.flee(p.x,p.z,9)}
-function activatePed(x,z,cop){const pool=cop?cops:peds;let p=pool.find(q=>!q.active);if(!p){if(pool.length>=(cop?14:46))return null;p=new Ped(cop);pool.push(p)}p.init(x,z);if(cop){p.state='chase';p.speed=6}return p}
+function activatePed(x,z,cop,walkRoad=null,walkSide=0){const pool=cop?cops:peds;let p=pool.find(q=>!q.active);if(!p){if(pool.length>=(cop?14:46))return null;p=new Ped(cop);pool.push(p)}p.walkRoad=null;p.walkSide=0;p.init(x,z);if(!cop&&walkRoad){p.walkRoad=walkRoad;p.walkSide=walkSide;p.pick()}if(cop){p.state='chase';p.speed=6}return p}
 // population around the player
 let popT=0;const SW=1.4;
-function pickSidewalk(){ // random sidewalk spot near the player
- const range=115;let tries=0;
- while(tries++<8){const r=roads[Math.floor(Math.random()*roads.length)];if(r.type==='hwy')continue;
-  let p,lat;if(r.o==='h'){if(Math.abs(r.c-pl.z)>range)continue;p=pl.x+(Math.random()*2-1)*range;if(p<r.a||p>r.b)continue;}else{if(Math.abs(r.c-pl.x)>range)continue;p=pl.z+(Math.random()*2-1)*range;if(p<r.a||p>r.b)continue}
-  const side=Math.random()<.5?-1:1,off=r.type==='dirt'?r.hw+1:r.hw+SW,x=r.o==='h'?p:r.c+side*off,z=r.o==='h'?r.c+side*off:p;
-  if(Math.hypot(x-pl.x,z-pl.z)<70)continue;if(heightAt(x,z)<WL+.2)continue;let bad=false;for(const c of queryCols(x,z,.6))if(circleBox([x,z],.5,c))bad=true;if(!bad)return[x,z]}
+function pickSidewalk(){ // Spawn on real city sidewalks, away from intersections and road edges.
+ const range=190;let tries=0;
+ while(tries++<24){const r=roads[Math.floor(Math.random()*roads.length)];if(r.type!=='city')continue;
+  let p;if(r.o==='h'){if(Math.abs(r.c-pl.z)>range)continue;p=pl.x+(Math.random()*2-1)*range;if(p<r.a+8||p>r.b-8)continue;}else{if(Math.abs(r.c-pl.x)>range)continue;p=pl.z+(Math.random()*2-1)*range;if(p<r.a+8||p>r.b-8)continue}
+  if(r.cross.some(c=>Math.abs(c.p-p)<c.other.hw+7))continue;
+  const side=Math.random()<.5?-1:1,off=r.hw+SW,x=r.o==='h'?p:r.c+side*off,z=r.o==='h'?r.c+side*off:p;
+  if(Math.hypot(x-pl.x,z-pl.z)<125)continue;if(heightAt(x,z)<WL+.2)continue;
+  if(footprintHitsRoad(x-.4,z-.4,x+.4,z+.4,.05))continue;
+  let bad=false;for(const c of queryCols(x,z,.6))if(circleBox([x,z],.5,c))bad=true;if(!bad)return[x,z,r,side]}
  return null}
 function updatePopulation(dt){popT-=dt;if(popT>0)return;popT=.35;
  const target=[16,26,36][G.quality];let n=0;for(const p of peds)if(p.active)n++;
- if(n<target){const s=pickSidewalk();if(s)activatePed(s[0],s[1],false)}
+ if(n<target){const s=pickSidewalk();if(s)activatePed(s[0],s[1],false,s[2],s[3])}
  gangPopulation();
  // traffic & parked
  let tc=0,pc=0;for(const c of cars){if(c.mode==='traffic')tc++;else if(c.mode==='parked'&&!c.owned&&!c.keep)pc++}
