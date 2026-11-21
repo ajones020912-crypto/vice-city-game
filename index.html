@@ -3601,7 +3601,9 @@ function updateSpeedo(c){const t=c.t,km=Math.max(0,Math.round(c.speed*3.6)),air=
  const fuel=Math.round(clamp(c.fuel??100,0,100)),hp=Math.round(clamp(100*c.hp/(typeof maxHp==='function'?maxHp(c):100),0,100));
  if(L.fuel!==fuel){L.fuel=fuel;const e=$('#spFuel');e.style.width=fuel+'%';e.classList.toggle('low',fuel<20)}
  if(L.hp!==hp){L.hp=hp;const e=$('#spHp');e.style.width=hp+'%';e.classList.toggle('low',hp<30)}}
-function frame(now){requestAnimationFrame(frame);const rdt=Math.min((now-last)/1000,.05);last=now;G.rdt=rdt;
+// Frame cap: the game updates and draws at most 30 times a second, on a fixed schedule so 60/120/144 Hz screens all get a steady 30.
+const FPS_CAP=30,FRAME_MS=1000/FPS_CAP;let nextFrameAt=0;
+function frame(now){requestAnimationFrame(frame);if(now<nextFrameAt-1.5)return;nextFrameAt=Math.max(nextFrameAt+FRAME_MS,now);const rdt=Math.min((now-last)/1000,.05);last=now;G.rdt=rdt;
  const dt=rdt*((pl.focusT>0&&G.state==='play')?.45:G.state==='dead'?.35:1);updateFx(rdt);
  try{
  if(G.state==='play'||G.state==='dead'){simulate(dt);updateParticles(dt);updateTracers(dt);updateCamera(dt);updateHUD(dt);if(!pl.inside)updateSignals(G.time);drawMini();
