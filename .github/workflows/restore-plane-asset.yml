@@ -1,0 +1,83 @@
+name: Restore losslessly compressed original plane
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/restore-plane-asset.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: restore-plane-asset
+  cancel-in-progress: false
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Compress original model and restore its loader
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess, tempfile, re, os, json, gzip
+          p=Path('index.html');original=p.read_bytes();report={'ok':False}
+          def run(args,**kw):
+              return subprocess.run(args,check=True,capture_output=True,**kw).stdout
+          try:
+              removed='c4581786e9c399e1e94e24da1281e5bb415a8bbf'
+              run(['git','fetch','--no-tags','--depth=2','origin',removed])
+              asset=run(['git','show',removed+'^:assets/plane.fbx'])
+              if len(asset)<1024 or asset.startswith(b'version https://git-lfs.github.com/spec/'): raise RuntimeError('Historical FBX unavailable.')
+              packed=gzip.compress(asset,compresslevel=9,mtime=0)
+              report.update(original_bytes=len(asset),compressed_bytes=len(packed),reduction_percent=round(100*(1-len(packed)/len(asset)),2))
+              if len(packed)>len(asset)*.9: raise RuntimeError('Lossless compression saves less than 10%; refusing to publish an insufficiently compressed model.')
+              if gzip.decompress(packed)!=asset: raise RuntimeError('Compressed asset does not round-trip exactly.')
+              target=Path('assets/plane.fbx.gz')
+              if target.exists(): raise RuntimeError('Compressed plane asset already exists; refusing to overwrite it.')
+              patch=run(['git','diff',removed+'^',removed,'--','index.html'])
+              if not patch: raise RuntimeError('Historical loader patch is empty.')
+              run(['git','apply','--reverse','--check','-'],input=patch)
+              run(['git','apply','--reverse','-'],input=patch)
+              s=p.read_text(encoding='utf-8')
+              start=s.index('function loadPropPlaneModel(){');end=s.index('\nfunction makeCarVisual(',start)
+              part=s[start:end]
+              if part.count(' const loader=new THREE.FBXLoader();')!=1 or part.count("loader.load('assets/plane.fbx',")!=1: raise RuntimeError('Unexpected loader implementation.')
+              wrapper=" const loader=new THREE.FBXLoader();\n loader.load=(url,ready,progress,fail)=>fetch(url).then(r=>{if(!r.ok)throw new Error('Plane asset HTTP '+r.status);return r.arrayBuffer()}).then(buffer=>{\n  let bytes=new Uint8Array(buffer);\n  if(bytes[0]===31&&bytes[1]===139)bytes=window.fflate.gunzipSync(bytes);\n  const data=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);\n  ready(loader.parse(data,'assets/'));\n }).catch(fail);"
+              part=part.replace(' const loader=new THREE.FBXLoader();',wrapper,1).replace('assets/plane.fbx','assets/plane.fbx.gz')
+              s=s[:start]+part+s[end:]
+              checked=0
+              for code in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I):
+                  if not code.strip(): continue
+                  with tempfile.NamedTemporaryFile(mode='w',suffix='.js',delete=False) as f:
+                      f.write(code);name=f.name
+                  try: run(['node','--check',name])
+                  finally: os.unlink(name)
+                  checked+=1
+              if not checked: raise RuntimeError('No inline scripts found.')
+              expected=run(['git','rev-parse',removed+'^:assets/plane.fbx']).decode().strip()
+              actual=run(['git','hash-object','--stdin'],input=gzip.decompress(packed)).decode().strip()
+              if expected!=actual: raise RuntimeError('Original model identity check failed.')
+              target.parent.mkdir(exist_ok=True);target.write_bytes(packed);p.write_text(s,encoding='utf-8')
+              report.update(ok=True,asset='assets/plane.fbx.gz',original_asset_blob=actual,lossless=True,checked_scripts=checked,scope='Original plane visual only; no flight physics changes')
+          except Exception as exc:
+              p.write_bytes(original);report['error']=str(exc)
+              if isinstance(exc,subprocess.CalledProcessError): report['stderr']=(exc.stderr or b'').decode(errors='replace')[-3000:]
+          Path('scripts').mkdir(exist_ok=True)
+          Path('scripts/plane-asset-status.json').write_text(json.dumps(report,indent=2)+'\n')
+          print(json.dumps(report))
+          PY
+      - name: Commit compressed asset and loader or diagnostic report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html scripts/plane-asset-status.json
+          if node -e "if(!require('./scripts/plane-asset-status.json').ok)process.exit(1)"; then git add -- assets/plane.fbx.gz; fi
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Restore original plane with lossless compressed asset download'
+          git push origin HEAD:main
+      - name: Require successful compressed restoration
+        run: node -e "if(!require('./scripts/plane-asset-status.json').ok)process.exit(1)"
