@@ -1,0 +1,3 @@
+function addCol(x0,z0,x1,z1,h=10,tag){const c={x0,z0,x1,z1,h,tag};colAll.push(c);
+ for(let gx=Math.floor(x0/CG);gx<=Math.floor(x1/CG);gx++)for(let gz=Math.floor(z0/CG);gz<=Math.floor(z1/CG);gz++){const k=gx*4096+gz;let a=colGrid.get(k);if(!a){a=[];colGrid.set(k,a)}a.push(c)}return c}
+const _qr=[];let _qid=0;

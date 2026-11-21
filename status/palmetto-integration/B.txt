@@ -1,0 +1,2 @@
+function B(key,x,z){const k=key+'|'+Math.floor((x+WS)/CH)+','+Math.floor((z+WS)/CH);let b=chunkMap.get(k);if(!b){b=new Batch();b.key=key;chunkMap.set(k,b)}return b}
+const _m=new T.Matrix4(),_q=new T.Quaternion(),_e=new T.Euler(),_p=new T.Vector3(),_sc=new T.Vector3();
