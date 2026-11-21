@@ -1789,7 +1789,26 @@ function applyCharacterDetails(h,o){
  if(style==='gang')a.bandanaMat.color.setHex(o.shirt||0x6a2fb3);
 }
 
+// SIMPLE_CHARACTER_MODELS_V2
 function makeHuman(o){
+ const root=makeOriginalHumanBeforeSimple(o),u=root.userData;
+ const cache=makeHuman._simpleGeometryCache||(makeHuman._simpleGeometryCache=new WeakMap());
+ const weapons=new Set();for(const g of Object.values(u.guns||{})){if(g&&g.traverse)g.traverse(n=>weapons.add(n))}
+ let changed=0;
+ root.traverse(n=>{
+  if(!n.isMesh||n.isSkinnedMesh||weapons.has(n)||!n.geometry)return;
+  const old=n.geometry;if(old.type==='BoxGeometry'||old.type==='BoxBufferGeometry')return;
+  let box=cache.get(old);
+  if(!box){old.computeBoundingBox();const b=old.boundingBox;if(!b)return;const size=b.getSize(new T.Vector3()),center=b.getCenter(new T.Vector3());
+   if(![size.x,size.y,size.z,center.x,center.y,center.z].every(Number.isFinite))return;
+   box=new T.BoxGeometry(Math.max(.001,size.x),Math.max(.001,size.y),Math.max(.001,size.z));box.translate(center.x,center.y,center.z);cache.set(old,box)
+  }
+  n.geometry=box;changed++;
+ });
+ root.userData.simpleCharacterModels=true;root.userData.simplifiedMeshCount=changed;
+ return root;
+}
+function makeOriginalHumanBeforeSimple(o){
  const root=new T.Group();
  const m={
   skin:humanMat('skin',o.skin),
@@ -3756,7 +3775,7 @@ function boot(){
    const handles=['@miamood','@dreonthego','@tonyrides','@kaylac','@ricov','@jazzlife','@marco305','@tashatalks','@eddiecruz','@ninaf','@bigal305','@skyem','@luist','@breeb'];
    const avatars=['🌴','🛹','🚗','🌺','🕶️','🎧','🏖️','📸','🌆','🧢','🍔','🛥️','🎤','✨'];
    const ideas=[
-    ['🌴','Beach check: the water is looking unreal today. Who's heading down to the shore?'],
+    ['🌴',"Beach check: the water is looking unreal today. Who's heading down to the shore?"],
     ['🚗','Ocean Drive is packed again. Took me forever to get across town.'],
     ['🍔','Late-night burger run. This place never disappoints.'],
     ['🌆','Sunset over the skyline is something else. Vice City, you are ridiculous.'],

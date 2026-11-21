@@ -1,6 +1,8 @@
 {
-  "ok": false,
+  "ok": true,
   "stage": "syntax_check",
-  "source_blob": "42826d8e8a4cdb65babbd8f1554abe2ceaf35614",
-  "error": "/tmp/tmpzoc2f2wk.js:3633\n    ['\ud83c\udf34','Beach check: the water is looking unreal today. Who's heading down to the shore?'],\n                                                               ^\n\nSyntaxError: Unexpected identifier 's'\n    at wrapSafe (node:internal/modules/cjs/loader:1464:18)\n    at checkSyntax (node:internal/main/check_syntax:78:3)\n\nNode.js v20.20.2\n"
+  "source_blob": "ce609f3af6bec2777d3f1e65324c6ede939760d2",
+  "result": "applied",
+  "checked_scripts": 1,
+  "startup_quote_repaired": true
 }
