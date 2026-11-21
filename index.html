@@ -259,7 +259,6 @@ small{color:#b9cce0}
 <div id="mpLobby" class="mp-screen" style="display:none"><div class="mp-card"><button id="mpBack" class="mp-back">← BACK</button><div class="home-kicker">ONLINE SESSION</div><h2>PLAY ONLINE</h2><label for="mpName">PLAYER NAME</label><input id="mpName" maxlength="16" value="Player" autocomplete="nickname"><div class="mp-actions"><button id="mpHost">JOIN WORLD</button></div><div id="mpOnline" class="mp-room" style="display:block">Players online: …</div><div id="mpStatus" class="mp-status">Everyone joins the same shared city. No codes needed.</div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/characters.js"></script>
-<script src="js/reference-characters.js"></script>
 <script src="js/supercar.js"></script>
 <script>
 (()=>{'use strict';
@@ -2246,8 +2245,8 @@ const pl={x:11.2,z:36,y:0,h:0,vx:0,vz:0,vy:0,hp:100,armor:0,cash:500,rep:0,car:n
 };
 G.pl=pl;G.cars=cars;G.peds=peds;G.cops=cops;
 const CHAR={
-  jason:{name:'JASON',skin:0xc98e68,shirt:0x626a68,pants:0x6a593f,hair:0x2d211b,glasses:false,shoe:0x5a4330},
-  lucia:{name:'LUCIA',longHair:true,skin:0xa86b43,shirt:0x303338,pants:0x7497b3,hair:0x35251f,glasses:false,shoe:0xf6f6f6}
+  jason:{name:'JASON',skin:0xc98e68,shirt:0xf2f1ec,pants:0xb39b6e,hair:0x1d1410,glasses:false,shoe:0x5a4330},
+  lucia:{name:'LUCIA',longHair:true,skin:0xb9784e,shirt:0x1a1b1f,pants:0x1f2228,hair:0x4a2c1a,glasses:false,shoe:0xf6f6f6}
 };
 const plH=makeHuman({design:'jasonC',skin:CHAR.jason.skin,shirt:CHAR.jason.shirt,pants:CHAR.jason.pants,hair:CHAR.jason.hair});scene.add(plH);G.plH=plH;
 function switchChar(){

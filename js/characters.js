@@ -50,19 +50,19 @@
     },
     jasonC: {
       name: 'Jason', role: 'Lead · player model',
-      skin: 0xc98e68, hair: 0x24170f, hairStyle: 'short', beard: true,
-      top: { kind: 'polo', color: 0x456b78 },
-      legs: { kind: 'jeans', color: 0x283a58 },
-      shoes: { kind: 'boots', color: 0x594735, sole: 0x29231e },
+      skin: 0xc98e68, hair: 0x1d1410, hairStyle: 'buzz',
+      top: { kind: 'tank', color: 0xf2f1ec },
+      legs: { kind: 'trousers', color: 0xb39b6e },
+      shoes: { kind: 'boots', color: 0x5a4330, sole: 0x2a2018 },
       extras: ['watch'], realistic: true,
     },
     luciaC: {
       name: 'Lucia', role: 'Lead · player model', build: 'slim',
       skin: 0xb9784e, hair: 0x4a2c1a, hairStyle: 'longdown',
-      top: { kind: 'crop', color: 0x0b0b0d },
-      legs: { kind: 'shorts', color: 0x5c89ae, highWaist: true },
-      shoes: { color: 0xf6f6f6, sole: 0xe2e2e2, accent: 0x0b0b0d },
-      extras: ['hoops', 'bracelets', 'ring', 'necklace'], realistic: true, female: true, luciaSummer: true,
+      top: { kind: 'tank', color: 0x1a1b1f },
+      legs: { kind: 'jeans', color: 0x1f2228, highWaist: true },
+      shoes: { color: 0xf6f6f6, sole: 0xe2e2e2, accent: 0x1a1b1f },
+      extras: ['hoops', 'bracelets', 'ring', 'necklace'], realistic: true, female: true,
     },
     officer: {
       name: 'Officer', role: 'Police',
@@ -474,9 +474,9 @@
       ? [[0.001, 0.09], [0.13, 0.085], [0.16, 0.03], [0.172, -0.03], [0.165, -0.08], [0.12, -0.11], [0.001, -0.115]]
       : [[0.001, 0.09], [0.145, 0.085], [0.158, 0.03], [0.162, -0.03], [0.155, -0.08], [0.115, -0.11], [0.001, -0.115]]).map(([r, y]) => [r * W, y]);
     add(hips, lathe(pelvis, 22, 0.93), m.pants, 0, 0, 0, 1, 0.92, 0.66);
-    // City cast: a seat piece in the trouser/shorts fabric that widens out over the tops of the thighs,
+    // A seat piece in the trouser/shorts fabric that widens out over the tops of the thighs,
     // so the legs run into the hips instead of starting under a narrower hip block.
-    if (!/^(Jason|Lucia)$/.test(d.name)) add(hips, lathe([[0.15, 0.06], [0.175, 0.0], [0.194, -0.05], [0.197, -0.09], [0.186, -0.12], [0.152, -0.148], [0.085, -0.164], [0.001, -0.168]], 24, W * (F ? 1.02 : 1)), m.pants, 0, 0, 0, 1, 1, 0.62);
+    add(hips, lathe([[0.15, 0.06], [0.175, 0.0], [0.194, -0.05], [0.197, -0.09], [0.186, -0.12], [0.152, -0.148], [0.085, -0.164], [0.001, -0.168]], 24, W * (F ? 1.02 : 1)), m.pants, 0, 0, 0, 1, 1, 0.62);
     add(spine, lathe([[0.052, 0.54], [0.048, 0.6], [0.046, 0.66], [0.05, 0.72]]), m.skin);                               // neck
     const shX = (F ? 0.18 : 0.215) * W;
     for (const sx of [-1, 1]) add(spine, ball(F ? 0.05 : 0.06 * W), m.skin, sx * (shX - 0.02), 0.5, 0, 1.05, 0.8, 0.85);  // deltoids
@@ -759,8 +759,8 @@
     const gm = mat(0x1b1d22, 0.4, { metalness: 0.6 });
     const mk = (parts) => { const g = new T.Group(); for (const [w, h, dd, y, z] of parts) { const me = new T.Mesh(box(w, h, dd), gm); me.position.set(0, y, z || 0); g.add(me); } g.visible = false; gun.add(g); return g; };
     const guns = { pistol: mk([[0.04, 0.2, 0.06, -0.1], [0.04, 0.06, 0.1, -0.02, 0.05]]), smg: mk([[0.05, 0.4, 0.07, -0.18], [0.04, 0.12, 0.05, -0.07, 0.09]]), shot: mk([[0.05, 0.7, 0.06, -0.3], [0.06, 0.25, 0.08, 0.05]]), rifle: mk([[0.05, 0.85, 0.07, -0.36], [0.04, 0.16, 0.06, -0.18, 0.1], [0.06, 0.22, 0.09, 0.08]]) };
-    // ---- fabric texture on clothing (city cast; the two leads are left as they are)
-    if (!/^(Jason|Lucia)$/.test(d.name)) {
+    // ---- fabric texture on clothing
+    {
       applyFabric(T, m.shirt, tk === 'hoodie' ? 'knit' : 'cotton', tk === 'hoodie' ? 0.55 : 0.16);
       applyFabric(T, m.pants, lk === 'jeans' ? 'denim' : 'cotton', lk === 'jeans' ? 0.4 : 0.14);
       applyFabric(T, m.jacket, 'cotton', 0.18); applyFabric(T, m.trim, 'cotton', 0.14);
