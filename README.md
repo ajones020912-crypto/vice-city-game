@@ -136,6 +136,9 @@ graphics-test.html    Small standalone page for testing the graphics stack
 scripts/              One-off patch scripts that update index.html
   patch-post-processing.js   Post-processing upgrade (SSAO, FXAA, bloom, color grade)
   patch-shared-world.js      Converts the room-code lobby to the shared world
+race/                 Race-related status and diagnostic files
+  race-cooldown-status.json  Coastal Clash cooldown workflow result
+  street-race-status.json    Street race setup status
 .github/workflows/    Manually-run GitHub Actions that apply game updates
                       (graphics, traffic signals, crash animations, multiplayer)
 ```
