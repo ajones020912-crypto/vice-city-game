@@ -1,0 +1,108 @@
+name: Restore game + enable multiplayer
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/restore-and-enable-mp.yml']
+permissions:
+  contents: write
+concurrency:
+  group: restore-game
+  cancel-in-progress: true
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore full index.html from last good commit and enable multiplayer
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Last known-good full game (before placeholder overwrite)
+          GOOD_SHA=7d088e42f3dfb6a8a15621fe473c98db795f4d99
+
+          echo "Restoring index.html from $GOOD_SHA ..."
+          git show "$GOOD_SHA:index.html" > index.html
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          old_btn = (
+              '<button id="multiplayerOpen" class="home-btn alt multiplayer-soon" '
+              'type="button" disabled aria-label="Multiplayer — Coming Soon">'
+              'MULTIPLAYER <small>Online play is in development</small></button>'
+          )
+          new_btn = (
+              '<button id="multiplayerOpen" class="home-btn alt" type="button" '
+              'aria-label="Multiplayer — Play online with friends">'
+              'MULTIPLAYER <small>Play online with friends</small></button>'
+          )
+
+          if old_btn not in s:
+              # Already patched or slightly different — try a looser replace
+              import re
+              s2, n = re.subn(
+                  r'<button id="multiplayerOpen"[^>]*>.*?</button>',
+                  new_btn,
+                  s,
+                  count=1,
+                  flags=re.S,
+              )
+              if n != 1:
+                  raise SystemExit('Could not find multiplayer button to patch')
+              s = s2
+              print('Patched multiplayer button (loose match)')
+          else:
+              s = s.replace(old_btn, new_btn, 1)
+              print('Patched multiplayer button (exact match)')
+
+          # Remove Coming Soon CSS so it never reappears
+          css = (
+              ".home-btn.multiplayer-soon{position:relative;opacity:.72;cursor:not-allowed;"
+              "background:linear-gradient(135deg,#294c59,#426875);padding-top:25px}"
+              ".home-btn.multiplayer-soon:after{content:'COMING SOON';position:absolute;"
+              "top:8px;right:10px;padding:4px 8px;border-radius:4px;background:#ffd23a;"
+              "color:#17232b;font-size:9px;font-weight:900;letter-spacing:1.2px;"
+              "box-shadow:0 2px 8px #0005}"
+          )
+          if css in s:
+              s = s.replace(css, '', 1)
+              print('Removed multiplayer-soon CSS')
+
+          if 'COMING SOON' in s:
+              raise SystemExit('COMING SOON text still present after patch')
+          if 'multiplayer-soon' in s:
+              raise SystemExit('multiplayer-soon class still present after patch')
+          if 'Play online with friends' not in s:
+              raise SystemExit('New button label missing')
+
+          p.write_text(s, encoding='utf-8')
+          print(f'index.html ready ({p.stat().st_size} bytes)')
+          PY
+
+          # Sanity: file must be large (real game)
+          SIZE=$(wc -c < index.html)
+          if [ "$SIZE" -lt 100000 ]; then
+            echo "ERROR: index.html is only $SIZE bytes — restore failed"
+            exit 1
+          fi
+          echo "Restored size: $SIZE bytes"
+
+      - name: Commit restored game
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+            exit 0
+          fi
+          git commit -m 'Restore full game and enable Multiplayer (remove Coming Soon)'
+          git push origin HEAD:main
