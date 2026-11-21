@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "stage": "syntax_check",
+  "source_blob": "7c347f881d03a096f5ba1bede6f843903692d8b3",
+  "result": "applied",
+  "checked_scripts": 1,
+  "style": "separated_zebra_crosswalks",
+  "intersection_centers": "unpainted"
+}
