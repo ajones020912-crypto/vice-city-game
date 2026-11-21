@@ -1,0 +1,92 @@
+name: Replace overlapping road patches with zebra crosswalks
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-zebra-crosswalks.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: zebra-crosswalk-patch
+  cancel-in-progress: false
+jobs:
+  crosswalks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Replace only crosswalk paint and validate scripts
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile, os, json
+          p=Path('index.html');report={'ok':False,'stage':'read'}
+          try:
+              s=p.read_text(encoding='utf-8')
+              report['source_blob']=subprocess.check_output(['git','hash-object','index.html'],text=True).strip()
+              already='// ZEBRA_CROSSWALKS_V2' in s
+              if not already:
+                  report['stage']='replace_crosswalk_geometry'
+                  anchor=' // white zebra crosswalks on all four approaches to city intersections'
+                  if s.count(anchor)!=1: raise RuntimeError('Expected one known crosswalk block.')
+                  start=s.index(anchor)
+                  end=s.index(' // sidewalks with gaps at crossings',start)
+                  old=s[start:end]
+                  if 'bar=1.15,gap=1.05,count=6' not in old: raise RuntimeError('Crosswalk implementation changed; refusing to replace unknown road code.')
+                  replacement=r''' // ZEBRA_CROSSWALKS_V2
+           const zebraSeen=new Set();
+           for(const n of nodes){
+            if(n.h.type!=='city'||n.v.type!=='city')continue;
+            const hw=n.v.hw,hh=n.h.hw,depth=3.2,setback=1.2,bar=.7,gap=.6,inset=.7;
+            const rect=(key,x0,z0,x1,z1)=>{const y=key==='mark'?.073:.061,uv=key==='mark'?[1,1]:[(x1-x0)/6,(z1-z0)/6];B(key,(x0+x1)/2,(z0+z1)/2).quad([x0,y,z1],[x1,y,z1],[x1,y,z0],[x0,y,z0],0,1,0,0,0,uv[0],uv[1],key==='mark'?[.92,.93,.91]:col)};
+            const room=(road,at,a,b)=>a>=road.a+.2&&b<=road.b-.2&&!road.cross.some(c=>Math.abs(c.p-at)>.1&&a<c.p+c.other.hw+.3&&b>c.p-c.other.hw-.3);
+            for(const side of[-1,1]){
+             const za=n.z+side*(hh+setback),zb=n.z+side*(hh+setback+depth),z0=Math.min(za,zb),z1=Math.max(za,zb),ns=n.x+','+n.z+':ns:'+side;
+             if(!zebraSeen.has(ns)&&room(n.v,n.z,z0-.15,z1+.15)){
+              zebraSeen.add(ns);rect('asph',n.x-hw,z0-.15,n.x+hw,z1+.15);
+              const span=2*(hw-inset),count=Math.max(1,Math.floor((span+gap)/(bar+gap))),width=count*bar+(count-1)*gap;
+              for(let i=0;i<count;i++){const x=n.x-width/2+i*(bar+gap);rect('mark',x,z0,x+bar,z1)}
+             }
+             const xa=n.x+side*(hw+setback),xb=n.x+side*(hw+setback+depth),x0=Math.min(xa,xb),x1=Math.max(xa,xb),ew=n.x+','+n.z+':ew:'+side;
+             if(!zebraSeen.has(ew)&&room(n.h,n.x,x0-.15,x1+.15)){
+              zebraSeen.add(ew);rect('asph',x0-.15,n.z-hh,x1+.15,n.z+hh);
+              const span=2*(hh-inset),count=Math.max(1,Math.floor((span+gap)/(bar+gap))),width=count*bar+(count-1)*gap;
+              for(let i=0;i<count;i++){const z=n.z-width/2+i*(bar+gap);rect('mark',x0,z,x1,z+bar)}
+             }
+            }
+           }
+          '''
+                  s=s[:start]+replacement+s[end:]
+              report['stage']='syntax_check';checked=0
+              for code in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I):
+                  if not code.strip(): continue
+                  with tempfile.NamedTemporaryFile(mode='w',suffix='.js',delete=False) as f:
+                      f.write(code);name=f.name
+                  try:
+                      result=subprocess.run(['node','--check',name],capture_output=True,text=True)
+                      if result.returncode: raise RuntimeError(result.stderr[:3000])
+                  finally: os.unlink(name)
+                  checked+=1
+              if not checked: raise RuntimeError('No inline JavaScript found.')
+              p.write_text(s,encoding='utf-8')
+              report.update(ok=True,result='already_applied' if already else 'applied',checked_scripts=checked,style='separated_zebra_crosswalks',intersection_centers='unpainted')
+          except Exception as exc:
+              report['error']=str(exc)
+          Path('scripts').mkdir(exist_ok=True)
+          Path('scripts/crosswalk-status.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(report))
+          PY
+      - name: Commit crosswalk change or diagnostic report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html scripts/crosswalk-status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Replace overlapping intersection patches with spaced zebra crosswalks'
+          git push origin HEAD:main
+      - name: Require successful crosswalk patch
+        run: node -e "if(!require('./scripts/crosswalk-status.json').ok)process.exit(1)"
