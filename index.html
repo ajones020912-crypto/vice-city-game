@@ -2016,7 +2016,7 @@ function makeOriginalHumanBeforeSimple(o){
  if(o.pants===0x8a7a62||o.pants===0xd9d2c3)m.pants.map=TEX.cargo;
  const mk=(geo,mat,parent,x=0,y=0,z=0)=>{const me=new T.Mesh(geo,mat);me.position.set(x,y,z);me.castShadow=true;parent.add(me);return me};
  const hips=new T.Group();hips.position.y=.93;root.add(hips);
- mk(new T.BoxGeometry(.34,.2,.21),m.pants,hips,0,0,0);
+ mk(new T.BoxGeometry(.36,.26,.22),m.pants,hips,0,-.02,0);
  const spine=new T.Group();spine.position.y=.08;hips.add(spine);
  const torso=mk(new T.CylinderGeometry(.232,.188,.52,8),m.shirt,spine,0,.3,0);torso.scale.z=.58;
  const headP=new T.Group();headP.position.y=.6;spine.add(headP);
@@ -2027,7 +2027,7 @@ function makeOriginalHumanBeforeSimple(o){
  let cap=null;if(o.cap){const cm=new T.MeshStandardMaterial({color:o.cap,roughness:.7,map:TEX.shirt});cap=mk(new T.CylinderGeometry(.125,.13,.07,12),cm,headP,0,.25,0);mk(new T.BoxGeometry(.17,.015,.1),cm,headP,0,.225,.12);hairM.visible=false}
  // Eyewear handled by applyCharacterDetails().
  const arm=(sx)=>{const sh=new T.Group();sh.position.set(sx*.255,.52,0);spine.add(sh);mk(capsule(.058,.3),m.shirt,sh);const el=new T.Group();el.position.y=-.29;sh.add(el);mk(capsule(.05,.27),m.skin,el);mk(new T.SphereGeometry(.055,8,6),m.skin,el,0,-.3,0);return{sh,el}};
- const leg=(sx)=>{const hp=new T.Group();hp.position.set(sx*.1,-.08,0);hips.add(hp);const thigh=mk(capsule(.085,.44),m.pants,hp);const kn=new T.Group();kn.position.y=-.43;hp.add(kn);const shin=mk(capsule(.066,.42),m.pants,kn);mk(new T.BoxGeometry(.11,.07,.25),m.shoe,kn,0,-.44,.05);return{hp,kn,thigh,shin}};
+ const leg=(sx)=>{const hp=new T.Group();hp.position.set(sx*.09,.02,0);hips.add(hp);const thigh=mk(capsule(.09,.46),m.pants,hp,0,.06,0);const kn=new T.Group();kn.position.y=-.42;hp.add(kn);const shin=mk(capsule(.068,.42),m.pants,kn);mk(new T.BoxGeometry(.11,.07,.25),m.shoe,kn,0,-.44,.05);return{hp,kn,thigh,shin}};
  const A=[arm(-1),arm(1)],Lg=[leg(-1),leg(1)];
  // weapon (held in right hand): barrel along local -y of forearm
  const gun=new T.Group();gun.position.set(0,-.3,0);A[1].el.add(gun);
@@ -2149,10 +2149,10 @@ function animHuman(h,dt,s){
  }
  u.dead=0;h.rotation.x=0;
 
- const hipAmp=(.32+.14*runW)*moveW;
+ const hipAmp=(.26+.12*runW)*moveW;
  const legL=s1*hipAmp;
  const legR=-s1*hipAmp;
- const kneeAmp=(.4+.35*runW)*moveW;
+ const kneeAmp=(.34+.28*runW)*moveW;
  const kneeL=Math.max(0,Math.sin(ph+1.15))*kneeAmp;
  const kneeR=Math.max(0,Math.sin(ph+1.15+Math.PI))*kneeAmp;
  const plantL=Math.max(0,-s1)*moveW*.04;
@@ -2168,10 +2168,10 @@ function animHuman(h,dt,s){
  Lg[0].kn.rotation.x=lk;Lg[1].kn.rotation.x=rk;
  Lg[0].hp.rotation.y=Lg[1].hp.rotation.y=Lg[0].hp.rotation.z=Lg[1].hp.rotation.z=0;
 
- const bob=Math.abs(s1)*(.02+.01*runW)*moveW;
- const idleBreath=Math.sin(ph*.85)*.01*(1-moveW);
- const hipY=.93-.01*moveW+bob+idleBreath;
- hips.position.y=lerpA('hy',hipY,14);
+ const idleBreath=Math.sin(ph*.85)*.006*(1-moveW);
+ // Keep hips height stable while walking so legs never pull out of the pelvis socket
+ const hipY=.93+idleBreath;
+ hips.position.y=lerpA('hy',hipY,20);
  hips.rotation.set(0,0,0);
 
  const lean=.02+runW*.16+moveW*.03;
