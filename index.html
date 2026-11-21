@@ -629,6 +629,12 @@ function roadTexture(kind,horiz){
  }
  const t=mkTex(c);t.anisotropy=16;return t;
 }
+function intersectionAsphaltTexture(){
+ const S=512,[canvas,ctx]=cv(S,S);ctx.fillStyle='#2a2f35';ctx.fillRect(0,0,S,S);
+ for(let i=0;i<15000;i++){const v=18+Math.random()*70|0,a=.1+Math.random()*.22;ctx.fillStyle=`rgba(${v+16},${v+18},${v+24},${a})`;ctx.fillRect(Math.random()*S,Math.random()*S,1+Math.random()*2.5,1+Math.random()*2)}
+ for(let i=0;i<45;i++){const x=Math.random()*S,y=Math.random()*S,r=12+Math.random()*35,g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,`rgba(8,9,12,${.08+Math.random()*.12})`);g.addColorStop(1,'rgba(8,9,12,0)');ctx.fillStyle=g;ctx.beginPath();ctx.ellipse(x,y,r,r*.6,Math.random()*Math.PI,0,Math.PI*2);ctx.fill()}
+ const t=mkTex(canvas);t.anisotropy=16;return t;
+}
 function facadeTex(style){
  const S=512,[c,x]=cv(S,S),[e,ex]=cv(S,S);ex.fillStyle='#000';ex.fillRect(0,0,S,S);
  const warm=()=>['#ffd89a','#ffe9bf','#ffc27a','#bfe3ff','#ffd0e8','#ff9ed2','#a8f0ff'][Math.random()*7|0];
@@ -808,7 +814,7 @@ function initMaterials(){
   ['roadH_h',[roadTexture('hwy',1),.82],1],['roadH_v',[roadTexture('hwy',0),.82],1],
   ['roadD_h',[roadTexture('dirt',1),.92],1],['roadD_v',[roadTexture('dirt',0),.92],1]
  ]){const m=new T.MeshStandardMaterial(roadMat(args[0],args[1]));m.userData.baseRough=args[1];m.userData.baseMetal=.04;m.userData.baseEnv=.4;_rm.push(m);defMat(key,POFF(m,po),false)}
- {const m=new T.MeshStandardMaterial({map:roadTexture('city',1),vertexColors:true,roughness:.84,metalness:.04,envMapIntensity:.4});m.userData.baseRough=.84;m.userData.baseMetal=.04;m.userData.baseEnv=.4;_rm.push(m);defMat('asph',POFF(m,1),false)}
+ {const m=new T.MeshStandardMaterial({map:intersectionAsphaltTexture(),vertexColors:true,roughness:.84,metalness:.04,envMapIntensity:.4});m.userData.baseRough=.84;m.userData.baseMetal=.04;m.userData.baseEnv=.4;_rm.push(m);defMat('asph',POFF(m,1),false)}
  roadMats.push(..._rm);
  defMat('mark',POFF(new T.MeshStandardMaterial({vertexColors:true,roughness:.7,envMapIntensity:.25}),4),false);
  // concrete sidewalk with joints
