@@ -1,0 +1,143 @@
+name: Fix stuck Generating Vice City
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-boot-stuck.yml'
+permissions:
+  contents: write
+concurrency:
+  group: fix-boot-stuck
+  cancel-in-progress: true
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Repair script tail, expose begin, safe boot
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          s2 = re.sub(
+              r'<script src="js/soundtrack\.js">[\s\S]*?</script>\s*</body>\s*</html>\s*$',
+              '<script src="js/soundtrack.js"></script>\n</body>\n</html>\n',
+              s,
+              count=1,
+          )
+          if s2 != s:
+              s = s2
+              print('Cleaned broken soundtrack script + outer handlers')
+          else:
+              s2 = re.sub(
+                  r'(boot\(\);[\s\S]*?\)\(\);\s*</script>)\s*<script src="js/soundtrack\.js">[\s\S]*$',
+                  r'\1\n<script src="js/soundtrack.js"></script>\n</body>\n</html>\n',
+                  s,
+                  count=1,
+              )
+              if s2 != s:
+                  s = s2
+                  print('Cleaned via broader soundtrack repair')
+              else:
+                  print('WARN: soundtrack cleanup pattern not matched')
+
+          if 'window.__vcBegin' not in s:
+              new_boot_call = """try{boot()}catch(err){console.error('boot failed',err);const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small style="color:#ff8">Boot error — check console. You can still try Singleplayer.</small>'}\n// Expose for menu handlers\nwindow.G=G;window.begin=begin;window.mpActive=typeof mpActive!=='undefined'?mpActive:false;\nwindow.__vcBegin=function(cont){try{const ov=document.getElementById('overlay');if(ov){ov.classList.add('home-hidden');ov.style.setProperty('display','none','important')}G.multiplayer=false;window.mpActive=false;begin(!!cont)}catch(e){console.error(e)}};\ndocument.getElementById('start')&&(document.getElementById('start').onclick=()=>window.__vcBegin(false));\ndocument.getElementById('cont')&&(document.getElementById('cont').onclick=()=>window.__vcBegin(true));\n})();"""
+              old_boot_call = "boot();\n// boot() wires the legacy buttons, so re-apply the new menu actions after boot.\ndocument.getElementById('start').onclick=()=>{G.multiplayer=false;mpActive=false;begin(false)};\ndocument.getElementById('cont').onclick=()=>{G.multiplayer=false;mpActive=false;begin(true)};\n})();"
+              if old_boot_call in s:
+                  s = s.replace(old_boot_call, new_boot_call, 1)
+                  print('Patched boot call + exposed window.begin')
+              else:
+                  s2, n = re.subn(
+                      r"boot\(\);\s*// boot\(\) wires the legacy buttons[\s\S]*?document\.getElementById\('cont'\)\.onclick=.*?begin\(true\)\};\s*\}\)\(\);",
+                      new_boot_call,
+                      s,
+                      count=1,
+                  )
+                  if n == 1:
+                      s = s2
+                      print('Patched boot call (loose)')
+                  else:
+                      s2, n = re.subn(
+                          r"boot\(\);\s*document\.getElementById\('start'\)\.onclick[\s\S]*?\}\)\(\);",
+                          new_boot_call,
+                          s,
+                          count=1,
+                      )
+                      if n == 1:
+                          s = s2
+                          print('Patched boot call (start onclick variant)')
+                      else:
+                          idx = s.rfind("boot();")
+                          if idx > 0:
+                              end = s.find("})();", idx)
+                              if end > 0:
+                                  s = s[:idx] + new_boot_call + s[end+5:]
+                                  print('Patched by splicing at boot();')
+                              else:
+                                  raise SystemExit('Could not find IIFE end after boot()')
+                          else:
+                              raise SystemExit('Could not find boot(); call')
+
+          boot_at = s.find('function boot(){')
+          if boot_at < 0:
+              raise SystemExit('boot function not found')
+          boot_chunk = s[boot_at:boot_at+900]
+          if 'try{' not in boot_chunk[:80]:
+              s2, n = re.subn(
+                  r"function boot\(\)\{\s*buildWorld\(\);",
+                  "function boot(){\n try{buildWorld();",
+                  s,
+                  count=1,
+              )
+              if n != 1:
+                  print('WARN: could not open try in boot')
+              else:
+                  s = s2
+                  s = s.replace(
+                      "$('#loadmsg').innerHTML='<small>World ready — '+nodes.length+' intersections · '+roads.length+' roads · all systems online</small>';",
+                      "}catch(e){console.error('boot subsystem error',e);const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small>Loaded with warnings — tap Singleplayer</small>';}\n try{$('#loadmsg').innerHTML='<small>World ready — '+(typeof nodes!=='undefined'?nodes.length:'?')+' intersections · '+(typeof roads!=='undefined'?roads.length:'?')+' roads · all systems online</small>';}catch(_e){}\n ",
+                      1,
+                  )
+                  print('Wrapped boot subsystems in try/catch')
+
+          s = re.sub(
+              r'<script src="js/soundtrack\.js">\s*</script>',
+              '<script src="js/soundtrack.js"></script>',
+              s,
+          )
+          if 'soundtrack.js' not in s[-800:]:
+              s = s.replace('</body>', '<script src="js/soundtrack.js"></script>\n</body>', 1)
+              print('Appended soundtrack.js')
+
+          if not s.strip().endswith('</html>'):
+              s = s.rstrip() + '\n</body>\n</html>\n'
+              print('Forced HTML close')
+
+          p.write_text(s, encoding='utf-8')
+          print(f'Done ({p.stat().st_size} bytes)')
+          if 'window.__vcBegin' not in p.read_text(encoding='utf-8'):
+              raise SystemExit('__vcBegin missing after patch')
+          print('sanity ok')
+          PY
+
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if git diff --cached --quiet; then echo 'No changes'; exit 0; fi
+          git commit -m 'Fix: stuck on Generating Vice City — safe boot, expose begin, clean script tail'
+          git pull --rebase origin main || true
+          git push origin HEAD:main
