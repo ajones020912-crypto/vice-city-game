@@ -2147,7 +2147,7 @@ function stepCar(c,dt){
    c.x+=ct.nx*ct.pen;c.z+=ct.nz*ct.pen;p[0]+=ct.nx*ct.pen;p[1]+=ct.nz*ct.pen;
    const vn=c.vx*ct.nx+c.vz*ct.nz;if(vn<0){c.vx-=(1.3)*vn*ct.nx;c.vz-=(1.3)*vn*ct.nz;c.vx*=.985;c.vz*=.985;const imp=-vn;if(imp>hit)crumpleContact={x:p[0]-ct.nx*r,z:p[1]-ct.nz*r,nx:ct.nx,nz:ct.nz};hit=Math.max(hit,imp);
     const nl=ct.nx*cs-ct.nz*sn,off=(k-1)*-(t.L/2-.95);c.yr+=off*nl*imp*.035;}}}
- if(hit>2.5){crumpleCrash(c,hit,crumpleContact);carImpact(c,hit)}
+ if(hit>1)crumpleCrash(c,hit,crumpleContact);if(hit>2.5){carImpact(c,hit)}
  // world bounds
  c.x=clamp(c.x,-1850,1850);c.z=clamp(c.z,-1850,1850);
  // tire smoke / drift
@@ -2181,7 +2181,7 @@ function carCarCollide(a,b){
  for(let i=0;i<3;i++)for(let j=0;j<3;j++){let nx=_ca[i][0]-_cb[j][0],nz=_ca[i][1]-_cb[j][1];const d=Math.hypot(nx,nz);if(d>=r||d<1e-4)continue;nx/=d;nz/=d;const pen=(r-d)*.5;
   const ma=a.t.mass,mb=b.t.mass,ta=mb/(ma+mb),tb=ma/(ma+mb);a.x+=nx*pen*2*ta*.5;a.z+=nz*pen*2*ta*.5;b.x-=nx*pen*2*tb*.5;b.z-=nz*pen*2*tb*.5;
   const vrel=(a.vx-b.vx)*nx+(a.vz-b.vz)*nz;if(vrel<0){const j2=-(1.25)*vrel/(1/ma+1/mb);a.vx+=j2/ma*nx;a.vz+=j2/ma*nz;b.vx-=j2/mb*nx;b.vz-=j2/mb*nz;any=true;
-   const imp=-vrel;if(imp>3){const crumplePoint={x:(_ca[i][0]+_cb[j][0])*.5,z:(_ca[i][1]+_cb[j][1])*.5,nx,nz};crumpleCrash(a,imp,crumplePoint);crumpleCrash(b,imp,{x:crumplePoint.x,z:crumplePoint.z,nx:-nx,nz:-nz});damageCar(a,(imp-3)*2.2*mb/ma,'crash');damageCar(b,(imp-3)*2.2*ma/mb,'crash');if(a.occ==='player'||b.occ==='player'){G.shake=Math.max(G.shake||0,Math.min(1,imp/12));audio.thud(Math.min(1,imp/10))}
+   const imp=-vrel;if(imp>1){const crumplePoint={x:(_ca[i][0]+_cb[j][0])*.5,z:(_ca[i][1]+_cb[j][1])*.5,nx,nz};crumpleCrash(a,imp,crumplePoint);crumpleCrash(b,imp,{x:crumplePoint.x,z:crumplePoint.z,nx:-nx,nz:-nz});}if(imp>3){damageCar(a,(imp-3)*2.2*mb/ma,'crash');damageCar(b,(imp-3)*2.2*ma/mb,'crash');if(a.occ==='player'||b.occ==='player'){G.shake=Math.max(G.shake||0,Math.min(1,imp/12));audio.thud(Math.min(1,imp/10))}
     if(imp>5){emit((a.x+b.x)/2,a.y+.8,(a.z+b.z)/2,0,1,0,.5,.3,.1,SPK,FIRE2,8,1)}
     // cop ram -> wanted
     if((a.occ==='player'&&b.mode==='cop')||(b.occ==='player'&&a.mode==='cop'))addWanted(0,'ram')}}
@@ -3307,7 +3307,7 @@ function simulate(dt){
   if(pl.wanted>0){let seen=false;for(const c of cars)if(c.mode==='cop'&&!c.dead&&Math.hypot(c.x-pl.x,c.z-pl.z)<70&&policeLineOfSight(c.x,c.y+1.4,c.z))seen=true;for(const p of cops)if(p.active&&!p.dead&&Math.hypot(p.x-pl.x,p.z-pl.z)<60&&policeLineOfSight(p.x,p.y+1.6,p.z))seen=true;
    if(heliSees()||(!pl.inside&&cctvNear()))seen=true;if(seen){pl.sightT=0;G.lastSeen={x:pl.x,z:pl.z}}else pl.sightT+=dt;if(pl.sightT>((pl.heat.cctv?20:14)-(!pl.heat.clothes?3:0)-(!pl.heat.partner?2:0))){pl.sightT=8;pl.crime=Math.max(0,pl.crime-(pl.crime>=22?8:pl.crime>=14?6:4));const w=starsFor(pl.crime);if(w<pl.wanted){pl.wanted=w;G.hudDirty=true;toast(w?'Wanted level dropped: '+'★'.repeat(w):'You lost the cops!')}}}
   // Pay 'n' Spray
-  if(pl.car&&!G.busy){for(const g of G.spray){if(Math.hypot(pl.car.x-g.x,pl.car.z-g.z)<4.5&&!pl.car.t.boat&&(pl.wanted>0||pl.car.hp<maxHp(pl.car)*.8)){if(pl.cash<75){if(!(G.sprayWarn>G.time)){toast('Pay \'n\' Spray costs $75');G.sprayWarn=G.time+4}continue}G.busy=true;pl.cash-=75;fadeTo(1,350);const car=pl.car;setTimeout(()=>{car.hp=maxHp(car);car.fire=0;car.dead=false;clearWanted();{const nc=pick2(car.t.colors||[0xffffff]);car.color=nc;car.v.body.material=paintMat(nc)}fadeTo(0,350);G.busy=false;toast('Resprayed & repaired — heat cleared');G.hudDirty=true;for(const c of cars)if(c.mode==='cop')c.parkedCop=false},500)}}}
+  if(pl.car&&!G.busy){for(const g of G.spray){if(Math.hypot(pl.car.x-g.x,pl.car.z-g.z)<4.5&&!pl.car.t.boat&&(pl.wanted>0||pl.car.hp<maxHp(pl.car)*.8)){if(pl.cash<75){if(!(G.sprayWarn>G.time)){toast('Pay \'n\' Spray costs $75');G.sprayWarn=G.time+4}continue}G.busy=true;pl.cash-=75;fadeTo(1,350);const car=pl.car;setTimeout(()=>{car.hp=maxHp(car);if(car._crumple)car._crumple.repairRequested=true;car.fire=0;car.dead=false;clearWanted();{const nc=pick2(car.t.colors||[0xffffff]);car.color=nc;car.v.body.material=paintMat(nc)}fadeTo(0,350);G.busy=false;toast('Resprayed & repaired — heat cleared');G.hudDirty=true;for(const c of cars)if(c.mode==='cop')c.parkedCop=false},500)}}}
   updateMission(dt);
   // giver markers
   for(const q of givers)if(q.g.visible){q.d.rotation.y+=dt*2;q.d.position.y=2.4+Math.sin(G.time*3)*.2}
@@ -3498,7 +3498,7 @@ SHOP_ITEMS.mods=()=>{const c=pl.car;if(!c||c.t.aircraft||c.t.boat)return[];const
  const out=MODS.map(([k,n,pr,d])=>{const lv=u[k]||0,max=lv>=pr.length;return{n:n+(max?' (MAX)':' → L'+(lv+1)),p:max?0:pr[lv],btn:max?'Maxed':null,locked:max,d:d+' · now L'+lv,
   f:()=>{c.up=Object.assign({eng:0,turbo:0,arm:0,tank:0,brk:0,grip:0},c.up);c.up[k]++;if(k==='arm')c.hp=maxHp(c);syncGarage(c);toast('🔧 '+n+' upgraded to L'+c.up[k],1600)}}});
  out.push({n:'Respray (random color)',p:100,d:'New look — drops vehicle heat',f:()=>{const nc=pick2(c.t.colors||[0xffffff]);c.color=nc;c.v.body.material=paintMat(nc);if(pl.heat)pl.heat.vehicle=0;syncGarage(c)}});
- const hurt=c.hp<maxHp(c)-.5;out.push({n:'Repair',p:hurt?60:0,btn:hurt?null:'OK',locked:!hurt,d:'Body '+Math.round(c.hp/maxHp(c)*100)+'%',f:()=>{c.hp=maxHp(c);c.fire=0}});
+ const hurt=c.hp<maxHp(c)-.5||!!(c._crumple&&c._crumple.dirty);out.push({n:'Repair',p:hurt?60:0,btn:hurt?null:'OK',locked:!hurt,d:'Body '+Math.round(c.hp/maxHp(c)*100)+'%',f:()=>{c.hp=maxHp(c);if(c._crumple)c._crumple.repairRequested=true;c.fire=0}});
  return out};
 SHOP_ITEMS.dealer=()=>DEALER_STOCK.map(([tk,price,req])=>{const t=CAR_TYPES[tk],lk=pl.rep<req;return{n:(t.aircraft?'✈ ':t.boat?'⛵ ':'🚗 ')+t.name,p:price,locked:lk,d:lk?'🔒 Requires '+req+' Rep ('+tierOf(req)[1]+')':t.aircraft?'Stored at Mount Orrin Airport · kept in your garage':t.boat?'Delivered to the water · kept in your garage':'Delivered to the curb · kept in your garage',f:()=>buyVehicle(tk,price)}});
 Object.assign(SHOP_NAMES,{dealer:'Sunshine Autos',mods:"Pay 'n' Spray · Mod Garage",prop:'Property'});
@@ -4215,6 +4215,7 @@ document.getElementById('mpHost').onclick=()=>mpConnect();
 document.getElementById('start').onclick=()=>{G.multiplayer=false;mpActive=false;begin(false)};
 document.getElementById('cont').onclick=()=>{G.multiplayer=false;mpActive=false;begin(true)};
 
+// CAR_DINGS_V1
 // CAR_CRUMPLE_V2
 function crumpleParts(c){
  if(c._crumple)return c._crumple;
@@ -4229,11 +4230,11 @@ function crumpleParts(c){
  return c._crumple={parts,dirty:false,morph:false,start:0};
 }
 function crumpleCrash(c,imp,contact){
- if(!c||c.dead||c.t.boat||c.t.aircraft||imp<3.2||Math.hypot(c.x-pl.x,c.z-pl.z)>90)return;
+ if(!c||c.dead||c.t.boat||c.t.aircraft||imp<=1||Math.hypot(c.x-pl.x,c.z-pl.z)>90)return;
  const state=crumpleParts(c);if(G.time-(state.last??-99)<.18)return;state.last=G.time;
  const sn=Math.sin(c.h),cs=Math.cos(c.h),forward=c.vf<0?-1:1,info=contact||{x:c.x+sn*c.t.L*.45*forward,z:c.z+cs*c.t.L*.45*forward,nx:-sn*forward,nz:-cs*forward};
  let nx=Number(info.nx)||0,nz=Number(info.nz)||0,n=Math.hypot(nx,nz);if(n<.001){nx=-sn*forward;nz=-cs*forward;n=1}nx/=n;nz/=n;
- const dx=info.x-c.x,dz=info.z-c.z,lx=dx*cs-dz*sn,lz=dx*sn+dz*cs,ix=nx*cs-nz*sn,iz=nx*sn+nz*cs,along=Math.abs(iz)>=Math.abs(ix),side=(along?lz:lx)>=0?1:-1,L=c.t.L,W=c.t.W,strength=clamp((imp-3.2)/22,0,1),amount=.035+.46*strength;
+ const dx=info.x-c.x,dz=info.z-c.z,lx=dx*cs-dz*sn,lz=dx*sn+dz*cs,ix=nx*cs-nz*sn,iz=nx*sn+nz*cs,along=Math.abs(iz)>=Math.abs(ix),side=(along?lz:lx)>=0?1:-1,L=c.t.L,W=c.t.W,strength=clamp((imp-3.2)/22,0,1),amount=imp<3.2?.035+.065*clamp((imp-1)/2.2,0,1):.1+.395*strength;
  const smooth=x=>{x=clamp(x,0,1);return x*x*(3-2*x)},base=new T.Vector3(),point=new T.Vector3();
  for(const part of state.parts){const a=part.geometry.attributes.position.array;part.from=new Float32Array(a);part.to=new Float32Array(a);
   for(let i=0;i<a.length;i+=3){base.fromArray(part.base,i).applyMatrix4(part.toCh);point.fromArray(a,i).applyMatrix4(part.toCh);
@@ -4250,8 +4251,8 @@ function crumpleCrash(c,imp,contact){
 const crumpleOriginalPlace=Car.prototype.place;
 Car.prototype.place=function(){
  const result=crumpleOriginalPlace.apply(this,arguments),state=this._crumple;if(!state||!state.dirty)return result;
- const full=typeof maxHp==='function'?maxHp(this):this.t.hp;
- if(this.hp>=full-.01){for(const p of state.parts){p.geometry.attributes.position.array.set(p.base);p.geometry.attributes.position.needsUpdate=true;p.geometry.computeVertexNormals();p.geometry.computeBoundingSphere();p.geometry.computeBoundingBox();p.from=p.to=null}state.dirty=state.morph=false;return result}
+ const full=typeof maxHp==='function'?maxHp(this):this.t.hp;const healed=Number.isFinite(state.lastHP)&&this.hp>state.lastHP+.01;state.lastHP=this.hp;
+ if(state.repairRequested||(healed&&this.hp>=full-.01)){for(const p of state.parts){p.geometry.attributes.position.array.set(p.base);p.geometry.attributes.position.needsUpdate=true;p.geometry.computeVertexNormals();p.geometry.computeBoundingSphere();p.geometry.computeBoundingBox();p.from=p.to=null}state.dirty=state.morph=state.repairRequested=false;return result}
  if(!state.morph)return result;
  const k=clamp((G.time-state.start)/.16,0,1),ease=k*k*(3-2*k);
  for(const p of state.parts){const a=p.geometry.attributes.position;for(let i=0;i<a.array.length;i++)a.array[i]=p.from[i]+(p.to[i]-p.from[i])*ease;a.needsUpdate=true;p.geometry.computeVertexNormals();if(k===1){p.geometry.computeBoundingSphere();p.geometry.computeBoundingBox();p.from=p.to=null}}

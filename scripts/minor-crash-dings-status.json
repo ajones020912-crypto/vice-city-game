@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "minor_impacts_dent": true,
+  "full_health_dings_persist": true,
+  "minor_dents_accumulate": true,
+  "cosmetic_repair_at_full_health": true,
+  "health_repair_still_resets": true,
+  "microscopic_contacts_ignored": true,
+  "no_added_health_damage": true,
+  "checked_scripts": 1,
+  "scope": "Lower visual dent threshold only; original health damage, collision physics and total-loss rules unchanged; cosmetic repairs enabled"
+}
