@@ -1443,6 +1443,9 @@ function makeCarVisual(tk,color){
  const body=new T.Mesh(gs.body,pm),gh=new T.Mesh(gs.gh,glassMat),trim=new T.Mesh(gs.trim,trimMat),head=new T.Mesh(gs.head,headMat),tail=new T.Mesh(gs.tail,tailOff),beam=new T.Mesh(gs.beam,beamMat);
  for(const m of[body,gh,trim])m.castShadow=true;body.receiveShadow=true;ch.add(body,gh,trim,head,tail);
  // Detailed exterior kit: fascia, glass divisions, handles, mirrors and lamps.
+ // The cabin glass shell is narrower than the lower body; keep side glazing on
+ // the actual cabin edge instead of hanging it out beyond the doors.
+ const cabinSide=t.W/2-.205;
  const part=(geo,mat,x,y,z,rx=0,ry=0,rz=0)=>{const m=new T.Mesh(geo,mat);m.position.set(x,y,z);m.rotation.set(rx,ry,rz);m.castShadow=true;ch.add(m);return m};
  const mat=(color,rough=.5,metal=.25,emissive=0)=>new T.MeshStandardMaterial({color,roughness:rough,metalness:metal,emissive,emissiveIntensity:emissive?1.4:0});
  const dark=mat(0x171c22,.68,.18),chrome=mat(0x9ba5ad,.32,.78),rubber=mat(0x17191c,.86,.04),lamp=mat(0xfff2cf,.2,.22,0xffd88a),redLamp=mat(0xc41425,.28,.18,0x65000a);
@@ -1461,16 +1464,16 @@ function makeCarVisual(tk,color){
   part(new T.BoxGeometry(.43,.13,.035),redLamp,sx*(t.W*.34),.79,-t.L/2-.14);
   // Side windows, chrome window trim and door handles.
   for(const z of[-.68,.35]){
-   part(new T.BoxGeometry(.035,.48,.82),glassMat,sx*(t.W/2+.012),1.16,z);
-   part(new T.BoxGeometry(.045,.035,.9),chrome,sx*(t.W/2+.035),1.405,z);
-   part(new T.BoxGeometry(.045,.035,.9),chrome,sx*(t.W/2+.035),.915,z);
+   part(new T.BoxGeometry(.035,.48,.82),glassMat,sx*(cabinSide+.018),1.16,z);
+   part(new T.BoxGeometry(.045,.035,.9),chrome,sx*(cabinSide+.045),1.405,z);
+   part(new T.BoxGeometry(.045,.035,.9),chrome,sx*(cabinSide+.045),.915,z);
   }
-  part(new T.BoxGeometry(.045,.07,.075),chrome,sx*(t.W/2+.035),.78,-.35);
+  part(new T.BoxGeometry(.045,.07,.075),chrome,sx*(cabinSide+.045),.78,-.35);
   // Mirror housings and dark mirror glass.
-  part(new T.BoxGeometry(.23,.14,.25),pm,sx*(t.W/2+.13),t.gh[2][1]-.04,.62,0,0,sx*.12);
-  part(new T.BoxGeometry(.025,.09,.16),dark,sx*(t.W/2+.255),t.gh[2][1]-.025,.62);
+  part(new T.BoxGeometry(.23,.14,.25),pm,sx*(cabinSide+.14),t.gh[2][1]-.04,.62,0,0,sx*.12);
+  part(new T.BoxGeometry(.025,.09,.16),dark,sx*(cabinSide+.265),t.gh[2][1]-.025,.62);
   // Front/rear wheel arch accent strips and lower side sill.
-  part(new T.BoxGeometry(.055,.10,t.wb*.66),rubber,sx*(t.W/2+.015),.43,0);
+  part(new T.BoxGeometry(.055,.10,t.wb*.66),rubber,sx*(t.W/2-.025),.43,0);
  }
  // Roof panel and subtle roof rails for taller utility vehicles.
  if(tk==='suv'||tk==='van'){
