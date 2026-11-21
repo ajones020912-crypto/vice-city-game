@@ -1,0 +1,172 @@
+name: Fix mouse lock on title screen
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-mouse-lock-menu.yml'
+permissions:
+  contents: write
+concurrency:
+  group: fix-mouse-lock-menu
+  cancel-in-progress: true
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prevent pointer lock until after menu click
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          orig = s
+
+          # 1) Overlay must sit above canvas and accept clicks
+          s2, n = re.subn(
+              r'/\* ===== VC3D Homescreen \(fullscreen\) ===== \*/\s*#overlay\{[^}]*\}',
+              '''/* ===== VC3D Homescreen (fullscreen) ===== */
+          #overlay{
+            position:fixed;inset:0;z-index:200 !important;
+            display:flex !important;align-items:center;justify-content:center;
+            place-items:unset;
+            background:#050810;
+            pointer-events:auto !important;
+          }''',
+              s,
+              count=1,
+          )
+          if n == 1:
+              s = s2
+              print('Strengthened overlay z-index + pointer-events')
+          else:
+              inject = (
+                  '#overlay{z-index:200 !important;pointer-events:auto !important}'
+                  '.home-card,.home-actions,.home-btn{pointer-events:auto !important;position:relative;z-index:201}'
+                  'canvas{z-index:1 !important}'
+              )
+              if '/* ===== end homescreen ===== */' in s:
+                  s = s.replace(
+                      '/* ===== end homescreen ===== */',
+                      inject + '\n/* ===== end homescreen ===== */',
+                      1,
+                  )
+                  print('Injected overlay click-fix CSS (fallback)')
+              else:
+                  raise SystemExit('Could not patch overlay CSS')
+
+          if '.home-btn{pointer-events:auto' not in s and 'home-btn{pointer-events:auto' not in s:
+              s = s.replace(
+                  '/* ===== end homescreen ===== */',
+                  '.home-card,.home-actions,.home-btn,#start,#multiplayerOpen,#cont{pointer-events:auto !important;position:relative;z-index:201}\n'
+                  'canvas{position:relative;z-index:1 !important}\n'
+                  '/* ===== end homescreen ===== */',
+                  1,
+              )
+              print('Forced pointer-events on home buttons')
+
+          # 2) Harden requestGameMouseLock
+          old_fn = (
+              "function requestGameMouseLock(){if(G.state!=='play'||G.phoneOpen||G.mapOpen||mouseLockPending||mouseLocked)return;"
+          )
+          new_fn = (
+              "function requestGameMouseLock(){"
+              "const ov=document.getElementById('overlay');"
+              "if(ov&&ov.style.display!=='none'&&getComputedStyle(ov).display!=='none')return;"
+              "if(G.state!=='play'||G.phoneOpen||G.mapOpen||mouseLockPending||mouseLocked)return;"
+          )
+          if old_fn in s:
+              s = s.replace(old_fn, new_fn, 1)
+              print('Hardened requestGameMouseLock against menu overlay')
+          else:
+              s2, n = re.subn(
+                  r"function requestGameMouseLock\(\)\{if\(G\.state!=='play'\|",
+                  "function requestGameMouseLock(){const ov=document.getElementById('overlay');"
+                  "if(ov&&ov.style.display!=='none'&&getComputedStyle(ov).display!=='none')return;"
+                  "if(G.state!=='play'|",
+                  s,
+                  count=1,
+              )
+              if n != 1:
+                  raise SystemExit('Could not patch requestGameMouseLock')
+              s = s2
+              print('Hardened requestGameMouseLock (loose)')
+
+          # 3) Delay pointer lock after begin()
+          if 'requestGameMouseLock();setInterval(' in s:
+              s = s.replace(
+                  'requestGameMouseLock();setInterval(',
+                  "setTimeout(()=>{if(G.state==='play')requestGameMouseLock()},250);setInterval(",
+                  1,
+              )
+              print('Delayed pointer lock after begin()')
+          else:
+              begin_at = s.find('function begin(cont)')
+              if begin_at < 0:
+                  begin_at = s.find('function begin(')
+              if begin_at > 0:
+                  chunk = s[begin_at:begin_at+900]
+                  if 'requestGameMouseLock()' in chunk and 'setTimeout(()=>{if(G.state===\'play\')requestGameMouseLock()}' not in chunk:
+                      s = s[:begin_at] + chunk.replace(
+                          'requestGameMouseLock()',
+                          "setTimeout(()=>{if(G.state==='play')requestGameMouseLock()},250)",
+                          1,
+                      ) + s[begin_at+900:]
+                      print('Delayed pointer lock inside begin() chunk')
+                  else:
+                      print('begin() lock already delayed or missing')
+              else:
+                  print('WARNING: begin() not found')
+
+          # 4) Capture-phase menu handlers
+          safe_handlers = r'''
+          (function(){
+            function wireMenuBtn(id, fn){
+              const el=document.getElementById(id);
+              if(!el)return;
+              el.addEventListener('click', function(e){
+                e.preventDefault();
+                e.stopPropagation();
+                if(document.pointerLockElement){document.exitPointerLock?.()}
+                fn();
+              }, true);
+            }
+            wireMenuBtn('start', function(){G.multiplayer=false;mpActive=false;begin(false)});
+            wireMenuBtn('cont', function(){G.multiplayer=false;mpActive=false;begin(true)});
+          })();
+          '''
+
+          if 'wireMenuBtn' not in s:
+              idx = s.rfind('</script>')
+              if idx < 0:
+                  raise SystemExit('No </script> to append menu wire')
+              s = s[:idx] + '\n' + safe_handlers + '\n' + s[idx:]
+              print('Added capture-phase menu button handlers')
+          else:
+              print('Menu wire already present')
+
+          if s == orig:
+              raise SystemExit('No changes made')
+
+          p.write_text(s, encoding='utf-8')
+          print(f'index.html ready ({p.stat().st_size} bytes)')
+          PY
+
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if git diff --cached --quiet; then echo 'No changes'; exit 0; fi
+          git commit -m 'Fix: do not pointer-lock mouse on title screen; delay lock until after Singleplayer'
+          git pull --rebase origin main || true
+          git push origin HEAD:main
