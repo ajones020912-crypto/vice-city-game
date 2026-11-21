@@ -1,1 +1,90 @@
-PLACEHOLDER
+name: Fullscreen logo 1 homescreen
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fullscreen-logo1-home.yml'
+permissions:
+  contents: write
+concurrency:
+  group: fullscreen-logo1-home
+  cancel-in-progress: true
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Replace homescreen CSS and point at logo JPG
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import base64, re
+          from pathlib import Path
+
+          # Logo #1 embedded (compressed JPEG)
+          logo_path = Path('assets/vc3d-logo.jpg')
+          # If logo parts exist from previous uploads, assemble; else keep existing or skip
+          parts = sorted(Path('assets').glob('logo1_part_*.b64'))
+          if parts:
+              b64 = ''.join(p.read_text().strip() for p in parts)
+              logo_path.write_bytes(base64.b64decode(b64))
+              print('assembled logo', logo_path.stat().st_size)
+          elif not logo_path.exists():
+              print('WARN: no logo jpg yet')
+
+          css = '''/* ===== VC3D Homescreen (fullscreen) ===== */
+#overlay{position:fixed;inset:0;z-index:200;display:flex;align-items:stretch;justify-content:center;background:#050810;pointer-events:auto}
+#overlay.home-hidden{display:none !important;pointer-events:none !important}
+.home-card{width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:0;background:transparent;border:none;border-radius:0;box-shadow:none;text-align:center;position:relative;overflow:hidden;pointer-events:auto}
+.home-card:before{display:none}
+.home-logo-wrap{position:absolute;inset:0;width:100%;height:100%;max-height:none;margin:0;border-radius:0;overflow:hidden;background:#0a0612;pointer-events:none}
+.home-logo-wrap img,.home-logo-wrap object{width:100%;height:100%;object-fit:cover;object-position:center center;display:block}
+.home-logo-fade{display:none}
+.home-kicker,.home-title,.home-sub{display:none}
+.home-actions{position:relative;z-index:3;display:grid;grid-template-columns:1fr 1fr;gap:14px;width:min(460px,90vw);margin:0 0 56px;padding:0;pointer-events:auto}
+.home-btn{margin:0;min-height:78px;text-align:left;padding:16px 18px;border-radius:14px;background:linear-gradient(135deg,#e83f8c,#ff6e9f);font-size:15px;letter-spacing:1.2px;border:1px solid #ffffff28;box-shadow:0 12px 36px #000a,0 0 24px #ff4f9a55;transition:transform .14s,filter .14s;pointer-events:auto;cursor:pointer}
+.home-btn:hover{filter:brightness(1.1);transform:translateY(-2px)}
+.home-btn.alt{background:linear-gradient(135deg,#167e83,#27b5a7)}
+.home-btn small{display:block;color:#fff;opacity:.9;font-size:11px;font-weight:normal;letter-spacing:0;margin-top:5px}
+.home-btn.multiplayer-soon{position:relative;opacity:.8;cursor:not-allowed;background:linear-gradient(135deg,#294c59,#426875);padding-top:26px}
+.home-btn.multiplayer-soon:after{content:'COMING SOON';position:absolute;top:8px;right:10px;padding:4px 8px;border-radius:4px;background:#ffd23a;color:#17232b;font-size:9px;font-weight:900;letter-spacing:1.2px}
+.home-btn.multiplayer-soon:hover{filter:none;transform:none}
+.continue-btn{grid-column:1/-1;min-height:48px;text-align:center;background:linear-gradient(135deg,#2c4a73,#3a5f94)}
+.home-status{position:relative;z-index:3;margin:0 0 12px;color:#e8f0f8;font-size:13px;text-shadow:0 2px 10px #000c}
+.home-foot{position:relative;z-index:3;margin:0 0 18px;color:#c5d4e0;font-size:12px;text-shadow:0 2px 8px #000a}
+@media(max-width:560px){.home-actions{grid-template-columns:1fr;width:min(300px,90vw);margin-bottom:36px}}
+/* ===== end homescreen ===== */'''
+
+          s = Path('index.html').read_text(encoding='utf-8')
+          s2, n = re.subn(
+              r'/\* ===== VC3D Homescreen[\s\S]*?/\* ===== end homescreen ===== \*/',
+              css.strip(),
+              s,
+              count=1,
+          )
+          if n != 1:
+              raise SystemExit(f'css replace failed n={n}')
+          s = s2
+          s = s.replace('/assets/vc3d-logo.svg', '/assets/vc3d-logo.jpg')
+          s = s.replace('vc3d-logo.svg', 'vc3d-logo.jpg')
+          s = re.sub(
+              r'<object type="image/svg\+xml"[^>]*>\s*<img src="/assets/vc3d-logo\.jpg"[^>]*>\s*</object>',
+              '<img src="/assets/vc3d-logo.jpg" alt="Vice City 3D" width="1200" height="640" draggable="false">',
+              s,
+              count=1,
+          )
+          Path('index.html').write_text(s, encoding='utf-8')
+          print('index updated', Path('index.html').stat().st_size)
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html assets/vc3d-logo.jpg 2>/dev/null || git add index.html
+          git diff --cached --quiet && echo 'No changes' && exit 0
+          git commit -m 'UI: replace homescreen with fullscreen logo #1, buttons below 3D'
+          git pull --rebase origin main || true
+          git push origin HEAD:main
