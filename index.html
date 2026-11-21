@@ -838,8 +838,8 @@ const LIM={city:12,hwy:26,dirt:7};
 function defineRoads(){
  const xr=[],zr=[];for(let i=-300;i<=300;i+=60)xr.push(i);for(let i=-330;i<=330;i+=60)zr.push(i);
  G.xr=xr;G.zr=zr;
- for(const x of xr)addRoad('v',x,-330,420,18,'city',true);
- for(const z of zr){if(z===-330)addRoad('h',z,-900,1100,18,'city',true);else if(z===-30)addRoad('h',z,-640,380,18,'city',true);else addRoad('h',z,-300,380,18,'city',true)}
+ for(const x of xr){if(x===120){addRoad('v',x,-330,30,18,'city',true);addRoad('v',x,150,420,18,'city',true)}else addRoad('v',x,-330,420,18,'city',true)}
+ for(const z of zr){if(z===90){addRoad('h',z,-300,60,18,'city',true);addRoad('h',z,180,380,18,'city',true)}else if(z===-330)addRoad('h',z,-900,1100,18,'city',true);else if(z===-30)addRoad('h',z,-640,380,18,'city',true);else addRoad('h',z,-300,380,18,'city',true)}
  addRoad('v',380,-980,1400,30,'hwy');          // Interstate 1 — longer causeway to the Keys
  addRoad('h',420,-1400,1500,28,'hwy');         // Gulf Expressway extended
  addRoad('h',-820,-420,1500,14,'city');        // Keys road extended
@@ -1205,31 +1205,31 @@ function ensureSafeForcedShop(shop){
 
 
 function buildDowntownPark(){
- // A single 2-by-2 city block park, fitted between the existing streets.
- const x0=96,z0=36,x1=204,z1=144,cx=150,cz=90;
+ // A two-by-two downtown park replacing four city blocks and their internal crossing streets.
+ const x0=66,z0=36,x1=174,z1=144,cx=120,cz=90;
  bakeG('plain',GEO.box,cx,.02,cz,0,x1-x0,.16,z1-z0,[.24,.43,.25]);
  const path=(x,z,w,d,rot=0)=>bakeG('walk',GEO.box,x,.13,z,rot,w,.10,d,[.78,.75,.66]);
- path(150,43,92,4);path(150,137,92,4);path(101,90,4,88);path(199,90,4,88);
- path(150,90,4,76);path(150,90,76,4);
- path(126,68,30,3,.55);path(174,112,30,3,.55);
- // Pond and fountain.
- bakeG('water2',GEO.box,150,.18,90,0,25,.12,19,[.18,.62,.72]);
- bakeG('plain',GEO.cyl6,150,.32,90,0,3.8,.32,3.8,[.68,.72,.68]);
- bakeG('water2',GEO.cyl6,150,.58,90,0,1.05,2.2,1.05,[.35,.78,.9]);
- bakeG('plain',GEO.cyl6,150,2.8,90,0,.16,2.25,.16,[.8,.84,.86]);
- bakeG('water2',GEO.cyl6,150,1.35,90,0,.12,1.3,.12,[.48,.82,.94]);
+ path(120,43,92,4);path(120,137,92,4);path(71,90,4,88);path(169,90,4,88);
+ path(120,90,4,76);path(120,90,76,4);
+ path(96,68,30,3,.55);path(144,112,30,3,.55);
+ // Reflecting pond and fountain.
+ bakeG('water2',GEO.box,120,.18,90,0,25,.12,19,[.18,.62,.72]);
+ bakeG('plain',GEO.cyl6,120,.32,90,0,3.8,.32,3.8,[.68,.72,.68]);
+ bakeG('water2',GEO.cyl6,120,.58,90,0,1.05,2.2,1.05,[.35,.78,.9]);
+ bakeG('plain',GEO.cyl6,120,2.8,90,0,.16,2.25,.16,[.8,.84,.86]);
+ bakeG('water2',GEO.cyl6,120,1.35,90,0,.12,1.3,.12,[.48,.82,.94]);
  // Open-sided pavilion.
- const gx=174,gz=62;
+ const gx=144,gz=62;
  for(const [dx,dz] of[[-5,-4],[5,-4],[-5,4],[5,4]])bakeG('plain',GEO.box,gx+dx,2,gz+dz,0,.35,4,.35,[.88,.84,.72]);
  bakeG('plain',GEO.box,gx,4.35,gz,0,13,.35,11,[.72,.32,.22]);
  // Benches around the pond.
- for(const [bx,bz,rot] of[[126,91,0],[174,91,0],[150,63,Math.PI/2],[150,117,Math.PI/2]]){
+ for(const [bx,bz,rot] of[[96,91,0],[144,91,0],[120,63,Math.PI/2],[120,117,Math.PI/2]]){
   bakeG('plain',GEO.box,bx,.75,bz,rot,5,.28,1.1,[.48,.27,.13]);
   for(const side of[-1,1])bakeG('plain',GEO.box,bx+Math.cos(rot)*side*1.8,.38,bz+Math.sin(rot)*side*1.8,rot,.22,.65,.22,[.22,.22,.22]);
  }
- // Trees and flower beds, placed clear of the paths and pond.
- for(const [tx,tz,sc] of[[111,52,1],[188,52,1],[111,128,1],[188,128,1],[126,119,.85],[180,76,.85],[119,75,.85],[181,119,.85]])if(Math.hypot(tx-150,tz-90)>24)oak(tx,tz,sc);
- for(const [fx,fz] of[[112,67],[188,113],[112,113],[188,67]]){
+ // Trees and flower beds, placed clear of paths and pond.
+ for(const [tx,tz,sc] of[[81,52,1],[158,52,1],[81,128,1],[158,128,1],[96,119,.85],[150,76,.85],[89,75,.85],[151,119,.85]])if(Math.hypot(tx-120,tz-90)>24)oak(tx,tz,sc);
+ for(const [fx,fz] of[[82,67],[158,113],[82,113],[158,67]]){
   bakeG('plain',GEO.box,fx,.25,fz,0,7,.35,3,[.28,.34,.22]);
   for(let k=-2;k<=2;k++)bakeG('plain',GEO.ico,fx+k*1.15,.72,fz,0,.48,.5,.48,pick([[.95,.35,.48],[1,.72,.25],[.72,.45,.9],[.95,.82,.55]]));
  }
@@ -1253,7 +1253,7 @@ function forceShopDoors(){
 }
 function buildWorld(){
  initMaterials();initPalm();defineRoads();buildNodes();bakeTerrain();buildTerrainMesh();buildRoadMeshes();
- makeParcels();houses();\n // Reserve one complete 2-by-2 downtown block for the park.\n for(let i=parcels.length-1;i>=0;i--){const p=parcels[i];if(p.cx>90&&p.cx<210&&p.cz>30&&p.cz<150)parcels.splice(i,1)}\n filterRoadParcels();assignShops();
+ makeParcels();houses();\n // Reserve one complete 2-by-2 downtown block for the park.\n for(let i=parcels.length-1;i>=0;i--){const p=parcels[i];if(p.cx>60&&p.cx<180&&p.cz>30&&p.cz<150)parcels.splice(i,1)}\n filterRoadParcels();assignShops();
  for(const p of parcels){if(p.style==='house')buildHouse(p);else{const built=building(p);if(built!==false&&p.shop)placeShopDoor(p)}}
  buildDowntownPark();
  forceShopDoors();
