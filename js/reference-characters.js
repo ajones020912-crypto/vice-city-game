@@ -1,4 +1,4 @@
-// LUCIA_SHAPE_V2
+// LUCIA_FORWARD_FIT_V1
 // LUCIA_TANK_FIT_V1
 /* Reference-inspired Jason and Lucia. Load after characters.js, before the game. */
 (function(){
@@ -18,7 +18,7 @@
  function lucia(T,h){
   const u=h.userData,m=u.m; m.skin.roughness=.74;m.hair.roughness=.82;m.lip.color.setHex(0x9a5e55);m.lip.roughness=.65;m.iris.color.setHex(0x543c26);
   for(const mesh of u.spine.children.slice())if(mesh.isMesh&&((mesh.material===m.shirt)||(mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y-.195)<.002)))remove(mesh);
-  const profile=[[.143,.025],[.14,.055],[.132,.14],[.145,.26],[.166,.36],[.173,.42],[.17,.455],[.135,.485],[.104,.495]];
+  const profile=[[.143,.025],[.14,.055],[.132,.14],[.145,.26],[.1534,.30],[.1576,.32],[.1618,.34],[.166,.36],[.16775,.375],[.1695,.39],[.17125,.405],[.173,.42],[.1717143,.435],[.1704286,.45],[.17,.455],[.135,.485],[.104,.495]];
   const tank=add(T,u.spine,new T.LatheGeometry(profile.map(p=>new T.Vector2(...p)),28),m.shirt,'lucia-dark-tank-top');tank.scale.z=.66;
   const hem=add(T,u.spine,new T.TorusGeometry(.143,.0035,6,28),m.trim,'lucia-tank-hem',0,.03,0);hem.scale.y=.66;hem.rotation.x=Math.PI/2;
   for(const side of[-1,1])for(const back of[false,true]){const a=new T.Vector3(side*.095,back?.475:.465,back?-.092:.092),b=new T.Vector3(side*.105,.553,0),delta=b.clone().sub(a),strap=add(T,u.spine,new T.BoxGeometry(.035,delta.length(),.012),m.shirt,'lucia-tank-strap');strap.position.copy(a.add(b).multiplyScalar(.5));strap.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),delta.normalize())}
@@ -33,11 +33,11 @@
  function shapeLucia(T,h){
   const u=h.userData;
   function fit(mesh,region){if(!mesh.isMesh||!mesh.geometry||!mesh.geometry.attributes.position)return;mesh.updateMatrix();const to=mesh.matrix.clone(),from=to.clone().invert(),old=mesh.geometry,g=old.clone(),a=g.attributes.position,v=new T.Vector3();
-   for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(to);const y=v.y;let xScale=1,zScale=1;
-    if(region==='spine'&&y<.5){const waist=Math.exp(-Math.pow((y-.10)/.09,2)),chest=Math.exp(-Math.pow((y-.375)/.065,2))*Math.min(1,Math.max(0,(.5-y)/.05));xScale=1-.12*waist+.17*chest;zScale=1-.08*waist+(v.z>0?.24:.06)*chest}
-    else if(region==='hips'){const hip=Math.exp(-Math.pow((y+.035)/.085,2)),waist=Math.exp(-Math.pow((y-.13)/.045,2));xScale=1+.36*hip-.04*waist;zScale=1+(v.z<0?.30:.14)*hip-.025*waist}
-    else if(region==='thigh'){let k=Math.max(0,Math.min(1,(y+.45)/.4));k=k*k*(3-2*k);xScale=1+.26*k;zScale=1+.20*k}
-    v.x*=xScale;v.z*=zScale;v.applyMatrix4(from);a.setXYZ(i,v.x,v.y,v.z)
+   for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(to);const y=v.y;let xScale=1,zScale=1,frontOffset=0;
+    if(region==='spine'&&y<.5){const waist=Math.exp(-Math.pow((y-.10)/.09,2)),chest=Math.exp(-Math.pow((y-.375)/.065,2))*Math.min(1,Math.max(0,(.5-y)/.05));xScale=1-.07*waist+.07*chest;zScale=1-.045*waist+(v.z>0?.10:.04)*chest;if(v.z>0){const arc=Math.pow(Math.min(1,v.z/.10),2),lobes=Math.min(1,(Math.exp(-Math.pow((v.x-.065)/.065,2))+Math.exp(-Math.pow((v.x+.065)/.065,2)))/1.02);frontOffset=(mesh.material===u.m.shirt?.064:.060)*chest*arc*lobes}}
+    else if(region==='hips'){const hip=Math.exp(-Math.pow((y+.035)/.085,2)),waist=Math.exp(-Math.pow((y-.13)/.045,2));xScale=1+.16*hip-.025*waist;zScale=1+.10*hip-.015*waist}
+    else if(region==='thigh'){let k=Math.max(0,Math.min(1,(y+.45)/.4));k=k*k*(3-2*k);xScale=1+.12*k;zScale=1+.10*k}
+    v.x*=xScale;v.z=v.z*zScale+frontOffset;v.applyMatrix4(from);a.setXYZ(i,v.x,v.y,v.z)
    }a.needsUpdate=true;g.computeVertexNormals();g.computeBoundingSphere();g.computeBoundingBox();mesh.geometry=g;old.dispose()
   }
   for(const mesh of u.spine.children.slice())fit(mesh,'spine');for(const mesh of u.hips.children.slice())fit(mesh,'hips');for(const leg of u.Lg)for(const mesh of leg.hp.children.slice())fit(mesh,'thigh');h.userData.luciaTankFit=true;

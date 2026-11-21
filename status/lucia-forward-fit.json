@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "latest_hip_thigh_waist_and_width_changes_undone": true,
+  "forward_projection_increased": true,
+  "chest_width_restored": true,
+  "rear_chest_unchanged": true,
+  "tank_refitted": true,
+  "face_hair_and_joints_preserved": true,
+  "other_characters_unchanged": true,
+  "merged_model_valid": true,
+  "finite_geometry": true,
+  "forward_measurements": {
+    "previous": 0.13488126397132874,
+    "revised": 0.17188122868537903,
+    "pre_widening": 0.11972544640302658,
+    "tank": 0.1763398987054825
+  },
+  "scope": "Undo the latest overall widening; localized forward contour with opaque tank refit; no gameplay changes"
+}
