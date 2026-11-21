@@ -1724,16 +1724,37 @@ function addCharacterDetails(root,o){
  }
  const belt=new T.Mesh(new T.CylinderGeometry(.18,.18,.025,8),m.shoe);
  belt.scale.z=.62;belt.position.y=.058;u.hips.add(belt);
- // Lightweight suit jacket and tie details; hidden on other outfit types.
- const suitMat=new T.MeshStandardMaterial({color:0x343b48,roughness:.88});
- const jacket=new T.Mesh(new T.CylinderGeometry(.244,.201,.535,8),suitMat);
- jacket.scale.z=.59;jacket.position.set(0,.3,0);u.spine.add(jacket);
+ // Outfit pieces are separate meshes so each archetype has a recognizable silhouette.
+ const jacketMat=new T.MeshStandardMaterial({color:0x343b48,roughness:.88});
+ const jacket=new T.Mesh(new T.CylinderGeometry(.25,.207,.55,8),jacketMat);
+ jacket.scale.z=.61;jacket.position.set(0,.3,.002);u.spine.add(jacket);
  const tieMat=new T.MeshStandardMaterial({color:0xb43b4b,roughness:.8});
- const tie=new T.Mesh(new T.BoxGeometry(.035,.19,.012),tieMat);
- tie.position.set(0,.30,.142);u.spine.add(tie);
- u.appearance={hairBack,hairTail,glasses,fringe,jacket,tie};applyCharacterDetails(root,o)
+ const tie=new T.Mesh(new T.BoxGeometry(.035,.19,.018),tieMat);
+ tie.position.set(0,.30,.151);u.spine.add(tie);
+ const shortsMat=new T.MeshStandardMaterial({color:0xd9d2c3,roughness:.9});
+ const shorts=u.Lg.map(l=>{const q=new T.Mesh(new T.CylinderGeometry(.091,.078,.24,7),shortsMat);q.position.y=-.12;l.hp.add(q);return q});
+ const capMat=new T.MeshStandardMaterial({color:0xeeeeee,roughness:.85});
+ const cap=new T.Mesh(new T.CylinderGeometry(.126,.132,.065,9),capMat);cap.position.set(0,.255,0);u.headP.add(cap);
+ const brim=new T.Mesh(new T.BoxGeometry(.16,.014,.09),capMat);brim.position.set(0,.235,.105);u.headP.add(brim);
+ const badgeMat=new T.MeshStandardMaterial({color:0xd8c27a,metalness:.25,roughness:.5});
+ const badge=new T.Mesh(new T.BoxGeometry(.055,.07,.012),badgeMat);badge.position.set(-.105,.34,.14);u.spine.add(badge);
+ const bandanaMat=new T.MeshStandardMaterial({color:0x6a2fb3,roughness:.9});
+ const bandana=new T.Mesh(new T.BoxGeometry(.34,.09,.22),bandanaMat);bandana.position.set(0,.53,.005);u.spine.add(bandana);
+ const shirtMark=new T.Mesh(new T.BoxGeometry(.09,.09,.012),badgeMat);shirtMark.position.set(.105,.36,.145);u.spine.add(shirtMark);
+ u.appearance={hairBack,hairTail,glasses,fringe,jacket,tie,shorts,cap,brim,badge,bandana,shirtMark,capMat,jacketMat,shortsMat,bandanaMat};applyCharacterDetails(root,o)
 }
-function applyCharacterDetails(h,o){const a=h.userData.appearance;if(!a)return;const long=o.longHair===true||o.shirt===0xff6ec7;a.hairBack.visible=long;a.hairTail.visible=long;a.glasses.visible=!!o.glasses;a.fringe.scale.set(long?.086:.082,long?.022:.033,long?.064:.075);if(a.jacket)a.jacket.visible=o.style==='business';if(a.tie)a.tie.visible=o.style==='business'}
+function applyCharacterDetails(h,o){
+ const a=h.userData.appearance;if(!a)return;
+ const style=o.style||'casual',long=o.longHair===true||style==='female';
+ a.hairBack.visible=long;a.hairTail.visible=long;a.glasses.visible=!!o.glasses;
+ a.fringe.scale.set(long?.086:.082,long?.022:.033,long?.064:.075);
+ a.jacket.visible=style==='business';a.tie.visible=style==='business';
+ a.shorts.forEach(q=>q.visible=style==='beach');
+ h.userData.Lg.forEach(l=>{l.shin.material=style==='beach'?h.userData.m.skin:h.userData.m.pants});
+ a.cap.visible=!!o.cap;a.brim.visible=!!o.cap;if(o.cap){a.capMat.color.setHex(o.cap)}
+ a.badge.visible=style==='police';a.bandana.visible=style==='gang';a.shirtMark.visible=style==='police';
+ if(style==='gang')a.bandanaMat.color.setHex(o.shirt||0x6a2fb3);
+}
 
 function makeHuman(o){
  const root=new T.Group();
@@ -1760,7 +1781,7 @@ function makeHuman(o){
  let cap=null;if(o.cap){const cm=new T.MeshStandardMaterial({color:o.cap,roughness:.7,map:TEX.shirt});cap=mk(new T.CylinderGeometry(.125,.13,.07,12),cm,headP,0,.25,0);mk(new T.BoxGeometry(.17,.015,.1),cm,headP,0,.225,.12);hairM.visible=false}
  // Eyewear handled by applyCharacterDetails().
  const arm=(sx)=>{const sh=new T.Group();sh.position.set(sx*.255,.52,0);spine.add(sh);mk(capsule(.058,.3),m.shirt,sh);const el=new T.Group();el.position.y=-.29;sh.add(el);mk(capsule(.05,.27),m.skin,el);mk(new T.SphereGeometry(.055,8,6),m.skin,el,0,-.3,0);return{sh,el}};
- const leg=(sx)=>{const hp=new T.Group();hp.position.set(sx*.1,-.08,0);hips.add(hp);mk(capsule(.085,.44),m.pants,hp);const kn=new T.Group();kn.position.y=-.43;hp.add(kn);mk(capsule(.066,.42),m.pants,kn);mk(new T.BoxGeometry(.11,.07,.25),m.shoe,kn,0,-.44,.05);return{hp,kn}};
+ const leg=(sx)=>{const hp=new T.Group();hp.position.set(sx*.1,-.08,0);hips.add(hp);const thigh=mk(capsule(.085,.44),m.pants,hp);const kn=new T.Group();kn.position.y=-.43;hp.add(kn);const shin=mk(capsule(.066,.42),m.pants,kn);mk(new T.BoxGeometry(.11,.07,.25),m.shoe,kn,0,-.44,.05);return{hp,kn,thigh,shin}};
  const A=[arm(-1),arm(1)],Lg=[leg(-1),leg(1)];
  // weapon (held in right hand): barrel along local -y of forearm
  const gun=new T.Group();gun.position.set(0,-.3,0);A[1].el.add(gun);
@@ -1804,7 +1825,7 @@ function randomHumanOpts(x=pl.x,z=pl.z){
 }
 const pick2=a=>a[Math.floor(mrand()*a.length)];
 function setHumanLook(h,o){
- h.userData.role=o.role||'resident';h.userData.district=o.district||'';h.userData.outfit={shirt:o.shirt,pants:o.pants,cap:o.cap||0,shoe:o.shoe||0x202020};
+ h.userData.role=o.role||'resident';h.userData.district=o.district||'';h.userData.outfit={shirt:o.shirt,pants:o.pants,cap:o.cap||0,shoe:o.shoe||0x202020,style:o.style||'casual'};
  applyCharacterDetails(h,o);
  const m=h.userData.m;
  m.skin.color.setHex(o.skin);
@@ -2217,7 +2238,7 @@ const WEAP={fists:{name:'Fists',dmg:14,rate:.42},pistol:{name:'Pistol',dmg:30,ra
 const pickups=[];
 const pickGeo=new T.BoxGeometry(.5,.5,.5),pickMats={cash:new T.MeshStandardMaterial({color:0x2ee66b,emissive:0x1fa84a,emissiveIntensity:.8}),health:new T.MeshStandardMaterial({color:0xff4d6a,emissive:0xff1040,emissiveIntensity:.8}),armor:new T.MeshStandardMaterial({color:0x4da6ff,emissive:0x1060ff,emissiveIntensity:.8}),ammo:new T.MeshStandardMaterial({color:0xffd24a,emissive:0xcc9900,emissiveIntensity:.8})};
 function dropPickup(kind,x,z,val){const m=new T.Mesh(pickGeo,pickMats[kind]);m.position.set(x,heightAt(x,z)+.6,z);world.add(m);pickups.push({kind,x,z,val,m,t:0,life:60});if(pickups.length>40){const o=pickups.shift();world.remove(o.m)}}
-const copOpts=()=>({skin:pick2(SKIN),shirt:0x1b2a4d,pants:0x141a2a,hair:0x1d1410,cap:0x101830,glasses:mrand()<.5,shoe:0x101010});
+const copOpts=()=>({skin:pick2(SKIN),shirt:0x1b2a4d,pants:0x141a2a,hair:0x1d1410,cap:0x101830,glasses:false,shoe:0x101010,style:'police',role:'police officer'});
 const nearRoadsCache={t:-9,list:[]};
 class Ped{
  constructor(cop,gang){this.cop=cop;this.gang=!!gang;this.h=makeHuman(cop?copOpts():gang?gangOpts():randomHumanOpts());this.h.visible=false;world.add(this.h);this.active=false;this.dead=false;this.state='idle';this.x=this.z=this.y=0;this.vx=this.vz=0;this.dir=0;this.hp=100;this.t=0;this.tx=0;this.tz=0;this.fireT=0;this.speed=1.4;this.bust=0;this.scale=1}
@@ -3403,7 +3424,7 @@ function updateJob(dt){if(!SJ.kind)return;
   else if(SJ.t<=0){showBanner('CONTRACT FAILED','Out of time','#ff3b4e');endJob()}}}
 
 // ---------- gangs (Harbor Kings, Port Calusa) ----------
-const gangOpts=()=>({skin:pick2(SKIN),shirt:0x6a2fb3,pants:0x1a1a22,hair:0x1d1410,cap:0x6a2fb3,glasses:mrand()<.6,shoe:0x101010});
+const gangOpts=()=>({skin:pick2(SKIN),shirt:0x6a2fb3,pants:0x1a1a22,hair:0x1d1410,cap:0x6a2fb3,glasses:mrand()<.6,shoe:0x101010,style:'gang',role:'gang member'});
 function activateGang(x,z){let p=gangs.find(q=>!q.active);if(!p){if(gangs.length>=12)return null;p=new Ped(false,true);gangs.push(p)}p.init(x,z);p.state='gang';return p}
 function alertGang(p){for(const g of gangs)if(g.active&&!g.dead&&hyp(g.x,g.z,p.x,p.z)<45)g.hostile=true}
 function onGangKill(p){alertGang(p);const s=MS.active&&MS.steps[MS.i];if(s&&s.type==='gangclear')MS.gk=(MS.gk||0)+1;
