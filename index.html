@@ -1724,9 +1724,16 @@ function addCharacterDetails(root,o){
  }
  const belt=new T.Mesh(new T.CylinderGeometry(.18,.18,.025,8),m.shoe);
  belt.scale.z=.62;belt.position.y=.058;u.hips.add(belt);
- u.appearance={hairBack,hairTail,glasses,fringe};applyCharacterDetails(root,o)
+ // Lightweight suit jacket and tie details; hidden on other outfit types.
+ const suitMat=new T.MeshStandardMaterial({color:0x343b48,roughness:.88});
+ const jacket=new T.Mesh(new T.CylinderGeometry(.244,.201,.535,8),suitMat);
+ jacket.scale.z=.59;jacket.position.set(0,.3,0);u.spine.add(jacket);
+ const tieMat=new T.MeshStandardMaterial({color:0xb43b4b,roughness:.8});
+ const tie=new T.Mesh(new T.BoxGeometry(.035,.19,.012),tieMat);
+ tie.position.set(0,.30,.142);u.spine.add(tie);
+ u.appearance={hairBack,hairTail,glasses,fringe,jacket,tie};applyCharacterDetails(root,o)
 }
-function applyCharacterDetails(h,o){const a=h.userData.appearance;if(!a)return;const long=o.longHair===true||o.shirt===0xff6ec7;a.hairBack.visible=long;a.hairTail.visible=long;a.glasses.visible=!!o.glasses;a.fringe.scale.set(long?.086:.082,long?.022:.033,long?.064:.075)}
+function applyCharacterDetails(h,o){const a=h.userData.appearance;if(!a)return;const long=o.longHair===true||o.shirt===0xff6ec7;a.hairBack.visible=long;a.hairTail.visible=long;a.glasses.visible=!!o.glasses;a.fringe.scale.set(long?.086:.082,long?.022:.033,long?.064:.075);if(a.jacket)a.jacket.visible=o.style==='business';if(a.tie)a.tie.visible=o.style==='business'}
 
 function makeHuman(o){
  const root=new T.Group();
@@ -1779,11 +1786,21 @@ function randomHumanOpts(x=pl.x,z=pl.z){
   'NORTH OUTSKIRTS':{shirts:[0x5dc28a,0xf0c44d,0x2e9cda,0x8a7a62,0xf2f2f2],pants:[0x26344f,0x3b3b44,0x8a7a62],role:'local'}
  };
  const p=palettes[district]||{shirts:SHIRTS,pants:PANTS,role:'resident'};
- const skin=pick2(SKIN),shirt=pick2(p.shirts),pants=pick2(p.pants);
- const hair=pick2(HAIR),shoe=pick2([0x202020,0xf2f2f2,0x5a3b25,0x343b48]);
- return {skin,shirt,pants,hair,longHair:mrand()<.32,glasses:mrand()<.2,
-  cap:mrand()<(district==='NEON BEACH'||district==='KESTREL KEYS'?.22:.13)?pick2(p.shirts):0,
-  shoe,role:p.role,district};
+ const skin=pick2(SKIN),hair=pick2(HAIR),shoe=pick2([0x202020,0xf2f2f2,0x5a3b25,0x343b48]);
+ // Pick a recognizable outfit archetype so the city has more than recolored copies.
+ const roll=mrand();
+ let style='casual',shirt=pick2(p.shirts),pants=pick2(p.pants),longHair=false,glasses=mrand()<.2,cap=0,role=p.role;
+ if(roll<.24){
+  style='beach';shirt=pick2([0xff6b8a,0x20b6a4,0xf0c44d,0x2e9cda]);pants=pick2([0xd9d2c3,0xffffff,0x8a7a62]);role='beachgoer';cap=mrand()<.25?0xf2f2f2:0;
+ }else if(roll<.43){
+  style='female';shirt=pick2([0xff6ec7,0xe94e68,0xf2f2f2,0x20b6a4]);pants=pick2([0xffffff,0xd9d2c3,0x26344f]);longHair=true;glasses=mrand()<.25;role='resident';
+ }else if(roll<.57){
+  style='business';shirt=pick2([0xbfc5ce,0xe5e5e5,0x8d9aaa]);pants=pick2([0x252a33,0x343b48]);glasses=true;role='businessperson';
+ }else if(roll<.76){
+  style='casual';shirt=pick2([0x20b6a4,0x2e9cda,0xf0c44d,0xf2f2f2,0x6a2fb3]);pants=pick2([0x26344f,0x8a7a62,0x3b3b44]);role='local';
+ }
+ return {skin,shirt,pants,hair,longHair:longHair||mrand()<.22,glasses,cap:cap||(mrand()<.1?pick2(p.shirts):0),
+  shoe,role,district,style};
 }
 const pick2=a=>a[Math.floor(mrand()*a.length)];
 function setHumanLook(h,o){
