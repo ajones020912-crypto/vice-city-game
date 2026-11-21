@@ -808,7 +808,7 @@ function initMaterials(){
   ['roadH_h',[roadTexture('hwy',1),.82],1],['roadH_v',[roadTexture('hwy',0),.82],1],
   ['roadD_h',[roadTexture('dirt',1),.92],1],['roadD_v',[roadTexture('dirt',0),.92],1]
  ]){const m=new T.MeshStandardMaterial(roadMat(args[0],args[1]));m.userData.baseRough=args[1];m.userData.baseMetal=.04;m.userData.baseEnv=.4;_rm.push(m);defMat(key,POFF(m,po),false)}
- {const m=new T.MeshStandardMaterial({map:asphaltTex,vertexColors:true,roughness:.86,metalness:.04,envMapIntensity:.35});m.userData.baseRough=.86;m.userData.baseMetal=.04;m.userData.baseEnv=.35;_rm.push(m);defMat('asph',POFF(m,2),false)}
+ {const m=new T.MeshStandardMaterial({map:roadTexture('city',1),vertexColors:true,roughness:.84,metalness:.04,envMapIntensity:.4});m.userData.baseRough=.84;m.userData.baseMetal=.04;m.userData.baseEnv=.4;_rm.push(m);defMat('asph',POFF(m,1),false)}
  roadMats.push(..._rm);
  defMat('mark',POFF(new T.MeshStandardMaterial({vertexColors:true,roughness:.7,envMapIntensity:.25}),4),false);
  // concrete sidewalk with joints
