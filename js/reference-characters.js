@@ -1,3 +1,4 @@
+// LUCIA_ROUND_TAN_V1
 // LUCIA_FORWARD_FIT_V1
 // LUCIA_TANK_FIT_V1
 /* Reference-inspired Jason and Lucia. Load after characters.js, before the game. */
@@ -7,7 +8,7 @@
  const originalBuild=api.build;let printTexture=null;
  const looks={
   jasonC:{referenceLead:'jason',name:'Jason',realistic:true,skin:0xc98e68,hair:0x2d211b,hairStyle:'short',beard:false,jacket:null,top:{kind:'tee',color:0x626a68},legs:{kind:'trousers',color:0x6a593f},shoes:{kind:'boots',color:0x594735,sole:0x29231e},extras:['watch']},
-  luciaC:{referenceLead:'lucia',name:'Lucia',realistic:true,female:true,luciaSummer:true,build:'slim',skin:0xb9784e,hair:0x35251f,hairStyle:'referencePonytail',jacket:null,top:{kind:'tank',color:0x303338},legs:{kind:'shorts',color:0x7497b3,highWaist:true},shoes:{color:0xf6f6f6,sole:0xe2e2e2,accent:0x303338},extras:['hoops','bracelets','ring','necklace']}
+  luciaC:{referenceLead:'lucia',name:'Lucia',realistic:true,female:true,luciaSummer:true,build:'slim',skin:0xa86b43,hair:0x35251f,hairStyle:'referencePonytail',jacket:null,top:{kind:'tank',color:0x303338},legs:{kind:'shorts',color:0x7497b3,highWaist:true},shoes:{color:0xf6f6f6,sole:0xe2e2e2,accent:0x303338},extras:['hoops','bracelets','ring','necklace']}
  };
  for(const id of Object.keys(looks))api.DESIGNS[id]=Object.assign({},api.DESIGNS[id],looks[id]);
  function add(T,parent,geometry,material,name,x=0,y=0,z=0){const mesh=new T.Mesh(geometry,material);mesh.name=name;mesh.position.set(x,y,z);mesh.castShadow=true;parent.add(mesh);return mesh}
@@ -30,15 +31,22 @@
   const threads=cloth(T,0xc8c2ad);for(let k=0;k<u.Lg.length;k++){const hp=u.Lg[k].hp;for(const mesh of hp.children.slice())if(mesh.isMesh&&mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y+.26)<.002)remove(mesh);const shorts=hp.children.find(o=>o.isMesh&&o.material===m.pants&&o.geometry.type==='LatheGeometry');if(shorts){shorts.name='lucia-reference-denim-shorts-'+k;const a=shorts.geometry.attributes.position;for(let i=0;i<a.count;i++)if(Math.abs(a.getY(i)+.26)<.001){const angle=Math.atan2(a.getZ(i),a.getX(i));a.setY(i,-.26+.003*Math.sin(angle*9)+.002*Math.sin(angle*17))}a.needsUpdate=true;shorts.geometry.computeVertexNormals()}for(let j=0;j<9;j++){const phi=j/9*Math.PI*2,len=.007+(j%3)*.003;add(T,hp,new T.CylinderGeometry(.0008,.0005,len,4),threads,'lucia-denim-fray',Math.sin(phi)*.095,-.26-len*.45,Math.cos(phi)*.095)}}
   const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);
  }
+ function roundLuciaGeometry(T,mesh,old,region,u){
+  const p=old.parameters;
+  if(region!=='spine'||(mesh.material!==u.m.skin&&mesh.material!==u.m.shirt)||!p||!p.points||p.points.length<2)return old.clone();
+  const points=[];for(let i=0;i<p.points.length-1;i++){const a=p.points[i],b=p.points[i+1],n=Math.max(1,Math.ceil(Math.abs(b.y-a.y)/.0125));for(let j=0;j<n;j++){const t=j/n;points.push(new T.Vector2(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t))}}const last=p.points[p.points.length-1];points.push(new T.Vector2(last.x,last.y));
+  return new T.LatheGeometry(points,Math.max(40,p.segments||0),p.phiStart||0,p.phiLength===undefined?Math.PI*2:p.phiLength);
+ }
+ function smoothLuciaSeam(T,g){const p=g.parameters;if(!p||!p.points||Math.abs(p.phiLength-Math.PI*2)>.00001)return;const normals=g.attributes.normal,rows=p.points.length,offset=p.segments*rows,v=new T.Vector3();for(let i=0;i<rows;i++){v.set(normals.getX(i)+normals.getX(offset+i),normals.getY(i)+normals.getY(offset+i),normals.getZ(i)+normals.getZ(offset+i)).normalize();normals.setXYZ(i,v.x,v.y,v.z);normals.setXYZ(offset+i,v.x,v.y,v.z)}normals.needsUpdate=true}
  function shapeLucia(T,h){
   const u=h.userData;
-  function fit(mesh,region){if(!mesh.isMesh||!mesh.geometry||!mesh.geometry.attributes.position)return;mesh.updateMatrix();const to=mesh.matrix.clone(),from=to.clone().invert(),old=mesh.geometry,g=old.clone(),a=g.attributes.position,v=new T.Vector3();
+  function fit(mesh,region){if(!mesh.isMesh||!mesh.geometry||!mesh.geometry.attributes.position)return;mesh.updateMatrix();const to=mesh.matrix.clone(),from=to.clone().invert(),old=mesh.geometry,g=roundLuciaGeometry(T,mesh,old,region,u),a=g.attributes.position,v=new T.Vector3();
    for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(to);const y=v.y;let xScale=1,zScale=1,frontOffset=0;
-    if(region==='spine'&&y<.5){const waist=Math.exp(-Math.pow((y-.10)/.09,2)),chest=Math.exp(-Math.pow((y-.375)/.065,2))*Math.min(1,Math.max(0,(.5-y)/.05));xScale=1-.07*waist+.07*chest;zScale=1-.045*waist+(v.z>0?.10:.04)*chest;if(v.z>0){const arc=Math.pow(Math.min(1,v.z/.10),2),lobes=Math.min(1,(Math.exp(-Math.pow((v.x-.065)/.065,2))+Math.exp(-Math.pow((v.x+.065)/.065,2)))/1.02);frontOffset=(mesh.material===u.m.shirt?.064:.060)*chest*arc*lobes}}
+    if(region==='spine'&&y<.5){const waist=Math.exp(-Math.pow((y-.10)/.09,2)),chest=Math.exp(-Math.pow((y-.375)/.080,2))*Math.min(1,Math.max(0,(.5-y)/.05));xScale=1-.07*waist+.17*chest;zScale=1-.045*waist+(v.z>0?.10:.04)*chest;if(v.z>0){const arc=Math.pow(Math.min(1,v.z/.10),2),lobes=Math.min(1,(Math.exp(-Math.pow((v.x-.070)/.075,2))+Math.exp(-Math.pow((v.x+.070)/.075,2)))/1.04);frontOffset=(mesh.material===u.m.shirt?.064:.060)*chest*arc*lobes}}
     else if(region==='hips'){const hip=Math.exp(-Math.pow((y+.035)/.085,2)),waist=Math.exp(-Math.pow((y-.13)/.045,2));xScale=1+.16*hip-.025*waist;zScale=1+.10*hip-.015*waist}
     else if(region==='thigh'){let k=Math.max(0,Math.min(1,(y+.45)/.4));k=k*k*(3-2*k);xScale=1+.12*k;zScale=1+.10*k}
     v.x*=xScale;v.z=v.z*zScale+frontOffset;v.applyMatrix4(from);a.setXYZ(i,v.x,v.y,v.z)
-   }a.needsUpdate=true;g.computeVertexNormals();g.computeBoundingSphere();g.computeBoundingBox();mesh.geometry=g;old.dispose()
+   }a.needsUpdate=true;g.computeVertexNormals();smoothLuciaSeam(T,g);g.computeBoundingSphere();g.computeBoundingBox();mesh.geometry=g;old.dispose()
   }
   for(const mesh of u.spine.children.slice())fit(mesh,'spine');for(const mesh of u.hips.children.slice())fit(mesh,'hips');for(const leg of u.Lg)for(const mesh of leg.hp.children.slice())fit(mesh,'thigh');h.userData.luciaTankFit=true;
  }
