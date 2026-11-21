@@ -1,0 +1,83 @@
+name: Lucia fitted dark-grey tank and revised silhouette
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-tank-and-shape.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-tank-and-shape
+  cancel-in-progress: false
+jobs:
+  lucia-fit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install matching Three.js for model tests only
+        run: npm install --prefix "$RUNNER_TEMP/lucia-fit-check" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Refit Lucia and validate model and character isolation
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, json, subprocess, tempfile
+          p=Path('reference-characters.js');original=p.read_text(encoding='utf-8');s=original;q=Path('index.html');game=q.read_text(encoding='utf-8');report={'ok':False}
+          try:
+              if '// LUCIA_TANK_FIT_V1' in s: raise RuntimeError('Lucia tank and shape update already applied.')
+              def once(old,new):
+                  global s
+                  if s.count(old)!=1: raise RuntimeError('Reference model changed: '+old[:100])
+                  s=s.replace(old,new,1)
+              once("top:{kind:'crop',color:0x999d98}","top:{kind:'tank',color:0x303338}")
+              once('accent:0x999d98','accent:0x303338')
+              clothes="  for(const mesh of u.spine.children.slice())if(mesh.isMesh&&((mesh.material===m.shirt)||(mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y-.195)<.002)))remove(mesh);\n  const profile=[[.143,.025],[.14,.055],[.132,.14],[.145,.26],[.166,.36],[.173,.42],[.17,.455],[.135,.485],[.104,.495]];\n  const tank=add(T,u.spine,new T.LatheGeometry(profile.map(p=>new T.Vector2(...p)),28),m.shirt,'lucia-dark-tank-top');tank.scale.z=.66;\n  const hem=add(T,u.spine,new T.TorusGeometry(.143,.0035,6,28),m.trim,'lucia-tank-hem',0,.03,0);hem.scale.y=.66;hem.rotation.x=Math.PI/2;\n  for(const side of[-1,1])for(const back of[false,true]){const a=new T.Vector3(side*.095,back?.475:.465,back?-.092:.092),b=new T.Vector3(side*.105,.553,0),delta=b.clone().sub(a),strap=add(T,u.spine,new T.BoxGeometry(.035,delta.length(),.012),m.shirt,'lucia-tank-strap');strap.position.copy(a.add(b).multiplyScalar(.5));strap.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),delta.normalize())}\n"
+              shape=" function shapeLucia(T,h){\n  const u=h.userData;\n  function fit(mesh,region){if(!mesh.isMesh||!mesh.geometry||!mesh.geometry.attributes.position)return;mesh.updateMatrix();const to=mesh.matrix.clone(),from=to.clone().invert(),old=mesh.geometry,g=old.clone(),a=g.attributes.position,v=new T.Vector3();\n   for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(to);const y=v.y;let xScale=1,zScale=1;\n    if(region==='spine'&&y<.5){const waist=Math.exp(-Math.pow((y-.10)/.09,2)),chest=Math.exp(-Math.pow((y-.375)/.065,2))*Math.min(1,Math.max(0,(.5-y)/.05));xScale=1-.07*waist+.07*chest;zScale=1-.045*waist+(v.z>0?.10:.04)*chest}\n    else if(region==='hips'){const hip=Math.exp(-Math.pow((y+.035)/.085,2)),waist=Math.exp(-Math.pow((y-.13)/.045,2));xScale=1+.16*hip-.025*waist;zScale=1+.10*hip-.015*waist}\n    else if(region==='thigh'){let k=Math.max(0,Math.min(1,(y+.45)/.4));k=k*k*(3-2*k);xScale=1+.12*k;zScale=1+.10*k}\n    v.x*=xScale;v.z*=zScale;v.applyMatrix4(from);a.setXYZ(i,v.x,v.y,v.z)\n   }a.needsUpdate=true;g.computeVertexNormals();g.computeBoundingSphere();g.computeBoundingBox();mesh.geometry=g;old.dispose()\n  }\n  for(const mesh of u.spine.children.slice())fit(mesh,'spine');for(const mesh of u.hips.children.slice())fit(mesh,'hips');for(const leg of u.Lg)for(const mesh of leg.hp.children.slice())fit(mesh,'thigh');h.userData.luciaTankFit=true;\n }\n"
+              test="const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-fit-check/node_modules/three');function load(path){const box={window:{},console,Math};vm.createContext(box);vm.runInContext(fs.readFileSync('characters.js','utf8'),box);vm.runInContext(fs.readFileSync(path,'utf8'),box);return box.window.VCCharacters}const before=load(process.argv[1]),after=load(process.argv[2]);function sig(h){const a=[];h.traverse(o=>{if(o.isMesh)a.push([o.name,Array.from(o.geometry.attributes.position.array),...(Array.isArray(o.material)?o.material:[o.material]).map(m=>m.color?m.color.getHex():null)])});return JSON.stringify(a)}\nfor(const id of Object.keys(before.DESIGNS))if(id!=='luciaC')assert(sig(before.build(T,id))===sig(after.build(T,id)),'Unrelated character changed: '+id);\nconst a=before.build(T,'luciaC'),b=after.build(T,'luciaC'),old=a.userData,u=b.userData;assert(u.luciaTankFit&&u.m.shirt.color.getHex()===0x303338&&b.getObjectByName('lucia-dark-tank-top'));for(const name of['lucia-reference-hoodie','lucia-folded-hood','lucia-hood-cord','lucia-short-sleeve','lucia-sleeve-shoulder','lucia-sleeve-hem'])assert(!b.getObjectByName(name),'Hoodie part remains: '+name);assert(sig(old.headP)===sig(u.headP),'Face or hair changed');\nconst offsets=r=>[r.hips.position.toArray(),r.spine.position.toArray(),r.headP.position.toArray(),...r.A.flatMap(x=>[x.sh.position.toArray(),x.el.position.toArray()]),...r.Lg.flatMap(x=>[x.hp.position.toArray(),x.kn.position.toArray()])];assert(JSON.stringify(offsets(old))===JSON.stringify(offsets(u)));\nconst mesh=(parent,mat)=>parent.children.find(o=>o.isMesh&&o.material===mat&&o.geometry.type==='LatheGeometry');function width(m,y0,y1){m.updateMatrix();const v=new T.Vector3(),a=m.geometry.attributes.position;let low=Infinity,high=-Infinity;for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(m.matrix);if(v.y>=y0&&v.y<=y1){low=Math.min(low,v.x);high=Math.max(high,v.x)}}assert(Number.isFinite(low+high));return high-low}\nassert(width(mesh(u.hips,u.m.pants),-.08,.04)>width(mesh(old.hips,old.m.pants),-.08,.04)*1.08);assert(width(mesh(u.spine,u.m.skin),.06,.16)<width(mesh(old.spine,old.m.skin),.06,.16)*.98);assert(width(mesh(u.Lg[0].hp,u.m.skin),-.1,.03)>width(mesh(old.Lg[0].hp,old.m.skin),-.1,.03)*1.07);assert(width(b.getObjectByName('lucia-reference-denim-shorts-0'),-.1,.03)>width(a.getObjectByName('lucia-reference-denim-shorts-0'),-.1,.03)*1.07);\nfor(const merge of[false,true]){const h=after.build(T,'luciaC',{merge}),r=h.userData;r.A[0].sh.rotation.x=.6;r.A[1].el.rotation.x=1;r.Lg[0].hp.rotation.x=-.5;r.Lg[1].kn.rotation.x=.7;h.updateMatrixWorld(true);assert(r.guns.pistol&&r.guns.rifle);h.traverse(o=>{if(o.isMesh)for(const key of['position','normal','uv'])if(o.geometry.attributes[key])assert(Array.from(o.geometry.attributes[key].array).every(Number.isFinite))})}\nconsole.log(JSON.stringify({dark_grey_tank:true,hood_sleeves_drawstrings_removed:true,fuller_hips_and_thighs:true,defined_waist:true,shorts_refitted:true,face_and_ponytail_unchanged:true,animation_joints_unchanged:true,merged_model_valid:true,other_characters_unchanged:true,finite_geometry:true}));"
+              start=s.index('  for(const mesh of u.spine.children.slice())',s.index(' function lucia(T,h)'))
+              end=s.index('  add(T,u.headP,ponyCap(T)',start)
+              s=s[:start]+clothes+s[end:]
+              once('[[.132,.07],[.13,.105],[.126,.13]]','[[.142,.07],[.138,.105],[.134,.13]]')
+              once('waist.scale.z=.70;','waist.scale.z=.70;shapeLucia(T,h);')
+              once(' function graphic(T){',shape+' function graphic(T){')
+              s='// LUCIA_TANK_FIT_V1\n'+s
+              game,count=re.subn(r"(lucia:\{name:'LUCIA',[^\n]*?shirt:)0x999d98",r'\g<1>0x303338',game)
+              if count!=1: raise RuntimeError('Cannot locate Lucia default top colour.')
+              old="(pl.char==='lucia'&&pl.shirt===0x0b0b0d)";new="(pl.char==='lucia'&&[0x0b0b0d,0x999d98].includes(pl.shirt))"
+              if game.count(old)!=1: raise RuntimeError('Default-shirt migration changed.')
+              game=game.replace(old,new,1)
+              with tempfile.TemporaryDirectory() as d:
+                  a=Path(d)/'before.js';b=Path(d)/'after.js';a.write_text(original);b.write_text(s)
+                  subprocess.run(['node','--check',str(b)],check=True,capture_output=True)
+                  result=subprocess.run(['node','-e',test,str(a),str(b)],check=True,capture_output=True,text=True);report.update(json.loads(result.stdout))
+                  checked=0
+                  for js in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',game,re.I):
+                      if not js.strip(): continue
+                      path=Path(d)/'game.js';path.write_text(js);subprocess.run(['node','--check',str(path)],check=True,capture_output=True);checked+=1
+                  if not checked: raise RuntimeError('No inline scripts found.')
+              p.write_text(s,encoding='utf-8');q.write_text(game,encoding='utf-8');report.update(ok=True,checked_scripts=checked,scope='Lucia-only covered body silhouette and fitted tank top; other character designs and gameplay unchanged')
+          except Exception as exc:
+              report['error']=str(exc)
+              if isinstance(exc,subprocess.CalledProcessError): report['stderr']=(exc.stderr or b'').decode(errors='replace')[-3000:]
+          Path('scripts').mkdir(exist_ok=True)
+          Path('scripts/lucia-tank-fit-status.json').write_text(json.dumps(report,indent=2)+'\n')
+          print(json.dumps(report))
+          PY
+      - name: Commit tested Lucia fit or diagnostic report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- reference-characters.js index.html scripts/lucia-tank-fit-status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Refit Lucia silhouette and replace hoodie with dark-grey tank'
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Require successful Lucia update
+        run: node -e "if(!require('./scripts/lucia-tank-fit-status.json').ok)process.exit(1)"
