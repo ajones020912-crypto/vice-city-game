@@ -45,7 +45,32 @@
     if(region==='spine'&&y<.5){const waist=Math.exp(-Math.pow((y-.10)/.09,2)),chest=Math.exp(-Math.pow((y-.375)/.080,2))*Math.min(1,Math.max(0,(.5-y)/.05));xScale=1-.07*waist+.17*chest;zScale=1-.045*waist+(v.z>0?.10:.04)*chest;if(v.z>0){const arc=Math.pow(Math.min(1,v.z/.10),2),lobes=Math.min(1,(Math.exp(-Math.pow((v.x-.070)/.075,2))+Math.exp(-Math.pow((v.x+.070)/.075,2)))/1.04);frontOffset=(mesh.material===u.m.shirt?.064:.060)*chest*arc*lobes}}
     else if(region==='hips'){const hip=Math.exp(-Math.pow((y+.035)/.085,2)),waist=Math.exp(-Math.pow((y-.13)/.045,2));xScale=1+.16*hip-.025*waist;zScale=1+.10*hip-.015*waist}
     else if(region==='thigh'){let k=Math.max(0,Math.min(1,(y+.45)/.4));k=k*k*(3-2*k);xScale=1+.12*k;zScale=1+.10*k}
-    v.x*=xScale;v.z=v.z*zScale+frontOffset;v.applyMatrix4(from);a.setXYZ(i,v.x,v.y,v.z)
+    v.x *= xScale;
+    v.z = v.z * zScale + frontOffset;
+    function roundedInfluence(value, center, radius) {
+      const t = Math.abs(value - center) / radius;
+      if (t >= 1) return 0;
+      const smooth = t * t * (3 - 2 * t);
+      return 1 - smooth;
+    }
+    if (region === 'spine' && v.z > 0 &&
+        (mesh.material === u.m.skin || mesh.material === u.m.shirt)) {
+      const bust = roundedInfluence(y, 0.375, 0.115);
+      v.z *= 1 - 0.10 * bust;
+    }
+    if ((region === 'hips' || region === 'thigh') && v.z < 0 &&
+        (mesh.material === u.m.skin || mesh.material === u.m.pants)) {
+      const hipY = region === 'thigh' ? y + mesh.parent.position.y : y;
+      const hipX = region === 'thigh' ? v.x + mesh.parent.position.x : v.x;
+      const vertical = roundedInfluence(hipY, -0.09, 0.16);
+      const left = Math.exp(-Math.pow((hipX + 0.075) / 0.075, 2));
+      const right = Math.exp(-Math.pow((hipX - 0.075) / 0.075, 2));
+      const roundness = Math.min(1, (left + right) / 1.0199);
+      const seat = vertical * roundness;
+      v.z *= 1 + 0.30 * seat;
+    }
+    v.applyMatrix4(from);
+    a.setXYZ(i, v.x, v.y, v.z);
    }a.needsUpdate=true;g.computeVertexNormals();smoothLuciaSeam(T,g);g.computeBoundingSphere();g.computeBoundingBox();mesh.geometry=g;old.dispose()
   }
   for(const mesh of u.spine.children.slice())fit(mesh,'spine');for(const mesh of u.hips.children.slice())fit(mesh,'hips');for(const leg of u.Lg)for(const mesh of leg.hp.children.slice())fit(mesh,'thigh');h.userData.luciaTankFit=true;
