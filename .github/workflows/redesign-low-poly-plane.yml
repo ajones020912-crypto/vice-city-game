@@ -1,0 +1,73 @@
+name: Custom lightweight low-poly prop plane
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/redesign-low-poly-plane.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: low-poly-plane-redesign
+  cancel-in-progress: false
+jobs:
+  redesign:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install matching Three.js for geometry tests only
+        run: npm install --prefix "$RUNNER_TEMP/plane-check" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Add visual-only plane and verify geometry and syntax
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, os, re, subprocess, tempfile
+          p=Path('index.html');s=p.read_text(encoding='utf-8');report={'ok':False}
+          try:
+              if 'function makeLowPolyPropPlaneVisual(' in s: raise RuntimeError('Custom plane already exists; refusing to overwrite it.')
+              matches=list(re.finditer(r'function\s+makeAircraftVisual\s*\(\s*tk\s*,\s*color\s*\)\s*\{',s))
+              if len(matches)!=1: raise RuntimeError('Expected one aircraft visual factory.')
+              model="function makeLowPolyPropPlaneVisual(color){\n const t=CAR_TYPES.propPlane,L=t.L,W=t.W,g=new T.Group(),ch=new T.Group();g.add(ch);\n const mat=(color,roughness=.65,metalness=.08)=>new T.MeshStandardMaterial({color,roughness,metalness,flatShading:true});\n const paint=mat(color),cream=mat(0xf0ebdc),teal=mat(0x167f86),glass=mat(0x193e52,.24,.28),dark=mat(0x17232c),rubber=mat(0x111419,.95),metal=mat(0x9ba7ad,.38,.55),yellow=mat(0xf5ce5b);\n const add=(geo,material,x=0,y=0,z=0,parent=ch)=>{const m=new T.Mesh(geo,material);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;parent.add(m);return m};\n const loft=rings=>{const p=[],idx=[],n=8;for(const [z,y,rx,ry]of rings)for(let k=0;k<n;k++){const a=k*Math.PI*2/n;p.push(Math.cos(a)*rx,y+Math.sin(a)*ry,z)}for(let j=0;j<rings.length-1;j++)for(let k=0;k<n;k++){const a=j*n+k,b=j*n+(k+1)%n,c=a+n,d=b+n;idx.push(a,b,c,b,d,c)}for(const end of[0,rings.length-1]){const center=p.length/3,[z,y]=rings[end];p.push(0,y,z);for(let k=0;k<n;k++){const a=end*n+k,b=end*n+(k+1)%n;if(end===0)idx.push(center,b,a);else idx.push(center,a,b)}}const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(p,3));geo.setIndex(idx);geo.computeVertexNormals();return geo};\n const prism=(points,depth,vertical=false)=>{const sh=new T.Shape();points.forEach((p,i)=>i?sh.lineTo(...p):sh.moveTo(...p));sh.closePath();const geo=new T.ExtrudeGeometry(sh,{depth,steps:1,bevelEnabled:false,curveSegments:1});if(vertical){geo.rotateY(-Math.PI/2);geo.translate(depth/2,0,0)}else{geo.rotateX(Math.PI/2);geo.translate(0,depth/2,0)}return geo};\n const beam=(a,b,r=.035,material=cream)=>{a=new T.Vector3(...a);b=new T.Vector3(...b);const d=b.clone().sub(a),m=add(new T.CylinderGeometry(r,r,d.length(),6),material);m.position.copy(a.add(b).multiplyScalar(.5));m.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),d.normalize());return m};\n const body=add(loft([[-.47*L,.12,.055,.07],[-.34*L,.12,.20,.22],[-.16*L,.02,.42,.36],[.03*L,0,.55,.46],[.20*L,0,.52,.43],[.34*L,.06,.37,.33],[.43*L,.12,.27,.25]]),paint);\n add(loft([[-1.15,.45,.37,.17],[-.5,.53,.48,.25],[.85,.5,.45,.25],[1.55,.27,.28,.12]]),glass);\n for(const side of[-1,1]){\n  add(prism([[side*.42,1.12],[side*W*.42,.72],[side*W*.5,.38],[side*W*.5,-.34],[side*W*.42,-.58],[side*.42,-.9]],.11),cream,0,.86,0);\n  add(new T.BoxGeometry(.4,.018,.55),teal,side*(W*.5-.45),.925,.03);\n  beam([side*.45,.08,.45],[side*W*.29,.8,.06],.038,metal);\n  beam([side*.43,.33,1.3],[side*.43,.7,.91],.035);\n  beam([side*.4,.38,-1.02],[side*.43,.7,-.84],.035);\n  beam([side*.43,.73,-.84],[side*.43,.73,.91],.035);\n  add(new T.BoxGeometry(.018,.075,2.1),teal,side*.49,.12,.05);\n  const lamp=mat(side===1?0xe84949:0x5acb8c);lamp.emissive.copy(lamp.color);lamp.emissiveIntensity=.5;\n  add(new T.BoxGeometry(.09,.08,.13),lamp,side*(W*.5-.03),.9,.31);\n }\n beam([0,.36,1.53],[0,.73,.94],.035);\n add(prism([[-W*.17,-L*.37],[-.23,-L*.33],[.23,-L*.33],[W*.17,-L*.37],[W*.17,-L*.44],[0,-L*.42],[-W*.17,-L*.44]],.08),cream,0,.2,0);\n add(prism([[-L*.45,.14],[-L*.45,1.45],[-L*.39,1.62],[-L*.30,.18]],.10,true),teal);\n const prop=new T.Group();prop.name='propeller';prop.position.set(0,.12,L*.448);prop.scale.setScalar(.7);ch.add(prop);\n for(let i=0;i<3;i++){const sh=new T.Shape();sh.moveTo(.06,.14);sh.lineTo(.17,.9);sh.lineTo(.02,1.2);sh.lineTo(-.1,1.12);sh.lineTo(-.11,.22);sh.closePath();const geo=new T.ExtrudeGeometry(sh,{depth:.06,bevelEnabled:false,steps:1});geo.translate(0,0,-.03);const blade=add(geo,dark,0,0,0,prop);blade.name='prop-blade-'+i;blade.rotation.z=i*Math.PI*2/3;const tip=add(new T.BoxGeometry(.13,.16,.065),yellow,0,0,0,blade);tip.position.set(.015,1.07,0)}\n const spinner=add(new T.ConeGeometry(.25,.36,8),teal,0,.12,L*.465);spinner.rotation.x=Math.PI/2;\n const wheels=[];\n for(const [x,z,r,front]of[[-.94,.85,.2,false],[.94,.85,.2,false],[0,L*.32,.18,true]]){\n  const y=-.88+r;beam([x*.48,-.25,z-.15],[x,y,z],.045,metal);\n  const piv=new T.Group();piv.position.set(x,y,z);ch.add(piv);const w=new T.Group();piv.add(w);\n  const tire=new T.CylinderGeometry(r,r,.17,8);tire.rotateZ(Math.PI/2);add(tire,rubber,0,0,0,w);\n  const rim=new T.CylinderGeometry(r*.48,r*.48,.18,8);rim.rotateZ(Math.PI/2);add(rim,metal,0,0,0,w);wheels.push({w,piv,front});\n }\n const batches=new Map();\n for(const m of ch.children.slice())if(m.isMesh&&m!==body){m.updateMatrix();const geo=m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone();geo.applyMatrix4(m.matrix);const a=geo.getAttribute('position').array;if(!batches.has(m.material))batches.set(m.material,[]);const dest=batches.get(m.material);for(const x of a)dest.push(x);geo.dispose();m.geometry.dispose();ch.remove(m)}\n for(const [material,p]of batches){const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(p,3));geo.computeVertexNormals();add(geo,material)}\n return{g,ch,body,wheels,beam:{visible:false},tail:{material:dark},head:{material:cream},bar:null,pm:paint};\n}\n"
+              test="const fs=require('fs'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/plane-check/node_modules/three');\nconst dims=JSON.parse(process.argv[1]),code=process.argv[2],factory=new Function('T','CAR_TYPES',code+';return makeLowPolyPropPlaneVisual;')(T,{propPlane:dims});\nconst v=factory(0xe8e5d8);assert(v.g&&v.ch&&v.body.geometry&&v.pm&&v.tail.material&&v.head.material);assert.strictEqual(v.wheels.length,3);assert(v.wheels.every(w=>w.w&&w.piv));\nconst prop=v.ch.getObjectByName('propeller');assert(prop);assert.strictEqual(prop.children.filter(c=>c.name.startsWith('prop-blade-')).length,3);\nlet triangles=0,meshes=0;v.g.traverse(o=>{if(!o.isMesh)return;meshes++;const a=o.geometry.getAttribute('position');assert(a&&Array.from(a.array).every(Number.isFinite));triangles+=(o.geometry.index?o.geometry.index.count:a.count)/3});assert(triangles<=1600,'Triangle budget exceeded');assert(meshes<=24,'Draw-call budget exceeded');\nfor(let i=0;i<12;i++){prop.rotation.z=i*Math.PI/6;v.g.updateMatrixWorld(true);const b=new T.Box3().setFromObject(v.g);assert(b.min.x>=-dims.W/2-.15&&b.max.x<=dims.W/2+.15,'Wings exceed existing width');assert(b.min.z>=-dims.L/2-.05&&b.max.z<=dims.L/2+.05,'Model exceeds existing length');assert(b.min.y>=-.881,'Geometry clips below landing gear')}\nconsole.log(JSON.stringify({triangles,meshes,model_code_bytes:Buffer.byteLength(code),animation_contract:true,finite_geometry:true,existing_footprint:true,propeller_ground_clearance:true}));"
+              m=matches[0];header=m.group();replacement=model+header+"\n if(tk==='propPlane')return makeLowPolyPropPlaneVisual(color);"
+              updated=s[:m.start()]+replacement+s[m.end():]
+              if updated.replace(replacement,header,1)!=s: raise RuntimeError('Unrelated source changed.')
+              type_line=re.search(r'CAR_TYPES\.propPlane\s*=\s*\{([^\n]+)\}',s)
+              if not type_line: raise RuntimeError('Cannot verify current plane dimensions.')
+              dims={k:float(re.search(r'\b'+k+r'\s*:\s*([\d.]+)',type_line.group(1)).group(1)) for k in ['L','W']}
+              result=subprocess.run(['node','-e',test,json.dumps(dims),model],check=True,capture_output=True,text=True)
+              report.update(json.loads(result.stdout));checked=0
+              for code in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',updated,re.I):
+                  if not code.strip(): continue
+                  with tempfile.NamedTemporaryFile(mode='w',suffix='.js',delete=False) as f:
+                      f.write(code);name=f.name
+                  try: subprocess.run(['node','--check',name],check=True,capture_output=True)
+                  finally: os.unlink(name)
+                  checked+=1
+              if not checked: raise RuntimeError('No inline JavaScript found.')
+              p.write_text(updated,encoding='utf-8');report.update(ok=True,checked_scripts=checked,scope='propPlane visual only; smallJet, flight physics, collisions and supercar unchanged',external_plane_asset_download=False)
+          except Exception as exc:
+              report['error']=str(exc)
+              if isinstance(exc,subprocess.CalledProcessError): report['stderr']=(exc.stderr or b'').decode(errors='replace')[-3000:]
+          Path('scripts').mkdir(exist_ok=True)
+          Path('scripts/low-poly-plane-status.json').write_text(json.dumps(report,indent=2)+'\n')
+          print(json.dumps(report))
+          PY
+      - name: Commit tested model or diagnostic report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html scripts/low-poly-plane-status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Redesign prop plane with custom lightweight low-poly geometry'
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Require successful redesign
+        run: node -e "if(!require('./scripts/low-poly-plane-status.json').ok)process.exit(1)"
