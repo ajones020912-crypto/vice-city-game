@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "correct_code_unlocks": true,
+  "wrong_code_rejected": true,
+  "session_only": true,
+  "multiplayer_blocked": true,
+  "horizontal_and_vertical_flight": true,
+  "speed_boost": true,
+  "paused_movement_blocked": true,
+  "safe_return_to_takeoff": true,
+  "save_and_vehicle_guards": true,
+  "stale_unlock_rejected": true,
+  "normal_controls_preserved": true,
+  "checked_scripts": 1,
+  "scope": "Pause-menu code-gated on-foot developer flight; single-player free roam only",
+  "controls": "WASD move; Space up; X down; Shift boost; Esc then Dev Mode to disable and return to takeoff; saves blocked while flying"
+}
