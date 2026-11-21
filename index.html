@@ -1605,7 +1605,7 @@ function capsule(r,len){const k=r+'_'+len;if(capCache[k])return capCache[k];cons
  // lathe profile: from bottom point to top point, pivot at top (y=0), extends to y=-len
  for(let i=0;i<=5;i++){const a=i/5*Math.PI/2;pts.push(new T.Vector2(Math.sin(a)*r,-len+r-Math.cos(a)*r))}
  pts.push(new T.Vector2(r,-r));for(let i=0;i<=5;i++){const a=i/5*Math.PI/2;pts.push(new T.Vector2(Math.cos(a)*r,-r+Math.sin(a)*r))}
- const g=new T.LatheGeometry(pts,9);return capCache[k]=g}
+ const g=new T.LatheGeometry(pts,7);return capCache[k]=g}
 const SKIN=[0xf1c27d,0xe0ac69,0xc68642,0x8d5524,0x5c3a21,0xffdbac],SHIRTS=[0xe94e68,0x2e9cda,0xf0c44d,0xf2f2f2,0x5dc28a,0xb77be5,0xff8a3d,0x2a2f3a,0x20b6a4,0xff6ec7],PANTS=[0x26344f,0x3b3b44,0x8a7a62,0xd9d2c3,0x2f4a63,0x5a3b3b],HAIR=[0x1d1410,0x3b2314,0x7a4f27,0xd8b45a,0x888888,0x9c1c1c];
 const hMeshes={};
 // ---------- character skin / clothing textures ----------
@@ -1729,7 +1729,6 @@ function addCharacterDetails(root,o){
 function applyCharacterDetails(h,o){const a=h.userData.appearance;if(!a)return;const long=o.longHair===true||o.shirt===0xff6ec7;a.hairBack.visible=long;a.hairTail.visible=long;a.glasses.visible=!!o.glasses;a.fringe.scale.set(long?.086:.082,long?.022:.033,long?.064:.075)}
 
 function makeHuman(o){
- TEX.init();
  const root=new T.Group();
  const m={
   skin:humanMat('skin',o.skin),
