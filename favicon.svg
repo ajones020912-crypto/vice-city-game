@@ -13,6 +13,6 @@
  <path d="M0 102 Q35 95 64 104 T128 101 V128 H0Z" fill="#120c30"/>
  <path d="M0 110 Q32 105 64 111 T128 109" fill="none" stroke="#ff9bdb" stroke-width="2" opacity=".8"/>
  <g fill="#150d2d"><path d="M91 72 Q88 49 79 35 Q91 44 94 55 Q94 38 104 28 Q99 46 98 58 Q107 46 118 45 Q105 56 100 69Z"/><path d="M19 87 Q17 72 10 64 Q20 68 23 77 Q24 64 33 58 Q28 73 27 83 Q35 75 43 77 Q33 82 28 91Z"/></g>
- <text x="64" y="95" text-anchor="middle" font-family="Arial Black,Impact,sans-serif" font-size="55" font-weight="900" letter-spacing="-4" fill="url(#gold)" stroke="#21102f" stroke-width="7" paint-order="stroke" filter="url(#shadow)">#D</text>
+ <text x="64" y="95" text-anchor="middle" font-family="Arial Black,Impact,sans-serif" font-size="55" font-weight="900" letter-spacing="-4" fill="url(#gold)" stroke="#21102f" stroke-width="7" paint-order="stroke" filter="url(#shadow)">3D</text>
  <text x="64" y="113" text-anchor="middle" font-family="Arial,sans-serif" font-size="8" font-weight="bold" letter-spacing="2" fill="#fff2e8">VICE CITY</text>
 </g></svg>
