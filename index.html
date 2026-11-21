@@ -1255,6 +1255,28 @@ function forceShopDoors(){
  ];
  for(const shop of forced)ensureSafeForcedShop(shop);
 }
+function buildAirport(){
+ const cx=-1270,cz=-35,ground=heightAt(cx,cz)+.35;
+ decks.push({x0:cx-250,x1:cx+250,z0:cz-125,z1:cz+125,y:ground});
+ const asphalt=new T.MeshStandardMaterial({color:0x343b43,roughness:.92}),concrete=new T.MeshStandardMaterial({color:0xaaaead,roughness:.86}),yellow=new T.MeshStandardMaterial({color:0xf2c94c,roughness:.8}),glass=new T.MeshStandardMaterial({color:0x31566a,metalness:.35,roughness:.25}),white=new T.MeshStandardMaterial({color:0xe8edf0,roughness:.55});
+ const slab=(w,h,d,mat,x,y,z)=>{const m=new T.Mesh(new T.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);m.receiveShadow=true;m.castShadow=true;world.add(m);return m};
+ slab(480,.32,250,concrete,cx,ground-.2,cz);
+ slab(430,.16,38,asphalt,cx,ground+.04,cz);
+ for(let z=-17;z<=17;z+=8)slab(5,.025,.45,yellow,cx,ground+.13,cz+z);
+ for(const x of[-210,210]){slab(3,.03,42,white,cx+x,ground+.14,cz);}
+ slab(160,.14,62,asphalt,cx+120,ground+.04,cz+65);
+ // Terminal and two hangars
+ slab(58,7,24,white,cx-110,ground+3.5,cz+82);slab(54,4,1.2,glass,cx-110,ground+2.4,cz+69.5);
+ for(const x of[cx+20,cx+105]){slab(48,10,34,white,x,ground+5,cz-78);slab(42,7,.8,asphalt,x,ground+3.5,cz-60.5);slab(49,.7,35,concrete,x,ground+10.2,cz-78)}
+ for(let x=-225;x<=225;x+=30)for(const z of[-132,132]){const pole=slab(.25,7,.25,white,cx+x,ground+3.5,cz+z);const lamp=new T.PointLight(0xffe7b2,1.1,28,2);lamp.position.set(cx+x,ground+7.3,cz+z);world.add(lamp)}
+ // Runway threshold bars and apron markings
+ for(const side of[-1,1])for(let i=0;i<6;i++)slab(1.2,.025,7,white,cx+side*(18+i*3),ground+.14,cz-14);
+ const terminalBeacon=new T.Mesh(new T.BoxGeometry(3,.5,3),yellow);terminalBeacon.position.set(cx-110,ground+7.4,cz+82);world.add(terminalBeacon);
+ spawnCar('propPlane',cx-35,cz+8,0,'parked',0xe8e5d8);
+ spawnCar('smallJet',cx+115,cz+65,Math.PI/2,'parked',0xf1f3f5);
+ airport={x:cx,z:cz,ground};
+}
+let airport=null;
 function buildWorld(){
  initMaterials();initPalm();defineRoads();buildNodes();bakeTerrain();buildTerrainMesh();buildRoadMeshes();
  makeParcels();houses();
@@ -1264,7 +1286,7 @@ function buildWorld(){
  for(const p of parcels){if(p.style==='house')buildHouse(p);else{const built=building(p);if(built!==false&&p.shop)placeShopDoor(p)}}
  buildDowntownPark();
  forceShopDoors();
- portExtras();streetProps();addOuterStreetlights();beachProps();swampProps();hillProps();keysProps();buildSignals();
+ portExtras();streetProps();addOuterStreetlights();beachProps();swampProps();hillProps();keysProps();buildSignals();buildAirport();
  finalizeBatches();buildBaseMap();
 }
 
@@ -1306,6 +1328,8 @@ const CAR_TYPES={
  police:{name:'Police cruiser',base:'sedan',colors:[0xf2f4f7],hp:140,power:10.5,top:46},
 };
 for(const k of['taxi','police']){const b=CAR_TYPES[CAR_TYPES[k].base];CAR_TYPES[k]=Object.assign({},b,CAR_TYPES[k])}
+CAR_TYPES.propPlane={name:'Prop plane',aircraft:true,L:9.5,W:11.5,wb:3,wr:.2,mass:1800,power:1,top:48,grip:2,steer:.55,hp:180,colors:[0xe8e5d8,0x2e6fa8,0xd94b45]};
+CAR_TYPES.smallJet={name:'Small jet',aircraft:true,L:14,W:13,wb:4,wr:.2,mass:4200,power:1,top:72,grip:2,steer:.42,hp:240,colors:[0xf1f3f5,0x26384d,0xb8c7d8]};
 CAR_TYPES.speedboat={name:'Speedboat',boat:true,L:6.2,W:2.3,wb:3,wr:.3,mass:1300,power:11,top:42,grip:2.6,steer:.55,hp:120,colors:[0xffffff,0xff4f9a,0x2ec4e8,0xf0c44d,0x20252d]};
 CAR_TYPES.airboat={name:'Airboat',boat:true,airboat:true,L:4.8,W:2.4,wb:2.6,wr:.3,mass:900,power:9,top:32,grip:2.2,steer:.6,hp:100,colors:[0x5d8a5e,0x6b4a35,0x3d5a45,0xc9a24a]};
 function extrudeProfile(pts,depth,bevel){
@@ -1411,7 +1435,21 @@ function carGeos(tk){
  // light beam cone (additive) pointing forward
  const bg=new T.ConeGeometry(2.6,16,10,1,true);bg.rotateX(-Math.PI/2);bg.translate(0,0,8.4);o.beam=bg;
  return carGeoCache[tk]=o}
+function makeAircraftVisual(tk,color){
+ const t=CAR_TYPES[tk],g=new T.Group(),ch=new T.Group();g.add(ch);
+ const paint=new T.MeshStandardMaterial({color,metalness:.42,roughness:.42}),white=new T.MeshStandardMaterial({color:0xe9f1f5,metalness:.28,roughness:.35}),glass=new T.MeshStandardMaterial({color:0x18374b,metalness:.55,roughness:.18}),dark=new T.MeshStandardMaterial({color:0x18212a,roughness:.8});
+ const fus=new T.Mesh(new T.CylinderGeometry(tk==='smallJet'?.72:.48,tk==='smallJet'?.78:.52,t.L,12),paint);fus.rotation.x=Math.PI/2;ch.add(fus);
+ const nose=new T.Mesh(new T.ConeGeometry(tk==='smallJet'?.72:.48,tk==='smallJet'?2.4:1.5,12),white);nose.rotation.x=-Math.PI/2;nose.position.z=t.L/2+.65;ch.add(nose);
+ const wing=new T.Mesh(new T.BoxGeometry(tk==='smallJet'?t.W: t.W, .18, tk==='smallJet'?2.1:2.7),paint);wing.position.set(0,.05,-.1);ch.add(wing);
+ const tailWing=new T.Mesh(new T.BoxGeometry(t.W*.34,.13,1.15),white);tailWing.position.set(0,.28,-t.L*.39);ch.add(tailWing);
+ const fin=new T.Mesh(new T.BoxGeometry(.16,1.45,1.35),paint);fin.position.set(0,.78,-t.L*.4);ch.add(fin);
+ const cockpit=new T.Mesh(new T.SphereGeometry(tk==='smallJet'?.83:.62,16,10,0,Math.PI*2,0,Math.PI/2),glass);cockpit.scale.set(1,.7,tk==='smallJet'?1.45:1.2);cockpit.position.set(0,.48,t.L*.22);ch.add(cockpit);
+ if(tk==='smallJet'){for(const x of[-1,1]){const eng=new T.Mesh(new T.CylinderGeometry(.48,.55,2.4,12),dark);eng.rotation.x=Math.PI/2;eng.position.set(x*2.5,-.35,-t.L*.18);ch.add(eng)}}else{const hub=new T.Mesh(new T.CylinderGeometry(.16,.16,.38,12),dark);hub.rotation.x=Math.PI/2;hub.position.z=t.L/2+1.25;ch.add(hub);const prop=new T.Group();prop.name='propeller';for(let i=0;i<2;i++){const blade=new T.Mesh(new T.BoxGeometry(.13,2.35,.1),dark);blade.rotation.z=i*Math.PI/2;prop.add(blade)}prop.position.z=t.L/2+1.48;ch.add(prop)}
+ const wheels=[];for(const x of[-.85,.85]){const wh=new T.Mesh(new T.CylinderGeometry(.22,.22,.16,10),dark);wh.rotation.z=Math.PI/2;wh.position.set(x,-.62,t.L*.2);ch.add(wh);wheels.push({piv:new T.Group(),w:wh,front:false})}
+ return{g,ch,wheels,beam:{visible:false},tail:{material:dark},head:{material:white},bar:null,pm:paint};
+}
 function makeCarVisual(tk,color){
+ if(CAR_TYPES[tk].aircraft)return makeAircraftVisual(tk,color);
  if(CAR_TYPES[tk].boat)return makeBoatVisual(tk,color);
  const t=CAR_TYPES[tk],gs=carGeos(tk),g=new T.Group(),ch=new T.Group();g.add(ch);
  const pm=paintMat(color);
@@ -1695,7 +1733,7 @@ class Car{
  get speed(){return Math.hypot(this.vx,this.vz)}
  place(){
   const g=this.g,t=this.t;
-  if(!t.boat){this.pitch=0;this.roll=0;this.pV=0;this.rV=0;}
+  if(!t.boat&&!t.aircraft){this.pitch=0;this.roll=0;this.pV=0;this.rV=0;}
   // raise chassis so pitched/rolled wheels stay on the road surface
   const lift=Math.max(0,Math.abs(Math.sin(this.pitch))*(t.wb*.5)+Math.abs(Math.sin(this.roll))*(t.W*.5));
   this.lift=lift;
@@ -1709,8 +1747,20 @@ function removeCar(c){const i=cars.indexOf(c);if(i>=0)cars.splice(i,1);world.rem
 const _p2=[0,0];
 function carCircles(c,out){const t=c.t,sn=Math.sin(c.h),cs=Math.cos(c.h),o=t.L/2-.95;out[0]=[c.x+sn*o,c.z+cs*o];out[1]=[c.x,c.z];out[2]=[c.x-sn*o,c.z-cs*o];return out}
 const _cc=[null,null,null];
+function stepAircraft(c,dt){
+ const t=c.t,inp=c.inp,ground=heightAt(c.x,c.z)+.38;
+ let speed=c.speed,throttle=inp.thr>0?inp.thr:0;
+ if(inp.thr<0)speed=Math.max(0,speed-30*dt);else speed=Math.min(t.top,speed+throttle*(t.tk==='smallJet'?12:8)*dt);
+ if(!c.airborne&&speed>20&&keys[' '])c.airborne=true;
+ if(c.airborne){const climb=(keys[' ']?1:0)-(keys['shift']?1:0);c.vy=(c.vy||0)+(climb*8-1.8)*dt;c.vy=clamp(c.vy,-12,13);c.y+=c.vy*dt;if(c.y<=ground){c.y=ground;c.vy=0;c.airborne=false;c.pitch=0}else c.pitch=lerp(c.pitch,climb*.16,dt*2.4)}
+ else{c.y=ground;c.vy=0;c.pitch=0}
+ c.h+=inp.steer*(c.airborne?1.05:.65)*dt*(.35+speed/35);
+ c.vx=Math.sin(c.h)*speed;c.vz=Math.cos(c.h)*speed;c.vf=speed;c.vl=0;c.braking=inp.thr<0;c.fuel=Math.max(0,c.fuel-dt*(throttle>0?.12:0));
+ if(c.fuel<=0){c.inp.thr=0;c.vx*=.995;c.vz*=.995}
+ c.roll=lerp(c.roll,-inp.steer*(c.airborne?.28:.08),dt*3);c.age+=dt;
+}
 function stepCar(c,dt){
- const t=c.t,inp=c.inp;if(t.boat)return stepBoat(c,dt);c.age+=dt;const up=c.up||{},pw=1+.15*(up.eng||0),tw=1+.07*(up.eng||0);
+ const t=c.t,inp=c.inp;if(t.aircraft)return stepAircraft(c,dt);if(t.boat)return stepBoat(c,dt);c.age+=dt;const up=c.up||{},pw=1+.15*(up.eng||0),tw=1+.07*(up.eng||0);
  if(c.dead){inp.thr=0;inp.hb=0;inp.steer=0}
  // fuel
  if(c.fuel==null)c.fuel=80;
@@ -2764,7 +2814,7 @@ function onKey(k,e){
  if(G.state!=='play')return;
  if(k==='e'){
   if(pl.inside){const o=pl.inside.o;if(Math.hypot(pl.x-o.counter.x,pl.z-o.counter.z)<3.2){openShop(pl.inside.door.kind)}else if(Math.hypot(pl.x-o.exit.x,pl.z-o.exit.z)<3.4)exitInterior();return}
-  if(pl.car){if(pl.car.speed<12)ejectPlayer();else toast('Slow down before exiting');return}
+  if(pl.car){if(pl.car.t.aircraft&&pl.car.airborne){toast('Land the aircraft before exiting');return}if(pl.car.speed<12)ejectPlayer();else toast('Slow down before exiting');return}
   const d=nearestDoor();if(d){enterInterior(d);return}
   const sp=nearSpot();if(sp){useSpot(sp);return}
   const c=nearestCar();if(c)enterCar(c);return}
@@ -2855,8 +2905,8 @@ function simulate(dt){
    if(c.speed>1.5)carHitPeds(c)}
   collideNearbyCars();
   for(const c of cars)c.place();
-  for(const c of cars){const v=c.v;if(c.dead&&c.mode==='wreck')continue;for(const w of v.wheels){w.w.rotation.x=c.wheelRot;if(w.front)w.piv.rotation.y=c.steer}
-   const tm=c.braking?tailOn:tailOff;if(v.tail.material!==tm)v.tail.material=tm;const lit=SK.night>.3&&(c.occ||c.mode==='parked'&&false);v.beam.visible=!!(lit&&c.occ);
+  for(const c of cars){const v=c.v;if(c.dead&&c.mode==='wreck')continue;for(const w of v.wheels){if(w.w)w.w.rotation.x=c.wheelRot;if(w.front&&w.piv)w.piv.rotation.y=c.steer}
+   const tm=c.braking?tailOn:tailOff;if(!c.t.aircraft&&v.tail.material!==tm)v.tail.material=tm;const lit=SK.night>.3&&(c.occ||c.mode==='parked'&&false);v.beam.visible=!!(lit&&c.occ);
    if(v.bar&&(c.mode==='cop'||c.mode==='parked')&&!c.dead&&c.occ){const f=Math.floor(G.time*6)%2;v.bar[0].visible=!!f;v.bar[1].visible=!f}else if(v.bar&&!c.occ){v.bar[0].visible=v.bar[1].visible=false}}
   for(const p of peds)if(p.active)p.update(dt);for(const p of cops)if(p.active)p.update(dt);for(const p of gangs)if(p.active)p.update(dt);
   updatePopulation(dt);updatePickups(dt);updateWeather(dt);updateGators(dt);updateExtras(dt);
@@ -3351,6 +3401,7 @@ function carPrompt(){const c=pl.car;if(!c||c.dead)return'';
  if(G.exp&&hyp(c.x,c.z,EXPORT.x,EXPORT.z)<14)return c.tk===G.exp.tk?'Stop in the marker to export':'The dock wants a '+CAR_TYPES[G.exp.tk].name;
  if(c.tk==='taxi')return'[R] Start taxi job';return''}
 function extraBlips(b){
+ if(airport)b.push({x:airport.x,z:airport.z,c:'#ffd23a',s:'✈',icon:true,label:'Mount Orrin Airport'});
  for(const s of GAS)b.push({x:s.x,z:s.z,c:'#5dff8a',s:'⛽',icon:true,label:'Fuel station'});
  b.push({x:DEALER.x,z:DEALER.z,c:'#ffd23a',s:'🚘',icon:true,label:'Vehicle dealership'});
  for(const p of PROPS)b.push({x:p.x,z:p.z,c:pl.props[p.id]?'#59ffa0':'#cccccc',s:pl.props[p.id]?'🏠':'🏷',small:!pl.props[p.id]});
