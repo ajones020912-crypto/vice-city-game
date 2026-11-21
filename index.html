@@ -1847,6 +1847,12 @@ function stepAircraft(c,dt){
  }else{c.y=ground;c.vy=0;c.pitch=0}
  c.h+=inp.steer*(c.airborne?.9:.52)*dt*(.3+speed/32);
  c.vx=Math.sin(c.h)*speed;c.vz=Math.cos(c.h)*speed;c.vf=speed;c.vl=0;c.braking=inp.thr<0;
+ // Actually advance the aircraft through the world. Previously velocity was
+ // calculated but x/z were never integrated, so throttle could not taxi or fly forward.
+ c.x+=c.vx*dt;c.z+=c.vz*dt;
+ const newGround=heightAt(c.x,c.z)+.88;
+ if(!c.airborne){c.y=newGround;c.vy=0}
+ else if(c.y<=newGround){c.y=newGround;c.vy=0;c.airborne=false;c.pitch=0}
  c.fuel=Math.max(0,c.fuel-dt*(throttle>0?.1:0));
  if(c.fuel<=0){c.inp.thr=0;c.vx*=.995;c.vz*=.995}
  c.roll=lerp(c.roll,-inp.steer*(c.airborne?.32:.07),Math.min(1,dt*3));
