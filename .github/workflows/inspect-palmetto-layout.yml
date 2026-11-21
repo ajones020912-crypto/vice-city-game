@@ -11,32 +11,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extract focused layout source without changing gameplay
+      - name: Extract remaining integration helpers without changing gameplay
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import re,json,subprocess
           s=Path('index.html').read_text(encoding='utf-8')
-          sections={}
-          for name in ['defineRoads','addRoad','houses','buildWorld','zoneAt','heightAt','buildRoadMeshes','makeParcels']:
+          out=Path('status/palmetto-integration');out.mkdir(parents=True,exist_ok=True)
+          names=['buildNodes','buildHouse','nearRoad','bakeTerrain','footprintHitsRoad','filterRoadParcels','roadSpotNear','streetProps','buildBaseMap','addCol','B','bakeG']
+          found=[]
+          for name in names:
               m=re.search(r'function '+re.escape(name)+r'\s*\(',s)
-              if m:
-                  tail=s[m.start():]
-                  nxt=re.search(r'\nfunction \w+\s*\(',tail[1:])
-                  end=nxt.start()+1 if nxt else 3500
-                  sections[name]=tail[:min(end,3500)]
-          for i,m in enumerate(list(re.finditer('Palmetto',s,re.I))[:6]):
-              sections['palmetto_reference_'+str(i)]=s[max(0,m.start()-500):m.start()+900]
-          sections['house_related_function_names']=re.findall(r'function (\w*(?:house|House|home|Home|road|Road|zone|Zone)\w*)\s*\(',s)
-          report={'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'sections':sections,'gameplay_changed':False}
-          Path('status').mkdir(exist_ok=True)
-          Path('status/palmetto-layout-source.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
+              if not m: continue
+              tail=s[m.start():]
+              nxt=re.search(r'\nfunction \w+\s*\(',tail[1:])
+              end=nxt.start()+1 if nxt else 10000
+              out.joinpath(name+'.txt').write_text(tail[:min(end,10000)],encoding='utf-8');found.append(name)
+          m=re.search(r'class Car\b',s)
+          if m: out.joinpath('Car.txt').write_text(s[m.start():m.start()+22000],encoding='utf-8')
+          keywords=['stop sign','stopSign','STOP','road.cross','this.road','this.rd']
+          snippets={}
+          for word in keywords:
+              snippets[word]=[s[max(0,m.start()-400):m.start()+1400] for m in list(re.finditer(re.escape(word),s))[:4]]
+          out.joinpath('references.json').write_text(json.dumps(snippets,indent=2),encoding='utf-8')
+          out.joinpath('manifest.json').write_text(json.dumps({'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'functions':found,'gameplay_changed':False},indent=2),encoding='utf-8')
           PY
-      - name: Commit inspection report only
+      - name: Commit inspection reports only
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add status/palmetto-layout-source.json
+          git add status/palmetto-integration
           git diff --cached --quiet && exit 0
-          git commit -m 'Record Palmetto layout source for a safe connected neighborhood redesign'
+          git commit -m 'Record traffic housing and signage helpers for Palmetto redesign'
           git push origin HEAD:main
