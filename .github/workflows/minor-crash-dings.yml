@@ -1,0 +1,82 @@
+name: Minor crashes leave persistent cosmetic dings
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/minor-crash-dings.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: minor-crash-dings
+  cancel-in-progress: false
+jobs:
+  dings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install matching Three.js for tests only
+        run: npm install --prefix "$RUNNER_TEMP/dings-check" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Lower cosmetic dent threshold and validate repairs
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, json, subprocess, tempfile, os
+          p=Path('index.html');s=p.read_text(encoding='utf-8');report={'ok':False}
+          try:
+              if '// CAR_DINGS_V1' in s: raise RuntimeError('Minor-crash dings already applied.')
+              def once(old,new):
+                  global s
+                  if s.count(old)!=1: raise RuntimeError('Unexpected dings anchor: '+old[:100])
+                  s=s.replace(old,new,1)
+              once('c.t.aircraft||imp<3.2||','c.t.aircraft||imp<=1||')
+              once('amount=.035+.46*strength;','amount=imp<3.2?.035+.065*clamp((imp-1)/2.2,0,1):.1+.395*strength;')
+              once("const full=typeof maxHp==='function'?maxHp(this):this.t.hp;","const full=typeof maxHp==='function'?maxHp(this):this.t.hp;const healed=Number.isFinite(state.lastHP)&&this.hp>state.lastHP+.01;state.lastHP=this.hp;")
+              once('if(this.hp>=full-.01){for(const p of state.parts)','if(state.repairRequested||(healed&&this.hp>=full-.01)){for(const p of state.parts)')
+              once('state.dirty=state.morph=false;return result}','state.dirty=state.morph=state.repairRequested=false;return result}')
+              once('if(hit>2.5){crumpleCrash(c,hit,crumpleContact);carImpact(c,hit)}','if(hit>1)crumpleCrash(c,hit,crumpleContact);if(hit>2.5){carImpact(c,hit)}')
+              hooks='const crumplePoint={x:(_ca[i][0]+_cb[j][0])*.5,z:(_ca[i][1]+_cb[j][1])*.5,nx,nz};crumpleCrash(a,imp,crumplePoint);crumpleCrash(b,imp,{x:crumplePoint.x,z:crumplePoint.z,nx:-nx,nz:-nz});'
+              once('const imp=-vrel;if(imp>3){'+hooks+'damageCar(a,','const imp=-vrel;if(imp>1){'+hooks+'}if(imp>3){damageCar(a,')
+              once("const hurt=c.hp<maxHp(c)-.5;out.push({n:'Repair'","const hurt=c.hp<maxHp(c)-.5||!!(c._crumple&&c._crumple.dirty);out.push({n:'Repair'")
+              once('f:()=>{c.hp=maxHp(c);c.fire=0}','f:()=>{c.hp=maxHp(c);if(c._crumple)c._crumple.repairRequested=true;c.fire=0}')
+              once('car.hp=maxHp(car);car.fire=0;','car.hp=maxHp(car);if(car._crumple)car._crumple.repairRequested=true;car.fire=0;')
+              once('// CAR_CRUMPLE_V2','// CAR_DINGS_V1\n// CAR_CRUMPLE_V2')
+              start=s.index('// CAR_CRUMPLE_V2');tail='return crumpleOriginalRemove.apply(this,arguments)};';end=s.index(tail,start)+len(tail);code=s[start:end]
+              setup="const T=require(process.env.RUNNER_TEMP+'/dings-check/node_modules/three'),assert=require('assert'),clamp=T.MathUtils.clamp,G={time:0},pl={x:0,z:0};function maxHp(){return 100}function removeCar(){return'removed'}class Car{place(){return'placed'}}function car(hp=100){const c=new Car(),g=new T.Group(),ch=new T.Group();g.add(ch);const body=new T.Mesh(new T.BoxGeometry(2,.8,4,4,2,8),new T.MeshBasicMaterial());ch.add(body);Object.assign(c,{t:{L:4,W:2,hp:100},hp,x:0,z:0,h:0,vf:10,vx:0,vz:10,dead:false,v:{g,ch,body,wheels:[]}});return c}"
+              checks='const a=car(),original=new Float32Array(a.v.body.geometry.attributes.position.array);crumpleCrash(a,1.8,{x:0,z:2,nx:0,nz:-1});G.time+=.17;a.place();assert(a.hp===100&&!a.dead&&a._crumple.dirty);const positions=a.v.body.geometry.attributes.position.array;let dent=0;for(let i=2;i<positions.length;i+=3)dent=Math.max(dent,original[i]-positions[i]);assert(dent>.01&&dent<.15);const snapshot=new Float32Array(positions);G.time+=2;a.place();assert(Array.from(positions).every((x,i)=>x===snapshot[i]));G.time+=.3;crumpleCrash(a,1.8,{x:0,z:2,nx:0,nz:-1});G.time+=.17;a.place();let accumulated=0;for(let i=2;i<positions.length;i+=3)accumulated=Math.max(accumulated,original[i]-positions[i]);assert(accumulated>dent&&a.hp===100);a._crumple.repairRequested=true;a.place();assert(Array.from(positions).every((x,i)=>x===original[i])&&!a._crumple.dirty);const b=car(90);G.time+=.3;crumpleCrash(b,8,{x:0,z:2,nx:0,nz:-1});G.time+=.17;b.place();assert(b._crumple.dirty);b.hp=100;b.place();assert(!b._crumple.dirty);const idle=car();crumpleCrash(idle,.5,{x:0,z:2,nx:0,nz:-1});assert(!idle._crumple);console.log(JSON.stringify({minor_impacts_dent:true,full_health_dings_persist:true,minor_dents_accumulate:true,cosmetic_repair_at_full_health:true,health_repair_still_resets:true,microscopic_contacts_ignored:true,no_added_health_damage:true}));'
+              result=subprocess.run(['node','-e',setup+code+checks],check=True,capture_output=True,text=True);report.update(json.loads(result.stdout))
+              checked=0
+              for js in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I):
+                  if not js.strip(): continue
+                  with tempfile.NamedTemporaryFile(mode='w',suffix='.js',delete=False) as f:
+                      f.write(js);name=f.name
+                  try: subprocess.run(['node','--check',name],check=True,capture_output=True)
+                  finally: os.unlink(name)
+                  checked+=1
+              if not checked: raise RuntimeError('No inline scripts found.')
+              p.write_text(s,encoding='utf-8');report.update(ok=True,checked_scripts=checked,scope='Lower visual dent threshold only; original health damage, collision physics and total-loss rules unchanged; cosmetic repairs enabled')
+          except Exception as exc:
+              report['error']=str(exc)
+              if isinstance(exc,subprocess.CalledProcessError): report['stderr']=(exc.stderr or b'').decode(errors='replace')[-3000:]
+          Path('scripts').mkdir(exist_ok=True)
+          Path('scripts/minor-crash-dings-status.json').write_text(json.dumps(report,indent=2)+'\n')
+          print(json.dumps(report))
+          PY
+      - name: Commit validated cosmetic dings or diagnostic report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html scripts/minor-crash-dings-status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Add persistent minor-crash dings without increasing health damage'
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Require successful dings upgrade
+        run: node -e "if(!require('./scripts/minor-crash-dings-status.json').ok)process.exit(1)"
