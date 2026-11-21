@@ -47,6 +47,22 @@
       shoes: { kind: 'hightops', color: 0xf4f4f4, sole: 0xe6e6e6 },
       extras: ['hoops', 'shades'],
     },
+    jasonC: {
+      name: 'Jason', role: 'Lead · option C',
+      skin: 0xc98e68, hair: 0x1d1410, hairStyle: 'buzz',
+      top: { kind: 'tank', color: 0xf2f1ec },
+      legs: { kind: 'trousers', color: 0xb39b6e },
+      shoes: { kind: 'boots', color: 0x5a4330, sole: 0x2a2018 },
+      extras: ['watch'],
+    },
+    luciaC: {
+      name: 'Lucia', role: 'Lead · option C', build: 'slim',
+      skin: 0xb9784e, hair: 0x4a2c1a, hairStyle: 'longdown',
+      top: { kind: 'tank', color: 0x3c3e44 },
+      legs: { kind: 'jeans', color: 0x1f2228, highWaist: true },
+      shoes: { color: 0xf6f6f6, sole: 0xe2e2e2 },
+      extras: ['hoops'],
+    },
     officer: {
       name: 'Officer', role: 'Police',
       skin: 0xe0ac69, hair: 0x3b2314, hairStyle: 'short',
@@ -211,7 +227,7 @@
     const scalp = (sy = 1, lift = 0.17) => add(headP, ball(0.126, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.52), m.hair, 0, lift, -0.008, 0.97, sy, 1.04);
     if (hs === 'fade') { scalp(1.0, 0.17); add(headP, ball(0.08, 6, 4), m.hair, 0.01, 0.285, 0.04, 1.2, 0.45, 1.0); }
     if (hs === 'short') { scalp(1.02, 0.17); add(headP, box(0.17, 0.04, 0.05), m.hair, 0, 0.26, 0.085); }
-    if (hs === 'buzz') scalp(0.98, 0.165);
+    if (hs === 'buzz') { add(headP, ball(0.126, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.42), m.hair, 0, 0.165, -0.01, 0.97, 1.12, 1.03); add(headP, ball(0.122, 10, 6, 0, Math.PI * 2, Math.PI * 0.4, Math.PI * 0.22), m.hair, 0, 0.165, -0.025, 0.98, 1.1, 0.98); }
     if (hs === 'curly') { scalp(1.0, 0.17); for (let i = 0; i < 11; i++) { const a = (i / 11) * Math.PI * 2; add(headP, new T.IcosahedronGeometry(0.045, 0), m.hair, Math.cos(a) * 0.095, 0.27 + (i % 2) * 0.02, Math.sin(a) * 0.09); } add(headP, new T.IcosahedronGeometry(0.06, 0), m.hair, 0, 0.3, 0); }
     if (hs === 'ponytail') {
       scalp(1.02, 0.17);
@@ -221,6 +237,13 @@
     }
     if (hs === 'messy') { scalp(1.03, 0.17); for (const [x, y, z, r] of [[-0.06, 0.29, 0.05, 0.05], [0.05, 0.3, 0.04, 0.055], [0.0, 0.31, -0.03, 0.06], [0.08, 0.27, -0.02, 0.045], [-0.08, 0.27, -0.04, 0.045], [0.02, 0.27, 0.09, 0.045]]) add(headP, new T.IcosahedronGeometry(r, 0), m.hair, x, y, z); }
     if (hs === 'lowbun') { scalp(1.02, 0.17); add(headP, ball(0.058, 7, 5), m.hair, 0, 0.13, -0.135); add(headP, box(0.2, 0.04, 0.05), m.hair, 0, 0.262, 0.07).rotation.z = -0.06; }
+    if (hs === 'longdown') {
+      add(headP, ball(0.128, 10, 7, 0, Math.PI * 2, 0, Math.PI * 0.56), m.hair, 0, 0.16, -0.008, 0.98, 1.12, 1.05); // crown
+      add(headP, ball(0.13, 8, 7), m.hair, 0, 0.03, -0.075, 0.95, 1.55, 0.5);            // length falling down the back
+      add(headP, ball(0.1, 8, 6), m.hair, 0, -0.14, -0.07, 1.15, 0.6, 0.5);              // ends resting on the shoulders
+      for (const sx of [-1, 1]) add(headP, ball(0.05, 6, 6), m.hair, sx * 0.105, 0.06, 0.01, 0.7, 2.6, 0.9); // strands framing the face
+      const fr = add(headP, ball(0.08, 8, 5), m.hair, 0.025, 0.245, 0.07, 1.25, 0.35, 0.8); fr.rotation.z = -0.15; // side-parted fringe
+    }
     if (hs === 'bun') { scalp(1.0, 0.17); add(headP, ball(0.055, 7, 5), m.hair, 0, 0.32, -0.04); }
     if (hs === 'bald') { for (const sx of [-1, 1]) add(headP, ball(0.06, 6, 4), m.hair, sx * 0.09, 0.17, -0.04, 0.6, 0.9, 1.1); }
 
