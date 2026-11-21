@@ -1487,7 +1487,28 @@ function makeCarVisual(tk,color){
  part(new T.BoxGeometry(.48,.15,.035),mat(0xe5e7e8,.7,.05),0,.55,t.L/2+.24);
  part(new T.BoxGeometry(.48,.15,.035),mat(0xe5e7e8,.7,.05),0,.55,-t.L/2-.205);
 
- beam.visible=false;beam.position.y=.7;g.add(beam);
+ // Twin low-beam headlights: two distinct, narrow cones aligned with the actual lamps.
+ const beamPair=new T.Group();beamPair.visible=false;
+ const beamGeo=new T.ConeGeometry(1.05,19,14,1,true);beamGeo.rotateX(-Math.PI/2);beamGeo.translate(0,0,9.5);
+ for(const sx of[-1,1]){
+  const cone=new T.Mesh(beamGeo,beamMat);cone.position.set(sx*t.W*.34,.7,t.L/2+.18);beamPair.add(cone);
+ }
+ g.add(beamPair);
+ // Hood character lines, windshield wipers and clean door shut-lines add scale and definition.
+ for(const sx of[-1,1]){
+  part(new T.BoxGeometry(.035,.025,t.L*.29),chrome,sx*t.W*.23,.91,t.L*.27,0,0,0);
+  part(new T.BoxGeometry(.035,.025,.72),dark,sx*(t.W*.19),t.gh[2][1]+.015,t.gh[2][0]+.18,-.08,0,0);
+  part(new T.BoxGeometry(.018,.34,.018),dark,sx*(t.W/2+.025),.93,-.18);
+ }
+ // Machined alloy faces on all four wheels.
+ for(const sz of[1,-1])for(const sx of[1,-1]){
+  const pivotX=sx*(t.W/2-.2),wheelZ=sz*t.wb/2;
+  const rimMat=mat(0xaeb9c2,.28,.82),hubMat=mat(0x3b4650,.35,.72);
+  const rim=new T.Mesh(new T.CylinderGeometry(.245,.245,.035,20),rimMat);
+  rim.rotation.z=Math.PI/2;rim.position.set(pivotX+(sx>0?.125:-.125),t.wr,wheelZ);ch.add(rim);
+  const hub=new T.Mesh(new T.CylinderGeometry(.075,.075,.045,16),hubMat);
+  hub.rotation.z=Math.PI/2;hub.position.set(pivotX+(sx>0?.15:-.15),t.wr,wheelZ);ch.add(hub);
+ }
  let bar=null;
  if(tk==='police'){const bg=new T.BoxGeometry(1.2,.14,.3),mr=new T.MeshBasicMaterial({color:0xff1010,toneMapped:false}),mb=new T.MeshBasicMaterial({color:0x1030ff,toneMapped:false});
   const a=new T.Mesh(bg,mr),b=new T.Mesh(bg,mb);a.scale.x=b.scale.x=.5;a.position.set(.32,t.gh[2][1]+.1,t.gh[2][0]-.4);b.position.set(-.32,t.gh[2][1]+.1,t.gh[2][0]-.4);ch.add(a,b);bar=[a,b];
@@ -1496,7 +1517,7 @@ function makeCarVisual(tk,color){
  if(tk==='taxi'){const s=new T.Mesh(new T.BoxGeometry(.7,.22,.3),new T.MeshStandardMaterial({color:0xfff2a0,emissive:0xffe066,emissiveIntensity:.95,roughness:.4}));s.position.set(0,t.gh[2][1]+.12,t.gh[2][0]-.4);ch.add(s)}
  const wheels=[],gm=wheelGeo(t.wr);
  for(const sz of[1,-1])for(const sx of[1,-1]){const piv=new T.Group();piv.position.set(sx*(t.W/2-.2),t.wr,sz*t.wb/2);const w=new T.Mesh(gm,wheelMat);w.castShadow=true;if(sx<0)w.rotation.y=Math.PI;piv.add(w);ch.add(piv);wheels.push({piv,w,front:sz>0})}
- return{g,ch,body,tail,head,beam,bar,wheels,pm}}
+ return{g,ch,body,tail,head,beam:beamPair,bar,wheels,pm}}
 
 // ================= HUMANS =================
 const capCache={};
