@@ -1,0 +1,24 @@
+{
+  "id": "jason-lucia-stay-a-while",
+  "title": "Stay a While",
+  "status": "storyboard-only",
+  "enabled": false,
+  "durationSeconds": 27,
+  "setting": "safehouse-bedroom",
+  "wardrobe": "casual-clothes-throughout",
+  "explicitContent": false,
+  "beats": [
+    {"at": 0, "action": "fade-in", "duration": 2},
+    {"at": 2, "action": "seated-together-head-on-shoulder", "camera": "slow-push-in"},
+    {"at": 4, "speaker": "Lucia", "text": "You ever think about staying somewhere for once?", "duration": 4},
+    {"at": 8, "speaker": "Jason", "text": "Somewhere, or with someone?", "duration": 3},
+    {"at": 11, "action": "lucia-smiles-and-takes-jasons-hand", "duration": 2},
+    {"at": 13, "speaker": "Lucia", "text": "Don't ruin the moment.", "duration": 3},
+    {"at": 16, "speaker": "Jason", "text": "Wasn't planning on it.", "duration": 3},
+    {"at": 19, "action": "brief-kiss", "duration": 2},
+    {"at": 21, "action": "camera-turns-toward-window", "duration": 4},
+    {"at": 25, "action": "fade-out", "duration": 2}
+  ],
+  "futureExitBehavior": "restore-gameplay-state",
+  "integrationApproved": false
+}
