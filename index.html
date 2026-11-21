@@ -1546,9 +1546,29 @@ function makeHuman(o){
  gun.add(pistol,smg,shot,rifle);gun.rotation.x=0;for(const g of[pistol,smg,shot,rifle])g.visible=false;
  root.userData={hips,spine,headP,A,Lg,m,gun,guns:{pistol,smg,shot,rifle},ph:Math.random()*6,dead:0,state:{}};
  addCharacterDetails(root,o);return root}
-function randomHumanOpts(){return{skin:pick2(SKIN),shirt:pick2(SHIRTS),pants:pick2(PANTS),hair:pick2(HAIR),longHair:mrand()<.4,glasses:mrand()<.18,cap:mrand()<.1?pick2(SHIRTS):0,shoe:pick2([0x202020,0xf2f2f2,0x5a3b25])}}
+// District-aware pedestrian wardrobe: each NPC keeps a varied, locally appropriate look.
+function randomHumanOpts(x=pl.x,z=pl.z){
+ const district=zoneName(x,z);
+ const palettes={
+  'NEON BEACH':{shirts:[0xff6b8a,0x20b6a4,0xf0c44d,0xf2f2f2,0x2e9cda,0xff8a3d],pants:[0xd9d2c3,0x8a7a62,0x26344f,0x3b3b44],role:'beachgoer'},
+  'KESTREL KEYS':{shirts:[0xf2f2f2,0x20b6a4,0x2e9cda,0xff8a3d,0xf0c44d],pants:[0xd9d2c3,0x8a7a62,0x26344f],role:'island local'},
+  'PORT CALUSA':{shirts:[0x202936,0x6a2fb3,0xe94e68,0x2e9cda,0x20b6a4,0x3b4654],pants:[0x20242c,0x26344f,0x3b3b44,0x5a3b3b],role:'city local'},
+  'EAST HIGHWAY':{shirts:[0x26344f,0xf2f2f2,0x52677c,0x8b9aa6,0x2a2f3a],pants:[0x20242c,0x3b3b44,0x26344f],role:'commuter'},
+  'PALMETTO GROVE':{shirts:[0x5dc28a,0xf0c44d,0x2e9cda,0xf2f2f2,0x2a2f3a],pants:[0x26344f,0x8a7a62,0x3b3b44],role:'suburban'},
+  'GRASSRUN BAYOU':{shirts:[0x5dc28a,0x8a7a62,0x2a2f3a,0xf0c44d,0x3b654b],pants:[0x3b3b44,0x8a7a62,0x26344f],role:'outdoors local'},
+  'MOUNT ORRIN':{shirts:[0x52677c,0x5dc28a,0xf2f2f2,0x2a2f3a,0x8a7a62],pants:[0x26344f,0x3b3b44,0x8a7a62],role:'mountain local'},
+  'NORTH OUTSKIRTS':{shirts:[0x5dc28a,0xf0c44d,0x2e9cda,0x8a7a62,0xf2f2f2],pants:[0x26344f,0x3b3b44,0x8a7a62],role:'local'}
+ };
+ const p=palettes[district]||{shirts:SHIRTS,pants:PANTS,role:'resident'};
+ const skin=pick2(SKIN),shirt=pick2(p.shirts),pants=pick2(p.pants);
+ const hair=pick2(HAIR),shoe=pick2([0x202020,0xf2f2f2,0x5a3b25,0x343b48]);
+ return {skin,shirt,pants,hair,longHair:mrand()<.32,glasses:mrand()<.2,
+  cap:mrand()<(district==='NEON BEACH'||district==='KESTREL KEYS'?.22:.13)?pick2(p.shirts):0,
+  shoe,role:p.role,district};
+}
 const pick2=a=>a[Math.floor(mrand()*a.length)];
 function setHumanLook(h,o){
+ h.userData.role=o.role||'resident';h.userData.district=o.district||'';h.userData.outfit={shirt:o.shirt,pants:o.pants,cap:o.cap||0,shoe:o.shoe||0x202020};
  applyCharacterDetails(h,o);
  const m=h.userData.m;
  m.skin.color.setHex(o.skin);
@@ -1930,8 +1950,8 @@ const nearRoadsCache={t:-9,list:[]};
 class Ped{
  constructor(cop,gang){this.cop=cop;this.gang=!!gang;this.h=makeHuman(cop?copOpts():gang?gangOpts():randomHumanOpts());this.h.visible=false;world.add(this.h);this.active=false;this.dead=false;this.state='idle';this.x=this.z=this.y=0;this.vx=this.vz=0;this.dir=0;this.hp=100;this.t=0;this.tx=0;this.tz=0;this.fireT=0;this.speed=1.4;this.bust=0;this.scale=1}
  init(x,z){this.active=true;this.dead=false;this.x=x;this.z=z;this.y=heightAt(x,z);this.vx=this.vz=0;this.hp=this.cop?110:70;this.state='walk';this.t=0;this.h.visible=true;this.h.rotation.set(0,0,0);this.h.userData.dead=0;this.fireT=Math.random();this.bust=0;
-  if(this.gang){this.scale=1;this.h.scale.setScalar(1);this.hp=90;this.hostile=false;this.speed=1.2+Math.random()*.4;this.gun=Math.random()<.35?'smg':'pistol'}
-  else if(!this.cop){const o=randomHumanOpts();setHumanLook(this.h,o);this.speed=1.1+Math.random()*.7;this.scale=.93+Math.random()*.12;this.h.scale.setScalar(this.scale)}else{this.scale=1;this.h.scale.setScalar(1)}
+  if(this.gang){const o=gangOpts();setHumanLook(this.h,o);this.scale=1;this.h.scale.setScalar(1);this.hp=90;this.hostile=false;this.speed=1.2+Math.random()*.4;this.gun=Math.random()<.35?'smg':'pistol'}
+  else if(!this.cop){const o=randomHumanOpts(x,z);setHumanLook(this.h,o);this.speed=1.1+Math.random()*.7;this.scale=.93+Math.random()*.12;this.h.scale.setScalar(this.scale)}else{setHumanLook(this.h,copOpts());this.scale=1;this.h.scale.setScalar(1)}
   this.dir=Math.random()*TAU;this.pick()}
  kill(){this.active=false;this.h.visible=false}
  pick(){ // wander: continue along current heading, sometimes turn
