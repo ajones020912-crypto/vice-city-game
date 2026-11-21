@@ -1266,7 +1266,8 @@ function forceShopDoors(){
 }
 // --- Central downtown park: a green break in the city grid.
 function buildCentralPark(){
- const cx=-30,cz=0,w=48,d=48;
+ // Keep the park inside its city block so its lawn never overlaps the surrounding roads.
+ const cx=-30,cz=0,w=38,d=38;
  bakeG('plain',GEO.box,cx,.015,cz,0,w,.10,d,[.22,.43,.25]);
  bakeG('walk',GEO.box,cx,.075,cz,0,3,.08,d-4,[.78,.75,.66]);
  bakeG('walk',GEO.box,cx,.078,cz,0,w-4,.08,3,[.78,.75,.66]);
