@@ -3678,6 +3678,10 @@ function mpSetOnline(n){
  const el=document.getElementById('mpOnline');
  if(el)el.textContent='Players online: '+Math.max(0,Number(n)||0);
 }
+function mpSetOnline(n){
+ const el=document.getElementById('mpOnline');
+ if(el)el.textContent='Players online: '+Math.max(0,Number(n)||0);
+}
 function mpConnect(){
  const name=(document.getElementById('mpName').value||'Player').trim().slice(0,16)||'Player';
  mpStatus('Connecting to the multiplayer server…');
