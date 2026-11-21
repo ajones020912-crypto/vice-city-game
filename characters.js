@@ -58,9 +58,9 @@
     luciaC: {
       name: 'Lucia', role: 'Lead · option C', build: 'slim',
       skin: 0xb9784e, hair: 0x4a2c1a, hairStyle: 'longdown',
-      top: { kind: 'tank', color: 0x3c3e44 },
+      top: { kind: 'tank', color: 0x0b0b0d },
       legs: { kind: 'jeans', color: 0x1f2228, highWaist: true },
-      shoes: { color: 0xf6f6f6, sole: 0xe2e2e2, accent: 0x3c3e44 },
+      shoes: { color: 0xf6f6f6, sole: 0xe2e2e2, accent: 0x0b0b0d },
       extras: ['hoops', 'bracelets', 'ring', 'necklace'], realistic: true, female: true,
     },
     officer: {
