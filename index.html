@@ -838,18 +838,18 @@ const LIM={city:12,hwy:26,dirt:7};
 function defineRoads(){
  const xr=[],zr=[];for(let i=-300;i<=300;i+=60)xr.push(i);for(let i=-330;i<=330;i+=60)zr.push(i);
  G.xr=xr;G.zr=zr;
- for(const x of xr)addRoad('v',x,-330,420,18,'city',true);
- for(const z of zr){if(z===-330)addRoad('h',z,-900,1100,18,'city',true);else if(z===-30)addRoad('h',z,-640,380,18,'city',true);else addRoad('h',z,-300,380,18,'city',true)}
+ for(const x of xr)addRoad('v',x,-330,420,22,'city',true);
+ for(const z of zr){if(z===-330)addRoad('h',z,-900,1100,22,'city',true);else if(z===-30)addRoad('h',z,-640,380,22,'city',true);else addRoad('h',z,-300,380,22,'city',true)}
  addRoad('v',380,-980,1400,30,'hwy');          // Interstate 1 — longer causeway to the Keys
  addRoad('h',420,-1400,1500,28,'hwy');         // Gulf Expressway extended
  addRoad('h',-820,-420,1500,14,'city');        // Keys road extended
  for(let i=0;i<8;i++){addRoad('v',-1050+70*i,420,1010,16,'city',true);addRoad('h',490+70*i,-1060,-550,16,'city',true)}
- for(const x of[-270,-150,-30,90,210])addRoad('v',x,420,1100,14,'city');
- for(const z of[540,660,780,900,1020])addRoad('h',z,-330,380,14,'city');
+ for(const x of[-270,-150,-30,90,210])addRoad('v',x,420,1100,18,'city');
+ for(const z of[540,660,780,900,1020])addRoad('h',z,-330,380,18,'city');
  // outer ring / expanded countryside roads
  addRoad('h',1200,-400,900,16,'city');
  addRoad('v',900,420,1300,16,'city');
- addRoad('v',-400,-330,900,18,'city',true);
+ addRoad('v',-400,-330,900,22,'city',true);
  addRoad('h',-500,-1200,500,18,'hwy');
  addRoad('v',-800,-200,600,14,'city');
  addRoad('h',700,380,1500,12,'city');
@@ -885,7 +885,7 @@ function buildRoadMeshes(){
   for(const g of gaps){seg(s,g[0]);s=Math.max(s,g[1])}}
  // Landscaped medians on selected downtown boulevards, stopping before intersections.
  for(const r of roads){
-  if(r.type!=='city'||r.w<18)continue;
+  if(r.type!=='city'||r.w<22)continue;
   const arterial=(r.o==='v'&&(r.c===0||r.c===180))||(r.o==='h'&&r.c===-330);
   if(!arterial)continue;
   for(let i=0;i<r.cross.length-1;i++){
@@ -893,12 +893,16 @@ function buildRoadMeshes(){
    if(b-a<20)continue;
    const mid=(a+b)/2,len=b-a;
    if(r.o==='h'){
-    bakeG('walk',GEO.box,mid,.08,r.c,0,len,.22,2.6,[.34,.39,.31]);
-    for(const side of[-1,1])bakeG('walk',GEO.box,mid,.10,r.c+side*1.42,0,len,.28,.18,[.72,.72,.66]);
+    bakeG('walk',GEO.box,mid,.08,r.c,0,len,.22,3.4,[.34,.39,.31]);
+    for(const side of[-1,1])bakeG('walk',GEO.box,mid,.10,r.c+side*1.82,0,len,.28,.18,[.72,.72,.66]);
+    const edge=B('mark',mid,r.c),yy=.115;
+    for(const side of[-1,1]){const zc=r.c+side*1.98;edge.quad([a,yy,zc-.09],[b,yy,zc-.09],[b,yy,zc+.09],[a,yy,zc+.09],0,1,0,0,0,1,1,[1,.78,.08])}
     for(let p=a+7;p<b-4;p+=12)for(const side of[-1,1])bakeG('plain',GEO.ico,p,.30,r.c+side*.48,rnd()*TAU,.78,.48,.62,pick([[.14,.34,.15],[.18,.42,.17],[.23,.4,.16]]));
    }else{
-    bakeG('walk',GEO.box,r.c,.08,mid,0,2.6,.22,len,[.34,.39,.31]);
-    for(const side of[-1,1])bakeG('walk',GEO.box,r.c+side*1.42,.10,mid,0,.18,.28,len,[.72,.72,.66]);
+    bakeG('walk',GEO.box,r.c,.08,mid,0,3.4,.22,len,[.34,.39,.31]);
+    for(const side of[-1,1])bakeG('walk',GEO.box,r.c+side*1.82,.10,mid,0,.18,.28,len,[.72,.72,.66]);
+    const edge=B('mark',r.c,mid),yy=.115;
+    for(const side of[-1,1]){const xc=r.c+side*1.98;edge.quad([xc-.09,yy,b],[xc+.09,yy,b],[xc+.09,yy,a],[xc-.09,yy,a],0,1,0,0,0,1,1,[1,.78,.08])}
     for(let p=a+7;p<b-4;p+=12)for(const side of[-1,1])bakeG('plain',GEO.ico,r.c+side*.48,.30,p,rnd()*TAU,.62,.48,.78,pick([[.14,.34,.15],[.18,.42,.17],[.23,.4,.16]]));
    }
   }
