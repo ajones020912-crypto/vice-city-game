@@ -65,6 +65,14 @@ Four original in-game radio stations play procedurally generated audio:
 - Bass Coast
 - Gulf Lo-Fi
 
+### Soundtrack
+An original score plays alongside the radio, synthesized live in the browser by `soundtrack.js` (no audio files):
+- **Neon Overture** on the title screen.
+- **Sunlit Boulevard** (day), **Midnight Causeway** (night) and **Grassrun Shuffle** (bayou) underneath the city when you're on foot.
+- **Six Stars** during police chases at 2+ stars, getting busier as the wanted level rises, and **Coastal Clash** during the race. The car radio pauses for these and comes back after.
+- Short cues for WASTED and BUSTED.
+- Press **N** to turn the soundtrack off or on.
+
 ### Controls and interface
 - A clickable **CONTROLS** panel in the lower-left corner opens and closes the keyboard guide.
 - **RELEASE MOUSE** unlocks the cursor without pausing the game. Click back into the game to capture the mouse again.
@@ -96,6 +104,7 @@ Four original in-game radio stations play procedurally generated audio:
 | **Q** | Graphics quality |
 | **J** | Quick save |
 | **Esc** | Pause |
+| **N** | Soundtrack on / off |
 | **CONTROLS button** | Open / close the control guide |
 | **RELEASE MOUSE button** | Unlock the cursor without pausing |
 
@@ -144,6 +153,7 @@ The currently linked game page is hosted separately as a static site. A static s
 ```text
 vice-city-game/
 ├── index.html                 Main game: 3D world, vehicles, missions, UI, and gameplay
+├── soundtrack.js              Original procedural soundtrack and in-game music switching
 ├── server.js                  Express + Socket.IO server prototype
 ├── package.json               Node dependencies and start scripts
 ├── favicon.svg                Browser tab icon
