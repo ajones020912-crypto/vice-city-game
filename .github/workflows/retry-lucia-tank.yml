@@ -1,0 +1,70 @@
+name: Retry Lucia tank update with corrected geometry tests
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/retry-lucia-tank.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-tank-retry-v2
+  cancel-in-progress: false
+jobs:
+  retry-lucia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install matching Three.js for model tests
+        timeout-minutes: 2
+        continue-on-error: true
+        run: npm install --prefix "$RUNNER_TEMP/lucia-fit-check" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Run hash-verified updater with corrected tests and error reporting
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, subprocess, textwrap
+          status=Path('scripts/lucia-tank-fit-status.json')
+          try:
+              source=Path('.github/workflows/lucia-tank-and-shape.yml')
+              blob=subprocess.check_output(['git','hash-object',str(source)],text=True).strip()
+              if blob!='ddea0f1e80e781ba2ea62989550336a5fbf27d02': raise RuntimeError('Original updater changed; refusing to execute an unreviewed version.')
+              lines=source.read_text(encoding='utf-8').splitlines()
+              start=next(i for i,line in enumerate(lines) if line.strip()=="python3 - <<'PY'")+1
+              end=next(i for i in range(start,len(lines)) if lines[i].strip()=='PY')
+              program=textwrap.dedent(chr(10).join(lines[start:end]))
+              changes=[("o.isMesh&&o.material===mat&&o.geometry.type==='LatheGeometry'","o.isMesh&&o.material===mat&&o.geometry&&o.geometry.attributes.position"),("(exc.stderr or b'').decode(errors='replace')","(exc.stderr.decode(errors='replace') if isinstance(exc.stderr,bytes) else str(exc.stderr or ''))")]
+              for old,new in changes:
+                  if program.count(old)!=1: raise RuntimeError('Cannot uniquely locate the failed test or error handler.')
+                  program=program.replace(old,new,1)
+              program=program.replace('check=True,capture_output=True,text=True)','check=True,capture_output=True,text=True,timeout=90)')
+              program=program.replace('check=True,capture_output=True)','check=True,capture_output=True,timeout=30)')
+              compile(program,'corrected-lucia-updater.py','exec')
+              exec(program,{'__name__':'__main__'})
+              report=json.loads(status.read_text())
+              report.update(retry_version=2,copied_geometry_test_fixed=True,error_reporting_fixed=True)
+          except Exception as exc:
+              report={'ok':False,'retry_version':2,'error':str(exc)}
+          status.parent.mkdir(exist_ok=True)
+          status.write_text(json.dumps(report,indent=2)+chr(10),encoding='utf-8')
+          print(json.dumps(report))
+          PY
+      - name: Commit validated model changes or diagnostic report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- reference-characters.js index.html scripts/lucia-tank-fit-status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Apply Lucia tank and silhouette update with corrected model tests'
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Require a successful validated update
+        run: node -e "if(!require('./scripts/lucia-tank-fit-status.json').ok)process.exit(1)"
