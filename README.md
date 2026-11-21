@@ -75,7 +75,7 @@ An original score plays alongside the radio, synthesized live in the browser by 
 
 ### Controls and interface
 - A clickable **CONTROLS** panel in the lower-left corner opens and closes the keyboard guide.
-- Press **U** (or the **RELEASE MOUSE** button) to unlock the cursor without pausing the game. Press **U** again or click back into the game to capture the mouse.
+- Press **U** to unlock the cursor without pausing the game. Press **U** again or click back into the game to capture the mouse.
 - **Ultra graphics** (press **Q** or use the pause menu): screen-space reflections on the roads (stronger in rain), live street reflections in car paint and glass, ambient occlusion, stronger bloom and sharper shadows. Meant for strong computers.
 - Use the pause menu and in-game phone for additional options.
 
