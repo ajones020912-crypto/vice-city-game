@@ -4261,6 +4261,7 @@ Car.prototype.place=function(){
 const crumpleOriginalRemove=removeCar;
 removeCar=function(c){if(c&&c._crumple){for(const p of c._crumple.parts)p.geometry.dispose();c._crumple=null}return crumpleOriginalRemove.apply(this,arguments)};
 
+// DEV_CODE_FEEDBACK_V1
 // DEV_FLIGHT_V1
 const devFlightState={unlocked:false,active:false,anchor:null,epoch:0};let devFlightRender=()=>{};
 const devFlightAllowed=()=>!G.multiplayer&&pl.alive&&!pl.car&&!pl.inside&&!MS.active&&!SJ.kind&&!G.work&&!G.busy&&!G.robbery&&!G.mugging;
@@ -4281,8 +4282,8 @@ async function devFlightUnlock(raw){
  const token=++devFlightState.epoch,data=new TextEncoder().encode(String(raw).trim().toUpperCase());
  const digest=await crypto.subtle.digest('SHA-256',data),hash=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');
  if(token!==devFlightState.epoch||G.state!=='paused'||!devFlightAllowed())return{ok:false,message:'Game state changed. Try again.'};
- if(hash!=='d5e1da7ce70c5fbfa581aa73383ff10fa5b1c1edf831759a7b5f633a99e3beaa')return{ok:false,message:'Incorrect developer code.'};
- devFlightState.unlocked=true;const active=devFlightEnable();devFlightRender();return{ok:true,message:active?'Flight enabled. Resume to fly. Space up, X down, Shift boost.':'Unlocked. Stand on dry ground before enabling flight.'};
+ if(hash!=='d5e1da7ce70c5fbfa581aa73383ff10fa5b1c1edf831759a7b5f633a99e3beaa')return{ok:false,message:'Incorrect code. Please try again.'};
+ devFlightState.unlocked=true;const active=devFlightEnable();devFlightRender();return{ok:true,message:active?'Correct code! Flight enabled. Click Resume to fly. Space up, X down, Shift boost.':'Correct code! Flight unlocked. Stand on dry ground, then click Dev Mode to enable flight.'};
 }
 const devFlightOriginalFoot=playerOnFoot;
 playerOnFoot=function(dt){
@@ -4310,7 +4311,7 @@ function mountDevFlightMenu(){
  card.appendChild(panel);const input=panel.querySelector('input'),unlock=panel.querySelector('button'),status=panel.querySelector('p');
  const badge=document.createElement('div');badge.hidden=true;badge.textContent='DEV FLIGHT | WASD move | Space up | X down | Shift boost | Saves paused';badge.style.cssText='position:fixed;top:12px;right:12px;z-index:45;padding:8px 12px;border-radius:8px;background:#071426e8;color:#8df3ba;font:12px Arial;pointer-events:none';document.body.appendChild(badge);
  devFlightRender=()=>{button.textContent=devFlightState.active?'Dev Mode: ON':devFlightState.unlocked?'Dev Mode: OFF':'Dev Mode';button.disabled=!!G.multiplayer;button.title=G.multiplayer?'Single-player only':'';badge.hidden=!devFlightState.active};
- const submit=async()=>{if(unlock.disabled)return;unlock.disabled=true;try{const result=await devFlightUnlock(input.value);input.value='';status.textContent=result.message;if(result.ok)input.blur()}catch(error){status.textContent='Could not check the code. Reload and try again.'}finally{unlock.disabled=false;devFlightRender()}};
+ const submit=async()=>{if(unlock.disabled)return;unlock.disabled=true;unlock.textContent='Checking...';panel.hidden=false;status.hidden=false;status.setAttribute('aria-live','polite');status.style.cssText='display:block;min-height:36px;margin:10px 0 0;font-size:13px;line-height:1.5;font-weight:700';status.style.color='#cfe0f5';status.textContent='Checking code...';input.style.borderColor='#8de0f777';try{const result=await devFlightUnlock(input.value);input.value='';status.textContent=result.message;const incorrect=!result.ok&&result.message.startsWith('Incorrect code.');status.style.color=result.ok?'#8df3ba':incorrect?'#ff7a7a':'#ffd23a';input.style.borderColor=status.style.color;if(result.ok)input.blur();else input.focus()}catch(error){status.textContent='Could not check the code. Please try again.';status.style.color='#ffd23a'}finally{unlock.disabled=false;unlock.textContent='Unlock flight';devFlightRender()}};
  unlock.onclick=submit;
  button.onclick=()=>{if(G.multiplayer){status.textContent='Dev Mode is single-player only.';return}if(devFlightState.active){devFlightStop(true);panel.hidden=false;status.textContent='Flight off. Returned to your takeoff position.';return}panel.hidden=false;if(devFlightState.unlocked){status.textContent=devFlightEnable()?'Flight enabled. Resume to fly. Space up, X down, Shift boost.':'Stand on dry ground, on foot and outdoors, outside missions and jobs.'}else{status.textContent='Enter the developer code to unlock flight for this session.';input.focus()}};
  addEventListener('keydown',event=>{const k=event.key.toLowerCase();if(document.activeElement===input){event.stopImmediatePropagation();if(k==='enter'){event.preventDefault();submit()}if(k==='escape'){event.preventDefault();input.blur();panel.hidden=true}return}if(devFlightState.active&&G.state==='play'&&['e','r','k','b','c','j'].includes(k)){event.preventDefault();event.stopImmediatePropagation();toast('Disable Dev Mode before interacting or saving.')}if(devFlightState.active&&[' ','x','arrowup','arrowdown','arrowleft','arrowright'].includes(k))event.preventDefault()},true);

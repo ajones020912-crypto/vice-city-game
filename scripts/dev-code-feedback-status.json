@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "correct_message_green": true,
+  "incorrect_message_red": true,
+  "eligibility_not_mislabeled": true,
+  "feedback_visible": true,
+  "verification_error_message": true,
+  "button_reenabled": true,
+  "correct_code_unlocks": true,
+  "wrong_code_rejected": true,
+  "session_only": true,
+  "multiplayer_blocked": true,
+  "horizontal_and_vertical_flight": true,
+  "speed_boost": true,
+  "paused_movement_blocked": true,
+  "safe_return_to_takeoff": true,
+  "save_and_vehicle_guards": true,
+  "stale_unlock_rejected": true,
+  "normal_controls_preserved": true,
+  "checked_scripts": 1,
+  "scope": "Developer-code feedback text, colors and checking state only; code and flight rules unchanged"
+}
