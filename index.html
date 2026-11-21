@@ -3892,7 +3892,7 @@ function boot(){
 function begin(cont){audio.init();audio.setStation(G.station);$('#overlay').style.display='none';G.state='play';
  const sv=cont?readSave():null;if(sv){newGame();MS.active=null;ring.visible=false;$('#goal').classList.remove('on');applySave(sv);if(!MS.active&&!pl.missions.m0&&!G.work)startMission(MISSIONS[0]);toast('Game loaded')}else{newGame();toast('Welcome to Vice City. C = switch Jason/Lucia · P = phone · R = jobs · F = focus',5500)}
  requestGameMouseLock();setInterval(()=>{if(G.state==='play'&&pl.alive&&!MS.active&&!SJ.kind&&!G.work&&!pl.car&&pl.wanted===0&&!pl.inside&&!G.robbery&&!G.mugging)saveGame(false)},30000)}
-Object.assign(G,{pl,tick:(dt)=>{simulate(dt);updateParticles(dt);updateTracers(dt);updateCamera(dt);updateHUD(dt);if(!pl.inside)updateSignals(G.time);envLighting(dt)},queryCols,colAll,fireWeapon,enterCar,ejectPlayer,spawnCar,spawnTraffic,spawnCopCar,addCrime,hurtPlayer,startMission,MISSIONS,MS,saveGame,readSave,applySave,openShop,closeShop,enterInterior,exitInterior,INT,doors,cars,peds,cops,camera,scene,heightAt,roads,nodes,keys,SK,castRay,activatePed,hurtPed,explodeCar,damageCar,pickups,WEAP,setQuality,newGame,begin,renderer,setCam:(y,p)=>{camYaw=y;camPitch=p},ext:EXT,zoneName,switchChar,WX,gators});
+Object.assign(G,{pl,audio,tick:(dt)=>{simulate(dt);updateParticles(dt);updateTracers(dt);updateCamera(dt);updateHUD(dt);if(!pl.inside)updateSignals(G.time);envLighting(dt)},queryCols,colAll,fireWeapon,enterCar,ejectPlayer,spawnCar,spawnTraffic,spawnCopCar,addCrime,hurtPlayer,startMission,MISSIONS,MS,saveGame,readSave,applySave,openShop,closeShop,enterInterior,exitInterior,INT,doors,cars,peds,cops,camera,scene,heightAt,roads,nodes,keys,SK,castRay,activatePed,hurtPed,explodeCar,damageCar,pickups,WEAP,setQuality,newGame,begin,renderer,setCam:(y,p)=>{camYaw=y;camPitch=p},ext:EXT,zoneName,switchChar,WX,gators});
 
 const CITY_JOBS={courier:{name:'Courier Route',stops:3,pay:250,bonus:250,limit:180},repair:{name:'Roadside Mechanic',stops:3,pay:180,bonus:300,limit:240},salvage:{name:'Lost Cargo Recovery',stops:5,pay:100,bonus:400,limit:240}};
 let cityWorkRing=null,cityWorkProp=null;const localStreetLights=[];let nearbyLampTimer=0,hpTrailValue=100;
@@ -4042,4 +4042,6 @@ document.getElementById('cont').onclick=()=>{G.multiplayer=false;mpActive=false;
 })();
 
 
-</script></body></html>
+</script>
+<script src="soundtrack.js"></script>
+</body></html>
