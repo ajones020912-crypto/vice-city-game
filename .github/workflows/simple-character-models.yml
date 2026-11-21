@@ -17,59 +17,72 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Apply guarded geometry substitutions and check JavaScript
+      - name: Apply character-only hook and write readable result
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import subprocess, re, tempfile, os
+          import re, subprocess, tempfile, os, json
           p=Path('index.html')
-          s=p.read_text(encoding='utf-8')
-          marker='<!-- SIMPLE_CHARACTER_MODELS_V1 -->'
-          if marker in s:
-              print('Simple character models already applied.')
-              raise SystemExit(0)
-          if subprocess.check_output(['git','hash-object','index.html'],text=True).strip()!='42826d8e8a4cdb65babbd8f1554abe2ceaf35614':
-              raise SystemExit('Game changed since review; refusing to overwrite newer work.')
-          changes=[
-              ('const FACE_GEO=new T.SphereGeometry(1,7,5);','const FACE_GEO=new T.BoxGeometry(2,2,2);'),
-              ('const torso=mk(new T.CylinderGeometry(.232,.188,.52,8),','const torso=mk(new T.BoxGeometry(.42,.52,.42),'),
-              ('new T.SphereGeometry(.115,12,8)','new T.BoxGeometry(.20,.23,.20)'),
-              ('const hairM=mk(new T.SphereGeometry(.122,10,7,0,TAU,0,Math.PI*.55),m.hair,headP,0,.17,-.005);hairM.scale.set(.98,1.12,1.03);','const hairM=mk(new T.BoxGeometry(.205,.065,.21),m.hair,headP,0,.275,-.005);'),
-              ('capsule(.058,.3)','new T.BoxGeometry(.10,.30,.10)'),
-              ('capsule(.05,.27)','new T.BoxGeometry(.085,.27,.085)'),
-              ('capsule(.085,.44)','new T.BoxGeometry(.15,.44,.15)'),
-              ('capsule(.066,.42)','new T.BoxGeometry(.12,.42,.12)'),
-              ('new T.SphereGeometry(.055,8,6)','new T.BoxGeometry(.09,.09,.09)'),
-              ('new T.CylinderGeometry(.25,.207,.55,8)','new T.BoxGeometry(.46,.55,.46)'),
-              ('new T.CylinderGeometry(.125,.13,.07,12)','new T.CylinderGeometry(.125,.13,.07,8)'),
-              ('roughness:.7,map:TEX.shirt','roughness:.85'),
-              ('return new T.MeshStandardMaterial({color:hex,roughness:rough[kind]??.85,metalness:0});','return new T.MeshStandardMaterial({color:hex,roughness:rough[kind]??.85,metalness:0,flatShading:true});')
-          ]
-          for old,new in changes:
-              if s.count(old)!=1:
-                  raise SystemExit('Expected exactly one character geometry anchor: '+old)
-              s=s.replace(old,new,1)
-          if s.count('</head>')!=1: raise SystemExit('Unexpected HTML layout.')
-          s=s.replace('</head>',marker+'\n</head>',1)
-          checked=0
-          for code in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I):
-              if not code.strip(): continue
-              with tempfile.NamedTemporaryFile(mode='w',suffix='.js',delete=False) as f:
-                  f.write(code);name=f.name
-              try: subprocess.run(['node','--check',name],check=True)
-              finally: os.unlink(name)
-              checked+=1
-          if not checked: raise SystemExit('No inline JavaScript found.')
-          p.write_text(s,encoding='utf-8')
-          print('Applied 13 targeted character-only substitutions; all inline scripts passed syntax checks.')
+          report={'ok':False,'stage':'read'}
+          try:
+              s=p.read_text(encoding='utf-8')
+              report['source_blob']=subprocess.check_output(['git','hash-object','index.html'],text=True).strip()
+              report['stage']='patch'
+              if 'SIMPLE_CHARACTER_MODELS_V2' in s or '<!-- SIMPLE_CHARACTER_MODELS_V1 -->' in s:
+                  report.update(ok=True,result='already_applied')
+              else:
+                  pattern=r'\bfunction\s+makeHuman\s*\(\s*o\s*\)\s*\{'
+                  if len(re.findall(pattern,s))!=1: raise RuntimeError('Expected exactly one makeHuman(o) declaration.')
+                  if 'function makeOriginalHumanBeforeSimple(' in s: raise RuntimeError('Original builder name already exists.')
+                  wrapper=r'''// SIMPLE_CHARACTER_MODELS_V2
+          function makeHuman(o){
+           const root=makeOriginalHumanBeforeSimple(o),u=root.userData;
+           const cache=makeHuman._simpleGeometryCache||(makeHuman._simpleGeometryCache=new WeakMap());
+           const weapons=new Set();for(const g of Object.values(u.guns||{})){if(g&&g.traverse)g.traverse(n=>weapons.add(n))}
+           let changed=0;
+           root.traverse(n=>{
+            if(!n.isMesh||n.isSkinnedMesh||weapons.has(n)||!n.geometry)return;
+            const old=n.geometry;if(old.type==='BoxGeometry'||old.type==='BoxBufferGeometry')return;
+            let box=cache.get(old);
+            if(!box){old.computeBoundingBox();const b=old.boundingBox;if(!b)return;const size=b.getSize(new T.Vector3()),center=b.getCenter(new T.Vector3());
+             if(![size.x,size.y,size.z,center.x,center.y,center.z].every(Number.isFinite))return;
+             box=new T.BoxGeometry(Math.max(.001,size.x),Math.max(.001,size.y),Math.max(.001,size.z));box.translate(center.x,center.y,center.z);cache.set(old,box)
+            }
+            n.geometry=box;changed++;
+           });
+           root.userData.simpleCharacterModels=true;root.userData.simplifiedMeshCount=changed;
+           return root;
+          }
+          '''
+                  updated=re.sub(pattern,lambda m:wrapper+'function makeOriginalHumanBeforeSimple(o){',s,count=1)
+                  report['stage']='syntax_check'
+                  checked=0
+                  for code in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',updated,re.I):
+                      if not code.strip(): continue
+                      with tempfile.NamedTemporaryFile(mode='w',suffix='.js',delete=False) as f:
+                          f.write(code);name=f.name
+                      try:
+                          result=subprocess.run(['node','--check',name],capture_output=True,text=True)
+                          if result.returncode: raise RuntimeError(result.stderr[:3000])
+                      finally: os.unlink(name)
+                      checked+=1
+                  if not checked: raise RuntimeError('No inline JavaScript found.')
+                  p.write_text(updated,encoding='utf-8')
+                  report.update(ok=True,result='applied',checked_scripts=checked)
+          except Exception as exc:
+              report['error']=str(exc)
+          Path('character-model-status.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(report))
           PY
-      - name: Commit only the validated character patch
+      - name: Commit character changes or diagnostic result
         shell: bash
         run: |
-          if git diff --quiet -- index.html; then exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add -- index.html
-          git commit -m 'Use simple low-poly 3D character bodies while preserving animation rigs'
+          git add -- index.html character-model-status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Apply simple character models or record precise patch diagnostic'
           git push origin HEAD:main
+      - name: Mark an unsuccessful patch as failed
+        run: node -e "if(!require('./character-model-status.json').ok)process.exit(1)"
