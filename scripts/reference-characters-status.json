@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "both_leads_updated": true,
+  "no_bandanas": true,
+  "hoodie_and_ponytail": true,
+  "frayed_denim_shorts": true,
+  "jason_graphic_tee": true,
+  "rig_offsets_preserved": true,
+  "weapon_mounts_preserved": true,
+  "finite_geometry": true,
+  "merged_models_valid": true,
+  "npc_designs_unchanged": true,
+  "metrics": {
+    "jasonC": {
+      "meshes": 65,
+      "triangles": 23820
+    },
+    "luciaC": {
+      "meshes": 61,
+      "triangles": 30372
+    }
+  },
+  "checked_scripts": 1,
+  "scope": "Reference-inspired lead-character visuals and default clothing colours only; no face coverings; game systems unchanged"
+}

@@ -142,6 +142,7 @@ small{color:#b9cce0}
 <div id="mpLobby" class="mp-screen" style="display:none"><div class="mp-card"><button id="mpBack" class="mp-back">← BACK</button><div class="home-kicker">ONLINE SESSION</div><h2>PLAY ONLINE</h2><label for="mpName">PLAYER NAME</label><input id="mpName" maxlength="16" value="Player" autocomplete="nickname"><div class="mp-actions"><button id="mpHost">JOIN WORLD</button></div><div id="mpOnline" class="mp-room" style="display:block">Players online: …</div><div id="mpStatus" class="mp-status">Everyone joins the same shared city. No codes needed.</div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="characters.js"></script>
+<script src="reference-characters.js"></script>
 <script src="supercar.js"></script>
 <script>
 (()=>{'use strict';
@@ -2061,7 +2062,7 @@ addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updat
 const cars=[],peds=[],cops=[],gangs=[];
 const fwd=h=>[Math.sin(h),Math.cos(h)];
 const wreckMat=new T.MeshStandardMaterial({color:0x1a1a1a,roughness:.9,metalness:.2});
-const pl={x:11.2,z:36,y:0,h:0,vx:0,vz:0,vy:0,hp:100,armor:0,cash:500,rep:0,car:null,wanted:0,weapon:'fists',weapons:{fists:1},ammo:{pistol:0,smg:0,shot:0,rifle:0},fireT:0,punchT:0,swim:false,inside:null,alive:true,shirt:0xf2f1ec,pants:0xb39b6e,missions:{},stats:{kills:0,wrecks:0,distance:0},aim:0,walkSpd:0,lastHit:0,
+const pl={x:11.2,z:36,y:0,h:0,vx:0,vz:0,vy:0,hp:100,armor:0,cash:500,rep:0,car:null,wanted:0,weapon:'fists',weapons:{fists:1},ammo:{pistol:0,smg:0,shot:0,rifle:0},fireT:0,punchT:0,swim:false,inside:null,alive:true,shirt:0x626a68,pants:0x6a593f,missions:{},stats:{kills:0,wrecks:0,distance:0},aim:0,walkSpd:0,lastHit:0,
   // crime systems
   char:'jason', // jason | lucia
   crime:0,sightT:0,heat:{face:0,clothes:0,vehicle:0,weapon:0,partner:0,cctv:0},
@@ -2069,8 +2070,8 @@ const pl={x:11.2,z:36,y:0,h:0,vx:0,vz:0,vy:0,hp:100,armor:0,cash:500,rep:0,car:n
 };
 G.pl=pl;G.cars=cars;G.peds=peds;G.cops=cops;
 const CHAR={
-  jason:{name:'JASON',skin:0xc98e68,shirt:0xf2f1ec,pants:0xb39b6e,hair:0x1d1410,glasses:false,shoe:0x5a4330},
-  lucia:{name:'LUCIA',longHair:true,skin:0xb9784e,shirt:0x0b0b0d,pants:0x5c89ae,hair:0x4a2c1a,glasses:false,shoe:0xf6f6f6}
+  jason:{name:'JASON',skin:0xc98e68,shirt:0x626a68,pants:0x6a593f,hair:0x2d211b,glasses:false,shoe:0x5a4330},
+  lucia:{name:'LUCIA',longHair:true,skin:0xb9784e,shirt:0x999d98,pants:0x7497b3,hair:0x35251f,glasses:false,shoe:0xf6f6f6}
 };
 const plH=makeHuman({design:'jasonC',skin:CHAR.jason.skin,shirt:CHAR.jason.shirt,pants:CHAR.jason.pants,hair:CHAR.jason.hair});scene.add(plH);G.plH=plH;
 function switchChar(){
@@ -3068,7 +3069,7 @@ function readSave(){try{const s=localStorage.getItem(SAVEKEY);if(!s)return null;
 function applySave(d){
  if(pl.inside){pl.inside=null;world.visible=true;intGroup.visible=false;sun.visible=true;interiorLight.intensity=interiorFill.intensity=interiorAmb.intensity=0;skyDome.visible=true;scene.background=null;G.busy=false}if(pl.car)ejectPlayer();
  Object.assign(pl,d.pl);G.mapMarks=Array.isArray(d.mapMarks)?d.mapMarks.slice(0,30):[];ensurePl();if(d.batt!=null)G.batt=d.batt;if(d.station!=null){G.station=d.station;audio.setStation(G.station)}pl.alive=true;pl.car=null;pl.y=heightAt(pl.x,pl.z);pl.vx=pl.vz=pl.vy=0;pl.crime=Math.max(0,d.pl.crime||0);pl.wanted=clamp(d.pl.wanted||0,0,6);pl.heat=Object.assign({face:0,clothes:0,vehicle:0,weapon:0,partner:0,cctv:0},d.pl.heat||{});pl.sightT=0;pl.profScore=d.pl.profScore||0;updateProfile();G.clock=d.clock;
- {const cc=CHAR[pl.char]||CHAR.jason;setHumanLook(plH,cc);$('#char').textContent=cc.name;if([0x20b6a4,0xff6ec7,0x3c3e44,0x1e1f23].includes(pl.shirt))pl.shirt=cc.shirt;if(([0x26344f,0x2a2f3a].includes(pl.pants)||(pl.char==='lucia'&&pl.pants===0x1f2228))&&!pl.boughtPants)pl.pants=cc.pants}plH.userData.m.shirt.color.setHex(pl.shirt);plH.userData.m.pants.color.setHex(pl.pants);plH.visible=true;
+ {const cc=CHAR[pl.char]||CHAR.jason;setHumanLook(plH,cc);$('#char').textContent=cc.name;if([0x20b6a4,0xff6ec7,0x3c3e44,0x1e1f23].includes(pl.shirt)||(pl.char==='jason'&&pl.shirt===0xf2f1ec)||(pl.char==='lucia'&&pl.shirt===0x0b0b0d))pl.shirt=cc.shirt;if(([0x26344f,0x2a2f3a].includes(pl.pants)||(pl.char==='lucia'&&[0x1f2228,0x5c89ae].includes(pl.pants))||(pl.char==='jason'&&pl.pants===0xb39b6e))&&!pl.boughtPants)pl.pants=cc.pants}plH.userData.m.shirt.color.setHex(pl.shirt);plH.userData.m.pants.color.setHex(pl.pants);plH.visible=true;
  G.ownedCar=null;for(const c of cars.slice())removeCar(c);spawnAirportPlanes();for(const p of allPeds())p.kill();
  if(MS.active)failMission('game loaded');MS.active=null;ring.visible=false;
  if(d.car){const c=spawnCar(d.car.tk,d.car.x,d.car.z,d.car.h,'parked',d.car.color);c.up=d.car.up||null;c.gid=d.car.gid||null;if(c.gid)c.keep=true;c.hp=d.car.hp;c.fuel=clamp(d.car.fuel??100,0,100);c.owned=true;G.ownedCar=c;if(d.car.in)enterCar(c)}
@@ -3078,7 +3079,7 @@ function applySave(d){
 }
 function newGame(){
  for(const c of cars.slice())removeCar(c);spawnAirportPlanes();G.mapMarks=[];for(const p of allPeds())p.kill();if(pl.car)ejectPlayer();
- Object.assign(pl,{x:11.2,z:36,h:Math.PI,hp:100,armor:0,cash:500,rep:0,wanted:0,crime:0,weapon:'fists',weapons:{fists:1},ammo:{pistol:0,smg:0,shot:0,rifle:0},shirt:0x20b6a4,pants:0x26344f,missions:{},alive:true,stats:{kills:0,wrecks:0,distance:0},car:null,char:'jason',heat:{face:0,clothes:0,vehicle:0,weapon:0,partner:0,cctv:0},profile:'Professional',profScore:0,focusT:0,rel:50,sightT:0});
+ Object.assign(pl,{x:11.2,z:36,h:Math.PI,hp:100,armor:0,cash:500,rep:0,wanted:0,crime:0,weapon:'fists',weapons:{fists:1},ammo:{pistol:0,smg:0,shot:0,rifle:0},shirt:0x626a68,pants:0x6a593f,missions:{},alive:true,stats:{kills:0,wrecks:0,distance:0},car:null,char:'jason',heat:{face:0,clothes:0,vehicle:0,weapon:0,partner:0,cctv:0},profile:'Professional',profScore:0,focusT:0,rel:50,sightT:0});
  pl.y=heightAt(pl.x,pl.z);setHumanLook(plH,CHAR.jason);plH.visible=true;G.clock=8;MS.active=null;MS._heatGot=false;
  const c=spawnCar('sports',7.9,34,Math.PI,'parked',CAR_TYPES.sports.colors[0]);c.owned=true;c.fuel=100;G.ownedCar=c;
  camYaw=0;camPitch=.2;camInit=false;refreshGivers();startMission(MISSIONS[0]);G.hudDirty=true;$('#char').textContent=CHAR.jason.name;resetExtras()}
