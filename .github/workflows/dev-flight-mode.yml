@@ -1,0 +1,72 @@
+name: Code-gated developer flight mode
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/dev-flight-mode.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: dev-flight-mode
+  cancel-in-progress: false
+jobs:
+  developer-flight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Add guarded developer flight menu and run tests
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, re, subprocess, tempfile, os
+          p=Path('index.html');s=p.read_text(encoding='utf-8');report={'ok':False}
+          try:
+              if '// DEV_FLIGHT_V1' in s or 'id="pDevMode"' in s: raise RuntimeError('Developer flight already exists.')
+              for name in ['playerOnFoot','enterCar','enterInterior','startMission','saveGame','newGame','applySave','simulate','pauseGame']:
+                  if not re.search(r'function\s+'+name+r'\s*\(',s): raise RuntimeError('Missing expected game hook: '+name)
+              if 'id="pResume"' not in s or 'id="pause"' not in s: raise RuntimeError('Pause menu structure changed.')
+              if s.count('boot();')!=1: raise RuntimeError('Expected one game boot call.')
+              core="// DEV_FLIGHT_V1\nconst devFlightState={unlocked:false,active:false,anchor:null,epoch:0};let devFlightRender=()=>{};\nconst devFlightAllowed=()=>!G.multiplayer&&pl.alive&&!pl.car&&!pl.inside&&!MS.active&&!SJ.kind&&!G.work&&!G.busy&&!G.robbery&&!G.mugging;\nfunction devFlightClearKeys(){for(const k in keys)keys[k]=false;mouseDown=false}\nfunction devFlightStop(land){\n const anchor=devFlightState.anchor;devFlightState.active=false;devFlightState.anchor=null;devFlightClearKeys();\n if(land&&anchor&&pl.alive&&!pl.car&&!pl.inside){Object.assign(pl,anchor,{vx:0,vy:0,vz:0,swim:false,walkSpd:0});for(let i=0;i<3;i++){pl.y=heightAt(pl.x,pl.z);resolveFoot(pl,.4)}pl.y=heightAt(pl.x,pl.z);camInit=false}\n devFlightRender();\n}\nfunction devFlightReset(){devFlightStop(false);devFlightState.unlocked=false;devFlightState.epoch++;devFlightRender()}\nfunction devFlightEnable(){\n if(!devFlightState.unlocked||!devFlightAllowed())return false;\n const ground=heightAt(pl.x,pl.z);if(pl.swim||ground<WL+.1||pl.y>ground+.3)return false;\n devFlightState.anchor={x:pl.x,y:pl.y,z:pl.z,h:pl.h};devFlightState.active=true;devFlightClearKeys();pl.vx=pl.vy=pl.vz=0;pl.y=ground+1.5;pl.swim=false;camInit=false;devFlightRender();return true;\n}\nasync function devFlightUnlock(raw){\n if(G.state!=='paused'||!devFlightAllowed())return{ok:false,message:'Available on foot, outdoors, in single-player free roam.'};\n const token=++devFlightState.epoch,data=new TextEncoder().encode(String(raw).trim().toUpperCase());\n const digest=await crypto.subtle.digest('SHA-256',data),hash=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');\n if(token!==devFlightState.epoch||G.state!=='paused'||!devFlightAllowed())return{ok:false,message:'Game state changed. Try again.'};\n if(hash!=='d5e1da7ce70c5fbfa581aa73383ff10fa5b1c1edf831759a7b5f633a99e3beaa')return{ok:false,message:'Incorrect developer code.'};\n devFlightState.unlocked=true;const active=devFlightEnable();devFlightRender();return{ok:true,message:active?'Flight enabled. Resume to fly. Space up, X down, Shift boost.':'Unlocked. Stand on dry ground before enabling flight.'};\n}\nconst devFlightOriginalFoot=playerOnFoot;\nplayerOnFoot=function(dt){\n if(!devFlightState.active)return devFlightOriginalFoot.apply(this,arguments);\n if(!devFlightAllowed()){devFlightStop(!G.multiplayer&&pl.alive&&!pl.car&&!pl.inside);if(G.multiplayer){devFlightState.unlocked=false;devFlightRender()}return devFlightOriginalFoot.apply(this,arguments)}\n if(G.state!=='play'||G.mapOpen||G.phoneOpen){pl.vx=pl.vy=pl.vz=0;return}\n dt=clamp(Number(dt)||0,0,.05);const f=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0),r=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),u=(keys[' ']?1:0)-(keys.x?1:0),length=Math.max(1,Math.hypot(f,r,u)),speed=keys.shift?48:18;\n pl.vx=(-Math.sin(camYaw)*f+Math.cos(camYaw)*r)/length*speed;pl.vz=(-Math.cos(camYaw)*f-Math.sin(camYaw)*r)/length*speed;pl.vy=u/length*speed;\n pl.x=clamp(pl.x+pl.vx*dt,-1850,1850);pl.z=clamp(pl.z+pl.vz*dt,-1850,1850);pl.y=clamp(pl.y+pl.vy*dt,heightAt(pl.x,pl.z)+.75,600);resolveFoot(pl,.38);\n pl.h=wrapA(camYaw+Math.PI);pl.swim=false;pl.walkSpd=0;pl.aim=0;\n};\nconst devFlightOriginalEnterCar=enterCar;enterCar=function(){if(devFlightState.active){toast('Disable Dev Mode before entering a vehicle.');return}return devFlightOriginalEnterCar.apply(this,arguments)};\nconst devFlightOriginalEnterInterior=enterInterior;enterInterior=function(){if(devFlightState.active)return;return devFlightOriginalEnterInterior.apply(this,arguments)};\nconst devFlightOriginalMission=startMission;startMission=function(){if(devFlightState.active)return;return devFlightOriginalMission.apply(this,arguments)};\nconst devFlightOriginalSave=saveGame;saveGame=function(manual){if(devFlightState.active){if(manual)toast('Disable Dev Mode before saving.');return false}return devFlightOriginalSave.apply(this,arguments)};\nconst devFlightOriginalNewGame=newGame;newGame=function(){devFlightReset();return devFlightOriginalNewGame.apply(this,arguments)};\nconst devFlightOriginalLoad=applySave;applySave=function(){devFlightReset();return devFlightOriginalLoad.apply(this,arguments)};\nconst devFlightOriginalSimulate=simulate;simulate=function(){if(devFlightState.active&&(!pl.alive||G.multiplayer)){devFlightReset()}return devFlightOriginalSimulate.apply(this,arguments)};\n"
+              ui='function mountDevFlightMenu(){\n const resume=document.getElementById(\'pResume\'),card=document.querySelector(\'#pause .card\');if(!resume||!card)return;\n const button=document.createElement(\'button\');button.id=\'pDevMode\';button.type=\'button\';button.textContent=\'Dev Mode\';resume.insertAdjacentElement(\'afterend\',button);\n const panel=document.createElement(\'div\');panel.hidden=true;panel.style.cssText=\'margin-top:12px;padding:12px;border:1px solid #8de0f777;border-radius:10px;text-align:left\';\n panel.innerHTML=\'<label for="devModeCode">Developer code</label><input id="devModeCode" type="password" maxlength="40" autocomplete="off" style="display:block;box-sizing:border-box;width:100%;padding:10px;margin:8px 0;background:#071426;color:white;border:1px solid #8de0f777;border-radius:6px"><button id="devModeUnlock" type="button">Unlock flight</button><p id="devModeStatus" role="status" style="font-size:12px;line-height:1.5"></p>\';\n card.appendChild(panel);const input=panel.querySelector(\'input\'),unlock=panel.querySelector(\'button\'),status=panel.querySelector(\'p\');\n const badge=document.createElement(\'div\');badge.hidden=true;badge.textContent=\'DEV FLIGHT | WASD move | Space up | X down | Shift boost | Saves paused\';badge.style.cssText=\'position:fixed;top:12px;right:12px;z-index:45;padding:8px 12px;border-radius:8px;background:#071426e8;color:#8df3ba;font:12px Arial;pointer-events:none\';document.body.appendChild(badge);\n devFlightRender=()=>{button.textContent=devFlightState.active?\'Dev Mode: ON\':devFlightState.unlocked?\'Dev Mode: OFF\':\'Dev Mode\';button.disabled=!!G.multiplayer;button.title=G.multiplayer?\'Single-player only\':\'\';badge.hidden=!devFlightState.active};\n const submit=async()=>{if(unlock.disabled)return;unlock.disabled=true;try{const result=await devFlightUnlock(input.value);input.value=\'\';status.textContent=result.message;if(result.ok)input.blur()}catch(error){status.textContent=\'Could not check the code. Reload and try again.\'}finally{unlock.disabled=false;devFlightRender()}};\n unlock.onclick=submit;\n button.onclick=()=>{if(G.multiplayer){status.textContent=\'Dev Mode is single-player only.\';return}if(devFlightState.active){devFlightStop(true);panel.hidden=false;status.textContent=\'Flight off. Returned to your takeoff position.\';return}panel.hidden=false;if(devFlightState.unlocked){status.textContent=devFlightEnable()?\'Flight enabled. Resume to fly. Space up, X down, Shift boost.\':\'Stand on dry ground, on foot and outdoors, outside missions and jobs.\'}else{status.textContent=\'Enter the developer code to unlock flight for this session.\';input.focus()}};\n addEventListener(\'keydown\',event=>{const k=event.key.toLowerCase();if(document.activeElement===input){event.stopImmediatePropagation();if(k===\'enter\'){event.preventDefault();submit()}if(k===\'escape\'){event.preventDefault();input.blur();panel.hidden=true}return}if(devFlightState.active&&G.state===\'play\'&&[\'e\',\'r\',\'k\',\'b\',\'c\',\'j\'].includes(k)){event.preventDefault();event.stopImmediatePropagation();toast(\'Disable Dev Mode before interacting or saving.\')}if(devFlightState.active&&[\' \',\'x\',\'arrowup\',\'arrowdown\',\'arrowleft\',\'arrowright\'].includes(k))event.preventDefault()},true);\n const originalPause=pauseGame;pauseGame=function(){const result=originalPause.apply(this,arguments);devFlightRender();return result};devFlightRender();\n}\nmountDevFlightMenu();\n'
+              setup="const assert=require('assert'),crypto=require('node:crypto').webcrypto;let mouseDown=false,camYaw=0,camInit=true,footCalls=0,saveCalls=0,carCalls=0,resolveCalls=0;const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),wrapA=x=>x,G={state:'paused',multiplayer:false},pl={x:10,y:0,z:20,h:0,hp:100,alive:true,car:null,inside:null,swim:false,vx:0,vy:0,vz:0},MS={active:null},SJ={kind:null},keys={},WL=-.35;function heightAt(){return 0}function resolveFoot(){resolveCalls++}function toast(){}function playerOnFoot(){footCalls++;return'foot'}function enterCar(){carCalls++;return'car'}function enterInterior(){return'interior'}function startMission(){return'mission'}function saveGame(){saveCalls++;return'saved'}function newGame(){return'new'}function applySave(){return'load'}function simulate(){return'sim'};"
+              checks="(async()=>{\nassert(!devFlightState.active&&!devFlightState.unlocked);let result=await devFlightUnlock('WRONG');assert(!result.ok&&!devFlightState.active);result=await devFlightUnlock(' vc-fly-7429 ');assert(result.ok&&devFlightState.active&&devFlightState.unlocked);\nG.state='play';keys.w=true;const z=pl.z;playerOnFoot(.02);assert(pl.z<z&&pl.y>0);const regular=z-pl.z;keys.shift=true;const z2=pl.z;playerOnFoot(.02);assert(z2-pl.z>regular*2);keys.w=keys.shift=false;keys[' ']=true;const y=pl.y;playerOnFoot(.02);assert(pl.y>y);keys[' ']=false;keys.x=true;const top=pl.y;playerOnFoot(.02);assert(pl.y<top);keys.x=false;\nG.state='paused';const held=pl.z;keys.w=true;playerOnFoot(.02);assert(pl.z===held);assert(saveGame(true)===false&&saveCalls===0);enterCar({});assert(carCalls===0);devFlightStop(true);assert(pl.x===10&&pl.z===20&&pl.y===0&&pl.vx===0&&pl.vy===0&&resolveCalls>=3);assert(saveGame(true)==='saved');\nG.multiplayer=true;assert(!devFlightEnable());result=await devFlightUnlock('VC-FLY-7429');assert(!result.ok);G.multiplayer=false;newGame();assert(!devFlightState.unlocked&&!devFlightState.active);pl.y=0;G.state='paused';const pending=devFlightUnlock('VC-FLY-7429');applySave({});result=await pending;assert(!result.ok&&!devFlightState.unlocked);assert(playerOnFoot(.02)==='foot'&&footCalls>0);assert(simulate(.02)==='sim');\nconsole.log(JSON.stringify({correct_code_unlocks:true,wrong_code_rejected:true,session_only:true,multiplayer_blocked:true,horizontal_and_vertical_flight:true,speed_boost:true,paused_movement_blocked:true,safe_return_to_takeoff:true,save_and_vehicle_guards:true,stale_unlock_rejected:true,normal_controls_preserved:true}));\n})().catch(error=>{console.error(error);process.exit(1)});"
+              result=subprocess.run(['node','-e',setup+core+checks],check=True,capture_output=True,text=True);report.update(json.loads(result.stdout))
+              addition=core+'\n'+ui+'\n'
+              updated=s.replace('boot();',addition+'boot();',1)
+              if updated.replace(addition,'',1)!=s: raise RuntimeError('Unrelated source changed.')
+              checked=0
+              for js in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',updated,re.I):
+                  if not js.strip(): continue
+                  with tempfile.NamedTemporaryFile(mode='w',suffix='.js',delete=False) as f:
+                      f.write(js);name=f.name
+                  try: subprocess.run(['node','--check',name],check=True,capture_output=True)
+                  finally: os.unlink(name)
+                  checked+=1
+              if not checked: raise RuntimeError('No inline JavaScript found.')
+              p.write_text(updated,encoding='utf-8');report.update(ok=True,checked_scripts=checked,scope='Pause-menu code-gated on-foot developer flight; single-player free roam only',controls='WASD move; Space up; X down; Shift boost; Esc then Dev Mode to disable and return to takeoff; saves blocked while flying')
+          except Exception as exc:
+              report['error']=str(exc)
+              if isinstance(exc,subprocess.CalledProcessError): report['stderr']=(exc.stderr or b'').decode(errors='replace')[-3000:]
+          Path('scripts').mkdir(exist_ok=True)
+          Path('scripts/dev-flight-status.json').write_text(json.dumps(report,indent=2)+'\n')
+          print(json.dumps(report))
+          PY
+      - name: Commit tested flight feature or diagnostic report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html scripts/dev-flight-status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Add code-gated single-player Dev Mode flight in pause menu'
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Require successful developer flight feature
+        run: node -e "if(!require('./scripts/dev-flight-status.json').ok)process.exit(1)"
