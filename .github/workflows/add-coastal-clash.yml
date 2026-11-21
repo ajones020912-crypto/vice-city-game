@@ -1,0 +1,146 @@
+name: Add Coastal Clash street race
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/add-coastal-clash.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: coastal-clash-patch
+  cancel-in-progress: false
+jobs:
+  add-race:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Add isolated race extension and validate scripts
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile, os, json
+          p=Path('index.html');report={'ok':False,'stage':'read'}
+          try:
+              s=p.read_text(encoding='utf-8')
+              report['source_blob']=subprocess.check_output(['git','hash-object','index.html'],text=True).strip()
+              marker='// COASTAL_CLASH_V1'
+              already=marker in s
+              if not already:
+                  report['stage']='check_integration_points'
+                  for name in ['raceNear','buildExtras','startRace','endJob','stepCar','controlAI','updateJob','extraBlips','onKey']:
+                      if len(re.findall(r'\bfunction\s+'+name+r'\s*\(',s))!=1: raise RuntimeError('Expected one existing '+name+' function.')
+                  if not re.search(r'\bconst\s+RACES\s*=',s): raise RuntimeError('Existing race registry not found.')
+                  if 'coastal_clash' in s: raise RuntimeError('An unrecognized Coastal Clash implementation already exists.')
+                  extension=r'''// COASTAL_CLASH_V1
+          (()=>{
+           const race={id:'coastal_clash',name:'Coastal Clash',start:[260,-270],cps:[[300,-270],[300,270],[-180,270],[-180,-270],[260,-270]],gold:110,silver:140,bronze:180,ready:false};
+           const colors=[0xffc857,0x42c9ff,0x81df75];let retry=null;
+           RACES.push(race);
+           const active=()=>SJ.kind==='race'&&SJ.coastal;
+           function configure(){
+            const anchors=[[300,-270],[300,270],[-180,270],[-180,-270],[240,-270]],ns=anchors.map(p=>nodeNear(p[0],p[1]));
+            if(ns.some((n,i)=>!n||Math.hypot(n.x-anchors[i][0],n.z-anchors[i][1])>12))throw Error('Coastal race road junctions are unavailable.');
+            const cps=[[ns[0].x,ns[0].z]];
+            for(let i=1;i<ns.length;i++){const path=astar(ns[i-1],ns[i]);if(!path)throw Error('Coastal race roads are disconnected.');for(const n of path.slice(1)){const q=cps[cps.length-1];if(Math.hypot(n.x-q[0],n.z-q[1])>1)cps.push([n.x,n.z])}}
+            cps.push(race.start.slice());race.cps=cps;race.ready=true;
+           }
+           const originalBuild=buildExtras;buildExtras=function(){try{configure()}catch(e){G.coastalRaceError=e.message;const i=RACES.indexOf(race);if(i>=0)RACES.splice(i,1)}return originalBuild.apply(this,arguments)};
+           function landCar(c){return c&&!c.dead&&!c.t.boat&&!c.t.aircraft&&c.fuel>0}
+           function freeze(c){c.vx=c.vz=c.vf=c.vl=c.yr=0;c.inp.thr=c.inp.steer=0;c.inp.hb=1}
+           function clearRivals(job){for(const r of job.rivals||[]){const c=r.car;if(pl.car===c)ejectPlayer();if(cars.includes(c))removeCar(c)}}
+           const originalEnd=endJob;endJob=function(){if(active()){const job=SJ;clearRivals(job);retry={until:G.time+45,stats:pl.stats};}return originalEnd.apply(this,arguments)};
+           const originalStart=startRace;
+           function beginCoastal(warp){
+            const c=pl.car;if(!landCar(c)){toast('Use a working road car for Coastal Clash.');return false}
+            if(SJ.kind||G.work||pl.inside||G.busy){toast('Finish your current activity first.');return false}
+            if(c.speed>2.5){toast('Stop your car to line up for the race.');return false}
+            if(!race.ready){try{configure()}catch(e){toast(e.message);return false}}
+            if(!warp&&hyp(c.x,c.z,race.start[0],race.start[1])>14)return false;
+            const grid=[[260,-265.5],[260,-273.5],[249,-265.5],[249,-273.5]];
+            for(const p of grid){if(heightAt(p[0],p[1])<WL+.15||queryCols(p[0],p[1],2.5).some(b=>circleBox(p,2.2,b))){toast('The starting grid is not clear.');return false}if(cars.some(o=>o!==c&&!o.dead&&hyp(o.x,o.z,p[0],p[1])<6)){toast('Traffic is blocking the grid. Wait a moment and try again.');return false}}
+            if(!canStartJob())return false;
+            const job={kind:'race',coastal:true,race,car:c,rivals:[],i:0,t:0,count:3,last:4};
+            try{for(let i=0;i<3;i++){const p=grid[i+1],car=spawnCar('sports',p[0],p[1],Math.PI/2,'racer',colors[i]);car.keep=true;car.occ='ai';car.ai={coastal:true,vmax:28+i,route:[],stuck:0,rev:0};job.rivals.push({car,i:0,finished:false,time:0,offset:(i-1)*2.5,prevX:car.x,prevZ:car.z})}}
+            catch(e){clearRivals(job);toast('Could not create the race rivals.');return false}
+            c.x=grid[0][0];c.z=grid[0][1];c.y=heightAt(c.x,c.z);c.h=Math.PI/2;freeze(c);c.place();pl.x=c.x;pl.z=c.z;pl.y=c.y;
+            SJ=job;retry=null;placeRing(jobRing,race.cps[0][0],race.cps[0][1]);return true;
+           }
+           startRace=function(rc){if(rc.id===race.id)return beginCoastal(false);return originalStart.apply(this,arguments)};
+           const originalStep=stepCar;stepCar=function(c,dt){if(active()&&SJ.count>0&&(c===SJ.car||SJ.rivals.some(r=>r.car===c))){freeze(c);return}return originalStep.apply(this,arguments)};
+           function advance(r){const c=r.car;while(r.i<race.cps.length&&hyp(c.x,c.z,race.cps[r.i][0],race.cps[r.i][1])<9)r.i++;if(r.i>=race.cps.length&&!r.finished){r.finished=true;r.time=SJ.t}}
+           const originalAI=controlAI;controlAI=function(c,dt){
+            if(!active()||!c.ai||!c.ai.coastal)return originalAI.apply(this,arguments);
+            const r=SJ.rivals.find(q=>q.car===c);if(!r)return;
+            if(c.dead||SJ.count>0||r.finished){c.inp.thr=0;c.inp.hb=1;c.inp.steer=0;return}
+            advance(r);if(r.finished){c.inp.thr=0;c.inp.hb=1;return}
+            const q=race.cps[r.i],prev=r.i?race.cps[r.i-1]:race.start,next=race.cps[r.i+1],dx=q[0]-prev[0],dz=q[1]-prev[1],len=Math.hypot(dx,dz)||1;
+            const tx=q[0]+dz/len*r.offset,tz=q[1]-dx/len*r.offset,dist=hyp(c.x,c.z,q[0],q[1]),err=wrapA(Math.atan2(tx-c.x,tz-c.z)-c.h);
+            let vmax=(28+SJ.rivals.indexOf(r))*Math.max(.22,1-Math.abs(err)/1.8);
+            if(next){const nx=next[0]-q[0],nz=next[1]-q[1],nl=Math.hypot(nx,nz)||1;if((dx*nx+dz*nz)/(len*nl)<.8)vmax=Math.min(vmax,Math.sqrt(64+9*Math.max(0,dist-9)))}
+            let gap=100;const sn=Math.sin(c.h),cs=Math.cos(c.h);
+            for(const o of cars){if(o===c)continue;const ox=o.x-c.x,oz=o.z-c.z,f=ox*sn+oz*cs,l=ox*cs-oz*sn;if(f>0&&f<25&&Math.abs(l)<(c.t.W+o.t.W)*.5+.2)gap=Math.min(gap,f-(c.t.L+o.t.L)*.5)}
+            if(gap<100)vmax=Math.min(vmax,Math.max(0,(gap-2)*1.8));
+            c.inp.steer=clamp(err*1.9,-1,1);c.inp.hb=0;
+            if(c.speed<.7&&vmax>3)c.ai.stuck+=dt;else c.ai.stuck=0;
+            if(c.ai.stuck>2.5){c.ai.rev=1;c.ai.stuck=0}
+            if(c.ai.rev>0){c.ai.rev-=dt;c.inp.thr=-.7;c.inp.steer=-Math.sign(err)||1;return}
+            c.inp.thr=c.vf<vmax-.5?clamp((vmax-c.vf)*.5,.1,1):c.vf>vmax+1?-clamp((c.vf-vmax)*.25,.15,1):0;
+           };
+           function progress(actor,index){if(index>=race.cps.length)return race.cps.length+1;const p=index?race.cps[index-1]:race.start,q=race.cps[index],dx=q[0]-p[0],dz=q[1]-p[1];return index+clamp(((actor.x-p[0])*dx+(actor.z-p[1])*dz)/(dx*dx+dz*dz||1),0,1)}
+           function position(){const p=progress(SJ.car,SJ.i);return 1+SJ.rivals.filter(r=>r.finished||(!r.car.dead&&progress(r.car,r.i)>p)).length}
+           function result(){
+            const job=SJ,rank=1+job.rivals.filter(r=>r.finished&&r.time<=job.t).length,t=job.t,pay=[1500,800,400,0][rank-1];
+            ensurePl();const best=pl.best[race.id],record=!best||t<best;if(record)pl.best[race.id]=t;
+            const medal=Math.max(0,4-rank),prev=pl.medals[race.id]||0;if(medal>prev){pl.medals[race.id]=medal;addRep([0,2,3,5][medal]-[0,2,3,5][prev])}
+            pl.cash+=pay;if(rank===1)pl.stats.racesWon=(pl.stats.racesWon||0)+1;G.hudDirty=true;endJob();
+            audio.jingle(rank===1);showBanner(['1ST PLACE','2ND PLACE','3RD PLACE','4TH PLACE'][rank-1],'Coastal Clash · '+fmtT(t)+' · +$'+pay+(record?' · NEW BEST':'')+' · Y to retry',rank===1?'#ffd23a':'#9fe8ff',4500);saveGame(false);
+           }
+           const originalUpdate=updateJob;updateJob=function(dt){
+            if(!active())return originalUpdate.apply(this,arguments);
+            const job=SJ,c=pl.car;if(!pl.alive||!c||c!==job.car||c.dead){showBanner('RACE FAILED','Use a working road car and press Y to retry.','#ff637c',3500);endJob();return}
+            if(job.count>0){const n=Math.ceil(job.count);if(n!==job.last){job.last=n;showBanner(String(n),'COASTAL CLASH','#ffffff',750);audio.beep(500+n*100)}job.count=Math.max(0,job.count-dt);setObjective('Three rivals · Get ready · R to cancel','COASTAL CLASH');if(job.count===0){showBanner('GO!','COASTAL CLASH','#65f2a0',900);audio.beep(1100)}return}
+            job.t+=dt;if(job.t>240){showBanner('RACE FAILED','Out of time · Stop and press Y to retry.','#ff637c',3500);endJob();return}
+            const cp=race.cps[job.i];if(hyp(c.x,c.z,cp[0],cp[1])<12){job.i++;audio.beep(850);if(job.i>=race.cps.length){result();return}const q=race.cps[job.i];placeRing(jobRing,q[0],q[1])}
+            setObjective('Position '+position()+'/4 · Checkpoint '+(job.i+1)+'/'+race.cps.length+' · '+fmtT(job.t)+' · R to cancel','COASTAL CLASH');
+           };
+           const originalBlips=extraBlips;extraBlips=function(b){originalBlips.apply(this,arguments);if(active())for(let i=0;i<SJ.rivals.length;i++){const c=SJ.rivals[i].car;if(!c.dead)b.push({x:c.x,z:c.z,c:'#'+colors[i].toString(16).padStart(6,'0'),s:'●',small:true})}};
+           const originalKey=onKey;onKey=function(k,e){if(k==='y'&&retry&&retry.stats===pl.stats&&retry.until>G.time&&G.state==='play'&&!SJ.kind&&!G.mapOpen&&!G.phoneOpen){beginCoastal(true);return}return originalKey.apply(this,arguments)};
+           G.coastalRace={name:race.name,start:race.start,get ready(){return race.ready},get active(){return !!active()}};
+          })();
+          '''
+                  anchor=re.search(r'\bfunction\s+raceNear\s*\(',s)
+                  s=s[:anchor.start()]+extension+'\n'+s[anchor.start():]
+              report['stage']='syntax_check'
+              checked=0
+              for code in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I):
+                  if not code.strip(): continue
+                  with tempfile.NamedTemporaryFile(mode='w',suffix='.js',delete=False) as f:
+                      f.write(code);name=f.name
+                  try:
+                      result=subprocess.run(['node','--check',name],capture_output=True,text=True)
+                      if result.returncode: raise RuntimeError(result.stderr[:3000])
+                  finally: os.unlink(name)
+                  checked+=1
+              if not checked: raise RuntimeError('No inline scripts found.')
+              p.write_text(s,encoding='utf-8')
+              report.update(ok=True,result='already_applied' if already else 'applied',checked_scripts=checked,race='Coastal Clash',start=[260,-270],rivals=3)
+          except Exception as exc:
+              report['error']=str(exc)
+          Path('street-race-status.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(report))
+          PY
+      - name: Commit validated race or diagnostic report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html street-race-status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Add Coastal Clash with three rivals, countdown, prizes and quick retry'
+          git push origin HEAD:main
+      - name: Require successful patch
+        run: node -e "if(!require('./street-race-status.json').ok)process.exit(1)"
