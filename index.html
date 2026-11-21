@@ -2329,7 +2329,58 @@ STATIONS.splice(0,STATIONS.length,...[
 
  A.radioTick=function(on){const want=(on&&ctx&&stIdx>=0&&stIdx<STATIONS.length)?stIdx:-1;if(want===playing)return;if(radT){clearInterval(radT);radT=null}if(playing>=0)songSteps[playing]=step;playing=want;if(want>=0){const station=STATIONS[want];step=songSteps[want]||0;nextBeatTime=ctx.currentTime+.035;const schedule=()=>{if(!ctx||playing!==want)return;if(nextBeatTime<ctx.currentTime-.3)nextBeatTime=ctx.currentTime+.035;let count=0;while(nextBeatTime<ctx.currentTime+.12&&count++<8){try{station.play(step++,nextBeatTime,R)}catch(e){}nextBeatTime+=station.ms/1000;songSteps[want]=step}};schedule();radT=setInterval(schedule,25)}};
 
- return A})();
+ 
+// COMBAT_AUDIO_V3
+const combatProfiles={pistol:[.25,145,.004,.026,.055,.46],smg:[.15,195,.003,.017,.032,.30],rifle:[.33,115,.0035,.036,.075,.49],shot:[.58,82,.008,.065,.13,.60],swing:[.16,0,0,0,0,.18],hit:[.14,132,.003,.025,.04,.30],hurt:[.19,95,.004,.04,.06,.26],boom:[1.45,58,.012,.22,.38,.59]};
+function makeCombatPcm(kind,variant,sr){
+ const p=combatProfiles[kind]||combatProfiles.pistol,n=Math.ceil(p[0]*sr),out=new Float32Array(n);let seed=(1234567+variant*9719+kind.length*131)>>>0,low=0,mid=0,phase=0,previous=0,dc=0,peak=0;
+ const a=1-Math.exp(-2*Math.PI*(kind==='boom'?380:1500)/sr),b=1-Math.exp(-2*Math.PI*5200/sr),dcRate=Math.exp(-2*Math.PI*28/sr);
+ for(let i=0;i<n;i++){
+  const t=i/sr;seed=(Math.imul(seed,1664525)+1013904223)>>>0;const noise=seed/2147483648-1;low+=a*(noise-low);mid+=b*(noise-mid);const high=mid-low;
+  phase+=2*Math.PI*p[1]*(.52+.48*Math.exp(-t/.025))/sr;let x;
+  if(kind==='swing')x=(mid-low*.8)*Math.exp(-Math.pow((t-.055)/.033,2))*.8;
+  else if(kind==='boom')x=high*.65*Math.exp(-t/.012)+low*3.7*Math.exp(-t/.35)+Math.sin(phase)*.24*Math.exp(-t/.28);
+  else if(kind==='hit'||kind==='hurt')x=low*1.6*Math.exp(-t/p[3])+high*.17*Math.exp(-t/.006)+Math.sin(phase)*.22*Math.exp(-t/.022);
+  else{
+   x=high*.95*Math.exp(-t/p[2])+low*1.8*Math.exp(-t/p[3])+Math.sin(phase)*.19*Math.exp(-t/.021);
+   x+=low*.26*Math.exp(-t/p[4]);
+   for(const [at,gain]of[[.018,.065],[.044,.035]])if(t>at)x+=high*gain*Math.exp(-(t-at)/.004);
+   for(const [delay,gain]of[[.021,.09],[.039,.055],[.067,.028]]){const j=i-Math.floor(delay*sr);if(j>=0)x+=out[j]*gain}
+  }
+  x=Math.tanh(x*1.35);const clean=x-previous+dcRate*dc;previous=x;dc=clean;
+  const fade=Math.min(1,t/.0007,(n-1-i)/(sr*.009));out[i]=clean*Math.max(0,fade);peak=Math.max(peak,Math.abs(out[i]));
+ }
+ const scale=peak>0?.9/peak:1;for(let i=0;i<n;i++)out[i]*=scale;return out;
+}
+
+ let combatContext=null,combatBus=null;const combatCache=new Map(),combatVoices=[],combatHits={hit:-100,hurt:-100};
+ const combatStop=voice=>{try{voice.gain.gain.cancelScheduledValues(ctx.currentTime);voice.gain.gain.setTargetAtTime(0,ctx.currentTime,.003);voice.source.stop(ctx.currentTime+.015)}catch(e){}};
+ const combatStopAll=()=>{for(const voice of combatVoices.splice(0))combatStop(voice)};
+ function combatPlay(kind,volume=1){
+  if(!ctx||ctx.state!=='running'||G.state==='paused')return;
+  if(combatContext!==ctx){combatStopAll();combatContext=ctx;combatCache.clear();combatBus=ctx.createDynamicsCompressor();combatBus.threshold.value=-10;combatBus.knee.value=12;combatBus.ratio.value=6;combatBus.attack.value=.003;combatBus.release.value=.1;combatBus.connect(master)}
+  if((kind==='hit'||kind==='hurt')&&ctx.currentTime-combatHits[kind]<.04)return;
+  if(kind==='hit'||kind==='hurt')combatHits[kind]=ctx.currentTime;
+  const variant=Math.floor(Math.random()*3),key=kind+':'+variant;
+  if(!combatCache.has(key)){const pcm=makeCombatPcm(kind,variant,ctx.sampleRate),buffer=ctx.createBuffer(1,pcm.length,ctx.sampleRate);buffer.getChannelData(0).set(pcm);combatCache.set(key,buffer)}
+  while(combatVoices.length>=20)combatStop(combatVoices.shift());
+  const source=ctx.createBufferSource(),gain=ctx.createGain();source.buffer=combatCache.get(key);source.playbackRate.value=.98+Math.random()*.04;gain.gain.value=combatProfiles[kind][5]*Math.max(0,Math.min(1,Number(volume)||0));source.connect(gain);gain.connect(combatBus);const voice={source,gain};combatVoices.push(voice);
+  source.onended=()=>{source.disconnect();gain.disconnect();const i=combatVoices.indexOf(voice);if(i>=0)combatVoices.splice(i,1)};source.start();
+ }
+ let combatWarned=false;
+ const combatSafe=(kind,volume)=>{try{combatPlay(kind,volume)}catch(error){if(!combatWarned){console.warn('Combat audio unavailable',error);combatWarned=true}}};
+ A.shot=k=>combatSafe(['pistol','smg','rifle','shot'].includes(k)?k:'pistol',1);
+ A.punch=()=>combatSafe('swing',1);
+ A.boom=()=>combatSafe('boom',1);
+ A.hit=volume=>combatSafe('hit',volume);
+ const combatLegacyPause=A.setPaused;
+ A.setPaused=function(on){if(combatLegacyPause)combatLegacyPause.apply(this,arguments);if(on)combatStopAll()};
+ const combatLegacyHurtPed=hurtPed;
+ hurtPed=function(p,d,sx,sz,src,byP){const before=p&&p.hp,result=combatLegacyHurtPed.apply(this,arguments);if(byP&&p&&p.hp<before&&(src==='gun'||src==='punch')){const dist=Math.hypot(p.x-pl.x,p.z-pl.z);A.hit(1/(1+dist*.09))}return result};
+ const combatLegacyHurtPlayer=hurtPlayer;
+ hurtPlayer=function(){const before=pl.hp+(pl.armor||0),result=combatLegacyHurtPlayer.apply(this,arguments);if(pl.hp+(pl.armor||0)<before)combatSafe('hurt',1);return result};
+
+return A})();
 // ================= WANTED / CRIME (heat) =================
 const starsFor=c=>c>=30?6:c>=22?5:c>=14?4:c>=8?3:c>=4?2:c>=1?1:0;
 pl.crime=0;pl.sightT=0;
