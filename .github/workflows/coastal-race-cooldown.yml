@@ -1,0 +1,77 @@
+name: Add five-minute Coastal Clash cooldown
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/coastal-race-cooldown.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: coastal-clash-patch
+  cancel-in-progress: false
+jobs:
+  cooldown:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply scoped cooldown and validate JavaScript
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile, os, json
+          p=Path('index.html');report={'ok':False,'stage':'read'}
+          try:
+              s=p.read_text(encoding='utf-8')
+              marker='// COASTAL_RACE_COOLDOWN_300_V1'
+              already=marker in s
+              if not already:
+                  report['stage']='patch'
+                  start=s.index('// COASTAL_CLASH_V1')
+                  end=re.search(r'\bfunction\s+raceNear\s*\(',s[start:])
+                  if not end: raise RuntimeError('Cannot locate the race extension boundary.')
+                  end=start+end.start();block=s[start:end]
+                  changes=[
+                      ("const colors=[0xffc857,0x42c9ff,0x81df75];let retry=null;","const colors=[0xffc857,0x42c9ff,0x81df75];let retry=null;\n function cooldownLeft(){const until=Number(pl.stats&&pl.stats.coastalRaceReadyAt);return Number.isFinite(until)?Math.max(0,Math.ceil((until-Date.now())/1000)):0}"),
+                      ("function beginCoastal(warp){","function beginCoastal(warp){\n  const wait=cooldownLeft();if(wait){toast('Coastal Clash available in '+Math.floor(wait/60)+':'+String(wait%60).padStart(2,'0'),2500);return false}"),
+                      ("retry={until:G.time+45,stats:pl.stats};","retry={until:G.time+Math.max(45,cooldownLeft()+45),stats:pl.stats};"),
+                      ("ensurePl();const best=pl.best[race.id]","ensurePl();pl.stats.coastalRaceReadyAt=Date.now()+300000;const best=pl.best[race.id]"),
+                      ("+' · Y to retry'","+' · Available again in 5:00'")
+                  ]
+                  for old,new in changes:
+                      if block.count(old)!=1: raise RuntimeError('Expected exactly one cooldown anchor: '+old)
+                      block=block.replace(old,new,1)
+                  block=marker+'\n'+block
+                  s=s[:start]+block+s[end:]
+              report['stage']='syntax_check';checked=0
+              for code in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I):
+                  if not code.strip(): continue
+                  with tempfile.NamedTemporaryFile(mode='w',suffix='.js',delete=False) as f:
+                      f.write(code);name=f.name
+                  try:
+                      result=subprocess.run(['node','--check',name],capture_output=True,text=True)
+                      if result.returncode: raise RuntimeError(result.stderr[:3000])
+                  finally: os.unlink(name)
+                  checked+=1
+              if not checked: raise RuntimeError('No inline scripts found.')
+              p.write_text(s,encoding='utf-8')
+              report.update(ok=True,result='already_applied' if already else 'applied',cooldown_seconds=300,trigger='completed_race',saved_in='pl.stats.coastalRaceReadyAt',checked_scripts=checked)
+          except Exception as exc:
+              report['error']=str(exc)
+          Path('race-cooldown-status.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(report))
+          PY
+      - name: Commit cooldown or diagnostic report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html race-cooldown-status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Add persistent five-minute cooldown after Coastal Clash completion'
+          git push origin HEAD:main
+      - name: Require successful patch
+        run: node -e "if(!require('./race-cooldown-status.json').ok)process.exit(1)"
