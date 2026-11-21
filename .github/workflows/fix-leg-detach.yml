@@ -18,125 +18,89 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Fix animHuman hip/leg attachment
+      - name: Patch hip rotation and waist gap
         shell: bash
         run: |
           set -euo pipefail
           python3 <<'PY'
           from pathlib import Path
+          import re
 
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
+          orig = s
 
-          start = s.find('function animHuman(h,dt,s){')
-          if start < 0:
-              raise SystemExit('animHuman not found')
-          marker = '// ================= INPUT ================='
-          end = s.find(marker, start)
-          if end < 0:
-              raise SystemExit('INPUT marker not found')
+          # 1) Stop rotating the whole hips group (causes leg/body shear)
+          s = s.replace(
+              "hips.rotation.z=lerpA('hz',c1*.04*moveW,12);\n hips.rotation.y=lerpA('hyaw',s1*.06*moveW,12);",
+              "hips.rotation.set(0,0,0);",
+          )
+          s = s.replace(
+              "hips.rotation.z=lerpA('hz',c1*.04*moveW,12);",
+              "hips.rotation.z=0;",
+          )
+          s = s.replace(
+              "hips.rotation.y=lerpA('hyaw',s1*.06*moveW,12);",
+              "hips.rotation.y=0;",
+          )
 
-          # Fixed gait: never rotate the hips group (that detaches legs visually from pelvis/spine).
-          # Only rotate per-leg joints (hp/kn). Keep bob small. Spine handles lean/sway.
-          new_fn = '''function animHuman(h,dt,s){
- const u=h.userData,{hips,spine,A,Lg}=u;
- const spd=Math.max(0,s.speed||0);
- const walkW=clamp(spd/2.2,0,1);
- const runW=clamp((spd-3.2)/3.6,0,1);
- const moveW=clamp(walkW+runW*.35,0,1);
- const cadence=1.85+spd*1.0+runW*0.95;
- u.ph=(u.ph||0)+dt*cadence;
- // Arms lag slightly behind legs for natural counter-swing
- u.phArm=(u.phArm||0)+(u.ph-(u.phArm||0))*Math.min(1,dt*9);
- const ph=u.ph;
- const s1=Math.sin(ph), c1=Math.cos(ph);
- const sArm=Math.sin(u.phArm);
+          # 2) Fixed spine height so waist does not open a gap
+          s = s.replace(
+              "spine.position.y=.08+(s.aim?0:Math.sin(ph*.45)*.0025);",
+              "spine.position.y=.08;",
+          )
+          s = s.replace(
+              "spine.position.y=.08+(s.aim?0:Math.sin(u.ph*.4)*.002)}",
+              "spine.position.y=.08}",
+          )
 
- if(s.dead){
-  u.dead=Math.min(1,(u.dead||0)+dt*3.2);const d=u.dead;
-  h.rotation.x=-d*Math.PI/2*.97;h.position.y=(s.baseY||0)+d*.16;
-  A[0].sh.rotation.set(-.5*d,0,.9*d);A[1].sh.rotation.set(-.3*d,0,-.9*d);
-  Lg[0].hp.rotation.x=-.3*d;Lg[1].hp.rotation.x=.2*d;
-  Lg[0].kn.rotation.x=.2*d;Lg[1].kn.rotation.x=.15*d;
-  // reset hip group so corpse does not shear
-  hips.rotation.set(0,0,0);
-  return;
- }
- u.dead=0;h.rotation.x=0;
+          # 3) Milder leg swing so thighs stay under pelvis mesh
+          s = s.replace(
+              "const hipAmp=(.42+.22*runW)*moveW;",
+              "const hipAmp=(.32+.14*runW)*moveW;",
+          )
+          s = s.replace(
+              "const kneeAmp=(.55+.55*runW)*moveW;",
+              "const kneeAmp=(.4+.35*runW)*moveW;",
+          )
 
- // IMPORTANT: do not rotate/shear the hips group — legs and pelvis share it.
- // Keep hips locked in rotation so thighs stay seated under the pelvis mesh.
- hips.rotation.set(0,0,0);
+          # 4) Smaller vertical bob
+          s = s.replace(
+              "const bob=Math.abs(s1)*(.028+.02*runW)*moveW;",
+              "const bob=Math.abs(s1)*(.02+.01*runW)*moveW;",
+          )
+          s = s.replace(
+              "const hipY=.93-.018*moveW+bob+idleBreath;",
+              "const hipY=.93-.01*moveW+bob+idleBreath;",
+          )
 
- // Leg swing at the leg joints only (hp = thigh pivot under pelvis)
- const hipAmp=(.34+.16*runW)*moveW; // moderate stride so sockets stay covered
- const legL=s1*hipAmp;
- const legR=-s1*hipAmp;
- // Knee bends on swing; clamp so shin never looks disconnected
- const kneeAmp=(.42+.38*runW)*moveW;
- const kneeL=Math.max(0,Math.sin(ph+1.2))*kneeAmp;
- const kneeR=Math.max(0,Math.sin(ph+1.2+Math.PI))*kneeAmp;
+          # 5) Zero any leftover lateral hip joint drift if present
+          if "Lg[0].hp.rotation.y" not in s[s.find('function animHuman'):s.find('function animHuman')+2500]:
+              s = s.replace(
+                  "Lg[0].hp.rotation.x=lh;Lg[1].hp.rotation.x=rh;\n Lg[0].kn.rotation.x=lk;Lg[1].kn.rotation.x=rk;",
+                  "Lg[0].hp.rotation.x=lh;Lg[1].hp.rotation.x=rh;\n Lg[0].kn.rotation.x=lk;Lg[1].kn.rotation.x=rk;\n Lg[0].hp.rotation.y=Lg[1].hp.rotation.y=Lg[0].hp.rotation.z=Lg[1].hp.rotation.z=0;",
+              )
 
- const lerpA=(key,target,rate)=>{
-  const k='_a_'+key;const prev=u[k];const t=prev==null?target:prev+(target-prev)*Math.min(1,dt*rate);
-  u[k]=t;return t;
- };
- Lg[0].hp.rotation.x=lerpA('lh',legL,20);
- Lg[1].hp.rotation.x=lerpA('rh',legR,20);
- Lg[0].kn.rotation.x=lerpA('lk',kneeL,18);
- Lg[1].kn.rotation.x=lerpA('rk',kneeR,18);
- // keep lateral leg joints neutral (no unexplained drift)
- Lg[0].hp.rotation.y=0;Lg[1].hp.rotation.y=0;
- Lg[0].hp.rotation.z=0;Lg[1].hp.rotation.z=0;
+          if s == orig:
+              # Try alternate patterns from older animHuman
+              s2 = s
+              s2 = re.sub(
+                  r"hips\.position\.y=\.93-\.02\*moving\+Math\.abs\(Math\.sin\(u\.ph\)\)\*\.035\*moving\+idleBreath;",
+                  "hips.position.y=.93-.01*moving+Math.abs(Math.sin(u.ph))*.02*moving+idleBreath;hips.rotation.set(0,0,0);",
+                  s2,
+              )
+              if s2 != s:
+                  s = s2
+                  print('Patched older animHuman bob path')
+              else:
+                  raise SystemExit('No hip/leg patterns matched — animHuman may have changed')
 
- // Subtle vertical bob only (same as original idea) — small so feet/pelvis stay coherent
- const bob=Math.abs(s1)*(.022+.012*runW)*moveW;
- const idleBreath=Math.sin(ph*.85)*.008*(1-moveW);
- hips.position.y=lerpA('hy',.93-.012*moveW+bob+idleBreath,16);
-
- // Torso lean / sway lives on spine (child of hips), not on hips itself
- const lean=.02+runW*.14+moveW*.025;
- spine.rotation.x=lerpA('sx',lean,14);
- spine.rotation.z=lerpA('sz',s1*.025*moveW,14);
- spine.rotation.y=lerpA('sy',-s1*.05*moveW,12);
- spine.position.y=.08; // fixed — moving this opened a gap at the waist
-
- if(u.headP){
-  u.headP.rotation.x=lerpA('hx',Math.sin(ph*.85+.5)*.015*(1-moveW*.6),12);
-  u.headP.rotation.z=lerpA('hzhd',-c1*.015*moveW,12);
- }
-
- // Arms counter-swing opposite legs
- const armAmp=(.48+.32*runW)*moveW;
- const idleSway=Math.sin(ph*.8)*.03*(1-moveW);
- const shx0=lerpA('ax0',-sArm*armAmp+idleSway,16);
- const shx1=lerpA('ax1', sArm*armAmp-idleSway,16);
- const elbow=-(.1+.16*moveW+.35*runW);
- A[0].sh.rotation.set(shx0,0,.05);
- A[1].sh.rotation.set(shx1,0,-.05);
- A[0].el.rotation.x=lerpA('el0',elbow,14);
- A[1].el.rotation.x=lerpA('el1',elbow,14);
-
- for(const k in u.guns)u.guns[k].visible=k===s.weapon;
-
- if(s.aim&&s.weapon){
-  const long=s.weapon!=='pistol';
-  A[1].sh.rotation.set(-1.5,0,-.04);A[1].el.rotation.x=-.08;
-  A[0].sh.rotation.set(-1.25-(long?.1:0),0,long?.35:.5);A[0].el.rotation.x=-.4;
-  spine.rotation.x=.04;
- }else if(s.punch>0){
-  const p=Math.sin(Math.min(s.punch,1)*Math.PI);
-  A[1].sh.rotation.set(-1.45*p,0,-.1);A[1].el.rotation.x=-.2-.1*p;
-  A[0].sh.rotation.x=.4*p;spine.rotation.y=-.5*p;
- }
-}
-'''
-
-          s = s[:start] + new_fn + '\n' + s[end:]
-          if 'do not rotate/shear the hips group' not in s:
-              raise SystemExit('patch marker missing')
           p.write_text(s, encoding='utf-8')
           print(f'Done ({p.stat().st_size} bytes)')
+          # show a few confirms
+          chunk = p.read_text(encoding='utf-8')
+          print('hips.rotation.set', 'hips.rotation.set(0,0,0)' in chunk or 'hips.rotation.z=0' in chunk)
+          print('hipAmp mild', 'hipAmp=(.32' in chunk)
           PY
 
       - name: Commit
@@ -146,6 +110,6 @@ jobs:
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add index.html
           if git diff --cached --quiet; then echo 'No changes'; exit 0; fi
-          git commit -m 'Fix: legs detaching from body — lock hip group rotation, seat leg swing under pelvis'
+          git commit -m 'Fix: stop hip-group rotation shearing legs off the body while walking'
           git pull --rebase origin main || true
           git push origin HEAD:main
