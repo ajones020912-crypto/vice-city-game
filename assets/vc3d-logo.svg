@@ -1,141 +1,176 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" width="1200" height="640">
   <defs>
+    <style type="text/css">
+      @import url('https://fonts.cdnfonts.com/css/pricedown');
+      .gta-title {
+        font-family: 'Pricedown', 'Pricedown Bl', Impact, 'Arial Black', sans-serif;
+        font-weight: 400;
+        font-style: normal;
+      }
+    </style>
     <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#2a0a4a"/>
-      <stop offset="22%" stop-color="#6b1a7a"/>
-      <stop offset="45%" stop-color="#e8436a"/>
-      <stop offset="68%" stop-color="#ff7a3c"/>
-      <stop offset="100%" stop-color="#ffc56b"/>
+      <stop offset="0%" stop-color="#1a0535"/>
+      <stop offset="18%" stop-color="#4a0e6e"/>
+      <stop offset="40%" stop-color="#d63d7a"/>
+      <stop offset="62%" stop-color="#ff6b35"/>
+      <stop offset="82%" stop-color="#ffb04a"/>
+      <stop offset="100%" stop-color="#ffd78a"/>
     </linearGradient>
     <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#1a2840" stop-opacity="0.9"/>
-      <stop offset="100%" stop-color="#0a1220"/>
+      <stop offset="0%" stop-color="#1a2848" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#080e18"/>
     </linearGradient>
     <linearGradient id="viceFace" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="55%" stop-color="#f4eefc"/>
-      <stop offset="100%" stop-color="#d9cce8"/>
+      <stop offset="45%" stop-color="#f7f2ff"/>
+      <stop offset="100%" stop-color="#cfc0e8"/>
     </linearGradient>
     <linearGradient id="threeDFace" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#ff9ad4"/>
-      <stop offset="35%" stop-color="#ff4fa8"/>
-      <stop offset="100%" stop-color="#ff2d88"/>
+      <stop offset="0%" stop-color="#ffb3e0"/>
+      <stop offset="30%" stop-color="#ff5cb5"/>
+      <stop offset="100%" stop-color="#ff1a8c"/>
     </linearGradient>
     <linearGradient id="threeDSide" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#c4006e"/>
-      <stop offset="100%" stop-color="#7a0048"/>
+      <stop offset="0%" stop-color="#b00068"/>
+      <stop offset="100%" stop-color="#5c0038"/>
     </linearGradient>
-    <linearGradient id="cityFace" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="100%" stop-color="#e8dff5"/>
-    </linearGradient>
-    <filter id="neonPink" x="-40%" y="-40%" width="180%" height="180%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="b1"/>
-      <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="b2"/>
+    <filter id="neonPink" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="b2"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="b3"/>
       <feMerge>
+        <feMergeNode in="b3"/>
         <feMergeNode in="b2"/>
         <feMergeNode in="b1"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-    <filter id="softGlow" x="-25%" y="-25%" width="150%" height="150%">
-      <feGaussianBlur stdDeviation="5" result="b"/>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
       <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <filter id="titleShadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000" flood-opacity="0.55"/>
+    <filter id="titleShadow" x="-35%" y="-35%" width="170%" height="170%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000" flood-opacity="0.6"/>
     </filter>
   </defs>
 
+  <!-- Full scene background -->
   <rect width="1200" height="640" fill="url(#sky)"/>
-  <ellipse cx="600" cy="390" rx="300" ry="100" fill="#ffcc66" opacity="0.32"/>
+  <ellipse cx="600" cy="400" rx="340" ry="110" fill="#ffcc66" opacity="0.28"/>
 
-  <g fill="#1a1030" opacity="0.96">
-    <rect x="170" y="345" width="34" height="115"/>
-    <rect x="210" y="305" width="46" height="155"/>
-    <rect x="262" y="325" width="28" height="135"/>
-    <rect x="295" y="285" width="54" height="175"/>
-    <rect x="355" y="315" width="40" height="145"/>
-    <rect x="410" y="255" width="68" height="205"/>
-    <polygon points="410,255 444,212 478,255"/>
-    <rect x="490" y="275" width="44" height="185"/>
-    <rect x="545" y="235" width="78" height="225"/>
-    <polygon points="545,235 584,188 623,235"/>
-    <rect x="635" y="265" width="48" height="195"/>
-    <rect x="695" y="295" width="58" height="165"/>
-    <rect x="765" y="250" width="54" height="210"/>
-    <polygon points="765,250 792,208 819,250"/>
-    <rect x="830" y="305" width="36" height="155"/>
-    <rect x="875" y="280" width="48" height="180"/>
-    <rect x="935" y="325" width="40" height="135"/>
-    <rect x="985" y="305" width="34" height="155"/>
+  <!-- Distant skyline BEHIND the 3D lettering -->
+  <g fill="#1a1030" opacity="0.97">
+    <rect x="120" y="360" width="28" height="100"/>
+    <rect x="155" y="330" width="40" height="130"/>
+    <rect x="200" y="345" width="24" height="115"/>
+    <rect x="230" y="300" width="50" height="160"/>
+    <rect x="285" y="325" width="34" height="135"/>
+    <rect x="330" y="270" width="62" height="190"/>
+    <polygon points="330,270 361,228 392,270"/>
+    <rect x="400" y="290" width="40" height="170"/>
+    <rect x="450" y="250" width="72" height="210"/>
+    <polygon points="450,250 486,205 522,250"/>
+    <rect x="530" y="275" width="44" height="185"/>
+    <rect x="580" y="240" width="70" height="220"/>
+    <polygon points="580,240 615,198 650,240"/>
+    <rect x="660" y="265" width="48" height="195"/>
+    <rect x="715" y="295" width="55" height="165"/>
+    <rect x="780" y="255" width="50" height="205"/>
+    <polygon points="780,255 805,215 830,255"/>
+    <rect x="840" y="300" width="36" height="160"/>
+    <rect x="885" y="280" width="48" height="180"/>
+    <rect x="940" y="320" width="38" height="140"/>
+    <rect x="985" y="300" width="32" height="160"/>
+    <rect x="1025" y="340" width="26" height="120"/>
   </g>
-  <g fill="#ffd27a" opacity="0.55">
-    <rect x="218" y="320" width="6" height="6"/><rect x="230" y="320" width="6" height="6"/>
-    <rect x="218" y="340" width="6" height="6"/><rect x="230" y="355" width="6" height="6"/>
-    <rect x="430" y="280" width="7" height="7"/><rect x="445" y="300" width="7" height="7"/>
-    <rect x="560" y="260" width="7" height="7"/><rect x="580" y="280" width="7" height="7"/>
-    <rect x="780" y="275" width="7" height="7"/><rect x="795" y="300" width="7" height="7"/>
-    <rect x="890" y="300" width="6" height="6"/><rect x="905" y="320" width="6" height="6"/>
+  <g fill="#ffd27a" opacity="0.5">
+    <rect x="165" y="350" width="5" height="5"/><rect x="180" y="370" width="5" height="5"/>
+    <rect x="245" y="320" width="6" height="6"/><rect x="260" y="345" width="6" height="6"/>
+    <rect x="350" y="295" width="6" height="6"/><rect x="370" y="320" width="6" height="6"/>
+    <rect x="470" y="275" width="6" height="6"/><rect x="495" y="300" width="6" height="6"/>
+    <rect x="600" y="265" width="6" height="6"/><rect x="625" y="290" width="6" height="6"/>
+    <rect x="795" y="280" width="6" height="6"/><rect x="900" y="305" width="5" height="5"/>
   </g>
 
   <path d="M0 460 H1200 V640 H0 Z" fill="url(#water)"/>
-  <g fill="none" stroke="#ff8ab8" stroke-opacity="0.25" stroke-width="2">
-    <path d="M0 480 Q200 500 400 490 T800 495 T1200 485"/>
-    <path d="M0 510 Q200 525 400 515 T800 520 T1200 510"/>
+  <g fill="none" stroke="#ff8ab8" stroke-opacity="0.22" stroke-width="2">
+    <path d="M0 485 Q200 505 400 492 T800 498 T1200 490"/>
+    <path d="M0 515 Q200 530 400 520 T800 525 T1200 515"/>
   </g>
 
-  <g fill="#12081f">
-    <path d="M160 470 C155 400 150 340 148 280 C140 300 120 330 100 350 C125 325 140 300 148 280 C145 300 130 340 110 370 C135 345 145 310 148 280 C155 320 165 380 170 470 Z"/>
-    <ellipse cx="148" cy="265" rx="55" ry="28" transform="rotate(-25 148 265)"/>
-    <ellipse cx="148" cy="255" rx="48" ry="22" transform="rotate(15 148 255)"/>
-    <ellipse cx="140" cy="250" rx="40" ry="18" transform="rotate(-50 140 250)"/>
-    <path d="M95 470 C92 420 90 380 88 340 C80 360 65 385 50 400 C72 380 82 355 88 340 C85 360 75 390 60 415 C80 390 86 360 88 340 C92 370 98 420 100 470 Z"/>
-    <ellipse cx="88" cy="328" rx="40" ry="20" transform="rotate(-30 88 328)"/>
-    <ellipse cx="88" cy="320" rx="35" ry="16" transform="rotate(20 88 320)"/>
+  <!-- Palm trees framing the whole composition (GTA VI key art style) -->
+  <g fill="#0d0618">
+    <!-- far left small -->
+    <path d="M70 470 C68 430 66 400 65 370 C58 385 48 400 38 412 C55 398 62 385 65 370 C63 388 56 410 48 428 C60 412 64 390 65 370 C67 400 70 435 72 470 Z"/>
+    <ellipse cx="65" cy="362" rx="28" ry="14" transform="rotate(-28 65 362)"/>
+    <ellipse cx="65" cy="356" rx="24" ry="12" transform="rotate(18 65 356)"/>
+    <!-- main left -->
+    <path d="M150 470 C145 390 140 320 138 250 C128 275 105 310 80 335 C112 305 130 275 138 250 C134 275 118 320 95 355 C122 325 134 285 138 250 C145 300 155 370 160 470 Z"/>
+    <ellipse cx="138" cy="232" rx="62" ry="30" transform="rotate(-22 138 232)"/>
+    <ellipse cx="138" cy="220" rx="54" ry="24" transform="rotate(12 138 220)"/>
+    <ellipse cx="128" cy="214" rx="46" ry="20" transform="rotate(-48 128 214)"/>
+    <ellipse cx="150" cy="218" rx="42" ry="18" transform="rotate(40 150 218)"/>
+    <!-- mid-left -->
+    <path d="M250 470 C248 420 246 380 245 345 C236 362 220 382 205 398 C228 378 240 360 245 345 C243 365 232 390 218 412 C236 392 243 365 245 345 C248 375 252 420 255 470 Z"/>
+    <ellipse cx="245" cy="335" rx="38" ry="18" transform="rotate(-25 245 335)"/>
+    <ellipse cx="245" cy="328" rx="32" ry="15" transform="rotate(20 245 328)"/>
   </g>
-  <g fill="#12081f">
-    <path d="M1040 470 C1045 400 1050 340 1052 280 C1060 300 1080 330 1100 350 C1075 325 1060 300 1052 280 C1055 300 1070 340 1090 370 C1065 345 1055 310 1052 280 C1045 320 1035 380 1030 470 Z"/>
-    <ellipse cx="1052" cy="265" rx="55" ry="28" transform="rotate(25 1052 265)"/>
-    <ellipse cx="1052" cy="255" rx="48" ry="22" transform="rotate(-15 1052 255)"/>
-    <ellipse cx="1060" cy="250" rx="40" ry="18" transform="rotate(50 1060 250)"/>
-    <path d="M1105 470 C1108 420 1110 380 1112 340 C1120 360 1135 385 1150 400 C1128 380 1118 355 1112 340 C1115 360 1125 390 1140 415 C1120 390 1114 360 1112 340 C1108 370 1102 420 1100 470 Z"/>
-    <ellipse cx="1112" cy="328" rx="40" ry="20" transform="rotate(30 1112 328)"/>
-    <ellipse cx="1112" cy="320" rx="35" ry="16" transform="rotate(-20 1112 320)"/>
-    <path d="M980 470 C982 430 984 400 985 370 C978 385 965 400 950 412 C970 395 980 380 985 370 C983 390 975 415 965 435 C978 415 983 390 985 370 C987 400 990 435 992 470 Z"/>
-    <ellipse cx="985" cy="360" rx="32" ry="15" transform="rotate(-20 985 360)"/>
+  <g fill="#0d0618">
+    <!-- mid-right -->
+    <path d="M950 470 C952 420 954 380 955 345 C964 362 980 382 995 398 C972 378 960 360 955 345 C957 365 968 390 982 412 C964 392 957 365 955 345 C952 375 948 420 945 470 Z"/>
+    <ellipse cx="955" cy="335" rx="38" ry="18" transform="rotate(25 955 335)"/>
+    <ellipse cx="955" cy="328" rx="32" ry="15" transform="rotate(-20 955 328)"/>
+    <!-- main right -->
+    <path d="M1050 470 C1055 390 1060 320 1062 250 C1072 275 1095 310 1120 335 C1088 305 1070 275 1062 250 C1066 275 1082 320 1105 355 C1078 325 1066 285 1062 250 C1055 300 1045 370 1040 470 Z"/>
+    <ellipse cx="1062" cy="232" rx="62" ry="30" transform="rotate(22 1062 232)"/>
+    <ellipse cx="1062" cy="220" rx="54" ry="24" transform="rotate(-12 1062 220)"/>
+    <ellipse cx="1072" cy="214" rx="46" ry="20" transform="rotate(48 1072 214)"/>
+    <ellipse cx="1050" cy="218" rx="42" ry="18" transform="rotate(-40 1050 218)"/>
+    <!-- far right small -->
+    <path d="M1130 470 C1132 430 1134 400 1135 370 C1142 385 1152 400 1162 412 C1145 398 1138 385 1135 370 C1137 388 1144 410 1152 428 C1140 412 1136 390 1135 370 C1133 400 1130 435 1128 470 Z"/>
+    <ellipse cx="1135" cy="362" rx="28" ry="14" transform="rotate(28 1135 362)"/>
+    <ellipse cx="1135" cy="356" rx="24" ry="12" transform="rotate(-18 1135 356)"/>
   </g>
 
-  <g text-anchor="middle" font-family="Impact, 'Arial Black', Haettenschweiler, sans-serif" font-weight="900" filter="url(#titleShadow)">
-    <g fill="#5a1a7a">
-      <text x="612" y="222" font-size="128" letter-spacing="4">VICE</text>
-      <text x="610" y="220" font-size="128" letter-spacing="4">VICE</text>
-      <text x="608" y="218" font-size="128" letter-spacing="4">VICE</text>
-      <text x="606" y="216" font-size="128" letter-spacing="4">VICE</text>
+  <!-- VICE CITY — GTA Pricedown-style stacked title -->
+  <g class="gta-title" text-anchor="middle" filter="url(#titleShadow)">
+    <!-- VICE extrude -->
+    <g fill="#4a1570">
+      <text x="614" y="198" font-size="132" letter-spacing="2">VICE</text>
+      <text x="611" y="195" font-size="132" letter-spacing="2">VICE</text>
+      <text x="608" y="192" font-size="132" letter-spacing="2">VICE</text>
+      <text x="605" y="189" font-size="132" letter-spacing="2">VICE</text>
     </g>
-    <text x="600" y="210" font-size="128" letter-spacing="4" fill="url(#viceFace)" filter="url(#softGlow)">VICE</text>
+    <text x="600" y="182" font-size="132" letter-spacing="2" fill="url(#viceFace)" filter="url(#softGlow)">VICE</text>
 
-    <g fill="#5a1a7a">
-      <text x="612" y="342" font-size="128" letter-spacing="4">CITY</text>
-      <text x="610" y="340" font-size="128" letter-spacing="4">CITY</text>
-      <text x="608" y="338" font-size="128" letter-spacing="4">CITY</text>
-      <text x="606" y="336" font-size="128" letter-spacing="4">CITY</text>
+    <!-- CITY extrude -->
+    <g fill="#4a1570">
+      <text x="614" y="318" font-size="132" letter-spacing="2">CITY</text>
+      <text x="611" y="315" font-size="132" letter-spacing="2">CITY</text>
+      <text x="608" y="312" font-size="132" letter-spacing="2">CITY</text>
+      <text x="605" y="309" font-size="132" letter-spacing="2">CITY</text>
     </g>
-    <text x="600" y="330" font-size="128" letter-spacing="4" fill="url(#cityFace)" filter="url(#softGlow)">CITY</text>
+    <text x="600" y="302" font-size="132" letter-spacing="2" fill="url(#viceFace)" filter="url(#softGlow)">CITY</text>
   </g>
 
-  <g text-anchor="middle" font-family="Impact, 'Arial Black', Haettenschweiler, sans-serif" font-weight="900">
+  <!-- 3D — large neon block sitting IN the palm/skyline scene -->
+  <g class="gta-title" text-anchor="middle">
     <g fill="url(#threeDSide)">
-      <text x="622" y="472" font-size="168" letter-spacing="2">3D</text>
-      <text x="620" y="470" font-size="168" letter-spacing="2">3D</text>
-      <text x="618" y="468" font-size="168" letter-spacing="2">3D</text>
-      <text x="616" y="466" font-size="168" letter-spacing="2">3D</text>
-      <text x="614" y="464" font-size="168" letter-spacing="2">3D</text>
-      <text x="612" y="462" font-size="168" letter-spacing="2">3D</text>
-      <text x="610" y="460" font-size="168" letter-spacing="2">3D</text>
-      <text x="608" y="458" font-size="168" letter-spacing="2">3D</text>
+      <text x="624" y="458" font-size="175" letter-spacing="1">3D</text>
+      <text x="621" y="455" font-size="175" letter-spacing="1">3D</text>
+      <text x="618" y="452" font-size="175" letter-spacing="1">3D</text>
+      <text x="615" y="449" font-size="175" letter-spacing="1">3D</text>
+      <text x="612" y="446" font-size="175" letter-spacing="1">3D</text>
+      <text x="609" y="443" font-size="175" letter-spacing="1">3D</text>
+      <text x="606" y="440" font-size="175" letter-spacing="1">3D</text>
     </g>
-    <text x="604" y="454" font-size="168" letter-spacing="2" fill="#ff1490">3D</text>
-    <text x="600" y="450" font-size="168" letter-spacing="2" fill="url(#threeDFace)" filter="url(#neonPink)">3D</text>
+    <text x="603" y="437" font-size="175" letter-spacing="1" fill="#ff1490">3D</text>
+    <text x="600" y="434" font-size="175" letter-spacing="1" fill="url(#threeDFace)" filter="url(#neonPink)">3D</text>
+  </g>
+
+  <!-- Foreground palm fronds overlapping lower 3D slightly for depth -->
+  <g fill="#0a0414" opacity="0.92">
+    <ellipse cx="200" cy="455" rx="70" ry="18" transform="rotate(-18 200 455)"/>
+    <ellipse cx="1000" cy="455" rx="70" ry="18" transform="rotate(18 1000 455)"/>
   </g>
 </svg>
