@@ -1,7 +1,7 @@
 {
   "ok": true,
   "stage": "syntax_check",
-  "result": "applied",
+  "result": "already_applied",
   "cooldown_seconds": 300,
   "trigger": "completed_race",
   "saved_in": "pl.stats.coastalRaceReadyAt",
