@@ -141,6 +141,7 @@ small{color:#b9cce0}
 <div id="overlay"><div class="card home-card"><div class="home-kicker">WELCOME TO</div><h1 class="home-title">VICE CITY <span>3D</span></h1><p class="home-sub">A living coastal city. Your story starts here.</p><div class="home-actions"><button id="start" class="home-btn">SINGLEPLAYER <small>Play your own save</small></button><button id="multiplayerOpen" class="home-btn alt">MULTIPLAYER <small>Play online with friends</small></button><button id="cont" class="home-btn continue-btn" style="display:none">CONTINUE SAVED GAME</button></div><div id="loadmsg" class="home-status"><small>Generating Vice City…</small></div><div class="home-foot">WASD to move · Mouse to look · Desktop Chrome recommended</div></div></div>
 <div id="mpLobby" class="mp-screen" style="display:none"><div class="mp-card"><button id="mpBack" class="mp-back">← BACK</button><div class="home-kicker">ONLINE SESSION</div><h2>PLAY ONLINE</h2><label for="mpName">PLAYER NAME</label><input id="mpName" maxlength="16" value="Player" autocomplete="nickname"><div class="mp-actions"><button id="mpHost">JOIN WORLD</button></div><div id="mpOnline" class="mp-room" style="display:block">Players online: …</div><div id="mpStatus" class="mp-status">Everyone joins the same shared city. No codes needed.</div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="characters.js"></script>
 <script>
 (()=>{'use strict';
 if(!window.THREE){document.querySelector('.card').innerHTML='<h2>Could not load 3D engine</h2><p>Check your internet connection and reload.</p>';return;}
@@ -1844,6 +1845,47 @@ function setHumanLook(h,o){
  m.pants.color.setHex(o.pants);
  m.shoe.color.setHex(o.shoe||0x202020);
 }
+// ================= CHARACTER DESIGNS (characters.js) =================
+// Leads, police, gang and pedestrians use the designed low-poly characters. Every design keeps the
+// same rig (hips/spine/arms/legs/guns) so animHuman drives it unchanged; meshes are merged per joint.
+const VCC=window.VCCharacters;
+const PED_DESIGNS={beach:'tourist',female:'jogger',business:'office',police:'officer',gang:'harbor'};
+function designForOpts(o){
+ if(o.design)return o.design;
+ return PED_DESIGNS[o.style]||pick2(['tourist','office','jogger','fisherman']);
+}
+function adoptDesign(h,id){
+ const over={merge:true};
+ if(id==='clerk'){id='office';over.extras=[];over.jacket=null}
+ const n=VCC.build(T,id,over),keep=h.userData||{};
+ while(h.children.length)h.remove(h.children[0]);
+ while(n.children.length)h.add(n.children[0]);
+ h.userData=Object.assign({},keep,n.userData,{designId:id,ph:keep.ph!=null?keep.ph:n.userData.ph,dead:0});
+ h.traverse(c=>{if(c.isMesh){c.castShadow=true;c.receiveShadow=false}});
+ return h;
+}
+const makeHumanLegacy=makeHuman;
+makeHuman=function(o){
+ if(!VCC||o.legacy)return makeHumanLegacy(o);
+ const h=adoptDesign(new T.Group(),designForOpts(o));
+ setHumanLook(h,o);return h;
+};
+const setHumanLookLegacy=setHumanLook;
+setHumanLook=function(h,o){
+ const u=h.userData;
+ if(!u||!u.designId)return setHumanLookLegacy(h,o);
+ if(G.plH&&h===G.plH){ // player: swap between the two lead designs
+  const id=o===CHAR.lucia?'luciaC':o===CHAR.jason?'jasonC':pl.char==='lucia'?'luciaC':'jasonC';
+  if(u.designId!==id)adoptDesign(h,id);
+  return;
+ }
+ u.role=o.role||'resident';u.district=o.district||'';
+ u.outfit={shirt:o.shirt,pants:o.pants,cap:o.cap||0,shoe:o.shoe||0x202020,style:o.style||'casual'};
+ const m=u.m,d=u.designId;
+ if(o.skin!=null)m.skin.color.setHex(o.skin);
+ if(d!=='officer'&&d!=='harbor'){if(o.shirt!=null)m.shirt.color.setHex(o.shirt);if(o.pants!=null)m.pants.color.setHex(o.pants)}
+ if(d!=='fisherman'&&o.hair!=null)m.hair.color.setHex(o.hair);
+};
 // animate: s={speed,aim,punch,dead,weapon}
 function animHuman(h,dt,s){
  const u=h.userData,{hips,spine,A,Lg}=u;
@@ -1891,7 +1933,7 @@ addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updat
 const cars=[],peds=[],cops=[],gangs=[];
 const fwd=h=>[Math.sin(h),Math.cos(h)];
 const wreckMat=new T.MeshStandardMaterial({color:0x1a1a1a,roughness:.9,metalness:.2});
-const pl={x:11.2,z:36,y:0,h:0,vx:0,vz:0,vy:0,hp:100,armor:0,cash:500,rep:0,car:null,wanted:0,weapon:'fists',weapons:{fists:1},ammo:{pistol:0,smg:0,shot:0,rifle:0},fireT:0,punchT:0,swim:false,inside:null,alive:true,shirt:0x20b6a4,pants:0x26344f,missions:{},stats:{kills:0,wrecks:0,distance:0},aim:0,walkSpd:0,lastHit:0,
+const pl={x:11.2,z:36,y:0,h:0,vx:0,vz:0,vy:0,hp:100,armor:0,cash:500,rep:0,car:null,wanted:0,weapon:'fists',weapons:{fists:1},ammo:{pistol:0,smg:0,shot:0,rifle:0},fireT:0,punchT:0,swim:false,inside:null,alive:true,shirt:0xf2f1ec,pants:0xb39b6e,missions:{},stats:{kills:0,wrecks:0,distance:0},aim:0,walkSpd:0,lastHit:0,
   // crime systems
   char:'jason', // jason | lucia
   crime:0,sightT:0,heat:{face:0,clothes:0,vehicle:0,weapon:0,partner:0,cctv:0},
@@ -1899,10 +1941,10 @@ const pl={x:11.2,z:36,y:0,h:0,vx:0,vz:0,vy:0,hp:100,armor:0,cash:500,rep:0,car:n
 };
 G.pl=pl;G.cars=cars;G.peds=peds;G.cops=cops;
 const CHAR={
-  jason:{name:'JASON',skin:0xc98e68,shirt:0x20b6a4,pants:0x26344f,hair:0x1d1410,glasses:true,shoe:0xf2f2f2},
-  lucia:{name:'LUCIA',longHair:true,skin:0xc68642,shirt:0xff6ec7,pants:0x2a2f3a,hair:0x1a0f0a,glasses:false,shoe:0xffffff}
+  jason:{name:'JASON',skin:0xc98e68,shirt:0xf2f1ec,pants:0xb39b6e,hair:0x1d1410,glasses:false,shoe:0x5a4330},
+  lucia:{name:'LUCIA',longHair:true,skin:0xb9784e,shirt:0x3c3e44,pants:0x1f2228,hair:0x4a2c1a,glasses:false,shoe:0xf6f6f6}
 };
-const plH=makeHuman({skin:CHAR.jason.skin,shirt:pl.shirt,pants:pl.pants,hair:CHAR.jason.hair,glasses:true,shoe:0xf2f2f2});scene.add(plH);G.plH=plH;
+const plH=makeHuman({design:'jasonC',skin:CHAR.jason.skin,shirt:CHAR.jason.shirt,pants:CHAR.jason.pants,hair:CHAR.jason.hair});scene.add(plH);G.plH=plH;
 function switchChar(){
   if(pl.inside||G.busy||!pl.alive)return;
   pl.char=pl.char==='jason'?'lucia':'jason';
@@ -2573,7 +2615,7 @@ function buildInterior(kind,idx){
  // Window strips
  const win=M(0xb8e0ff,{emissive:0x88c8ff,emissiveIntensity:.85,roughness:.15,metalness:.4});
  bx(.04,1.7,4.5,9.9,1.1,-.5,win,false);bx(.04,1.7,4.5,-9.9,1.1,-.5,win,false);
- const clerk=makeHuman({skin:pick2(SKIN),shirt:{burger:0xd9372f,ammu:0x222831,clothes:0xb78bff,safe:0xffffff}[kind],pants:0x222222,hair:0x3b2314,cap:kind==='burger'?0xd9372f:0,glasses:kind==='ammu',shoe:0x111111});g.add(clerk);clerk.rotation.y=0;clerk.position.y=0;
+ const clerk=makeHuman({design:'clerk',skin:pick2(SKIN),shirt:{burger:0xd9372f,ammu:0x222831,clothes:0xb78bff,safe:0xffffff}[kind],pants:0x222222,hair:0x3b2314,cap:kind==='burger'?0xd9372f:0,glasses:kind==='ammu',shoe:0x111111});g.add(clerk);clerk.rotation.y=0;clerk.position.y=0;
  const sign=(txt,fg,x,y,z,w=5,ry=0)=>{const m=new T.Mesh(new T.PlaneGeometry(w,w/4),new T.MeshBasicMaterial({map:signTex(txt,fg),toneMapped:false,depthWrite:false}));m.position.set(x,y,z);m.rotation.y=ry;g.add(m)};
  const o={kind,idx,cx,cz,group:g,clerk,exit:{x:cx,z:cz+6.0},counter:{x:cx,z:cz-2.4},colls:[],items:[]};
  const cyl=(r,h,x,y,z,mat)=>{const m=new T.Mesh(new T.CylinderGeometry(r,r,h,12),mat);m.position.set(x,y+h/2,z);m.castShadow=true;g.add(m);return m};
@@ -2743,7 +2785,7 @@ function buildAllInteriors(){INTKINDS.forEach((k,i)=>buildInterior(k,i))}
 const SHOP_ITEMS={
  burger:()=>[{n:'Cheeseburger',p:10,d:'+25 health',f:()=>{pl.hp=Math.min(100,pl.hp+25)}},{n:'Mega Meal',p:25,d:'+60 health',f:()=>{pl.hp=Math.min(100,pl.hp+60)}},{n:'Neon Soda',p:4,d:'+5 health',f:()=>{pl.hp=Math.min(100,pl.hp+5)}}],
  ammu:()=>{const a=[];for(const k of['pistol','smg','shot','rifle']){const w=WEAP[k],lk=pl.rep<(w.req||0);if(!pl.weapons[k])a.push({n:w.name,p:w.price,locked:lk,d:lk?'🔒 Requires '+w.req+' Rep ('+tierOf(w.req)[1]+')':'Includes '+w.pack+' ammo',f:()=>{pl.weapons[k]=1;pl.ammo[k]+=w.pack;pl.weapon=k}});else a.push({n:w.name+' ammo ×'+w.pack,p:w.ammoPrice,d:'Have '+pl.ammo[k],f:()=>{pl.ammo[k]+=w.pack}})}a.push({n:'Body armor',p:300,d:'Armor to 100',f:()=>{pl.armor=100}});return a},
- clothes:()=>[['Neon Pink Tee',0xff6ec7],['Teal Bomber',0x20b6a4],['Sunset Orange',0xff8a3d],['Midnight Black',0x2a2f3a],['Beach White',0xf2f2f2],['Royal Purple',0x7a4fe0]].map(([n,c])=>({n,p:40,d:'Shirt · reduces heat',f:()=>{pl.shirt=c;plH.userData.m.shirt.color.setHex(c);if(pl.heat)pl.heat.clothes=0;toast('Outfit changed — clothing heat lost',1800)}})).concat([{n:'Khaki Cargo',p:30,d:'Pants',f:()=>{pl.pants=0x8a7a62;plH.userData.m.pants.color.setHex(0x8a7a62);if(pl.heat)pl.heat.clothes=0}},{n:'Dark Denim',p:30,d:'Pants',f:()=>{pl.pants=0x26344f;plH.userData.m.pants.color.setHex(0x26344f);if(pl.heat)pl.heat.clothes=0}}]),
+ clothes:()=>[['Neon Pink Tee',0xff6ec7],['Teal Bomber',0x20b6a4],['Sunset Orange',0xff8a3d],['Midnight Black',0x2a2f3a],['Beach White',0xf2f2f2],['Royal Purple',0x7a4fe0]].map(([n,c])=>({n,p:40,d:'Shirt · reduces heat',f:()=>{pl.shirt=c;plH.userData.m.shirt.color.setHex(c);if(pl.heat)pl.heat.clothes=0;toast('Outfit changed — clothing heat lost',1800)}})).concat([{n:'Khaki Cargo',p:30,d:'Pants',f:()=>{pl.pants=0x8a7a62;plH.userData.m.pants.color.setHex(0x8a7a62);if(pl.heat)pl.heat.clothes=0}},{n:'Dark Denim',p:30,d:'Pants',f:()=>{pl.pants=0x26344f;pl.boughtPants=1;plH.userData.m.pants.color.setHex(0x26344f);if(pl.heat)pl.heat.clothes=0}}]),
  safe:()=>[{n:'Save game',p:0,d:'Write progress to this browser',f:()=>{saveGame(true)},stay:true},{n:'Sleep until morning',p:0,d:'Restore health, time → 07:00',f:()=>{pl.hp=100;G.clock=7;clearWanted();toast('You slept. Wanted level cleared.')}},{n:'Take a shower',p:0,d:'Armor +25',f:()=>{pl.armor=Math.min(100,pl.armor+25)},stay:true}]};
 const SHOP_NAMES={burger:'Burger Shack',ammu:'Gun Cove',clothes:'Pastel Threads',safe:'Safehouse'};
 function openShop(kind){G.state='shop';G.shopKind=kind;document.exitPointerLock?.();$('#shop').style.display='grid';$('#shoptitle').textContent=G.shopTitle||SHOP_NAMES[kind];G.shopTitle=null;renderShop(kind)}
@@ -2844,7 +2886,7 @@ function readSave(){try{const s=localStorage.getItem(SAVEKEY);if(!s)return null;
 function applySave(d){
  if(pl.inside){pl.inside=null;world.visible=true;intGroup.visible=false;sun.visible=true;interiorLight.intensity=interiorFill.intensity=interiorAmb.intensity=0;skyDome.visible=true;scene.background=null;G.busy=false}if(pl.car)ejectPlayer();
  Object.assign(pl,d.pl);G.mapMarks=Array.isArray(d.mapMarks)?d.mapMarks.slice(0,30):[];ensurePl();if(d.batt!=null)G.batt=d.batt;if(d.station!=null){G.station=d.station;audio.setStation(G.station)}pl.alive=true;pl.car=null;pl.y=heightAt(pl.x,pl.z);pl.vx=pl.vz=pl.vy=0;pl.crime=Math.max(0,d.pl.crime||0);pl.wanted=clamp(d.pl.wanted||0,0,6);pl.heat=Object.assign({face:0,clothes:0,vehicle:0,weapon:0,partner:0,cctv:0},d.pl.heat||{});pl.sightT=0;pl.profScore=d.pl.profScore||0;updateProfile();G.clock=d.clock;
- {const cc=CHAR[pl.char]||CHAR.jason;setHumanLook(plH,cc);$('#char').textContent=cc.name}plH.userData.m.shirt.color.setHex(pl.shirt);plH.userData.m.pants.color.setHex(pl.pants);plH.visible=true;
+ {const cc=CHAR[pl.char]||CHAR.jason;setHumanLook(plH,cc);$('#char').textContent=cc.name;if([0x20b6a4,0xff6ec7].includes(pl.shirt))pl.shirt=cc.shirt;if([0x26344f,0x2a2f3a].includes(pl.pants)&&!pl.boughtPants)pl.pants=cc.pants}plH.userData.m.shirt.color.setHex(pl.shirt);plH.userData.m.pants.color.setHex(pl.pants);plH.visible=true;
  G.ownedCar=null;for(const c of cars.slice())removeCar(c);spawnAirportPlanes();for(const p of allPeds())p.kill();
  if(MS.active)failMission('game loaded');MS.active=null;ring.visible=false;
  if(d.car){const c=spawnCar(d.car.tk,d.car.x,d.car.z,d.car.h,'parked',d.car.color);c.up=d.car.up||null;c.gid=d.car.gid||null;if(c.gid)c.keep=true;c.hp=d.car.hp;c.fuel=clamp(d.car.fuel??100,0,100);c.owned=true;G.ownedCar=c;if(d.car.in)enterCar(c)}
