@@ -172,83 +172,102 @@ const postMat=new T.ShaderMaterial({
    float z=d*2.-1.;
    return (2.*camNear*camFar)/(camFar+camNear-z*(camFar-camNear));
   }
+  vec3 fxaa(sampler2D tex, vec2 uv){
+   vec2 px=1./res;
+   vec3 rgbNW=texture2D(tex,uv+vec2(-1.,-1.)*px).rgb;
+   vec3 rgbNE=texture2D(tex,uv+vec2(1.,-1.)*px).rgb;
+   vec3 rgbSW=texture2D(tex,uv+vec2(-1.,1.)*px).rgb;
+   vec3 rgbSE=texture2D(tex,uv+vec2(1.,1.)*px).rgb;
+   vec3 rgbM=texture2D(tex,uv).rgb;
+   vec3 lumaW=vec3(.299,.587,.114);
+   float lumaNW=dot(rgbNW,lumaW),lumaNE=dot(rgbNE,lumaW);
+   float lumaSW=dot(rgbSW,lumaW),lumaSE=dot(rgbSE,lumaW);
+   float lumaM=dot(rgbM,lumaW);
+   float lumaMin=min(lumaM,min(min(lumaNW,lumaNE),min(lumaSW,lumaSE)));
+   float lumaMax=max(lumaM,max(max(lumaNW,lumaNE),max(lumaSW,lumaSE)));
+   vec2 dir;
+   dir.x=-((lumaNW+lumaNE)-(lumaSW+lumaSE));
+   dir.y= ((lumaNW+lumaSW)-(lumaNE+lumaSE));
+   float dirReduce=max((lumaNW+lumaNE+lumaSW+lumaSE)*0.03125,0.0078125);
+   float rcpDirMin=1./(min(abs(dir.x),abs(dir.y))+dirReduce);
+   dir=min(vec2(8.),max(vec2(-8.),dir*rcpDirMin))*px;
+   vec3 a=0.5*(texture2D(tex,uv+dir*(1./3.-.5)).rgb+texture2D(tex,uv+dir*(2./3.-.5)).rgb);
+   vec3 b=a*0.5+0.25*(texture2D(tex,uv+dir*-.5).rgb+texture2D(tex,uv+dir*.5).rgb);
+   float lumaB=dot(b,lumaW);
+   if(lumaB<lumaMin||lumaB>lumaMax) return a;
+   return b;
+  }
   void main(){
    vec2 uv=vUv;
    vec2 c=uv-.5;float r2=dot(c,c);
-   // barrel distortion
-   vec2 uvD=uv+c*r2*.012*intensity;
-   // chromatic aberration
-   float ca=(.00035+.0003*night)*intensity;
+   vec2 uvD=uv+c*r2*.01*intensity;
+   vec3 base=fxaa(tDiffuse,uvD);
+   float ca=(.0004+.00035*night)*intensity;
    vec3 col=vec3(
     texture2D(tDiffuse,uvD+c*ca).r,
-    texture2D(tDiffuse,uvD).g,
+    base.g,
     texture2D(tDiffuse,uvD-c*ca).b
    );
+   col=mix(col,base,.35);
    float depth=texture2D(tDepth,uvD).x;
    float lin=linearize(depth);
-   // --- SSAO (depth-only, 16 samples) ---
    float ao=1.;
    if(depth<.9999 && aoStrength>0.01){
     float acc=0.;float wsum=0.;
     for(int i=0;i<16;i++){
      float fi=float(i);
      float ang=fi*2.399963+(time*0.7);
-     float rad=(1.+mod(fi,4.))*1.7;
+     float rad=(1.+mod(fi,4.))*1.9;
      vec2 offs=vec2(cos(ang),sin(ang))*rad/res;
      float sd=linearize(texture2D(tDepth,uvD+offs).x);
      float diff=lin-sd;
      float range=smoothstep(0.,1.,8./abs(diff+1e-3));
-     acc+=diff>0.02?range:0.;
+     acc+=diff>0.018?range:0.;
      wsum+=1.;
     }
-    ao=1.-clamp(acc/wsum*1.4,0.,1.)*aoStrength*intensity;
-    // fade AO in far distance
-    ao=mix(1.,ao,1.-smoothstep(120.,380.,lin));
+    ao=1.-clamp(acc/wsum*1.35,0.,1.)*aoStrength*intensity;
+    ao=mix(1.,ao,1.-smoothstep(100.,360.,lin));
    }
    col*=ao;
-   // --- multi-radius neon bloom ---
    vec3 bloom=vec3(0.);
    float bsum=0.;
-   for(int i=-3;i<=3;i++){
-    for(int j=-3;j<=3;j++){
+   for(int i=-4;i<=4;i++){
+    for(int j=-4;j<=4;j++){
      float d=length(vec2(float(i),float(j)));
-     if(d>3.1)continue;
-     float w=exp(-d*d*.35);
-     vec2 buv=uvD+vec2(float(i),float(j))/res*(2.8+night);
-     vec3 s=texture2D(tDiffuse,buv).rgb;
-     float br=max(s.r,max(s.g,s.b));
-     float m=smoothstep(.55,1.15,br);
-     bloom+=s*m*w;bsum+=w;
+     if(d>4.2)continue;
+     float w=exp(-d*d*.28);
+     vec2 buv=uvD+vec2(float(i),float(j))/res*(3.2+night*1.2);
+     vec3 samp=texture2D(tDiffuse,buv).rgb;
+     float br=max(samp.r,max(samp.g,samp.b));
+     float m=smoothstep(.5,1.2,br);
+     bloom+=samp*m*w;bsum+=w;
     }
    }
    bloom/=max(bsum,1e-3);
-   col+=bloom*bloomStrength*(.5+.75*night)*intensity;
-   // wet-night sheen: boost specular-looking highlights on dark ground when night
-   if(night>.25){
+   col+=bloom*bloomStrength*(.55+.9*night)*intensity;
+   if(night>.2){
     float lum=dot(col,vec3(.299,.587,.114));
-    col+=vec3(.05,.07,.1)*night*smoothstep(.02,.2,lum)*smoothstep(.9,.3,lum);
+    col+=vec3(.06,.08,.12)*night*smoothstep(.02,.22,lum)*smoothstep(.92,.28,lum);
    }
-   // Miami / Vice grade
-   col=mix(col,col*vec3(1.07,.94,1.09),.32*intensity);
-   col=mix(col,col*vec3(1.05,.99,.9),.18);
-   if(night>.15)col=mix(col,col*vec3(.9,1.06,1.14),night*.4);
-   col=pow(max(col,0.),vec3(.9));
-   col*=1.07;
+   col=mix(col,col*vec3(1.1,.92,1.12),.38*intensity);
+   col=mix(col,col*vec3(1.06,.98,.88),.22);
+   if(night>.12)col=mix(col,col*vec3(.88,1.08,1.18),night*.48);
+   col=pow(max(col,0.),vec3(.88));
+   col=col*1.08+vec3(.012,.01,.018)*intensity;
    float lumF=dot(col,vec3(.299,.587,.114));
    col=mix(col,vec3(lumF)*vec3(1.02,1.,.97),gray*.9);
-   col=mix(col,mix(vec3(lumF),col,.3)*vec3(1.1,.93,.9),focus*.75);
-   col+=vec3(.7,.78,1.)*flash;
-   // vignette
-   float vig=smoothstep(1.2,.32,length(c*vec2(1.15,1.)));
-   col*=mix(1.,vig,.6*intensity);
-   col=mix(col,vec3(.55,.02,.02),hurt*(1.-vig)*.7);
-   col=mix(col,col*vec3(.55,.35,.4),focus*(1.-vig)*.7);
-   // grain
-   col+=(hash(uv*res+fract(time*11.))*2.-1.)*.03*intensity;
+   col=mix(col,mix(vec3(lumF),col,.28)*vec3(1.12,.9,.86),focus*.8);
+   col+=vec3(.72,.8,1.)*flash;
+   float vig=smoothstep(1.25,.28,length(c*vec2(1.18,1.)));
+   col*=mix(1.,vig,.65*intensity);
+   col=mix(col,vec3(.55,.02,.02),hurt*(1.-vig)*.75);
+   col=mix(col,col*vec3(.55,.32,.38),focus*(1.-vig)*.75);
+   col+=(hash(uv*res+fract(time*13.))*2.-1.)*.028*intensity;
    float luma=dot(col,vec3(.299,.587,.114));
-   col=mix(vec3(luma),col,1.1);
-   gl_FragColor=vec4(col,1.);
-  }`
+   col=mix(vec3(luma),col,1.14);
+   gl_FragColor=vec4(clamp(col,0.,1.5),1.);
+  }
+`
 });
 const postQuad=new T.Mesh(new T.PlaneGeometry(2,2),postMat);postScene.add(postQuad);
 const roadMats=[]; // filled after materials init for wet-night updates
@@ -264,9 +283,10 @@ function renderFrame(){
  postU.tDiffuse.value=postRT.texture;
  postU.tDepth.value=postRT.depthTexture;
  postU.time.value=G.time||0;postU.night.value=SK.night||0;
- // CITY_MAIN_UPDATE_V2
- postU.aoStrength.value=0;
- postU.bloomStrength.value=G.quality>=2?1.15:.75;
+ // POST_STACK_V3
+ postU.aoStrength.value=G.quality>=2?0.55:G.quality===1?0.28:0;
+ postU.bloomStrength.value=G.quality>=2?1.35:G.quality===1?0.95:0.55;
+ postU.intensity.value=G.quality>=2?1:G.quality===1?0.85:0.55;
  postU.focus.value=G.fx?G.fx.focus:0;postU.gray.value=G.fx?G.fx.gray:0;postU.flash.value=(G.lightning||0)*.55;postU.hurt.value=clamp((G.flash||0)/.35,0,1);
  renderer.render(postScene,postCam);
 }
