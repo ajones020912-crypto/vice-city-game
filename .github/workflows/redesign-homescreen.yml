@@ -1,0 +1,267 @@
+name: Redesign homescreen + VC3D logo
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/redesign-homescreen.yml'
+permissions:
+  contents: write
+concurrency:
+  group: redesign-homescreen
+  cancel-in-progress: true
+jobs:
+  redesign:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure assets folder and write logo SVG
+        shell: bash
+        run: |
+          mkdir -p assets
+          cat > assets/vc3d-logo.svg << 'SVGEOF'
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" width="1200" height="640">
+            <defs>
+              <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#2a0a4a"/>
+                <stop offset="28%" stop-color="#c23a8a"/>
+                <stop offset="55%" stop-color="#ff6b3d"/>
+                <stop offset="78%" stop-color="#ffb347"/>
+                <stop offset="100%" stop-color="#ffd98a"/>
+              </linearGradient>
+              <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#1a2840" stop-opacity="0.85"/>
+                <stop offset="100%" stop-color="#0a1220"/>
+              </linearGradient>
+              <linearGradient id="pinkGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#ff4f9a"/>
+                <stop offset="100%" stop-color="#ff2d88"/>
+              </linearGradient>
+              <linearGradient id="whiteGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffffff"/>
+                <stop offset="100%" stop-color="#e8e0f0"/>
+              </linearGradient>
+              <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="6" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.55"/>
+              </filter>
+            </defs>
+            <rect width="1200" height="640" fill="url(#sky)"/>
+            <ellipse cx="600" cy="380" rx="280" ry="90" fill="#ffcc66" opacity="0.35"/>
+            <g fill="#1a1030" opacity="0.95">
+              <rect x="180" y="340" width="36" height="120"/>
+              <rect x="220" y="300" width="48" height="160"/>
+              <rect x="272" y="320" width="28" height="140"/>
+              <rect x="305" y="280" width="55" height="180"/>
+              <rect x="365" y="310" width="40" height="150"/>
+              <rect x="420" y="250" width="70" height="210"/>
+              <polygon points="420,250 455,210 490,250"/>
+              <rect x="500" y="270" width="45" height="190"/>
+              <rect x="555" y="230" width="80" height="230"/>
+              <polygon points="555,230 595,185 635,230"/>
+              <rect x="645" y="260" width="50" height="200"/>
+              <rect x="705" y="290" width="60" height="170"/>
+              <rect x="775" y="245" width="55" height="215"/>
+              <polygon points="775,245 802,205 830,245"/>
+              <rect x="840" y="300" width="38" height="160"/>
+              <rect x="885" y="275" width="50" height="185"/>
+              <rect x="945" y="320" width="42" height="140"/>
+              <rect x="995" y="300" width="35" height="160"/>
+            </g>
+            <g fill="#ffd23a" opacity="0.7">
+              <rect x="230" y="320" width="4" height="4"/><rect x="240" y="340" width="4" height="4"/>
+              <rect x="250" y="360" width="4" height="4"/><rect x="320" y="300" width="4" height="4"/>
+              <rect x="340" y="330" width="4" height="4"/><rect x="440" y="280" width="4" height="4"/>
+              <rect x="460" y="310" width="4" height="4"/><rect x="575" y="260" width="4" height="4"/>
+              <rect x="600" y="290" width="4" height="4"/><rect x="720" y="310" width="4" height="4"/>
+              <rect x="790" y="270" width="4" height="4"/><rect x="900" y="300" width="4" height="4"/>
+            </g>
+            <rect y="460" width="1200" height="180" fill="url(#water)"/>
+            <g stroke="#ff83bd" stroke-opacity="0.15" stroke-width="1.5">
+              <path d="M0 490 Q150 480 300 495 T600 488 T900 500 T1200 490"/>
+              <path d="M0 520 Q200 510 400 525 T800 518 T1200 530"/>
+            </g>
+            <g fill="#12081f">
+              <path d="M160 470 C155 400 150 340 148 280 C140 300 120 330 100 350 C125 325 140 300 148 280 C145 300 130 340 110 370 C135 345 145 310 148 280 C155 320 165 380 170 470 Z"/>
+              <ellipse cx="148" cy="265" rx="55" ry="28" transform="rotate(-25 148 265)"/>
+              <ellipse cx="148" cy="255" rx="48" ry="22" transform="rotate(15 148 255)"/>
+              <ellipse cx="140" cy="250" rx="40" ry="18" transform="rotate(-50 140 250)"/>
+              <path d="M95 470 C92 420 90 380 88 340 C80 360 65 385 50 400 C72 380 82 355 88 340 C85 360 75 390 60 415 C80 390 86 360 88 340 C92 370 98 420 100 470 Z"/>
+              <ellipse cx="88" cy="328" rx="40" ry="20" transform="rotate(-30 88 328)"/>
+              <ellipse cx="88" cy="320" rx="35" ry="16" transform="rotate(20 88 320)"/>
+            </g>
+            <g fill="#12081f">
+              <path d="M1040 470 C1045 400 1050 340 1052 280 C1060 300 1080 330 1100 350 C1075 325 1060 300 1052 280 C1055 300 1070 340 1090 370 C1065 345 1055 310 1052 280 C1045 320 1035 380 1030 470 Z"/>
+              <ellipse cx="1052" cy="265" rx="55" ry="28" transform="rotate(25 1052 265)"/>
+              <ellipse cx="1052" cy="255" rx="48" ry="22" transform="rotate(-15 1052 255)"/>
+              <ellipse cx="1060" cy="250" rx="40" ry="18" transform="rotate(50 1060 250)"/>
+              <path d="M1105 470 C1108 420 1110 380 1112 340 C1120 360 1135 385 1150 400 C1128 380 1118 355 1112 340 C1115 360 1125 390 1140 415 C1120 390 1114 360 1112 340 C1108 370 1102 420 1100 470 Z"/>
+              <ellipse cx="1112" cy="328" rx="40" ry="20" transform="rotate(30 1112 328)"/>
+              <ellipse cx="1112" cy="320" rx="35" ry="16" transform="rotate(-20 1112 320)"/>
+              <path d="M980 470 C982 430 984 400 985 370 C978 385 965 400 950 412 C970 395 980 380 985 370 C983 390 975 415 965 435 C978 415 983 390 985 370 C987 400 990 435 992 470 Z"/>
+              <ellipse cx="985" cy="360" rx="32" ry="15" transform="rotate(-20 985 360)"/>
+            </g>
+            <g filter="url(#softShadow)" text-anchor="middle" font-family="Impact, 'Arial Black', sans-serif" font-weight="900">
+              <text x="600" y="210" font-size="118" letter-spacing="6" fill="url(#whiteGrad)" filter="url(#glow)">VICE</text>
+              <text x="600" y="210" font-size="118" letter-spacing="6" fill="url(#whiteGrad)">VICE</text>
+              <text x="600" y="320" font-size="118" letter-spacing="6"><tspan fill="url(#pinkGrad)">CITY</tspan></text>
+              <text x="600" y="430" font-size="140" letter-spacing="4"><tspan fill="url(#whiteGrad)">3</tspan><tspan fill="url(#pinkGrad)">D</tspan></text>
+            </g>
+          </svg>
+          SVGEOF
+          echo "Wrote assets/vc3d-logo.svg ($(wc -c < assets/vc3d-logo.svg) bytes)"
+
+      - name: Redesign homescreen in index.html
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          new_css = r'''
+          /* ===== VC3D Homescreen (GTA VI–inspired) ===== */
+          #overlay{background:radial-gradient(ellipse at 50% 30%,#3a1548cc 0%,#0a0e1cf2 55%,#050810f5 100%)}
+          .home-card{width:min(520px,90vw);max-width:520px;padding:0 0 28px;background:linear-gradient(165deg,#0d1526f5 0%,#121f35f2 40%,#0a1220f8 100%);border:1px solid #ff4f9a44;border-radius:22px;box-shadow:0 28px 90px #000c,0 0 0 1px #ffffff08,inset 0 1px 0 #ffffff12;text-align:center;position:relative;overflow:hidden}
+          .home-card:before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#ff2d88,#ffd23a,#48e0d1,#ff2d88);background-size:200% 100%;animation:homeShimmer 6s linear infinite}
+          @keyframes homeShimmer{0%{background-position:0% 0}100%{background-position:200% 0}}
+          .home-logo-wrap{position:relative;width:100%;aspect-ratio:1200/640;max-height:220px;overflow:hidden;background:linear-gradient(180deg,#2a0a4a,#ff6b3d 70%,#1a1030)}
+          .home-logo-wrap img,.home-logo-wrap object{width:100%;height:100%;object-fit:cover;display:block}
+          .home-logo-fade{position:absolute;left:0;right:0;bottom:0;height:48px;background:linear-gradient(transparent,#0d1526f5);pointer-events:none}
+          .home-kicker{color:#ff83bd;letter-spacing:6px;font-size:10px;font-weight:900;margin:18px 24px 0;text-transform:uppercase}
+          .home-title{display:none}
+          .home-sub{color:#c5d8e8;margin:10px 28px 22px;font-size:14px;line-height:1.45;font-weight:500}
+          .home-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 22px}
+          .home-btn{margin:0;min-height:72px;text-align:left;padding:14px 16px;border-radius:12px;background:linear-gradient(135deg,#e83f8c,#ff6e9f);font-size:14px;letter-spacing:1.2px;border:1px solid #ffffff22;box-shadow:0 6px 20px #ff4f9a33;transition:transform .12s,box-shadow .12s,filter .12s}
+          .home-btn:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 10px 28px #ff4f9a55}
+          .home-btn.alt{background:linear-gradient(135deg,#167e83,#27b5a7);box-shadow:0 6px 20px #27b5a733}
+          .home-btn.alt:hover{box-shadow:0 10px 28px #27b5a755}
+          .home-btn small{display:block;color:#fff;opacity:.82;font-size:11px;font-weight:normal;letter-spacing:0;margin-top:4px}
+          .home-btn.multiplayer-soon{position:relative;opacity:.7;cursor:not-allowed;background:linear-gradient(135deg,#294c59,#426875);padding-top:24px;box-shadow:none}
+          .home-btn.multiplayer-soon:after{content:'COMING SOON';position:absolute;top:7px;right:8px;padding:3px 7px;border-radius:4px;background:#ffd23a;color:#17232b;font-size:8px;font-weight:900;letter-spacing:1.1px;box-shadow:0 2px 8px #0005}
+          .home-btn.multiplayer-soon:hover{filter:none;transform:none;background:linear-gradient(135deg,#294c59,#426875);box-shadow:none}
+          .continue-btn{grid-column:1/-1;min-height:46px;text-align:center;background:linear-gradient(135deg,#2c4a73,#3a5f94);box-shadow:0 4px 16px #0005}
+          .home-status{margin:16px 22px 0;color:#b8d3df;min-height:18px;font-size:12px}
+          .home-foot{border-top:1px solid #ffffff14;margin:18px 22px 0;padding-top:12px;color:#7a96a8;font-size:11px;letter-spacing:.3px}
+          @media(max-width:560px){
+            .home-card{padding-bottom:22px}
+            .home-logo-wrap{max-height:160px}
+            .home-actions{grid-template-columns:1fr;padding:0 16px}
+            .home-btn{min-height:62px}
+            .continue-btn{grid-column:auto}
+            .home-kicker,.home-sub,.home-status,.home-foot{margin-left:16px;margin-right:16px}
+          }
+          '''
+
+          if 'VC3D Homescreen' in s:
+              s = re.sub(
+                  r'/\* ===== VC3D Homescreen[\s\S]*?/\* ===== end homescreen ===== \*/',
+                  new_css.strip() + '\n/* ===== end homescreen ===== */',
+                  s,
+                  count=1
+              )
+              print('Replaced existing redesigned homescreen CSS')
+          else:
+              for prop in [
+                  r'\.home-card\{[^}]+\}',
+                  r'\.home-card:before\{[^}]+\}',
+                  r'\.home-kicker\{[^}]+\}',
+                  r'\.home-title\{[^}]+\}',
+                  r'\.home-title span\{[^}]+\}',
+                  r'\.home-sub\{[^}]+\}',
+                  r'\.home-actions\{[^}]+\}',
+                  r'\.home-btn\{[^}]+\}',
+                  r'\.home-btn\.alt\{[^}]+\}',
+                  r'\.home-btn small\{[^}]+\}',
+                  r'\.home-btn\.multiplayer-soon\{[^}]+\}',
+                  r'\.home-btn\.multiplayer-soon:after\{[^}]+\}',
+                  r'\.home-btn\.multiplayer-soon:hover\{[^}]+\}',
+                  r'\.continue-btn\{[^}]+\}',
+                  r'\.home-status\{[^}]+\}',
+                  r'\.home-foot\{[^}]+\}',
+              ]:
+                  s = re.sub(prop, '', s, count=1)
+
+              s = re.sub(
+                  r'@media\(max-width:560px\)\{\.home-card\{[^}]+\}[^}]*\}',
+                  '',
+                  s,
+                  count=1
+              )
+
+              idx = s.find('</style>')
+              if idx != -1:
+                  s = s[:idx] + '\n' + new_css.strip() + '\n/* ===== end homescreen ===== */\n' + s[idx:]
+              else:
+                  raise SystemExit('Could not inject homescreen CSS')
+              print('Injected new homescreen CSS')
+
+          mp_btn = (
+              '<button id="multiplayerOpen" class="home-btn alt multiplayer-soon" type="button" disabled '
+              'aria-label="Multiplayer — Coming Soon">'
+              'MULTIPLAYER <small>Online play is in development</small></button>'
+          )
+          if 'multiplayer-soon' not in s:
+              mp_btn = (
+                  '<button id="multiplayerOpen" class="home-btn alt" type="button" '
+                  'aria-label="Multiplayer — Play online with friends">'
+                  'MULTIPLAYER <small>Play online with friends</small></button>'
+              )
+
+          new_home = (
+              '<div id="overlay"><div class="card home-card">'
+              '<div class="home-logo-wrap">'
+              '<img src="/assets/vc3d-logo.svg" alt="Vice City 3D" width="1200" height="640" draggable="false">'
+              '<div class="home-logo-fade"></div>'
+              '</div>'
+              '<div class="home-kicker">Welcome to the coast</div>'
+              '<h1 class="home-title">VICE CITY <span>3D</span></h1>'
+              '<p class="home-sub">A living neon coastal city. Missions, races, heat — your story starts here.</p>'
+              '<div class="home-actions">'
+              '<button id="start" class="home-btn">SINGLEPLAYER <small>Play your own save</small></button>'
+              + mp_btn +
+              '<button id="cont" class="home-btn continue-btn" style="display:none">CONTINUE SAVED GAME</button>'
+              '</div>'
+              '<div id="loadmsg" class="home-status"><small>Generating Vice City…</small></div>'
+              '<div class="home-foot">WASD to move · Mouse to look · Desktop Chrome recommended</div>'
+              '</div></div>'
+          )
+
+          old_home_re = re.compile(r'<div id="overlay">[\s\S]*?</div></div></div>', re.M)
+          s2, n = old_home_re.subn(new_home, s, count=1)
+          if n != 1:
+              old_home_re2 = re.compile(r'<div id="overlay">[\s\S]*?<div class="home-foot">[\s\S]*?</div></div></div>', re.M)
+              s2, n = old_home_re2.subn(new_home, s, count=1)
+          if n != 1:
+              raise SystemExit(f'Could not replace overlay homescreen HTML (matches={n})')
+          s = s2
+          print('Replaced homescreen HTML')
+
+          if 'vc3d-logo.svg' not in s:
+              raise SystemExit('Logo path missing from HTML')
+          if 'home-logo-wrap' not in s:
+              raise SystemExit('home-logo-wrap missing')
+
+          p.write_text(s, encoding='utf-8')
+          print(f'index.html ready ({p.stat().st_size} bytes)')
+          PY
+
+      - name: Commit redesign
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html assets/vc3d-logo.svg
+          if git diff --cached --quiet; then
+            echo 'No changes'
+            exit 0
+          fi
+          git commit -m 'UI: redesign homescreen + VC3D logo (palm trees, skyline, GTA VI vibe)'
+          git push origin HEAD:main
