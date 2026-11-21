@@ -1,0 +1,77 @@
+name: Refine Lucia with crop top and denim shorts
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-outfit-update.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-outfit-update
+  cancel-in-progress: false
+jobs:
+  lucia:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install matching Three.js for model tests only
+        run: npm install --prefix "$RUNNER_TEMP/lucia-check" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Update Lucia and verify clothing and animation rig
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, json, subprocess, tempfile, os
+          p=Path('characters.js');original=p.read_text(encoding='utf-8');s=original;i=Path('index.html');game=i.read_text(encoding='utf-8');report={'ok':False}
+          try:
+              if '// LUCIA_SUMMER_V1' in s: raise RuntimeError('Lucia outfit already updated.')
+              replacement="    luciaC: {\n      name: 'Lucia', role: 'Lead · player model', build: 'slim',\n      skin: 0xb9784e, hair: 0x4a2c1a, hairStyle: 'longdown',\n      top: { kind: 'crop', color: 0x0b0b0d },\n      legs: { kind: 'shorts', color: 0x5c89ae, highWaist: true },\n      shoes: { color: 0xf6f6f6, sole: 0xe2e2e2, accent: 0x0b0b0d },\n      extras: ['hoops', 'bracelets', 'ring', 'necklace'], realistic: true, female: true, luciaSummer: true,\n    },"
+              pairs=[("const F = !!d.female, Bk = d.build || 'regular';", "const luciaLook = !!d.luciaSummer;\n    const F = !!d.female, Bk = d.build || 'regular';"), ('skin: mat(d.skin, 0.62), hair: mat(d.hair, 0.7),', 'skin: mat(d.skin, luciaLook ? 0.72 : 0.62), hair: mat(d.hair, luciaLook ? 0.8 : 0.7),'), ('lip: mat(tone(d.skin, 0.8) | 0x180606, 0.5),', 'lip: mat(luciaLook ? 0x92594f : (tone(d.skin, 0.8) | 0x180606), luciaLook ? 0.65 : 0.5),'), ("const sleeves = { tank: 'none',", "const sleeves = { crop: 'none', tank: 'none',"), ("const topEnd = tk === 'tank' ? (F ? 0.46 : 0.47) : 0.53;", "const crop = luciaLook && tk === 'crop';\n    const topEnd = tk === 'tank' || crop ? (F ? 0.46 : 0.47) : 0.53;"), ('const shell = slice(torso, -0.03, topEnd).map(([r, y]) => [r * loose + 0.002, y]);', 'const shell = slice(torso, crop ? 0.19 : -0.03, topEnd).map(([r, y]) => [r * loose + 0.002, y]);\n    if (crop) shell.unshift([interp(torso, 0.19) * loose + 0.002, 0.19]);'), ("if (tk === 'tank') { const R =", "if (tk === 'tank' || crop) { const R ="), ("if (tk === 'tank') for (const sx of [-1, 1]) for (const sz of [1, -1]) {", "if (tk === 'tank' || crop) for (const sx of [-1, 1]) for (const sz of [1, -1]) {"), ('add(spine, lathe(shell, 24), m.shirt, 0, 0, 0, 1, 1, DEPTH);', "const topMesh = add(spine, lathe(shell, 24), m.shirt, 0, 0, 0, 1, 1, DEPTH);\n    if (crop) { topMesh.name = 'lucia-crop-top'; add(spine, new T.TorusGeometry(interp(torso, 0.19) * loose + 0.003, 0.004, 6, 28), m.trim, 0, 0.195, 0, 1, DEPTH, 1).rotation.x = Math.PI / 2; }"), ('add(headP, lathe(skull, 24), m.skin, 0, 0, 0.004, HX, 1, 1.06);', "const faceMesh = add(headP, lathe(skull, luciaLook ? 32 : 24), m.skin, 0, 0, 0.004, HX, 1, 1.06);\n    if (luciaLook) faceMesh.name = 'lucia-refined-face';"), ('add(headP, lathe(cap(0.18, 1.06), 24), m.hair,', 'add(headP, lathe(cap(0.18, 1.06), luciaLook ? 32 : 24), m.hair,'), ('const hl = mat(tone(d.hair, 1.25), 0.7);', 'const hl = mat(tone(d.hair, luciaLook ? 1.1 : 1.25), luciaLook ? 0.8 : 0.7);'), ('add(hp, lathe(slice(thigh, -shortLen, 0.03).map(([r, y]) => [r * 1.12 + 0.004, y]), 18), m.pants);', "const shortsProfile = slice(thigh, -shortLen, 0.03).map(([r, y]) => [r * 1.12 + 0.004, y]);\n        if (luciaLook) shortsProfile.push([interp(thigh, -shortLen) * 1.12 + 0.004, -shortLen]);\n        const shortsMesh = add(hp, lathe(shortsProfile, luciaLook ? 24 : 18), m.pants);\n        if (luciaLook) shortsMesh.name = 'lucia-denim-shorts-' + sx;"), ('new T.TorusGeometry(interp(thigh, -shortLen) * 1.12 + 0.004, 0.006, 6, 20), pantsDark,', 'new T.TorusGeometry(interp(thigh, -shortLen) * 1.12 + 0.004, 0.006, 6, 20), luciaLook ? mat(tone(d.legs.color, 1.18), 0.95) : pantsDark,'), ('if (long) {\n      for (const sx of [-1, 1]) {', 'if (long || luciaLook) {\n      for (const sx of [-1, 1]) {'), ("if (lk === 'jeans') add(hips, ball(0.004), m.metal,", "if (lk === 'jeans' || luciaLook) add(hips, ball(0.004), m.metal,"), ('-(F ? 0.116 : 0.11) * W);', '-(luciaLook ? 0.095 : F ? 0.116 : 0.11) * W);')]
+              test="const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-check/node_modules/three');function load(path){const box={window:{},console,Math};vm.runInNewContext(fs.readFileSync(path,'utf8'),box);return box.window.VCCharacters}const before=load(process.argv[1]),after=load(process.argv[2]);const design=after.DESIGNS.luciaC;assert(design.luciaSummer&&design.realistic&&design.top.kind==='crop'&&design.legs.kind==='shorts'&&design.legs.color===0x5c89ae);\nfunction signature(h){const result=[];h.traverse(o=>{if(o.isMesh)result.push([o.geometry.getAttribute('position').count,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>m.color?m.color.getHex():null)])});return JSON.stringify(result)}\nfor(const id of Object.keys(before.DESIGNS))if(id!=='luciaC')assert(signature(before.build(T,id))===signature(after.build(T,id)),'Unrelated character changed: '+id);\nconst h=after.build(T,'luciaC'),u=h.userData;assert(u.hips&&u.spine&&u.headP&&u.A.length===2&&u.Lg.length===2&&u.m.shirt&&u.m.pants&&u.guns.pistol);const top=h.getObjectByName('lucia-crop-top'),face=h.getObjectByName('lucia-refined-face');assert(top&&face&&h.getObjectByName('lucia-denim-shorts--1')&&h.getObjectByName('lucia-denim-shorts-1'));top.geometry.computeBoundingBox();assert(top.geometry.boundingBox.min.y>=.189,'Crop top still full-length');for(const name of['lucia-denim-shorts--1','lucia-denim-shorts-1']){const mesh=h.getObjectByName(name);mesh.geometry.computeBoundingBox();assert(Math.abs(mesh.geometry.boundingBox.min.y+.26)<.001)}\nfor(const merged of[false,true]){const model=after.build(T,'luciaC',{merge:merged}),rig=model.userData;rig.A[0].sh.rotation.x=.5;rig.A[1].el.rotation.x=1;rig.Lg[0].hp.rotation.x=-.4;rig.Lg[1].kn.rotation.x=.5;model.updateMatrixWorld(true);model.traverse(o=>{if(o.isMesh)assert(Array.from(o.geometry.getAttribute('position').array).every(Number.isFinite))});const bounds=new T.Box3().setFromObject(model);assert(Number.isFinite(bounds.min.y+bounds.max.y)&&bounds.max.y-bounds.min.y<2.6)}\nconsole.log(JSON.stringify({crop_top_geometry:true,denim_shorts_geometry:true,refined_face:true,animation_rig_preserved:true,merged_model_valid:true,other_designs_unchanged:true,finite_geometry:true}));"
+              s,count=re.subn(r'    luciaC: \{[\s\S]*?\n    \},',lambda m:replacement,s)
+              if count!=1: raise RuntimeError('Cannot uniquely locate Lucia player design.')
+              for old,new in pairs:
+                  if s.count(old)!=1: raise RuntimeError('Character builder changed: '+old[:100])
+                  s=s.replace(old,new,1)
+              s='// LUCIA_SUMMER_V1\n'+s
+              game,count=re.subn(r"(lucia:\{name:'LUCIA',[^\n]+pants:)0x1f2228",r'\g<1>0x5c89ae',game)
+              if count!=1: raise RuntimeError('Cannot locate Lucia default outfit colours.')
+              old="if([0x26344f,0x2a2f3a].includes(pl.pants)&&!pl.boughtPants)pl.pants=cc.pants"
+              new="if(([0x26344f,0x2a2f3a].includes(pl.pants)||(pl.char==='lucia'&&pl.pants===0x1f2228))&&!pl.boughtPants)pl.pants=cc.pants"
+              if game.count(old)!=1: raise RuntimeError('Save-outfit migration changed.')
+              game=game.replace(old,new,1)
+              with tempfile.TemporaryDirectory() as d:
+                  old_path=Path(d)/'before.js';new_path=Path(d)/'after.js';old_path.write_text(original);new_path.write_text(s)
+                  subprocess.run(['node','--check',str(new_path)],check=True,capture_output=True)
+                  result=subprocess.run(['node','-e',test,str(old_path),str(new_path)],check=True,capture_output=True,text=True);report.update(json.loads(result.stdout))
+                  checked=0
+                  for js in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',game,re.I):
+                      if not js.strip(): continue
+                      path=Path(d)/'game.js';path.write_text(js);subprocess.run(['node','--check',str(path)],check=True,capture_output=True);checked+=1
+                  if not checked: raise RuntimeError('No inline game scripts found.')
+              p.write_text(s,encoding='utf-8');i.write_text(game,encoding='utf-8');report.update(ok=True,checked_scripts=checked,scope='Playable Lucia appearance and default clothing colours only; other characters, animations and gameplay unchanged')
+          except Exception as exc:
+              report['error']=str(exc)
+              if isinstance(exc,subprocess.CalledProcessError): report['stderr']=(exc.stderr or b'').decode(errors='replace')[-3000:]
+          Path('scripts').mkdir(exist_ok=True)
+          Path('scripts/lucia-outfit-status.json').write_text(json.dumps(report,indent=2)+'\n')
+          print(json.dumps(report))
+          PY
+      - name: Commit tested character update or diagnostic report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- characters.js index.html scripts/lucia-outfit-status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Refine Lucia player model with crop top and denim shorts'
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Require successful character update
+        run: node -e "if(!require('./scripts/lucia-outfit-status.json').ok)process.exit(1)"
