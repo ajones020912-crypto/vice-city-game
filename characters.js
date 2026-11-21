@@ -69,7 +69,7 @@
       top: { kind: 'uniform', color: 0x1f3557 },
       legs: { kind: 'trousers', color: 0x141c2c },
       shoes: { color: 0x0f0f10, sole: 0x0f0f10 },
-      extras: ['policecap', 'badge', 'dutybelt', 'radio', 'shades'],
+      extras: ['policecap', 'badge', 'dutybelt', 'radio', 'shades'],  realistic: true,
     },
     harbor: {
       name: 'Harbor King', role: 'Gang',
@@ -77,7 +77,7 @@
       top: { kind: 'hoodie', color: 0x5b2a9e, trim: 0x3d1c6b },
       legs: { kind: 'cargo', color: 0x2b2b30 },
       shoes: { color: 0x1c1c1c, sole: 0xf0f0f0 },
-      extras: ['bandana', 'backcap', 'chain'],
+      extras: ['bandana', 'backcap', 'chain'], realistic: true,
     },
     tourist: {
       name: 'Beach Tourist', role: 'Pedestrian',
@@ -85,7 +85,7 @@
       top: { kind: 'aloha', color: 0x2ab3c9, print: 0xffd34d },
       legs: { kind: 'shorts', color: 0xd9cba8 },
       shoes: { kind: 'sandals', color: 0x7a4f27, sole: 0x5a3a1c },
-      extras: ['buckethat', 'camera'],
+      extras: ['buckethat', 'camera'], realistic: true,
     },
     office: {
       name: 'Office Worker', role: 'Pedestrian',
@@ -94,7 +94,7 @@
       jacket: { kind: 'blazer', color: 0x3f4650, trim: 0x2e333b },
       legs: { kind: 'trousers', color: 0x3f4650 },
       shoes: { color: 0x2a1a10, sole: 0x1a1008 },
-      extras: ['tie', 'briefcase'],
+      extras: ['tie', 'briefcase'], realistic: true,
     },
     jogger: {
       name: 'Jogger', role: 'Pedestrian',
@@ -102,7 +102,7 @@
       top: { kind: 'tank', color: 0x5dd39e },
       legs: { kind: 'runshorts', color: 0x24262b },
       shoes: { color: 0xff5a7a, sole: 0xffffff },
-      extras: ['headband', 'earbuds'],
+      extras: ['headband', 'earbuds'], realistic: true, female: true,
     },
     fisherman: {
       name: 'Old Fisherman', role: 'Pedestrian',
@@ -111,7 +111,7 @@
       jacket: { kind: 'vest', color: 0x6b7a4a, trim: 0x4f5a36 },
       legs: { kind: 'trousers', color: 0x8a7a62 },
       shoes: { kind: 'boots', color: 0x4b3a2a, sole: 0x2a2018 },
-      extras: ['fishcap', 'rod'],
+      extras: ['fishcap', 'rod'], realistic: true,
     },
   };
 
@@ -426,188 +426,325 @@
     root.userData = { hips, spine, headP, A, Lg, m, gun, guns, ph: Math.random() * 6, dead: 0, state: {}, design: d.name };
     return root;
   }
-
   // ---------------------------------------------------------------- human-shaped builder
-  // Smooth, lathe-turned body parts with natural proportions. Same rig as build().
+  // Smooth, lathe-turned body parts with natural proportions and clothes that
+  // follow the body. Same rig as build(), so the game's animations drive it.
   function buildHuman(T, d) {
-    const F = !!d.female;
+    const F = !!d.female, Bk = d.build || 'regular';
+    const W = F ? 1 : Bk === 'stocky' ? 1.1 : Bk === 'slim' ? 0.94 : 1;
+    const ex = d.extras || [];
     const mat = (color, rough = 0.75, extra = {}) => new T.MeshStandardMaterial(Object.assign({ color, roughness: rough, metalness: 0 }, extra));
     const tone = (hex, f) => { const c = new T.Color(hex); c.multiplyScalar(f); return c.getHex(); };
     const m = {
       skin: mat(d.skin, 0.62), hair: mat(d.hair, 0.7), shirt: mat(d.top.color, 0.88), pants: mat(d.legs.color, 0.9),
       shoe: mat(d.shoes.color, 0.55), sole: mat(d.shoes.sole, 0.9), lip: mat(tone(d.skin, 0.8) | 0x180606, 0.5),
       brow: mat(tone(d.hair, 0.9), 0.8), eyeW: mat(0xf2eee6, 0.35), iris: mat(0x3b2616, 0.3), pupil: mat(0x0c0c0c, 0.3),
-      metal: mat(0xd6b25a, 0.3, { metalness: 0.7 }), dark: mat(0x18191c, 0.45), white: mat(0xf4f2ec, 0.5),
+      metal: mat(0xd6b25a, 0.3, { metalness: 0.7 }), steel: mat(0xb9bec4, 0.3, { metalness: 0.7 }), dark: mat(0x18191c, 0.45), white: mat(0xf4f2ec, 0.5),
+      jacket: d.jacket ? mat(d.jacket.color, 0.85) : null,
+      trim: mat((d.jacket && d.jacket.trim) || d.top.trim || tone(d.top.color, 0.8), 0.85),
+      skinShade: mat(tone(d.skin, 0.82), 0.65),
     };
     const root = new T.Group();
     const add = (parent, geo, material, x = 0, y = 0, z = 0, sx = 1, sy = 1, sz = 1) => { const me = new T.Mesh(geo, material); me.position.set(x, y, z); me.scale.set(sx, sy, sz); me.castShadow = true; me.receiveShadow = true; parent.add(me); return me; };
-    // a lathe from [radius, y] pairs (y may run top-to-bottom or bottom-to-top)
-    const lathe = (pts, seg = 18, scale = 1) => new T.LatheGeometry(pts.map(([r, y]) => new T.Vector2(Math.max(0.0005, r * scale), y)), seg);
+    const lathe = (pts, seg = 18, scale = 1, p0 = 0, pl = Math.PI * 2) => new T.LatheGeometry(pts.map(([r, y]) => new T.Vector2(Math.max(0.0005, r * scale), y)), seg, p0, pl);
     const ball = (r, w = 16, h = 12, ...part) => new T.SphereGeometry(r, w, h, ...part);
     const box = (x, y, z) => new T.BoxGeometry(x, y, z);
     const slice = (pts, y0, y1) => pts.filter(([, y]) => y >= y0 && y <= y1);
+    const interp = (pts, y) => { const s = pts.slice().sort((a, b) => a[1] - b[1]); for (let i = 1; i < s.length; i++) if (y <= s[i][1]) { const [r0, y0] = s[i - 1], [r1, y1] = s[i]; return r0 + (r1 - r0) * ((y - y0) / ((y1 - y0) || 1)); } return s[s.length - 1][0]; };
+    const FRONT = [-Math.PI / 2, Math.PI]; // lathe phi range covering the front half (phi 0 = +z)
 
     // ---- rig (same names/offsets as the game)
     const hips = new T.Group(); hips.position.y = 0.93; root.add(hips);
     const spine = new T.Group(); spine.position.y = 0.08; hips.add(spine);
     const headP = new T.Group(); headP.position.y = 0.6; spine.add(headP);
 
-    // ---- torso profile [radius, y] from waist (y=0 at spine) to neck base
-    const torso = F
+    // ---- body
+    const torso = (F
       ? [[0.001, -0.03], [0.142, -0.02], [0.128, 0.08], [0.124, 0.15], [0.138, 0.24], [0.158, 0.32], [0.165, 0.38], [0.162, 0.44], [0.158, 0.49], [0.13, 0.535], [0.07, 0.565], [0.045, 0.585], [0.001, 0.59]]
-      : [[0.001, -0.03], [0.152, -0.02], [0.148, 0.08], [0.152, 0.16], [0.168, 0.26], [0.185, 0.35], [0.195, 0.42], [0.196, 0.47], [0.17, 0.525], [0.1, 0.56], [0.055, 0.58], [0.001, 0.59]];
+      : [[0.001, -0.03], [0.152, -0.02], [0.148 * (Bk === 'stocky' ? 1.12 : 1), 0.08], [0.152 * (Bk === 'stocky' ? 1.1 : 1), 0.16], [0.168, 0.26], [0.185, 0.35], [0.195, 0.42], [0.196, 0.47], [0.17, 0.525], [0.1, 0.56], [0.055, 0.58], [0.001, 0.59]]
+    ).map(([r, y]) => [r * W, y]);
     const DEPTH = F ? 0.66 : 0.62;
+    const surfZ = (y, x, scale = 1) => { const R = interp(torso, y) * scale; return Math.sqrt(Math.max(0, R * R - x * x)) * DEPTH; };
     add(spine, lathe(torso), m.skin, 0, 0, 0, 1, 1, DEPTH);
-    // pelvis / hips (covered by trousers)
-    const pelvis = F
+    const pelvis = (F
       ? [[0.001, 0.09], [0.13, 0.085], [0.16, 0.03], [0.172, -0.03], [0.165, -0.08], [0.12, -0.11], [0.001, -0.115]]
-      : [[0.001, 0.09], [0.145, 0.085], [0.158, 0.03], [0.162, -0.03], [0.155, -0.08], [0.115, -0.11], [0.001, -0.115]];
+      : [[0.001, 0.09], [0.145, 0.085], [0.158, 0.03], [0.162, -0.03], [0.155, -0.08], [0.115, -0.11], [0.001, -0.115]]).map(([r, y]) => [r * W, y]);
     add(hips, lathe(pelvis), m.pants, 0, 0, 0, 1, 1, 0.7);
-    // tank top: same shape as the torso, slightly larger, ending at the chest
-    const tank = slice(torso, -0.03, F ? 0.46 : 0.47).map(([r, y]) => [r * 1.035 + 0.002, y]);
-    tank.push([F ? 0.11 : 0.13, F ? 0.475 : 0.485], [0.001, F ? 0.476 : 0.486]);
-    add(spine, lathe(tank), m.shirt, 0, 0, 0, 1, 1, DEPTH * 1.03);
-    for (const sx of [-1, 1]) for (const sz of [1, -1]) { // straps over the shoulders
-      const st = add(spine, box(F ? 0.026 : 0.034, 0.085, 0.012), m.shirt, sx * (F ? 0.075 : 0.085), 0.51, sz * (F ? 0.088 : 0.095));
-      st.rotation.x = sz * -0.35;
+    add(spine, lathe([[0.052, 0.54], [0.048, 0.6], [0.046, 0.66], [0.05, 0.72]]), m.skin);                               // neck
+    const shX = (F ? 0.18 : 0.215) * W;
+    for (const sx of [-1, 1]) add(spine, ball(F ? 0.05 : 0.06 * W), m.skin, sx * (shX - 0.02), 0.5, 0, 1.05, 0.8, 0.85);  // deltoids
+    for (const sx of [-1, 1]) { const cb = add(spine, ball(0.012), m.skin, sx * 0.065, 0.54, F ? 0.07 : 0.075, 4.2, 0.8, 0.8); cb.rotation.z = sx * -0.15; } // collarbones
+
+    // ---- tops
+    const tk = d.top.kind;
+    const sleeves = { tank: 'none', tee: 'short', uniform: 'short', aloha: 'short', polo: 'short', shirt: 'long', hoodie: 'long' }[tk] || 'short';
+    const loose = tk === 'hoodie' ? 1.08 : tk === 'aloha' ? 1.06 : 1.035;
+    const topEnd = tk === 'tank' ? (F ? 0.46 : 0.47) : 0.53;
+    const shell = slice(torso, -0.03, topEnd).map(([r, y]) => [r * loose + 0.002, y]);
+    if (tk === 'tank') shell.push([(F ? 0.11 : 0.13) * W, topEnd + 0.012], [0.001, topEnd + 0.013]);
+    else shell.push([0.075, 0.555], [0.001, 0.556]);
+    add(spine, lathe(shell, 24), m.shirt, 0, 0, 0, 1, 1, DEPTH);
+    add(spine, new T.TorusGeometry(interp(torso, 0) * loose + 0.004, 0.006, 6, 32), mat(tone(d.top.color, 0.9), 0.9), 0, 0, 0, 1, DEPTH * 1.03, 1).rotation.x = Math.PI / 2; // hem
+    if (tk === 'tank') for (const sx of [-1, 1]) for (const sz of [1, -1]) {
+      const st = add(spine, box(F ? 0.026 : 0.034, 0.085, 0.012), m.shirt, sx * (F ? 0.075 : 0.085), 0.51, sz * (F ? 0.088 : 0.095)); st.rotation.x = sz * -0.35;
     }
-    // neck and shoulders
-    add(spine, lathe([[0.052, 0.54], [0.048, 0.6], [0.046, 0.66], [0.05, 0.72]]), m.skin);
-    for (const sx of [-1, 1]) add(spine, ball(F ? 0.05 : 0.06), m.skin, sx * (F ? 0.165 : 0.195), 0.5, 0, 1.05, 0.8, 0.85); // deltoids blend arm into torso
+    if (['uniform', 'shirt', 'polo', 'aloha'].includes(tk)) for (const sx of [-1, 1]) {                                   // collar points
+      const c = add(spine, box(0.075, 0.04, 0.012), tk === 'aloha' ? m.shirt : m.shirt, sx * 0.045, 0.548, surfZ(0.53, 0.045, loose) + 0.006); c.rotation.z = sx * 0.55; c.rotation.x = -0.35;
+    }
+    if (tk === 'uniform' || tk === 'shirt') {
+      add(spine, box(0.012, 0.5, 0.006), m.trim, 0, 0.29, surfZ(0.3, 0, loose) + 0.003);                                // button placket
+      for (let i = 0; i < 5; i++) add(spine, ball(0.005), tk === 'uniform' ? m.steel : m.white, 0, 0.47 - i * 0.1, surfZ(0.47 - i * 0.1, 0, loose) + 0.006);
+    }
+    if (tk === 'uniform') for (const sx of [-1, 1]) {
+      add(spine, box(0.07, 0.06, 0.008), m.trim, sx * 0.085, 0.4, surfZ(0.4, 0.085, loose) + 0.004);                   // chest pockets
+      add(spine, box(0.06, 0.012, 0.05), m.trim, sx * (shX - 0.06), 0.53, 0);                                          // epaulettes
+    }
+    if (tk === 'polo') { add(spine, box(0.03, 0.12, 0.006), m.trim, 0, 0.48, surfZ(0.48, 0, loose) + 0.003); for (let i = 0; i < 2; i++) add(spine, ball(0.005), m.white, 0, 0.51 - i * 0.05, surfZ(0.5, 0, loose) + 0.007); }
+    if (tk === 'aloha') {
+      const pm = mat(d.top.print, 0.8), pm2 = mat(0xffffff, 0.8);
+      const spots = [[-0.11, 0.42], [0.09, 0.34], [-0.05, 0.2], [0.07, 0.48], [0.12, 0.13], [-0.14, 0.3], [0.0, 0.08], [-0.1, 0.06], [0.03, 0.27], [0.14, 0.24]];
+      spots.forEach(([x, y], i) => { const f = add(spine, ball(0.02, 8, 6), i % 3 ? pm : pm2, x * W, y, surfZ(y, x * W, loose) + 0.002, 1.2, 0.7, 0.25); f.rotation.z = i; });
+      spots.slice(0, 6).forEach(([x, y]) => add(spine, ball(0.02, 8, 6), pm, x * W, y + 0.03, -surfZ(y, x * W, loose) - 0.002, 1.2, 0.7, 0.25));
+      add(spine, box(0.012, 0.5, 0.006), mat(tone(d.top.color, 0.85), 0.8), 0, 0.29, surfZ(0.3, 0, loose) + 0.003);
+    }
+    if (tk === 'hoodie') {
+      const hood = add(spine, ball(0.105, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.62), m.shirt, 0, 0.5, -0.115, 1.25, 0.75, 0.9); hood.rotation.x = -1.5;
+      add(spine, box(0.2 * W, 0.1, 0.02), m.trim, 0, 0.15, surfZ(0.15, 0, loose) + 0.004);                            // front pocket
+      for (const sx of [-1, 1]) add(spine, lathe([[0.0035, 0], [0.0035, -0.13]], 6), m.white, sx * 0.03, 0.55, surfZ(0.5, 0.03, loose) + 0.008); // drawstrings
+      add(spine, new T.TorusGeometry(interp(torso, 0) * loose + 0.008, 0.016, 8, 32), m.trim, 0, 0.0, 0, 1, DEPTH * 1.04, 1).rotation.x = Math.PI / 2; // ribbed waist
+    }
+    if (ex.includes('tie')) { add(spine, box(0.04, 0.27, 0.01), mat(0xb43b4b, 0.6), 0, 0.37, surfZ(0.37, 0, loose) + 0.01); add(spine, box(0.042, 0.036, 0.016), mat(0xb43b4b, 0.6), 0, 0.525, surfZ(0.5, 0, loose) + 0.012); }
+    // ---- open jackets (blazer, vest): torso-shaped shell with a front opening
+    if (d.jacket && (d.jacket.kind === 'blazer' || d.jacket.kind === 'vest')) {
+      const jk = d.jacket.kind, jl = jk === 'vest' ? 1.1 : 1.095, gap = jk === 'vest' ? 0.24 : 0.17;
+      const jpts = slice(torso, jk === 'vest' ? 0.06 : -0.03, 0.53).map(([r, y]) => [r * jl + 0.004, y]); jpts.push([0.085, 0.56]);
+      add(spine, lathe(jpts, 24, 1, Math.PI * gap, Math.PI * (2 - 2 * gap)), m.jacket, 0, 0, 0, 1, 1, DEPTH);
+      if (jk === 'blazer') for (const sx of [-1, 1]) { const lp = add(spine, box(0.05, 0.19, 0.012), m.trim, sx * 0.065, 0.44, surfZ(0.44, 0.065, jl) + 0.006); lp.rotation.z = sx * 0.32; } // lapels
+      if (jk === 'vest') for (const sx of [-1, 1]) for (const y of [0.18, 0.34]) add(spine, box(0.075, 0.065, 0.016), m.trim, sx * 0.13 * W, y, surfZ(y, 0.13 * W, jl) + 0.008); // pockets
+    }
 
     // ---- head: egg-shaped skull, narrower jaw
     const skull = [[0.001, 0.035], [0.04, 0.04], [0.068, 0.062], [0.084, 0.095], [0.096, 0.135], [0.103, 0.175], [0.104, 0.205], [0.097, 0.245], [0.08, 0.278], [0.052, 0.298], [0.001, 0.306]];
-    add(headP, lathe(skull, 24), m.skin, 0, 0, 0.004, F ? 0.9 : 0.94, 1, 1.06);
-    for (const sx of [-1, 1]) add(headP, ball(0.026), m.skin, sx * (F ? 0.092 : 0.096), 0.165, -0.004, 0.42, 1, 0.75); // ears
-    // eyes: almond whites set into the face, iris + pupil
+    const HX = F ? 0.9 : 0.94;
+    add(headP, lathe(skull, 24), m.skin, 0, 0, 0.004, HX, 1, 1.06);
     for (const sx of [-1, 1]) {
-      add(headP, ball(0.017), m.eyeW, sx * 0.036, 0.178, 0.09, 1.15, 0.6, 0.45);
+      add(headP, ball(0.026), m.skin, sx * (F ? 0.092 : 0.096), 0.165, -0.004, 0.42, 1, 0.75);                   // ears
+      add(headP, ball(0.013), m.skinShade, sx * (F ? 0.094 : 0.098), 0.165, 0.004, 0.25, 0.75, 0.55);           // inner ear
+      add(headP, ball(0.017), m.eyeW, sx * 0.036, 0.178, 0.09, 1.15, 0.6, 0.45);                               // eye
       add(headP, ball(0.0085), m.iris, sx * 0.036, 0.178, 0.096, 1, 1, 0.4);
       add(headP, ball(0.0045), m.pupil, sx * 0.036, 0.178, 0.0995, 1, 1, 0.3);
-      add(headP, ball(0.02, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), m.skin, sx * 0.036, 0.179, 0.089, 1.1, 0.5, 0.5); // upper lid
+      add(headP, ball(0.02, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), m.skin, sx * 0.036, 0.179, 0.089, 1.1, 0.5, 0.5);      // upper lid
+      add(headP, ball(0.016, 10, 6, 0, Math.PI * 2, Math.PI * 0.55, Math.PI * 0.45), m.skinShade, sx * 0.036, 0.177, 0.088, 1.1, 0.45, 0.45); // lower lid
       const brow = add(headP, box(0.036, F ? 0.005 : 0.008, 0.008), m.brow, sx * 0.038, 0.203, 0.096); brow.rotation.z = sx * (F ? -0.18 : -0.08);
+      add(headP, ball(0.005), m.pupil, sx * 0.009, 0.137, 0.106, 1, 0.7, 0.6);                                 // nostrils
+      if (F) {
+        const lash = add(headP, box(0.032, 0.004, 0.006), m.pupil, sx * 0.038, 0.186, 0.094); lash.rotation.z = sx * -0.15;
+        add(headP, ball(0.022), mat(0xd9806f, 0.8, { transparent: true, opacity: 0.18 }), sx * 0.052, 0.142, 0.08, 1, 0.6, 0.4); // cheek colour
+      }
     }
-    // nose, mouth
-    add(headP, ball(0.014), m.skin, 0, 0.16, 0.1, 0.75, 1.6, 0.9);
+    add(headP, ball(0.014), m.skin, 0, 0.16, 0.1, 0.75, 1.6, 0.9);                                              // nose
     add(headP, ball(0.013), m.skin, 0, 0.142, 0.107, 1.05, 0.85, 0.9);
-    add(headP, ball(0.016), m.lip, 0, 0.113, 0.094, 1.35, 0.32, 0.5);
+    add(headP, ball(0.012), m.skinShade, 0, 0.124, 0.1, 0.6, 0.5, 0.3);                                         // philtrum
+    add(headP, ball(0.016), m.lip, 0, 0.113, 0.094, 1.35, 0.32, 0.5);                                           // lips
     add(headP, ball(0.016), m.lip, 0, 0.104, 0.093, 1.2, 0.36, 0.5);
+    if (d.beard) {
+      const bm = mat(d.beardColor || d.hair, 0.85);
+      add(headP, lathe(slice(skull, 0.035, 0.15).map(([r, y]) => [r * 1.045, y]).concat([[0.001, 0.151]]), 24, 1, ...FRONT), bm, 0, 0, 0.004, HX, 1, 1.06);
+      add(headP, ball(0.02), bm, 0, 0.12, 0.1, 1.9, 0.45, 0.6);                                                  // moustache
+    }
 
     // ---- hair
     const cap = (y0, s = 1.035) => slice(skull, y0, 0.3).map(([r, y]) => [r * s, y]).concat([[0.001, 0.308]]);
-    if (d.hairStyle === 'buzz') {
-      const hb = add(headP, lathe(cap(0.19, 1.03).map(([r, y], i, a) => i === 0 ? [r, y] : [r, y]), 24), m.hair, 0, 0, 0.002, 0.95, 1, 1.07);
-      add(headP, ball(0.1, 20, 10, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.25), m.hair, 0, 0.17, -0.02, 1.0, 1.05, 1.02); // shorter at the back of the head
+    const hs = d.hairStyle;
+    if (hs === 'buzz') {
+      add(headP, lathe(cap(0.19, 1.03), 24), m.hair, 0, 0, 0.002, 0.95, 1, 1.07);
+      add(headP, ball(0.1, 20, 10, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.25), m.hair, 0, 0.17, -0.02, 1.0, 1.05, 1.02);
+      add(headP, ball(0.035), m.hair, 0, 0.255, 0.085, 1.6, 0.3, 0.35);
+      if (!F) for (const sx of [-1, 1]) add(headP, box(0.012, 0.05, 0.014), m.hair, sx * 0.094, 0.18, 0.02);     // sideburns
     }
-    if (d.hairStyle === 'longdown') {
+    if (hs === 'short') {
+      add(headP, lathe(cap(0.185, 1.055), 24), m.hair, 0, 0, 0.0, 0.96, 1, 1.07);
+      add(headP, ball(0.05), m.hair, 0.015, 0.27, 0.07, 1.6, 0.45, 0.7);                                         // swept front
+      for (const sx of [-1, 1]) add(headP, box(0.012, 0.045, 0.014), m.hair, sx * 0.094, 0.185, 0.02);
+    }
+    if (hs === 'curly') {
+      add(headP, lathe(cap(0.19, 1.05), 24), m.hair, 0, 0, 0, 0.96, 1, 1.07);
+      for (let i = 0; i < 16; i++) { const a = (i / 16) * Math.PI * 2, r = i % 2 ? 0.085 : 0.06; add(headP, new T.IcosahedronGeometry(0.03, 1), m.hair, Math.cos(a) * r, 0.285 + (i % 3) * 0.012, Math.sin(a) * r * 1.05); }
+      add(headP, new T.IcosahedronGeometry(0.04, 1), m.hair, 0, 0.31, 0);
+    }
+    if (hs === 'bun') {
+      add(headP, lathe(cap(0.18, 1.045), 24), m.hair, 0, 0, 0, 0.93, 1, 1.07);
+      add(headP, ball(0.045), m.hair, 0, 0.275, -0.095);
+      add(headP, new T.TorusGeometry(0.03, 0.008, 6, 14), mat(0xff5a7a, 0.7), 0, 0.26, -0.085, 1, 1, 1).rotation.x = 1.1; // hair tie
+    }
+    if (hs === 'bald') {
+      for (const sx of [-1, 1]) add(headP, ball(0.05), m.hair, sx * 0.088, 0.19, -0.035, 0.5, 0.9, 1.2);
+      add(headP, ball(0.075, 16, 10, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.3), m.hair, 0, 0.2, -0.04, 1.1, 1, 1.1);
+    }
+    if (hs === 'longdown') {
       add(headP, lathe(cap(0.18, 1.06), 24), m.hair, 0, 0, -0.002, 0.93, 1, 1.08);
-      // length falling behind the shoulders: an open shell around the back of the head
       const back = new T.CylinderGeometry(0.105, 0.135, 0.36, 20, 1, true, Math.PI * 0.6, Math.PI * 0.8); back.translate(0, -0.18, 0);
-      const bk = add(headP, back, m.hair, 0, 0.24, -0.006); bk.scale.set(1, 1, 0.9); // shell opening faces forward, hair sits behind the head
-      bk.material = m.hair.clone(); bk.material.side = T.DoubleSide;
-      for (const sx of [-1, 1]) { const st = add(headP, ball(0.03), m.hair, sx * 0.094, 0.1, -0.012, 0.42, 3.2, 0.8); st.rotation.z = sx * 0.06; } // strands framing the face
-      const fr = add(headP, ball(0.06), m.hair, 0.018, 0.255, 0.07, 1.4, 0.45, 0.6); fr.rotation.z = -0.25; // side-swept fringe
+      const bk = add(headP, back, m.hair.clone(), 0, 0.24, -0.006); bk.scale.set(1, 1, 0.9); bk.material.side = T.DoubleSide;
+      for (const sx of [-1, 1]) { const st = add(headP, ball(0.03), m.hair, sx * 0.094, 0.1, -0.012, 0.42, 3.2, 0.8); st.rotation.z = sx * 0.06; }
+      const fr = add(headP, ball(0.06), m.hair, 0.018, 0.255, 0.07, 1.4, 0.45, 0.6); fr.rotation.z = -0.25;
+      const hl = mat(tone(d.hair, 1.25), 0.7);
+      for (const [x, y, z, sy, rz, mm] of [[-0.06, 0.06, -0.085, 3.2, 0.08, hl], [0.06, 0.06, -0.085, 3.1, -0.08, hl], [0, 0.05, -0.1, 3.4, 0, m.hair]]) { const c = add(headP, ball(0.045), mm, x, y, z, 1, sy, 0.5); c.rotation.z = rz; }
+      add(headP, box(0.004, 0.003, 0.09), m.skin, 0.02, 0.306, 0.02).rotation.y = 0.1;
     }
 
-    // ---- arms (hang from shoulder joint, y = 0 down)
+    // ---- hats and face accessories
+    if (ex.includes('policecap')) {
+      const pc = mat(0x16213a, 0.65);
+      add(headP, new T.CylinderGeometry(0.118, 0.108, 0.07, 28), pc, 0, 0.285, -0.004);
+      add(headP, new T.CylinderGeometry(0.132, 0.12, 0.022, 28), pc, 0, 0.33, -0.006);
+      const vz = add(headP, new T.CylinderGeometry(0.09, 0.09, 0.008, 20, 1, false, -Math.PI / 2, Math.PI), m.dark, 0, 0.258, 0.06, 1.1, 1, 0.85); vz.rotation.x = 0.18;
+      add(headP, box(0.032, 0.036, 0.008), m.metal, 0, 0.3, 0.12);
+      add(headP, new T.TorusGeometry(0.113, 0.006, 6, 28), m.dark, 0, 0.262, -0.004, 1, 1, 1).rotation.x = Math.PI / 2;
+    }
+    if (ex.includes('backcap')) {
+      const c = mat(0x121212, 0.7);
+      add(headP, ball(0.112, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), c, 0, 0.225, -0.004, HX + 0.04, 0.78, 1.1);
+      const br = add(headP, new T.CylinderGeometry(0.075, 0.075, 0.008, 20, 1, false, Math.PI / 2, Math.PI), c, 0, 0.235, -0.1, 1.2, 1, 1); br.rotation.x = -0.15;
+      add(headP, ball(0.01), c, 0, 0.312, 0);
+    }
+    if (ex.includes('buckethat')) {
+      const c = mat(0xf0e2c0, 0.9);
+      add(headP, new T.CylinderGeometry(0.098, 0.11, 0.085, 26), c, 0, 0.29, -0.003);
+      add(headP, new T.CylinderGeometry(0.12, 0.175, 0.03, 30), c, 0, 0.245, -0.003);
+      add(headP, new T.CylinderGeometry(0.112, 0.112, 0.016, 26), mat(0x2ab3c9, 0.8), 0, 0.258, -0.003);      // band
+    }
+    if (ex.includes('fishcap')) {
+      const c = mat(0xeeeeea, 0.85);
+      add(headP, ball(0.112, 24, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), c, 0, 0.225, -0.004, HX + 0.04, 0.8, 1.1);
+      const br = add(headP, new T.CylinderGeometry(0.085, 0.085, 0.008, 20, 1, false, -Math.PI / 2, Math.PI), mat(0x2a5d8f, 0.75), 0, 0.232, 0.1, 1.15, 1, 1.15); br.rotation.x = 0.12;
+    }
+    if (ex.includes('headband')) add(headP, new T.TorusGeometry(0.1, 0.012, 8, 30), mat(0xff5a7a, 0.75), 0, 0.235, 0.004, HX + 0.04, 1.07, 1).rotation.x = Math.PI / 2;
+    if (ex.includes('bandana')) {
+      const b = mat(0x7d3fd6, 0.85);
+      add(headP, lathe(slice(skull, 0.06, 0.165).map(([r, y]) => [r * 1.075, y]).concat([[0.06, 0.04]]), 24, 1, ...FRONT), b, 0, 0, 0.004, HX, 1, 1.06);
+      const tip = add(headP, new T.ConeGeometry(0.045, 0.07, 4), b, 0, 0.025, 0.085); tip.rotation.x = Math.PI;
+    }
+    if (ex.includes('shades')) {
+      for (const sx of [-1, 1]) add(headP, ball(0.02), m.dark, sx * 0.036, 0.18, 0.1, 1.25, 0.8, 0.35);
+      add(headP, box(0.02, 0.005, 0.006), m.dark, 0, 0.184, 0.104);
+      for (const sx of [-1, 1]) add(headP, box(0.004, 0.005, 0.09), m.dark, sx * 0.07, 0.184, 0.05);
+    }
+    if (ex.includes('hoops')) for (const sx of [-1, 1]) add(headP, new T.TorusGeometry(0.016, 0.0025, 6, 16), m.metal, sx * 0.095, 0.125, 0.004).rotation.y = Math.PI / 2;
+    if (ex.includes('earbuds')) for (const sx of [-1, 1]) add(headP, ball(0.01), m.white, sx * 0.094, 0.162, 0.012);
+
+    // ---- arms
+    const sleeveMat = d.jacket && d.jacket.kind === 'blazer' ? m.jacket : m.shirt;
+    const sleeveLen = d.jacket && d.jacket.kind === 'blazer' ? 'long' : sleeves;
     const A = [];
     for (const sx of [-1, 1]) {
-      const sh = new T.Group(); sh.position.set(sx * (F ? 0.18 : 0.215), 0.5, 0); spine.add(sh);
-      const upper = F ? [[0.046, 0.01], [0.049, -0.06], [0.045, -0.16], [0.038, -0.26], [0.036, -0.29]] : [[0.058, 0.01], [0.062, -0.06], [0.058, -0.15], [0.048, -0.25], [0.044, -0.29]];
+      const sh = new T.Group(); sh.position.set(sx * shX, 0.5, 0); spine.add(sh);
+      const upper = (F ? [[0.046, 0.01], [0.049, -0.06], [0.045, -0.16], [0.038, -0.26], [0.036, -0.29]] : [[0.058, 0.01], [0.062, -0.06], [0.058, -0.15], [0.048, -0.25], [0.044, -0.29]]).map(([r, y]) => [r * W, y]);
       add(sh, lathe(upper), m.skin);
+      if (sleeveLen !== 'none') {
+        const sl = sleeveLen === 'long' ? -0.29 : -0.15, fit = tk === 'hoodie' || (d.jacket && d.jacket.kind === 'blazer') ? 1.22 : 1.15;
+        add(sh, lathe(slice(upper, sl, 0.02).map(([r, y]) => [r * fit + 0.004, y]), 18), sleeveMat);
+        if (sleeveLen === 'short') add(sh, new T.TorusGeometry(interp(upper, -0.15) * fit + 0.004, 0.004, 6, 18), mat(tone(d.top.color, 0.85), 0.9), 0, -0.148, 0).rotation.x = Math.PI / 2;
+      }
       const el = new T.Group(); el.position.y = -0.29; sh.add(el);
-      add(el, ball(F ? 0.036 : 0.044), m.skin);
-      const fore = F ? [[0.037, 0], [0.04, -0.06], [0.034, -0.16], [0.026, -0.25], [0.025, -0.27]] : [[0.045, 0], [0.05, -0.07], [0.043, -0.16], [0.032, -0.25], [0.03, -0.27]];
+      add(el, ball((F ? 0.036 : 0.044) * W), sleeveLen === 'long' ? sleeveMat : m.skin);
+      const fore = (F ? [[0.037, 0], [0.04, -0.06], [0.034, -0.16], [0.026, -0.25], [0.025, -0.27]] : [[0.045, 0], [0.05, -0.07], [0.043, -0.16], [0.032, -0.25], [0.03, -0.27]]).map(([r, y]) => [r * W, y]);
       add(el, lathe(fore), m.skin);
+      if (sleeveLen === 'long') {
+        add(el, lathe(slice(fore, -0.24, 0.01).map(([r, y]) => [r * 1.2 + 0.005, y]), 18), sleeveMat);
+        add(el, new T.TorusGeometry(interp(fore, -0.24) * 1.2 + 0.006, 0.006, 6, 18), tk === 'hoodie' ? m.trim : sleeveMat, 0, -0.24, 0).rotation.x = Math.PI / 2; // cuff
+        if (d.jacket && d.jacket.kind === 'blazer') add(el, new T.TorusGeometry(interp(fore, -0.25) * 1.12 + 0.004, 0.005, 6, 18), m.shirt, 0, -0.25, 0).rotation.x = Math.PI / 2; // shirt cuff
+      }
+      // hand: palm, four fingers, thumb
       const hs2 = F ? 0.85 : 1;
-      add(el, ball(0.036 * hs2), m.skin, 0, -0.3, 0.004, 0.55, 1.05, 0.95);                       // palm
-      [-0.018, -0.006, 0.006, 0.018].forEach((z, i) => {                                         // fingers, slightly curled
+      add(el, ball(0.036 * hs2), m.skin, 0, -0.3, 0.004, 0.55, 1.05, 0.95);
+      [-0.018, -0.006, 0.006, 0.018].forEach((z, i) => {
         const len = (i === 0 || i === 3 ? 0.044 : 0.052) * hs2, fg = add(el, lathe([[0.0085 * hs2, 0], [0.0082 * hs2, -len * 0.5], [0.007 * hs2, -len], [0.001, -len - 0.006]], 8), m.skin, 0, -0.33 * hs2 - 0.003, z * hs2 + 0.004);
         fg.rotation.x = 0.12 + i * 0.03; fg.rotation.z = sx * 0.12;
       });
-      const th = add(el, lathe([[0.011 * hs2, 0], [0.0095 * hs2, -0.03], [0.001, -0.042]], 8), m.skin, sx * -0.008, -0.292, 0.032 * hs2); th.rotation.x = 0.75; // thumb
+      const th = add(el, lathe([[0.011 * hs2, 0], [0.0095 * hs2, -0.03], [0.001, -0.042]], 8), m.skin, sx * -0.008, -0.292, 0.032 * hs2); th.rotation.x = 0.75;
       A.push({ sh, el });
     }
 
     // ---- legs
+    const lk = d.legs.kind, long = ['jeans', 'trousers', 'cargo'].includes(lk), shortLen = { shorts: 0.26, runshorts: 0.15 }[lk] || 0;
+    const seamC = mat(tone(d.legs.color, lk === 'jeans' && d.legs.color < 0x404040 ? 2.4 : lk === 'jeans' ? 1.35 : 0.72), 0.9), pantsDark = mat(tone(d.legs.color, 0.82), 0.92);
     const Lg = [];
     for (const sx of [-1, 1]) {
-      const hp = new T.Group(); hp.position.set(sx * (F ? 0.092 : 0.095), -0.08, 0); hips.add(hp);
-      const thigh = F ? [[0.096, 0.02], [0.094, -0.08], [0.083, -0.22], [0.066, -0.38], [0.06, -0.43]] : [[0.098, 0.02], [0.096, -0.08], [0.086, -0.22], [0.07, -0.38], [0.064, -0.43]];
-      add(hp, lathe(thigh), m.pants);
+      const hp = new T.Group(); hp.position.set(sx * (F ? 0.092 : 0.095) * W, -0.08, 0); hips.add(hp);
+      const thigh = (F ? [[0.096, 0.02], [0.094, -0.08], [0.083, -0.22], [0.066, -0.38], [0.06, -0.43]] : [[0.098, 0.02], [0.096, -0.08], [0.086, -0.22], [0.07, -0.38], [0.064, -0.43]]).map(([r, y]) => [r * W, y]);
+      add(hp, lathe(thigh), long ? m.pants : m.skin);
+      if (long && lk === 'cargo') add(hp, lathe(thigh.map(([r, y]) => [r * 1.08, y]), 18), m.pants);
+      if (shortLen) {
+        add(hp, lathe(slice(thigh, -shortLen, 0.03).map(([r, y]) => [r * 1.12 + 0.004, y]), 18), m.pants);
+        add(hp, new T.TorusGeometry(interp(thigh, -shortLen) * 1.12 + 0.004, 0.006, 6, 20), pantsDark, 0, -shortLen, 0).rotation.x = Math.PI / 2;
+      }
+      if (lk === 'cargo') add(hp, box(0.035, 0.1, 0.08), pantsDark, sx * 0.09 * W, -0.24, 0.0);                   // cargo pocket
       const kn = new T.Group(); kn.position.y = -0.43; hp.add(kn);
-      add(kn, ball(F ? 0.06 : 0.064), m.pants);
-      const shinP = F ? [[0.058, 0], [0.064, -0.09], [0.056, -0.2], [0.042, -0.34], [0.044, -0.4]] : [[0.064, 0], [0.07, -0.09], [0.062, -0.2], [0.047, -0.34], [0.05, -0.4]];
-      const shin = add(kn, lathe(shinP), m.pants);
+      add(kn, ball((F ? 0.06 : 0.064) * W), long ? m.pants : m.skin);
+      const shinP = (F ? [[0.058, 0], [0.064, -0.09], [0.056, -0.2], [0.042, -0.34], [0.044, -0.4]] : [[0.064, 0], [0.07, -0.09], [0.062, -0.2], [0.047, -0.34], [0.05, -0.4]]).map(([r, y]) => [r * W, y]);
+      const shin = add(kn, lathe(shinP), long ? m.pants : m.skin);
+      if (long) {
+        add(hp, box(0.004, 0.42, 0.004), seamC, sx * interp(thigh, -0.2) * (lk === 'cargo' ? 1.08 : 1), -0.21, 0);       // side seams
+        add(kn, box(0.004, 0.36, 0.004), seamC, sx * interp(shinP, -0.18), -0.18, 0);
+        add(kn, new T.TorusGeometry(interp(shinP, -0.355) + 0.003, 0.006, 6, 20), pantsDark, 0, -0.355, 0).rotation.x = Math.PI / 2; // hem
+        if (lk === 'trousers') add(hp, box(0.004, 0.4, 0.004), mat(tone(d.legs.color, 1.15), 0.9), 0, -0.21, interp(thigh, -0.2) + 0.001); // crease
+      } else if (lk === 'runshorts' || ex.includes('earbuds')) add(kn, new T.TorusGeometry(interp(shinP, -0.37) + 0.003, 0.01, 6, 18), m.white, 0, -0.37, 0).rotation.x = Math.PI / 2; // socks
       // shoes
-      if (d.shoes.kind === 'boots') { add(kn, lathe([[0.055, -0.32], [0.058, -0.4], [0.062, -0.43]]), m.shoe); }
-      add(kn, ball(0.058), m.shoe, 0, -0.432, 0.05, 0.95, 0.6, 2.1);
-      add(kn, box(0.112, 0.026, 0.255), m.sole, 0, -0.468, 0.052);
-      if (d.shoes.kind !== 'boots') { add(kn, box(0.114, 0.012, 0.12), mat(d.shoes.accent || 0x7a7a7a, 0.7), 0, -0.448, -0.005); for (let i = 0; i < 3; i++) add(kn, box(0.04, 0.005, 0.008), m.white, 0, -0.41 + i * 0.012, 0.085 - i * 0.012); }
+      const sk = d.shoes.kind;
+      if (sk === 'sandals') {
+        add(kn, ball(0.045), m.skin, 0, -0.435, 0.055, 0.95, 0.55, 2.1);
+        add(kn, box(0.1, 0.02, 0.245), m.sole, 0, -0.465, 0.05);
+        for (const z of [0.03, 0.11]) add(kn, box(0.102, 0.012, 0.02), m.shoe, 0, -0.445, z);
+      } else {
+        if (sk === 'boots') add(kn, lathe([[0.055, -0.32], [0.058, -0.4], [0.062, -0.43]]), m.shoe);
+        add(kn, ball(0.058), m.shoe, 0, -0.432, 0.05, 0.95, 0.6, 2.1);
+        add(kn, box(0.112, 0.026, 0.255), m.sole, 0, -0.468, 0.052);
+        add(kn, ball(0.046), mat(tone(d.shoes.color, 0.9), 0.6), 0, -0.448, 0.135, 1.15, 0.55, 0.8);          // toe cap
+        add(kn, box(0.1, 0.04, 0.05), mat(tone(d.shoes.sole, 0.85), 0.9), 0, -0.455, -0.055);                // heel
+        for (let k = 0; k < 4; k++) add(kn, box(0.034, 0.004, 0.008), sk === 'boots' ? mat(0xc49a5c, 0.8) : d.shoes.color > 0xc00000 || d.shoes.color === 0xf6f6f6 ? m.white : m.white, 0, -0.395 - k * 0.009, 0.06 + k * 0.016); // laces
+        if (sk === 'boots') add(kn, box(0.025, 0.035, 0.008), m.shoe, 0, -0.31, -0.06);
+        else if (d.shoes.color !== 0x2a1a10) add(kn, box(0.114, 0.012, 0.12), mat(d.shoes.accent || tone(d.shoes.sole, 0.6), 0.7), 0, -0.448, -0.005); // side panel
+      }
       Lg.push({ hp, kn, shin });
     }
-    // waistband / belt
-    add(hips, new T.CylinderGeometry(F ? 0.135 : 0.147, F ? 0.135 : 0.147, 0.04, 24), F ? m.pants : mat(0x3b2a1c, 0.55), 0, 0.075, 0, 1, 1, F ? 0.72 : 0.7);
-    if (!F) add(hips, box(0.04, 0.03, 0.01), mat(0xb9bec4, 0.3, { metalness: 0.7 }), 0, 0.075, 0.104);
+    // waistband, belt, pockets
+    const wr = (F ? 0.135 : 0.147) * W;
+    if (tk !== 'hoodie') {
+      add(hips, new T.CylinderGeometry(wr, wr, 0.04, 24), long && !F ? mat(0x3b2a1c, 0.55) : pantsDark, 0, 0.075, 0, 1, 1, F ? 0.72 : 0.7);
+      if (long && !F) add(hips, box(0.04, 0.03, 0.01), m.steel, 0, 0.075, wr * 0.7 + 0.002);
+      for (const a of [-1.25, -0.5, 0.5, 1.25, Math.PI]) add(hips, box(0.012, 0.045, 0.008), long && !F ? mat(0x3b2a1c, 0.55) : pantsDark, Math.sin(a) * wr, 0.075, Math.cos(a) * wr * (F ? 0.72 : 0.7));
+    }
+    if (long) {
+      add(hips, box(0.004, 0.1, 0.004), seamC, 0, -0.01, (F ? 0.122 : 0.112) * W);
+      for (const sx of [-1, 1]) {
+        const fp = add(hips, box(0.07, 0.004, 0.004), seamC, sx * 0.105 * W, 0.02, (F ? 0.108 : 0.1) * W); fp.rotation.z = sx * 0.75; fp.rotation.y = sx * -0.5;
+        add(hips, box(0.07, 0.075, 0.008), pantsDark, sx * 0.07 * W, -0.025, -(F ? 0.116 : 0.11) * W);
+        if (lk === 'jeans') add(hips, ball(0.004), m.metal, sx * 0.13 * W, 0.045, 0.06);
+      }
+    }
 
     // ---- accessories
-    const ex = d.extras || [];
     if (ex.includes('watch')) { add(A[1].el, new T.CylinderGeometry(0.034, 0.034, 0.022, 16), m.dark, 0, -0.245, 0); add(A[1].el, box(0.026, 0.004, 0.026), m.white, 0, -0.245, 0.031).rotation.x = Math.PI / 2; }
-    if (ex.includes('hoops')) for (const sx of [-1, 1]) add(headP, new T.TorusGeometry(0.016, 0.0025, 6, 16), m.metal, sx * 0.095, 0.125, 0.004).rotation.y = Math.PI / 2;
     if (ex.includes('bracelets')) for (const y of [-0.245, -0.257]) add(A[0].el, new T.TorusGeometry(0.03, 0.003, 6, 16), m.metal, 0, y, 0).rotation.x = Math.PI / 2;
+    if (ex.includes('ring')) add(A[0].el, new T.TorusGeometry(0.009, 0.0025, 6, 10), m.metal, 0, -0.36, 0.01);
     if (ex.includes('necklace')) { add(spine, new T.TorusGeometry(0.056, 0.002, 6, 24), m.metal, 0, 0.555, 0.02, 1, 1.25, 1).rotation.x = 1.15; add(spine, ball(0.006), m.metal, 0, 0.51, 0.1); }
-
-    // ---- fine detail
-    {
-      const skinShade = mat(tone(d.skin, 0.82), 0.65), seamC = mat(tone(d.legs.color, F ? 2.4 : 0.72), 0.9), pantsDark = mat(tone(d.legs.color, 0.82), 0.92);
-      // face
-      for (const sx of [-1, 1]) {
-        add(headP, ball(0.016, 10, 6, 0, Math.PI * 2, Math.PI * 0.55, Math.PI * 0.45), skinShade, sx * 0.036, 0.177, 0.088, 1.1, 0.45, 0.45); // lower lid crease
-        add(headP, ball(0.005), m.pupil, sx * 0.009, 0.137, 0.106, 1, 0.7, 0.6);                    // nostrils
-        add(headP, ball(0.013), skinShade, sx * (F ? 0.094 : 0.098), 0.165, 0.004, 0.25, 0.75, 0.55); // inner ear
-        if (F) {
-          const lash = add(headP, box(0.032, 0.004, 0.006), m.pupil, sx * 0.038, 0.186, 0.094); lash.rotation.z = sx * -0.15;
-          add(headP, ball(0.022), mat(0xd9806f, 0.8, { transparent: true, opacity: 0.18 }), sx * 0.052, 0.142, 0.08, 1, 0.6, 0.4); // cheek colour
-        } else {
-          add(headP, box(0.012, 0.05, 0.014), m.hair, sx * 0.094, 0.18, 0.02);                    // sideburns
-        }
-      }
-      add(headP, ball(0.012), skinShade, 0, 0.124, 0.1, 0.6, 0.5, 0.3);                           // philtrum
-      // collarbones
-      for (const sx of [-1, 1]) { const cb = add(spine, ball(0.012), m.skin, sx * 0.065, 0.54, F ? 0.07 : 0.075, 4.2, 0.8, 0.8); cb.rotation.z = sx * -0.15; }
-      // tank top: hem band and armhole trim
-      add(spine, new T.TorusGeometry(F ? 0.146 : 0.158, 0.006, 6, 32), mat(tone(d.top.color, 0.9), 0.9), 0, 0.0, 0, 1, DEPTH * 1.05, 1).rotation.x = Math.PI / 2;
-      // hair detail
-      if (d.hairStyle === 'buzz') {
-        add(headP, ball(0.035), m.hair, 0, 0.255, 0.085, 1.6, 0.3, 0.35);                          // softer hairline at the front
-        add(headP, ball(0.09, 16, 8, 0, Math.PI * 2, Math.PI * 0.6, Math.PI * 0.25), m.hair, 0, 0.2, -0.03, 1.08, 1.0, 1.05); // tapered nape
-      }
-      if (d.hairStyle === 'longdown') {
-        const hl = mat(tone(d.hair, 1.25), 0.7);
-        for (const [x, y, z, sy, rz, mm] of [[-0.06, 0.06, -0.085, 3.2, 0.08, hl], [0.06, 0.06, -0.085, 3.1, -0.08, hl], [0, 0.05, -0.1, 3.4, 0, m.hair]])
-          { const c = add(headP, ball(0.045), mm, x, y, z, 1, sy, 0.5); c.rotation.z = rz; }       // layered strands down the back
-        add(headP, box(0.004, 0.003, 0.09), m.skin, 0.02, 0.306, 0.02).rotation.y = 0.1;           // parting
-      }
-      // pants: waistband, loops, pockets, seams, rivets, hems
-      for (const a of [-1.25, -0.5, 0.5, 1.25, Math.PI]) add(hips, box(0.012, 0.045, 0.008), F ? pantsDark : mat(0x3b2a1c, 0.55), Math.sin(a) * (F ? 0.135 : 0.147), 0.075, Math.cos(a) * (F ? 0.097 : 0.103));
-      add(hips, box(0.004, 0.1, 0.004), seamC, 0, -0.01, (F ? 0.122 : 0.112));                  // fly stitch
-      for (const sx of [-1, 1]) {
-        const fp = add(hips, box(0.07, 0.004, 0.004), seamC, sx * 0.105, 0.02, F ? 0.108 : 0.1); fp.rotation.z = sx * 0.75; fp.rotation.y = sx * -0.5; // front pocket
-        add(hips, box(0.07, 0.075, 0.008), pantsDark, sx * 0.07, -0.025, -(F ? 0.116 : 0.11));    // back pocket
-        if (F) add(hips, ball(0.004), m.metal, sx * 0.135, 0.045, 0.06);                          // rivets
-      }
-      Lg.forEach(({ hp, kn }, i) => {
-        const sx = i ? 1 : -1;
-        add(hp, box(0.004, 0.42, 0.004), seamC, sx * (F ? 0.082 : 0.086), -0.21, 0);             // outer seam, thigh
-        add(kn, box(0.004, 0.36, 0.004), seamC, sx * (F ? 0.055 : 0.06), -0.18, 0);              // outer seam, shin
-        add(kn, new T.TorusGeometry(F ? 0.045 : 0.05, 0.006, 6, 20), pantsDark, 0, -0.355, 0).rotation.x = Math.PI / 2; // hem
-        // shoes: laces + eyelets, toe cap, heel
-        for (let k = 0; k < 4; k++) add(kn, box(0.034, 0.004, 0.008), d.shoes.kind === 'boots' ? mat(0xc49a5c, 0.8) : m.white, 0, -0.395 - k * 0.009, 0.06 + k * 0.016);
-        add(kn, ball(0.046), mat(tone(d.shoes.color, 0.9), 0.6), 0, -0.448, 0.135, 1.15, 0.55, 0.8); // toe cap
-        add(kn, box(0.1, 0.04, 0.05), mat(tone(d.shoes.sole, 0.85), 0.9), 0, -0.455, -0.055);     // heel
-        if (d.shoes.kind === 'boots') add(kn, box(0.025, 0.035, 0.008), m.shoe, 0, -0.31, -0.06); // pull tab
-      });
+    if (ex.includes('chain')) add(spine, new T.TorusGeometry(0.07, 0.006, 6, 28), m.metal, 0, 0.545, 0.03, 1, 1.4, 1).rotation.x = 1.2;
+    if (ex.includes('badge')) { const bx = -0.09; add(spine, ball(0.024, 6, 4), m.metal, bx, 0.43, surfZ(0.43, bx, loose) + 0.006, 0.9, 1.1, 0.25); }
+    if (ex.includes('radio')) { const rx = 0.11; add(spine, box(0.04, 0.065, 0.025), m.dark, rx, 0.47, surfZ(0.47, rx, loose) + 0.01); add(spine, lathe([[0.003, 0], [0.003, 0.05]], 6), m.dark, rx + 0.012, 0.5, surfZ(0.47, rx, loose) + 0.01); }
+    if (ex.includes('dutybelt')) {
+      add(hips, new T.CylinderGeometry(wr + 0.012, wr + 0.012, 0.05, 24), m.dark, 0, 0.07, 0, 1, 1, 0.72);
+      add(hips, box(0.05, 0.1, 0.06), m.dark, (wr + 0.02), 0.0, 0.01);                                         // holster
+      for (const a of [0.5, -0.5, 2.6]) add(hips, box(0.035, 0.04, 0.025), m.dark, Math.sin(a) * (wr + 0.015), 0.065, Math.cos(a) * (wr + 0.015) * 0.72); // pouches
+      add(hips, box(0.04, 0.03, 0.01), m.steel, 0, 0.07, (wr + 0.012) * 0.72 + 0.004);
     }
+    if (ex.includes('camera')) {
+      const cz = surfZ(0.25, 0.03, loose) + 0.03;
+      add(spine, box(0.1, 0.065, 0.045), m.dark, 0.03, 0.25, cz); add(spine, new T.CylinderGeometry(0.02, 0.02, 0.035, 16), m.steel, 0.03, 0.25, cz + 0.035).rotation.x = Math.PI / 2;
+      const strap = add(spine, box(0.012, 0.42, 0.006), m.dark, -0.04, 0.42, surfZ(0.42, -0.04, loose) + 0.006); strap.rotation.z = 0.45;
+    }
+    if (ex.includes('briefcase')) { add(A[0].el, box(0.07, 0.25, 0.34), mat(0x4a2c18, 0.55), 0, -0.47, 0.02); add(A[0].el, box(0.02, 0.05, 0.08), m.steel, 0, -0.34, 0.02); }
+    if (ex.includes('rod')) { const r = add(A[0].el, lathe([[0.008, 0], [0.004, -1.6]], 6), mat(0x3a2a1a, 0.6), 0, -0.3, 0.02); r.rotation.x = -2.6; add(A[0].el, new T.CylinderGeometry(0.02, 0.02, 0.03, 12), m.steel, 0.02, -0.38, 0.06).rotation.z = Math.PI / 2; }
+
     // ---- weapon mount (same as the game rig)
     const gun = new T.Group(); gun.position.set(0, -0.3, 0); A[1].el.add(gun);
     const gm = mat(0x1b1d22, 0.4, { metalness: 0.6 });
