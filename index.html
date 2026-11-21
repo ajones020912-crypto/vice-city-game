@@ -961,7 +961,14 @@ function initPalm(){
   if(pl){const c1=[.2,.5,.18],c2=[.3,.62,.22];fb.quad(pl[1],pl[0],cur[0],cur[1],0,1,0,0,0,1,1,c1);fb.quad(pl[0],pl[2],cur[2],cur[0],0,1,0,0,0,1,1,c2)}pl=cur}
  PALM.frond=fb.toGeometry();
 }
-function treeClear(x,z,r=3){return !BLD.some(b=>x+r>b.x0&&x-r<b.x1&&z+r>b.z0&&z-r<b.z1)}
+function roadClear(x,z,r=3){
+ return !roads.some(rd=>rd.o==='h'
+  ? x+r>rd.a&&x-r<rd.b&&Math.abs(z-rd.c)<rd.hw+r
+  : z+r>rd.a&&z-r<rd.b&&Math.abs(x-rd.c)<rd.hw+r);
+}
+function treeClear(x,z,r=3){
+ return roadClear(x,z,r)&&!BLD.some(b=>x+r>b.x0&&x-r<b.x1&&z+r>b.z0&&z-r<b.z1);
+}
 function palm(x,z,s=1){if(!treeClear(x,z,3.2*s))return;const rot=rnd()*TAU,bx=Math.cos(rot)*PALM.top[0]*s,bz=Math.sin(rot)*PALM.top[0]*s;
  bakeG('plain',PALM.trunk,x,0,z,-rot,s,s,s,WH);
  const nf=9+Math.floor(rnd()*3);for(let i=0;i<nf;i++){bakeG('palm',PALM.frond,x+bx,PALM.top[1]*s,z+bz,i/nf*TAU+rnd()*.4,s*(.85+rnd()*.3),s,s,[.8+rnd()*.3,.85+rnd()*.2,.8],0,rr(-.15,.35))}
@@ -1364,7 +1371,9 @@ function buildCentralPark(){
  bakeG('plain',GEO.cone,35,4.45,-48,Math.PI/4,7.8,3.2,7.8,[.49,.24,.16]);
  bakeG('plain',GEO.cyl6,35,7.55,-48,0,.28,.6,.28,[.35,.25,.18]);
  // Garden beds and flower borders, deliberately varied in shape and placement.
- for(const [x,z,rx,rz] of [[-95,-20,8,4],[-58,28,10,4],[-9,24,12,4],[47,-27,7,5],[4,-69,13,3]]){
+ for(const [x,z,rx,rz] of [[-95,-20,8,4],[-58,12,8,3],[-9,12,10,3],[39,-27,7,5],[4,-69,11,3]]){
+  // Keep every planted bed completely inside the park parcel and away from road surfaces.
+  if(x-rx-1<-109||x+rx+1>49||z-rz-1<-79||z+rz+1>19||!roadClear(x,z,Math.max(rx,rz)+1))continue;
   bakeG('plain',GEO.cyl,x,.07,z,0,rx,.10,rz,[.24,.34,.20]);
   for(let i=0;i<9;i++){
    const a=i/9*Math.PI*2;
@@ -1372,7 +1381,7 @@ function buildCentralPark(){
   }
  }
  // Distinct groves around the perimeter and scattered specimen trees, leaving paths and water clear.
- for(const [x,z,sc] of [[-101,-49,.95],[-94,-2,.82],[-84,24,1.05],[-63,-68,.9],[-48,-56,.82],[-31,25,1.0],[-22,-62,.9],[12,-67,1.05],[21,-39,.8],[47,-27,.92],[49,16,.85],[-101,18,.9],[-62,16,.82],[13,25,.9]]){
+ for(const [x,z,sc] of [[-101,-49,.95],[-94,-2,.82],[-84,12,1.05],[-63,-68,.9],[-48,-56,.82],[-31,12,1.0],[-22,-62,.9],[12,-67,1.05],[21,-39,.8],[43,-27,.92],[43,12,.85],[-101,12,.9],[-62,12,.82],[13,12,.9]]){
   oak(x,z,sc);
  }
  // Benches, bins and low path lights placed at natural pause points.
@@ -2280,7 +2289,7 @@ function pickSidewalk(){ // random sidewalk spot near the player
  while(tries++<8){const r=roads[Math.floor(Math.random()*roads.length)];if(r.type==='hwy')continue;
   let p,lat;if(r.o==='h'){if(Math.abs(r.c-pl.z)>range)continue;p=pl.x+(Math.random()*2-1)*range;if(p<r.a||p>r.b)continue;}else{if(Math.abs(r.c-pl.x)>range)continue;p=pl.z+(Math.random()*2-1)*range;if(p<r.a||p>r.b)continue}
   const side=Math.random()<.5?-1:1,off=r.type==='dirt'?r.hw+1:r.hw+SW,x=r.o==='h'?p:r.c+side*off,z=r.o==='h'?r.c+side*off:p;
-  if(Math.hypot(x-pl.x,z-pl.z)<32)continue;if(heightAt(x,z)<WL+.2)continue;let bad=false;for(const c of queryCols(x,z,.6))if(circleBox([x,z],.5,c))bad=true;if(!bad)return[x,z]}
+  if(Math.hypot(x-pl.x,z-pl.z)<70)continue;if(heightAt(x,z)<WL+.2)continue;let bad=false;for(const c of queryCols(x,z,.6))if(circleBox([x,z],.5,c))bad=true;if(!bad)return[x,z]}
  return null}
 function updatePopulation(dt){popT-=dt;if(popT>0)return;popT=.35;
  const target=[16,26,36][G.quality];let n=0;for(const p of peds)if(p.active)n++;
@@ -3713,7 +3722,16 @@ function cityHud(dt){const hp=clamp(pl.hp,0,100),armor=clamp(pl.armor,0,100);hpT
 
 
 const originalPedInit=Ped.prototype.init;Ped.prototype.init=function(...args){originalPedInit.apply(this,args);this.wasRobbed=false;this.wallet=25+Math.floor(Math.random()*76);this.beingRobbed=false};
-const originalPedUpdate=Ped.prototype.update;Ped.prototype.update=function(dt){if(this.beingRobbed&&this.active&&!this.dead){this.vx=this.vz=0;this.dir=Math.atan2(pl.x-this.x,pl.z-this.z);this.h.visible=true;this.h.position.set(this.x,this.y,this.z);this.h.rotation.y=this.dir;animHuman(this.h,dt,{speed:0,dead:false,weapon:null});for(const a of this.h.userData.A){a.sh.rotation.x=-2.5;a.el.rotation.x=-.5}return}return originalPedUpdate.call(this,dt)};
+const originalPedUpdate=Ped.prototype.update;Ped.prototype.update=function(dt){
+ if(this.beingRobbed&&this.active&&!this.dead){this.vx=this.vz=0;this.dir=Math.atan2(pl.x-this.x,pl.z-this.z);this.h.visible=true;this.h.position.set(this.x,this.y,this.z);this.h.rotation.y=this.dir;animHuman(this.h,dt,{speed:0,dead:false,weapon:null});for(const a of this.h.userData.A){a.sh.rotation.x=-2.5;a.el.rotation.x=-.5}return}
+ const oldX=this.x,oldZ=this.z,oldY=this.y;
+ originalPedUpdate.call(this,dt);
+ // Reject sudden collision-correction jumps; pedestrians should move at walking/running speed.
+ if(this.active&&!this.dead&&this.state!=='down'){
+  const step=Math.hypot(this.x-oldX,this.z-oldZ),limit=Math.max(.55,(this.speed||1.5)*dt*1.9+.3);
+  if(step>limit){this.x=oldX;this.z=oldZ;this.y=oldY;this.vx=this.vz=0;if(this.state==='walk'||this.state==='flee')this.pick();this.h.position.set(this.x,this.y,this.z)}
+ }
+};
 const originalFireWeapon=fireWeapon;fireWeapon=function(...a){if(!G.mugging&&!G.robbery)return originalFireWeapon(...a)};const originalPunch=punch;punch=function(...a){if(!G.mugging&&!G.robbery)return originalPunch(...a)};
 const originalSimulate=simulate;simulate=function(dt){originalSimulate(dt);updateCityFeatures(dt)};
 const originalUpdateHUD=updateHUD;updateHUD=function(dt){originalUpdateHUD(dt);cityHud(dt)};
