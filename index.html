@@ -2793,10 +2793,8 @@ function spawnTraffic(parked){
   if(Math.hypot(pos[0]-pl.x,pos[1]-pl.z)<(parked?35:75))continue;if(heightAt(pos[0],pos[1])<WL+.3)continue;
   let busy=false;for(const c of cars)if((c.x-pos[0])**2+(c.z-pos[1])**2<64){busy=true;break}if(busy)continue;
   for(const c of nearIntersections(pos[0],pos[1],r))busy=true;if(busy)continue;
-  // TEMP TEST: make every normal traffic/parked car a supercar.
-  // Previous setting to restore later: 10% of sports-car spawns.
-  const PREVIOUS_RARE_COUPE_SPORTS_CHANCE=0.1;void PREVIOUS_RARE_COUPE_SPORTS_CHANCE;
-  const tk='rareCoupe';
+  // Traffic and parked-car mix: supercar 10%, sedan 50%, SUV 20%, van 10%, taxi 10%.
+  const w=Math.random(),tk=w<.10?'sports':w<.60?'sedan':w<.80?'suv':w<.90?'van':'taxi';
   const car=spawnCar(tk,pos[0],pos[1],h,parked?'parked':'traffic');
   if(!parked){car.occ='ai';const sp=LIM[r.type]*(.8+Math.random()*.4);car.ai={rs:{road:r,dir,lane,s:p},route:[],vmax:sp,path:null,rev:0,stuck:0};car.vx=Math.sin(h)*sp*.7;car.vz=Math.cos(h)*sp*.7;extendRoute(car)}
   else{car.hp*=.8+Math.random()*.2}
