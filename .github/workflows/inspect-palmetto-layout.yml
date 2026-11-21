@@ -1,0 +1,42 @@
+name: Inspect Palmetto Grove layout
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/inspect-palmetto-layout.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract focused layout source without changing gameplay
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,json,subprocess
+          s=Path('index.html').read_text(encoding='utf-8')
+          sections={}
+          for name in ['defineRoads','addRoad','houses','buildWorld','zoneAt','heightAt','buildRoadMeshes','makeParcels']:
+              m=re.search(r'function '+re.escape(name)+r'\s*\(',s)
+              if m:
+                  tail=s[m.start():]
+                  nxt=re.search(r'\nfunction \w+\s*\(',tail[1:])
+                  end=nxt.start()+1 if nxt else 3500
+                  sections[name]=tail[:min(end,3500)]
+          for i,m in enumerate(list(re.finditer('Palmetto',s,re.I))[:6]):
+              sections['palmetto_reference_'+str(i)]=s[max(0,m.start()-500):m.start()+900]
+          sections['house_related_function_names']=re.findall(r'function (\w*(?:house|House|home|Home|road|Road|zone|Zone)\w*)\s*\(',s)
+          report={'source_commit':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'sections':sections,'gameplay_changed':False}
+          Path('status').mkdir(exist_ok=True)
+          Path('status/palmetto-layout-source.json').write_text(json.dumps(report,indent=2),encoding='utf-8')
+          PY
+      - name: Commit inspection report only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add status/palmetto-layout-source.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Record Palmetto layout source for a safe connected neighborhood redesign'
+          git push origin HEAD:main
