@@ -31,7 +31,7 @@
   const highlight=cloth(T,0x49342a);for(const side of[-1,1]){add(T,u.headP,tube(T,[[side*.078,.245,.048],[side*.098,.19,.06],[side*.104,.075,.02],[side*.091,.025,.01]],.012,16),side===1?highlight:m.hair,'lucia-face-framing-hair');add(T,u.headP,tube(T,[[side*.019,.203,.100],[side*.037,.210,.101],[side*.058,.206,.092]],.0037,14),m.brow,'lucia-arched-brow')}
   for(const mesh of u.headP.children.slice())if(mesh.isMesh){if(mesh.material===m.brow&&mesh.geometry.type==='BoxGeometry')remove(mesh);else if(mesh.material===m.eyeW){mesh.scale.x*=.98;mesh.scale.y*=.82}else if(mesh.material===m.lip){mesh.scale.x*=1.12;mesh.scale.y*=1.14}else if(mesh.material===m.skin&&mesh.geometry.type==='LatheGeometry'){const a=mesh.geometry.attributes.position;for(let i=0;i<a.count;i++){const y=a.getY(i),x=a.getX(i);a.setX(i,x*(1+.060*Math.exp(-Math.pow((y-.145)/.04,2))-.045*Math.exp(-Math.pow((y-.075)/.025,2))))}a.needsUpdate=true;mesh.geometry.computeVertexNormals()}}
   const threads=cloth(T,0xc8c2ad);for(let k=0;k<u.Lg.length;k++){const hp=u.Lg[k].hp;for(const mesh of hp.children.slice())if(mesh.isMesh&&mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y+.26)<.002)remove(mesh);const shorts=hp.children.find(o=>o.isMesh&&o.material===m.pants&&o.geometry.type==='LatheGeometry');if(shorts){shorts.name='lucia-reference-denim-shorts-'+k;const a=shorts.geometry.attributes.position;for(let i=0;i<a.count;i++)if(Math.abs(a.getY(i)+.26)<.001){const angle=Math.atan2(a.getZ(i),a.getX(i));a.setY(i,-.26+.003*Math.sin(angle*9)+.002*Math.sin(angle*17))}a.needsUpdate=true;shorts.geometry.computeVertexNormals()}for(let j=0;j<9;j++){const phi=j/9*Math.PI*2,len=.007+(j%3)*.003;add(T,hp,new T.CylinderGeometry(.0008,.0005,len,4),threads,'lucia-denim-fray',Math.sin(phi)*.095,-.26-len*.45,Math.cos(phi)*.095)}}
-  const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);fitLuciaShortsLegs(T,h);
+  const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);fitLuciaShortsLegs(T,h);denimLuciaShorts(T,h);
  }
 
 
@@ -59,6 +59,38 @@
    knee.scale.set(Math.max(.065,ss.x*.51),.075,Math.max(.060,ss.z*.51));
   }
   u.luciaShortsThighFit=true;
+ }
+
+ function denimLuciaShorts(T,h){
+  const u=h.userData,m=u.m;
+  if(!denimLuciaShorts.map){
+   const n=128,data=new Uint8Array(n*n*4);
+   for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+    const twill=((x+y)%8)<3?15:-9;
+    const thread=(x%2===0?5:-5)+(y%4===0?5:0);
+    const grain=((x*73+y*151+x*y*3)%17)-8;
+    const c=Math.max(0,Math.min(255,221+twill+thread+grain)),i=(y*n+x)*4;
+    data[i]=c;data[i+1]=c;data[i+2]=Math.min(255,c+3);data[i+3]=255;
+   }
+   const map=new T.DataTexture(data,n,n,T.RGBAFormat);
+   map.wrapS=map.wrapT=T.RepeatWrapping;map.repeat.set(4,3);
+   map.magFilter=T.LinearFilter;map.minFilter=T.LinearMipmapLinearFilter;
+   map.generateMipmaps=true;map.encoding=T.sRGBEncoding;map.needsUpdate=true;
+   denimLuciaShorts.map=map;
+  }
+  m.pants.map=denimLuciaShorts.map;
+  m.pants.bumpMap=denimLuciaShorts.map;m.pants.bumpScale=.0008;
+  m.pants.roughness=.96;m.pants.metalness=0;m.pants.needsUpdate=true;
+  for(const leg of u.Lg){
+   const body=leg.hp.children.find(o=>o.name==='lucia-skin-hip-bridge');
+   if(!body)throw new Error('Expected fitted hip body bridge');
+   const shell=new T.Mesh(body.geometry.clone(),m.pants);
+   shell.name='lucia-denim-seat-cover';
+   shell.position.copy(body.position);shell.quaternion.copy(body.quaternion);
+   shell.scale.copy(body.scale).multiplyScalar(1.045);shell.castShadow=true;
+   leg.hp.add(shell);
+  }
+  u.luciaDenimSeat=true;
  }
  function roundLuciaGeometry(T,mesh,old,region,u){
   const p=old.parameters;
