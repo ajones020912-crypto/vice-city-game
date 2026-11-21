@@ -29,7 +29,7 @@ jobs:
           if marker in s:
               print('Simple character models already applied.')
               raise SystemExit(0)
-          if subprocess.check_output(['git','hash-object','index.html'],text=True).strip()!='c3a34b8eb7c6c2fe47c1e01ba93fd084f2047d46':
+          if subprocess.check_output(['git','hash-object','index.html'],text=True).strip()!='42826d8e8a4cdb65babbd8f1554abe2ceaf35614':
               raise SystemExit('Game changed since review; refusing to overwrite newer work.')
           changes=[
               ('const FACE_GEO=new T.SphereGeometry(1,7,5);','const FACE_GEO=new T.BoxGeometry(2,2,2);'),
