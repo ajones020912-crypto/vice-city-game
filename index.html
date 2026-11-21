@@ -1579,7 +1579,7 @@ function makeCarVisual(tk,color){
  if(CAR_TYPES[tk].aircraft)return makeAircraftVisual(tk,color);
  if(CAR_TYPES[tk].boat)return makeBoatVisual(tk,color);
  const t=CAR_TYPES[tk],gs=carGeos(tk),g=new T.Group(),ch=new T.Group();g.add(ch);
- const pm=paintMat(color);
+ const pm=tk==='rareCoupe'?new T.MeshStandardMaterial({color,metalness:.22,roughness:.48,flatShading:true}):paintMat(color);
  const body=new T.Mesh(gs.body,pm),gh=new T.Mesh(gs.gh,glassMat),trim=new T.Mesh(gs.trim,trimMat),head=new T.Mesh(gs.head,headMat),tail=new T.Mesh(gs.tail,tailOff),beam=new T.Group();
  for(const m of[body,gh,trim])m.castShadow=true;body.receiveShadow=true;ch.add(body,gh,trim,head,tail);
  for(const side of[-1,1]){const cone=new T.Mesh(gs.beam,beamMat);cone.position.x=side*.72;beam.add(cone)}beam.visible=false;beam.position.y=.7;g.add(beam);
@@ -3368,7 +3368,7 @@ const MODS=[['eng','Engine tune',[1500,3000,5000],'+15% power per level'],['turb
 SHOP_ITEMS.mods=()=>{const c=pl.car;if(!c||c.t.aircraft||c.t.boat)return[];const u=c.up||{};
  const out=MODS.map(([k,n,pr,d])=>{const lv=u[k]||0,max=lv>=pr.length;return{n:n+(max?' (MAX)':' → L'+(lv+1)),p:max?0:pr[lv],btn:max?'Maxed':null,locked:max,d:d+' · now L'+lv,
   f:()=>{c.up=Object.assign({eng:0,turbo:0,arm:0,tank:0,brk:0,grip:0},c.up);c.up[k]++;if(k==='arm')c.hp=maxHp(c);syncGarage(c);toast('🔧 '+n+' upgraded to L'+c.up[k],1600)}}});
- out.push({n:'Respray (random color)',p:100,d:'New look — drops vehicle heat',f:()=>{const nc=pick2(c.t.colors||[0xffffff]);c.color=nc;c.v.body.material=paintMat(nc);if(pl.heat)pl.heat.vehicle=0;syncGarage(c)}});
+ out.push({n:'Respray (random color)',p:100,d:'New look — drops vehicle heat',f:()=>{const nc=pick2(c.t.colors||[0xffffff]);c.color=nc;c.v.body.material=c.tk==='rareCoupe'?new T.MeshStandardMaterial({color:nc,metalness:.22,roughness:.48,flatShading:true}):paintMat(nc);if(pl.heat)pl.heat.vehicle=0;syncGarage(c)}});
  const hurt=c.hp<maxHp(c)-.5;out.push({n:'Repair',p:hurt?60:0,btn:hurt?null:'OK',locked:!hurt,d:'Body '+Math.round(c.hp/maxHp(c)*100)+'%',f:()=>{c.hp=maxHp(c);c.fire=0}});
  return out};
 SHOP_ITEMS.dealer=()=>DEALER_STOCK.map(([tk,price,req])=>{const t=CAR_TYPES[tk],lk=pl.rep<req;return{n:(t.aircraft?'✈ ':t.boat?'⛵ ':'🚗 ')+t.name,p:price,locked:lk,d:lk?'🔒 Requires '+req+' Rep ('+tierOf(req)[1]+')':t.aircraft?'Stored at Mount Orrin Airport · kept in your garage':t.boat?'Delivered to the water · kept in your garage':'Delivered to the curb · kept in your garage',f:()=>buyVehicle(tk,price)}});
