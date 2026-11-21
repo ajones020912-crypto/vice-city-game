@@ -1,0 +1,77 @@
+name: Redesign combat sound effects
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/redesign-combat-audio.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: combat-audio-redesign
+  cancel-in-progress: false
+jobs:
+  redesign:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Add combat-only audio and test PCM and integration
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, os, re, subprocess, tempfile
+          p=Path('index.html');s=p.read_text(encoding='utf-8');report={'ok':False}
+          try:
+              if '// COMBAT_AUDIO_V3' in s: raise RuntimeError('Combat redesign already exists; refusing to overwrite it.')
+              start=re.search(r'const\s+audio\s*=',s)
+              if not start: raise RuntimeError('Cannot locate audio module.')
+              footer=re.search(r'\breturn\s+A\s*\}\)\(\);',s[start.end():])
+              if not footer: raise RuntimeError('Cannot locate audio module return.')
+              at=start.end()+footer.start()
+              if 'const A=' not in s[start.start():at] and 'const A =' not in s[start.start():at]: raise RuntimeError('Unexpected audio module structure.')
+              for name in ['hurtPed','hurtPlayer']:
+                  if not re.search(r'function\s+'+name+r'\s*\(',s): raise RuntimeError('Missing damage hook: '+name)
+              code="// COMBAT_AUDIO_V3\nconst combatProfiles={pistol:[.25,145,.004,.026,.055,.46],smg:[.15,195,.003,.017,.032,.30],rifle:[.33,115,.0035,.036,.075,.49],shot:[.58,82,.008,.065,.13,.60],swing:[.16,0,0,0,0,.18],hit:[.14,132,.003,.025,.04,.30],hurt:[.19,95,.004,.04,.06,.26],boom:[1.45,58,.012,.22,.38,.59]};\nfunction makeCombatPcm(kind,variant,sr){\n const p=combatProfiles[kind]||combatProfiles.pistol,n=Math.ceil(p[0]*sr),out=new Float32Array(n);let seed=(1234567+variant*9719+kind.length*131)>>>0,low=0,mid=0,phase=0,previous=0,dc=0,peak=0;\n const a=1-Math.exp(-2*Math.PI*(kind==='boom'?380:1500)/sr),b=1-Math.exp(-2*Math.PI*5200/sr),dcRate=Math.exp(-2*Math.PI*28/sr);\n for(let i=0;i<n;i++){\n  const t=i/sr;seed=(Math.imul(seed,1664525)+1013904223)>>>0;const noise=seed/2147483648-1;low+=a*(noise-low);mid+=b*(noise-mid);const high=mid-low;\n  phase+=2*Math.PI*p[1]*(.52+.48*Math.exp(-t/.025))/sr;let x;\n  if(kind==='swing')x=(mid-low*.8)*Math.exp(-Math.pow((t-.055)/.033,2))*.8;\n  else if(kind==='boom')x=high*.65*Math.exp(-t/.012)+low*3.7*Math.exp(-t/.35)+Math.sin(phase)*.24*Math.exp(-t/.28);\n  else if(kind==='hit'||kind==='hurt')x=low*1.6*Math.exp(-t/p[3])+high*.17*Math.exp(-t/.006)+Math.sin(phase)*.22*Math.exp(-t/.022);\n  else{\n   x=high*.95*Math.exp(-t/p[2])+low*1.8*Math.exp(-t/p[3])+Math.sin(phase)*.19*Math.exp(-t/.021);\n   x+=low*.26*Math.exp(-t/p[4]);\n   for(const [at,gain]of[[.018,.065],[.044,.035]])if(t>at)x+=high*gain*Math.exp(-(t-at)/.004);\n   for(const [delay,gain]of[[.021,.09],[.039,.055],[.067,.028]]){const j=i-Math.floor(delay*sr);if(j>=0)x+=out[j]*gain}\n  }\n  x=Math.tanh(x*1.35);const clean=x-previous+dcRate*dc;previous=x;dc=clean;\n  const fade=Math.min(1,t/.0007,(n-1-i)/(sr*.009));out[i]=clean*Math.max(0,fade);peak=Math.max(peak,Math.abs(out[i]));\n }\n const scale=peak>0?.9/peak:1;for(let i=0;i<n;i++)out[i]*=scale;return out;\n}\n\n let combatContext=null,combatBus=null;const combatCache=new Map(),combatVoices=[],combatHits={hit:-100,hurt:-100};\n const combatStop=voice=>{try{voice.gain.gain.cancelScheduledValues(ctx.currentTime);voice.gain.gain.setTargetAtTime(0,ctx.currentTime,.003);voice.source.stop(ctx.currentTime+.015)}catch(e){}};\n const combatStopAll=()=>{for(const voice of combatVoices.splice(0))combatStop(voice)};\n function combatPlay(kind,volume=1){\n  if(!ctx||ctx.state!=='running'||G.state==='paused')return;\n  if(combatContext!==ctx){combatStopAll();combatContext=ctx;combatCache.clear();combatBus=ctx.createDynamicsCompressor();combatBus.threshold.value=-10;combatBus.knee.value=12;combatBus.ratio.value=6;combatBus.attack.value=.003;combatBus.release.value=.1;combatBus.connect(master)}\n  if((kind==='hit'||kind==='hurt')&&ctx.currentTime-combatHits[kind]<.04)return;\n  if(kind==='hit'||kind==='hurt')combatHits[kind]=ctx.currentTime;\n  const variant=Math.floor(Math.random()*3),key=kind+':'+variant;\n  if(!combatCache.has(key)){const pcm=makeCombatPcm(kind,variant,ctx.sampleRate),buffer=ctx.createBuffer(1,pcm.length,ctx.sampleRate);buffer.getChannelData(0).set(pcm);combatCache.set(key,buffer)}\n  while(combatVoices.length>=20)combatStop(combatVoices.shift());\n  const source=ctx.createBufferSource(),gain=ctx.createGain();source.buffer=combatCache.get(key);source.playbackRate.value=.98+Math.random()*.04;gain.gain.value=combatProfiles[kind][5]*Math.max(0,Math.min(1,Number(volume)||0));source.connect(gain);gain.connect(combatBus);const voice={source,gain};combatVoices.push(voice);\n  source.onended=()=>{source.disconnect();gain.disconnect();const i=combatVoices.indexOf(voice);if(i>=0)combatVoices.splice(i,1)};source.start();\n }\n let combatWarned=false;\n const combatSafe=(kind,volume)=>{try{combatPlay(kind,volume)}catch(error){if(!combatWarned){console.warn('Combat audio unavailable',error);combatWarned=true}}};\n A.shot=k=>combatSafe(['pistol','smg','rifle','shot'].includes(k)?k:'pistol',1);\n A.punch=()=>combatSafe('swing',1);\n A.boom=()=>combatSafe('boom',1);\n A.hit=volume=>combatSafe('hit',volume);\n const combatLegacyPause=A.setPaused;\n A.setPaused=function(on){if(combatLegacyPause)combatLegacyPause.apply(this,arguments);if(on)combatStopAll()};\n const combatLegacyHurtPed=hurtPed;\n hurtPed=function(p,d,sx,sz,src,byP){const before=p&&p.hp,result=combatLegacyHurtPed.apply(this,arguments);if(byP&&p&&p.hp<before&&(src==='gun'||src==='punch')){const dist=Math.hypot(p.x-pl.x,p.z-pl.z);A.hit(1/(1+dist*.09))}return result};\n const combatLegacyHurtPlayer=hurtPlayer;\n hurtPlayer=function(){const before=pl.hp+(pl.armor||0),result=combatLegacyHurtPlayer.apply(this,arguments);if(pl.hp+(pl.armor||0)<before)combatSafe('hurt',1);return result};\n"
+              setup="const assert=require('assert');let starts=0,stops=0,legacyPauses=0;const param=()=>({value:0,cancelScheduledValues(){},setTargetAtTime(){}});const node=()=>({gain:param(),playbackRate:param(),connect(){},disconnect(){}});const fake={state:'running',currentTime:1,sampleRate:44100,createDynamicsCompressor(){return{...node(),threshold:param(),knee:param(),ratio:param(),attack:param(),release:param()}},createGain:node,createBuffer(c,n,sr){const a=new Float32Array(n);return{getChannelData:()=>a}},createBufferSource(){return{...node(),start(){starts++},stop(){stops++;if(this.onended)this.onended()}}}};let ctx=null;const master=node(),G={state:'play'},pl={hp:100,armor:0,alive:true,x:0,z:0},A={setPaused(){legacyPauses++},radioTick(){return'music-kept'}};let hurtPed=function(p,d){p.hp-=d;return'ped-return'},hurtPlayer=function(d){if(!pl.alive)return'ignored';pl.hp-=d;return'player-return'};\n"
+              checks="\nfor(const sr of[22050,44100,48000])for(const kind of Object.keys(combatProfiles)){const a=makeCombatPcm(kind,0,sr),b=makeCombatPcm(kind,1,sr);let energy=0,diff=0;assert(a.length===Math.ceil(combatProfiles[kind][0]*sr));for(let i=0;i<a.length;i++){assert(Number.isFinite(a[i])&&Math.abs(a[i])<=.901);energy+=a[i]*a[i];diff+=Math.abs(a[i]-b[i])}assert(energy>0&&diff>.01);assert(a[0]===0&&a[a.length-1]===0)}const pcmReport={profiles:8,weapon_profiles:4,variants_per_profile:3,sample_rates_tested:3,finite_samples:true,bounded_sample_peaks:true,silent_sample_boundaries:true};A.shot('pistol');assert(starts===0);ctx=fake;for(const k of['pistol','smg','rifle','shot'])A.shot(k);assert(starts===4);A.punch();A.boom();assert(starts===6);const p={hp:100,x:1,z:1};assert(hurtPed(p,14,0,0,'punch',true)==='ped-return'&&p.hp===86);assert(hurtPlayer(7)==='player-return'&&pl.hp===93);const before=starts;pl.alive=false;hurtPlayer(10);assert(starts===before&&pl.hp===93);for(let i=0;i<30;i++)A.shot('smg');assert(combatVoices.length<=20&&stops>0);A.setPaused(true);assert(combatVoices.length===0&&legacyPauses===1);G.state='paused';const pausedStarts=starts;A.shot('pistol');assert(starts===pausedStarts);assert(A.radioTick()==='music-kept');console.log(JSON.stringify({...pcmReport,no_context_safe:true,damage_and_return_values_preserved:true,paused_safe:true,voice_limit:true,cleanup:true,music_method_unchanged:true}));"
+              result=subprocess.run(['node','-e',setup+code+checks],check=True,capture_output=True,text=True)
+              report.update(json.loads(result.stdout))
+              addition='\n'+code+'\n'
+              updated=s[:at]+addition+s[at:]
+              if updated[:at]+updated[at+len(addition):]!=s: raise RuntimeError('Unrelated source changed.')
+              checked=0
+              for js in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',updated,re.I):
+                  if not js.strip(): continue
+                  with tempfile.NamedTemporaryFile(mode='w',suffix='.js',delete=False) as f:
+                      f.write(js);name=f.name
+                  try: subprocess.run(['node','--check',name],check=True,capture_output=True)
+                  finally: os.unlink(name)
+                  checked+=1
+              if not checked: raise RuntimeError('No inline JavaScript found.')
+              p.write_text(updated,encoding='utf-8')
+              report.update(ok=True,checked_scripts=checked,code_bytes=len(code.encode()),scope='Combat sound generation and audio-only damage feedback; damage, weapon rates, controls, music and vehicles unchanged')
+          except Exception as exc:
+              report['error']=str(exc)
+              if isinstance(exc,subprocess.CalledProcessError): report['stderr']=(exc.stderr or b'').decode(errors='replace')[-3000:]
+          Path('scripts').mkdir(exist_ok=True)
+          Path('scripts/combat-audio-status.json').write_text(json.dumps(report,indent=2)+'\n')
+          print(json.dumps(report))
+          PY
+      - name: Commit tested audio or diagnostic report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html scripts/combat-audio-status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Redesign combat audio with distinct weapon reports and impact feedback'
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Require successful audio redesign
+        run: node -e "if(!require('./scripts/combat-audio-status.json').ok)process.exit(1)"

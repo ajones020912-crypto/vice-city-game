@@ -1,0 +1,8 @@
+{
+  "ok": false,
+  "original_bytes": 13187708,
+  "compressed_bytes": 11620130,
+  "reduction_percent": 11.89,
+  "error": "Command '['git', 'apply', '--reverse', '--check', '-']' returned non-zero exit status 1.",
+  "stderr": "error: patch failed: index.html:143\nerror: index.html: patch does not apply\n"
+}

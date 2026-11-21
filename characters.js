@@ -48,11 +48,11 @@
       extras: ['hoops', 'shades'],
     },
     jasonC: {
-      name: 'Jason', role: 'Lead · option C',
-      skin: 0xc98e68, hair: 0x1d1410, hairStyle: 'buzz',
-      top: { kind: 'tank', color: 0xf2f1ec },
-      legs: { kind: 'trousers', color: 0xb39b6e },
-      shoes: { kind: 'boots', color: 0x5a4330, sole: 0x2a2018 },
+      name: 'Jason', role: 'Lead · player model',
+      skin: 0xc98e68, hair: 0x24170f, hairStyle: 'short', beard: true,
+      top: { kind: 'polo', color: 0x456b78 },
+      legs: { kind: 'jeans', color: 0x283a58 },
+      shoes: { kind: 'boots', color: 0x594735, sole: 0x29231e },
       extras: ['watch'], realistic: true,
     },
     luciaC: {

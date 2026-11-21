@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "triangles": 912,
+  "meshes": 19,
+  "model_code_bytes": 4942,
+  "animation_contract": true,
+  "finite_geometry": true,
+  "existing_footprint": true,
+  "propeller_ground_clearance": true,
+  "checked_scripts": 1,
+  "scope": "propPlane visual only; smallJet, flight physics, collisions and supercar unchanged",
+  "external_plane_asset_download": false
+}

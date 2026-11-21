@@ -1419,6 +1419,10 @@ const CAR_TYPES={
   body:[[-2.35,.32],[2.35,.32],[2.4,.55],[2.3,.72],[1.55,.87],[.75,.93],[-1.6,.95],[-2.3,.92],[-2.4,.62]],gh:[[-1.4,.93],[.8,.93],[.4,1.43],[-.9,1.45],[-1.25,1.2]],colors:[0xb8352f,0x2e6fa8,0xdadada,0x2a2f3a,0x5d8a5e,0xc9a24a,0x7c5fa8]},
  sports:{name:'Sports car',L:4.4,W:1.92,wb:2.6,wr:.34,mass:1250,power:12.5,top:56,grip:11,steer:.6,hp:90,
   body:[[-2.2,.3],[2.2,.3],[2.27,.5],[2.1,.67],[1.2,.73],[.55,.83],[-1.3,.87],[-2.1,.82],[-2.27,.55]],gh:[[-1.05,.84],[.6,.84],[.15,1.2],[-.8,1.22],[-1.15,1.0]],colors:(window.VCSupercar&&window.VCSupercar.GAME_COLORS)||[0xff4f9a,0xf0c44d,0x2ec4e8,0xe94e68,0xffffff,0x20252d,0x6fd68b]},
+ rareCoupe:{name:'Sports car',L:4.5,W:1.94,wb:2.68,wr:.35,mass:1320,power:13.2,top:59,grip:11.5,steer:.61,hp:105,
+  body:[[-2.25,.27],[2.2,.27],[2.28,.43],[2.08,.58],[1.28,.66],[.42,.76],[-1.42,.78],[-2.12,.62],[-2.28,.43]],
+  gh:[[-1.12,.76],[.52,.76],[.12,1.13],[-.82,1.15],[-1.18,.91]],
+  colors:(window.VCSupercar&&window.VCSupercar.GAME_COLORS)||[0x6a2cd8]},
  suv:{name:'SUV',L:4.8,W:1.96,wb:2.9,wr:.38,mass:2000,power:7,top:36,grip:8.5,steer:.5,hp:130,
   body:[[-2.4,.4],[2.4,.4],[2.43,.72],[2.3,.96],[1.6,1.1],[.9,1.14],[-2.2,1.16],[-2.43,.92]],gh:[[-2.25,1.12],[1.0,1.12],[.55,1.74],[-2.2,1.78]],colors:[0x1c2430,0xcfd3d6,0x6b4a35,0x8c1d1d,0x3d5a45]},
  van:{name:'Van',L:5.0,W:2.0,wb:3.1,wr:.36,mass:2300,power:6,top:32,grip:8,steer:.48,hp:140,
@@ -1435,7 +1439,12 @@ function extrudeProfile(pts,depth,bevel){
  const s=new T.Shape();s.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)s.lineTo(pts[i][0],pts[i][1]);s.closePath();
  const g=new T.ExtrudeGeometry(s,{depth,bevelEnabled:true,bevelThickness:bevel,bevelSize:bevel,bevelSegments:2,curveSegments:3});
  g.rotateY(-Math.PI/2);g.computeBoundingBox();const bb=g.boundingBox;g.translate(-(bb.min.x+bb.max.x)/2,0,0);g.computeVertexNormals();return g}
+function extrudeLowPolyProfile(pts,depth){
+ const s=new T.Shape();s.moveTo(pts[0][0],pts[0][1]);for(let i=1;i<pts.length;i++)s.lineTo(pts[i][0],pts[i][1]);s.closePath();
+ const g=new T.ExtrudeGeometry(s,{depth,bevelEnabled:false,curveSegments:1,steps:1});
+ g.rotateY(-Math.PI/2);g.computeBoundingBox();const bb=g.boundingBox;g.translate(-(bb.min.x+bb.max.x)/2,0,0);g.computeVertexNormals();return g}
 const wheelGeos={};
+function lowPolyWheelGeo(r){const b=new Batch();const tire=new T.CylinderGeometry(r*1.2,r*1.2,.24,8);tire.rotateZ(Math.PI/2);b.geo(tire,new T.Matrix4(),[.045,.045,.05]);const rim=new T.CylinderGeometry(r*.62,r*.62,.26,6);rim.rotateZ(Math.PI/2);b.geo(rim,new T.Matrix4(),[.38,.4,.44]);const hub=new T.CylinderGeometry(r*.2,r*.2,.28,6);hub.rotateZ(Math.PI/2);b.geo(hub,new T.Matrix4(),[.68,.7,.74]);return b.toGeometry()}
 function wheelGeo(r){if(wheelGeos[r])return wheelGeos[r];const b=new Batch();const tr=new T.CylinderGeometry(r,r,.26,20);tr.rotateZ(Math.PI/2);
  b.geo(tr,new T.Matrix4(),[.06,.06,.065]);const rim=new T.CylinderGeometry(r*.66,r*.66,.28,16);rim.rotateZ(Math.PI/2);b.geo(rim,new T.Matrix4(),[.72,.74,.78]);
  const hub=new T.CylinderGeometry(r*.2,r*.2,.3,8);hub.rotateZ(Math.PI/2);b.geo(hub,new T.Matrix4(),[.35,.36,.4]);
@@ -1520,7 +1529,7 @@ function paintMat(hex){
 }
 function carGeos(tk){
  if(carGeoCache[tk])return carGeoCache[tk];const t=CAR_TYPES[tk],W=t.W,L=t.L,r=t.wr;
- const body=extrudeProfile(t.body,W-.2,.1),gh=extrudeProfile(t.gh,W-.42,.05);
+ const body=tk==='rareCoupe'?extrudeLowPolyProfile(t.body,W-.2):extrudeProfile(t.body,W-.2,.1),gh=tk==='rareCoupe'?extrudeLowPolyProfile(t.gh,W-.42):extrudeProfile(t.gh,W-.42,.05);
  const tr=new Batch(),I=new T.Matrix4(),dk=[.08,.08,.09],ch=[.72,.74,.78];
  const bx=(w,h,d,x,y,z,c)=>{const g=new T.BoxGeometry(w,h,d);tr.geo(g,new T.Matrix4().makeTranslation(x,y,z),c)};
  bx(W-.1,.22,.3,0,.46,L/2+.0,dk);bx(W-.1,.22,.3,0,.46,-L/2-.0,dk);bx(W*.5,.14,.05,0,.62,L/2+.04,[.12,.12,.14]);   // bumpers+grille
@@ -1534,7 +1543,47 @@ function carGeos(tk){
  // light beam cone (additive) pointing forward
  const bg=new T.ConeGeometry(2.6,16,10,1,true);bg.rotateX(-Math.PI/2);bg.translate(0,0,8.4);o.beam=bg;
  return carGeoCache[tk]=o}
+function makeLowPolyPropPlaneVisual(color){
+ const t=CAR_TYPES.propPlane,L=t.L,W=t.W,g=new T.Group(),ch=new T.Group();g.add(ch);
+ const mat=(color,roughness=.65,metalness=.08)=>new T.MeshStandardMaterial({color,roughness,metalness,flatShading:true});
+ const paint=mat(color),cream=mat(0xf0ebdc),teal=mat(0x167f86),glass=mat(0x193e52,.24,.28),dark=mat(0x17232c),rubber=mat(0x111419,.95),metal=mat(0x9ba7ad,.38,.55),yellow=mat(0xf5ce5b);
+ const add=(geo,material,x=0,y=0,z=0,parent=ch)=>{const m=new T.Mesh(geo,material);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;parent.add(m);return m};
+ const loft=rings=>{const p=[],idx=[],n=8;for(const [z,y,rx,ry]of rings)for(let k=0;k<n;k++){const a=k*Math.PI*2/n;p.push(Math.cos(a)*rx,y+Math.sin(a)*ry,z)}for(let j=0;j<rings.length-1;j++)for(let k=0;k<n;k++){const a=j*n+k,b=j*n+(k+1)%n,c=a+n,d=b+n;idx.push(a,b,c,b,d,c)}for(const end of[0,rings.length-1]){const center=p.length/3,[z,y]=rings[end];p.push(0,y,z);for(let k=0;k<n;k++){const a=end*n+k,b=end*n+(k+1)%n;if(end===0)idx.push(center,b,a);else idx.push(center,a,b)}}const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(p,3));geo.setIndex(idx);geo.computeVertexNormals();return geo};
+ const prism=(points,depth,vertical=false)=>{const sh=new T.Shape();points.forEach((p,i)=>i?sh.lineTo(...p):sh.moveTo(...p));sh.closePath();const geo=new T.ExtrudeGeometry(sh,{depth,steps:1,bevelEnabled:false,curveSegments:1});if(vertical){geo.rotateY(-Math.PI/2);geo.translate(depth/2,0,0)}else{geo.rotateX(Math.PI/2);geo.translate(0,depth/2,0)}return geo};
+ const beam=(a,b,r=.035,material=cream)=>{a=new T.Vector3(...a);b=new T.Vector3(...b);const d=b.clone().sub(a),m=add(new T.CylinderGeometry(r,r,d.length(),6),material);m.position.copy(a.add(b).multiplyScalar(.5));m.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),d.normalize());return m};
+ const body=add(loft([[-.47*L,.12,.055,.07],[-.34*L,.12,.20,.22],[-.16*L,.02,.42,.36],[.03*L,0,.55,.46],[.20*L,0,.52,.43],[.34*L,.06,.37,.33],[.43*L,.12,.27,.25]]),paint);
+ add(loft([[-1.15,.45,.37,.17],[-.5,.53,.48,.25],[.85,.5,.45,.25],[1.55,.27,.28,.12]]),glass);
+ for(const side of[-1,1]){
+  add(prism([[side*.42,1.12],[side*W*.42,.72],[side*W*.5,.38],[side*W*.5,-.34],[side*W*.42,-.58],[side*.42,-.9]],.11),cream,0,.86,0);
+  add(new T.BoxGeometry(.4,.018,.55),teal,side*(W*.5-.45),.925,.03);
+  beam([side*.45,.08,.45],[side*W*.29,.8,.06],.038,metal);
+  beam([side*.43,.33,1.3],[side*.43,.7,.91],.035);
+  beam([side*.4,.38,-1.02],[side*.43,.7,-.84],.035);
+  beam([side*.43,.73,-.84],[side*.43,.73,.91],.035);
+  add(new T.BoxGeometry(.018,.075,2.1),teal,side*.49,.12,.05);
+  const lamp=mat(side===1?0xe84949:0x5acb8c);lamp.emissive.copy(lamp.color);lamp.emissiveIntensity=.5;
+  add(new T.BoxGeometry(.09,.08,.13),lamp,side*(W*.5-.03),.9,.31);
+ }
+ beam([0,.36,1.53],[0,.73,.94],.035);
+ add(prism([[-W*.17,-L*.37],[-.23,-L*.33],[.23,-L*.33],[W*.17,-L*.37],[W*.17,-L*.44],[0,-L*.42],[-W*.17,-L*.44]],.08),cream,0,.2,0);
+ add(prism([[-L*.45,.14],[-L*.45,1.45],[-L*.39,1.62],[-L*.30,.18]],.10,true),teal);
+ const prop=new T.Group();prop.name='propeller';prop.position.set(0,.12,L*.448);prop.scale.setScalar(.7);ch.add(prop);
+ for(let i=0;i<3;i++){const sh=new T.Shape();sh.moveTo(.06,.14);sh.lineTo(.17,.9);sh.lineTo(.02,1.2);sh.lineTo(-.1,1.12);sh.lineTo(-.11,.22);sh.closePath();const geo=new T.ExtrudeGeometry(sh,{depth:.06,bevelEnabled:false,steps:1});geo.translate(0,0,-.03);const blade=add(geo,dark,0,0,0,prop);blade.name='prop-blade-'+i;blade.rotation.z=i*Math.PI*2/3;const tip=add(new T.BoxGeometry(.13,.16,.065),yellow,0,0,0,blade);tip.position.set(.015,1.07,0)}
+ const spinner=add(new T.ConeGeometry(.25,.36,8),teal,0,.12,L*.465);spinner.rotation.x=Math.PI/2;
+ const wheels=[];
+ for(const [x,z,r,front]of[[-.94,.85,.2,false],[.94,.85,.2,false],[0,L*.32,.18,true]]){
+  const y=-.88+r;beam([x*.48,-.25,z-.15],[x,y,z],.045,metal);
+  const piv=new T.Group();piv.position.set(x,y,z);ch.add(piv);const w=new T.Group();piv.add(w);
+  const tire=new T.CylinderGeometry(r,r,.17,8);tire.rotateZ(Math.PI/2);add(tire,rubber,0,0,0,w);
+  const rim=new T.CylinderGeometry(r*.48,r*.48,.18,8);rim.rotateZ(Math.PI/2);add(rim,metal,0,0,0,w);wheels.push({w,piv,front});
+ }
+ const batches=new Map();
+ for(const m of ch.children.slice())if(m.isMesh&&m!==body){m.updateMatrix();const geo=m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone();geo.applyMatrix4(m.matrix);const a=geo.getAttribute('position').array;if(!batches.has(m.material))batches.set(m.material,[]);const dest=batches.get(m.material);for(const x of a)dest.push(x);geo.dispose();m.geometry.dispose();ch.remove(m)}
+ for(const [material,p]of batches){const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(p,3));geo.computeVertexNormals();add(geo,material)}
+ return{g,ch,body,wheels,beam:{visible:false},tail:{material:dark},head:{material:cream},bar:null,pm:paint};
+}
 function makeAircraftVisual(tk,color){
+ if(tk==='propPlane')return makeLowPolyPropPlaneVisual(color);
  const t=CAR_TYPES[tk],g=new T.Group(),ch=new T.Group();g.add(ch);
  const paint=new T.MeshStandardMaterial({color,metalness:.38,roughness:.38}),white=new T.MeshStandardMaterial({color:0xe9f1f5,metalness:.25,roughness:.38}),glass=new T.MeshStandardMaterial({color:0x15384f,metalness:.55,roughness:.16}),dark=new T.MeshStandardMaterial({color:0x18212a,roughness:.78}),rubber=new T.MeshStandardMaterial({color:0x090b0d,roughness:.95});
  const fus=new T.Mesh(new T.CylinderGeometry(tk==='smallJet'?.7:.46,tk==='smallJet'?.76:.5,t.L*.78,16),paint);fus.rotation.x=Math.PI/2;ch.add(fus);
@@ -1568,6 +1617,7 @@ function makeAircraftVisual(tk,color){
  return{g,ch,body:fus,wheels,beam:{visible:false},tail:{material:dark},head:{material:white},bar:null,pm:paint};
 }
 function makeCarVisual(tk,color){
+ if(tk==='rareCoupe')tk='sports'; // the old low-poly supercar is replaced by the new supercar body
  if(CAR_TYPES[tk].aircraft)return makeAircraftVisual(tk,color);
  if(CAR_TYPES[tk].boat)return makeBoatVisual(tk,color);
  const t=CAR_TYPES[tk],gs=carGeos(tk),g=new T.Group(),ch=new T.Group();g.add(ch);
@@ -1582,8 +1632,40 @@ function makeCarVisual(tk,color){
   const sb=new T.BoxGeometry(t.W+.02,.6,t.L*.5);const stripe=new T.Mesh(sb,new T.MeshStandardMaterial({color:0x10151c,roughness:.45,metalness:.2}));stripe.position.set(0,.62,-.1);stripe.scale.set(.985,1,1);ch.add(stripe);
   const d1=new T.Mesh(new T.BoxGeometry(t.W-.1,.22,t.L*.28),new T.MeshStandardMaterial({color:0x10151c,roughness:.45,metalness:.2}));d1.position.set(0,1.0,-.2);ch.add(d1)}
  if(tk==='taxi'){const s=new T.Mesh(new T.BoxGeometry(.7,.22,.3),new T.MeshStandardMaterial({color:0xfff2a0,emissive:0xffe066,emissiveIntensity:.95,roughness:.4}));s.position.set(0,t.gh[2][1]+.12,t.gh[2][0]-.4);ch.add(s)}
- const wheels=[],gm=wheelGeo(t.wr);
+ const wheels=[],gm=tk==='rareCoupe'?lowPolyWheelGeo(t.wr):wheelGeo(t.wr);
  for(const sz of[1,-1])for(const sx of[1,-1]){const piv=new T.Group();piv.position.set(sx*(t.W/2-.2),t.wr,sz*t.wb/2);const w=new T.Mesh(gm,wheelMat);w.castShadow=true;if(sx<0)w.rotation.y=Math.PI;piv.add(w);ch.add(piv);wheels.push({piv,w,front:sz>0})}
+ if(tk==='rareCoupe'){
+  const mat=(hex,rough=.55,metal=.08)=>new T.MeshStandardMaterial({color:hex,roughness:rough,metalness:metal,flatShading:true});
+  const dark=mat(0x090d17,.42,.12),glassDark=mat(0x10182a,.24,.28),accent=mat(0x292638,.48,.18),lamp=mat(0xf4f7ff,.22,.12);
+  const add=(geo,m,x=0,y=0,z=0)=>{const o=new T.Mesh(geo,m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;ch.add(o);return o};
+  const panel=(pts,depth,m,x=0,y=0,z=0)=>add(extrudeLowPolyProfile(pts,depth),m,x,y,z);
+  // Deep front intake, lower splitter and angular corner intakes.
+  add(new T.BoxGeometry(1.18,.28,.055),dark,0,.43,t.L/2+.055);
+  add(new T.BoxGeometry(1.68,.075,.28),accent,0,.285,t.L/2+.09);
+  for(const side of[-1,1]){
+   const intake=add(new T.BoxGeometry(.34,.25,.06),dark,side*.72,.48,t.L/2+.045);intake.rotation.z=side*.12;
+   // Thin, sharp LED headlight strips on the front corners.
+   const sh=new T.Shape();sh.moveTo(0,0);sh.lineTo(.48,.055);sh.lineTo(.34,.13);sh.lineTo(.04,.105);sh.closePath();
+   const hg=new T.ExtrudeGeometry(sh,{depth:.035,bevelEnabled:false,curveSegments:1});
+   hg.rotateY(0);
+   add(hg,lamp,side*.46,.68,t.L/2+.075).rotation.y=side*.08;
+   // Recessed side air intake behind the door.
+   const vent=add(new T.BoxGeometry(.045,.34,.66),dark,side*(t.W/2+.006),.53,-.34);vent.rotation.y=side*.16;
+   const ventLip=add(new T.BoxGeometry(.055,.055,.72),accent,side*(t.W/2+.012),.34,-.34);ventLip.rotation.y=side*.16;
+   // Angular side skirt and wheel-arch shoulder accents.
+   add(new T.BoxGeometry(.075,.12,1.55),accent,side*(t.W/2+.015),.27,-.02);
+   const shoulder=add(new T.BoxGeometry(.07,.14,.78),pm,side*(t.W/2-.015),.72,t.wb/2);shoulder.rotation.y=side*.04;
+  }
+  // Low rear diffuser and a subtle raised rear deck lip.
+  add(new T.BoxGeometry(1.25,.13,.18),dark,0,.34,-t.L/2-.035);
+  add(new T.BoxGeometry(1.42,.07,.18),accent,0,.66,-t.L/2+.18);
+  // Narrow red rear light bar.
+  add(new T.BoxGeometry(1.35,.075,.035),mat(0xff263f,.25),0,.78,-t.L/2-.055);
+  // Faceted hood creases emphasize the long, low nose.
+  for(const side of[-1,1]){
+   const crease=add(new T.BoxGeometry(.035,.025,1.18),accent,side*.48,.79,.72);crease.rotation.x=-.035;
+  }
+ }
  return{g,ch,body,tail,head,beam,bar,wheels,pm}}
 
 // ================= HUMANS =================
@@ -2250,7 +2332,58 @@ STATIONS.splice(0,STATIONS.length,...[
 
  A.radioTick=function(on){const want=(on&&ctx&&stIdx>=0&&stIdx<STATIONS.length)?stIdx:-1;if(want===playing)return;if(radT){clearInterval(radT);radT=null}if(playing>=0)songSteps[playing]=step;playing=want;if(want>=0){const station=STATIONS[want];step=songSteps[want]||0;nextBeatTime=ctx.currentTime+.035;const schedule=()=>{if(!ctx||playing!==want)return;if(nextBeatTime<ctx.currentTime-.3)nextBeatTime=ctx.currentTime+.035;let count=0;while(nextBeatTime<ctx.currentTime+.12&&count++<8){try{station.play(step++,nextBeatTime,R)}catch(e){}nextBeatTime+=station.ms/1000;songSteps[want]=step}};schedule();radT=setInterval(schedule,25)}};
 
- return A})();
+ 
+// COMBAT_AUDIO_V3
+const combatProfiles={pistol:[.25,145,.004,.026,.055,.46],smg:[.15,195,.003,.017,.032,.30],rifle:[.33,115,.0035,.036,.075,.49],shot:[.58,82,.008,.065,.13,.60],swing:[.16,0,0,0,0,.18],hit:[.14,132,.003,.025,.04,.30],hurt:[.19,95,.004,.04,.06,.26],boom:[1.45,58,.012,.22,.38,.59]};
+function makeCombatPcm(kind,variant,sr){
+ const p=combatProfiles[kind]||combatProfiles.pistol,n=Math.ceil(p[0]*sr),out=new Float32Array(n);let seed=(1234567+variant*9719+kind.length*131)>>>0,low=0,mid=0,phase=0,previous=0,dc=0,peak=0;
+ const a=1-Math.exp(-2*Math.PI*(kind==='boom'?380:1500)/sr),b=1-Math.exp(-2*Math.PI*5200/sr),dcRate=Math.exp(-2*Math.PI*28/sr);
+ for(let i=0;i<n;i++){
+  const t=i/sr;seed=(Math.imul(seed,1664525)+1013904223)>>>0;const noise=seed/2147483648-1;low+=a*(noise-low);mid+=b*(noise-mid);const high=mid-low;
+  phase+=2*Math.PI*p[1]*(.52+.48*Math.exp(-t/.025))/sr;let x;
+  if(kind==='swing')x=(mid-low*.8)*Math.exp(-Math.pow((t-.055)/.033,2))*.8;
+  else if(kind==='boom')x=high*.65*Math.exp(-t/.012)+low*3.7*Math.exp(-t/.35)+Math.sin(phase)*.24*Math.exp(-t/.28);
+  else if(kind==='hit'||kind==='hurt')x=low*1.6*Math.exp(-t/p[3])+high*.17*Math.exp(-t/.006)+Math.sin(phase)*.22*Math.exp(-t/.022);
+  else{
+   x=high*.95*Math.exp(-t/p[2])+low*1.8*Math.exp(-t/p[3])+Math.sin(phase)*.19*Math.exp(-t/.021);
+   x+=low*.26*Math.exp(-t/p[4]);
+   for(const [at,gain]of[[.018,.065],[.044,.035]])if(t>at)x+=high*gain*Math.exp(-(t-at)/.004);
+   for(const [delay,gain]of[[.021,.09],[.039,.055],[.067,.028]]){const j=i-Math.floor(delay*sr);if(j>=0)x+=out[j]*gain}
+  }
+  x=Math.tanh(x*1.35);const clean=x-previous+dcRate*dc;previous=x;dc=clean;
+  const fade=Math.min(1,t/.0007,(n-1-i)/(sr*.009));out[i]=clean*Math.max(0,fade);peak=Math.max(peak,Math.abs(out[i]));
+ }
+ const scale=peak>0?.9/peak:1;for(let i=0;i<n;i++)out[i]*=scale;return out;
+}
+
+ let combatContext=null,combatBus=null;const combatCache=new Map(),combatVoices=[],combatHits={hit:-100,hurt:-100};
+ const combatStop=voice=>{try{voice.gain.gain.cancelScheduledValues(ctx.currentTime);voice.gain.gain.setTargetAtTime(0,ctx.currentTime,.003);voice.source.stop(ctx.currentTime+.015)}catch(e){}};
+ const combatStopAll=()=>{for(const voice of combatVoices.splice(0))combatStop(voice)};
+ function combatPlay(kind,volume=1){
+  if(!ctx||ctx.state!=='running'||G.state==='paused')return;
+  if(combatContext!==ctx){combatStopAll();combatContext=ctx;combatCache.clear();combatBus=ctx.createDynamicsCompressor();combatBus.threshold.value=-10;combatBus.knee.value=12;combatBus.ratio.value=6;combatBus.attack.value=.003;combatBus.release.value=.1;combatBus.connect(master)}
+  if((kind==='hit'||kind==='hurt')&&ctx.currentTime-combatHits[kind]<.04)return;
+  if(kind==='hit'||kind==='hurt')combatHits[kind]=ctx.currentTime;
+  const variant=Math.floor(Math.random()*3),key=kind+':'+variant;
+  if(!combatCache.has(key)){const pcm=makeCombatPcm(kind,variant,ctx.sampleRate),buffer=ctx.createBuffer(1,pcm.length,ctx.sampleRate);buffer.getChannelData(0).set(pcm);combatCache.set(key,buffer)}
+  while(combatVoices.length>=20)combatStop(combatVoices.shift());
+  const source=ctx.createBufferSource(),gain=ctx.createGain();source.buffer=combatCache.get(key);source.playbackRate.value=.98+Math.random()*.04;gain.gain.value=combatProfiles[kind][5]*Math.max(0,Math.min(1,Number(volume)||0));source.connect(gain);gain.connect(combatBus);const voice={source,gain};combatVoices.push(voice);
+  source.onended=()=>{source.disconnect();gain.disconnect();const i=combatVoices.indexOf(voice);if(i>=0)combatVoices.splice(i,1)};source.start();
+ }
+ let combatWarned=false;
+ const combatSafe=(kind,volume)=>{try{combatPlay(kind,volume)}catch(error){if(!combatWarned){console.warn('Combat audio unavailable',error);combatWarned=true}}};
+ A.shot=k=>combatSafe(['pistol','smg','rifle','shot'].includes(k)?k:'pistol',1);
+ A.punch=()=>combatSafe('swing',1);
+ A.boom=()=>combatSafe('boom',1);
+ A.hit=volume=>combatSafe('hit',volume);
+ const combatLegacyPause=A.setPaused;
+ A.setPaused=function(on){if(combatLegacyPause)combatLegacyPause.apply(this,arguments);if(on)combatStopAll()};
+ const combatLegacyHurtPed=hurtPed;
+ hurtPed=function(p,d,sx,sz,src,byP){const before=p&&p.hp,result=combatLegacyHurtPed.apply(this,arguments);if(byP&&p&&p.hp<before&&(src==='gun'||src==='punch')){const dist=Math.hypot(p.x-pl.x,p.z-pl.z);A.hit(1/(1+dist*.09))}return result};
+ const combatLegacyHurtPlayer=hurtPlayer;
+ hurtPlayer=function(){const before=pl.hp+(pl.armor||0),result=combatLegacyHurtPlayer.apply(this,arguments);if(pl.hp+(pl.armor||0)<before)combatSafe('hurt',1);return result};
+
+return A})();
 // ================= WANTED / CRIME (heat) =================
 const starsFor=c=>c>=30?6:c>=22?5:c>=14?4:c>=8?3:c>=4?2:c>=1?1:0;
 pl.crime=0;pl.sightT=0;
@@ -2426,7 +2559,10 @@ function spawnTraffic(parked){
   if(Math.hypot(pos[0]-pl.x,pos[1]-pl.z)<(parked?35:75))continue;if(heightAt(pos[0],pos[1])<WL+.3)continue;
   let busy=false;for(const c of cars)if((c.x-pos[0])**2+(c.z-pos[1])**2<64){busy=true;break}if(busy)continue;
   for(const c of nearIntersections(pos[0],pos[1],r))busy=true;if(busy)continue;
-  const w=Math.random(),tk=w<.5?'sedan':w<.62?'sports':w<.8?'suv':w<.9?'van':'taxi';
+  // TEMP TEST: make every normal traffic/parked car a supercar.
+  // Previous setting to restore later: 10% of sports-car spawns.
+  const PREVIOUS_RARE_COUPE_SPORTS_CHANCE=0.1;void PREVIOUS_RARE_COUPE_SPORTS_CHANCE;
+  const tk='rareCoupe';
   const car=spawnCar(tk,pos[0],pos[1],h,parked?'parked':'traffic');
   if(!parked){car.occ='ai';const sp=LIM[r.type]*(.8+Math.random()*.4);car.ai={rs:{road:r,dir,lane,s:p},route:[],vmax:sp,path:null,rev:0,stuck:0};car.vx=Math.sin(h)*sp*.7;car.vz=Math.cos(h)*sp*.7;extendRoute(car)}
   else{car.hp*=.8+Math.random()*.2}

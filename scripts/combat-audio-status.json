@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "profiles": 8,
+  "weapon_profiles": 4,
+  "variants_per_profile": 3,
+  "sample_rates_tested": 3,
+  "finite_samples": true,
+  "bounded_sample_peaks": true,
+  "silent_sample_boundaries": true,
+  "no_context_safe": true,
+  "damage_and_return_values_preserved": true,
+  "paused_safe": true,
+  "voice_limit": true,
+  "cleanup": true,
+  "music_method_unchanged": true,
+  "checked_scripts": 1,
+  "code_bytes": 4602,
+  "scope": "Combat sound generation and audio-only damage feedback; damage, weapon rates, controls, music and vehicles unchanged"
+}
