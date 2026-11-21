@@ -30,7 +30,26 @@
   const highlight=cloth(T,0x49342a);for(const side of[-1,1]){add(T,u.headP,tube(T,[[side*.078,.245,.048],[side*.098,.19,.06],[side*.104,.075,.02],[side*.091,.025,.01]],.012,16),side===1?highlight:m.hair,'lucia-face-framing-hair');add(T,u.headP,tube(T,[[side*.02,.203,.099],[side*.039,.209,.099],[side*.057,.203,.09]],.0031,10),m.brow,'lucia-arched-brow')}
   for(const mesh of u.headP.children.slice())if(mesh.isMesh){if(mesh.material===m.brow&&mesh.geometry.type==='BoxGeometry')remove(mesh);else if(mesh.material===m.eyeW){mesh.scale.x*=.92;mesh.scale.y*=.9}else if(mesh.material===m.lip){mesh.scale.x*=1.06;mesh.scale.y*=1.1}else if(mesh.material===m.skin&&mesh.geometry.type==='LatheGeometry'){const a=mesh.geometry.attributes.position;for(let i=0;i<a.count;i++){const y=a.getY(i),x=a.getX(i);a.setX(i,x*(1+.025*Math.exp(-Math.pow((y-.145)/.04,2))-.025*Math.exp(-Math.pow((y-.075)/.025,2))))}a.needsUpdate=true;mesh.geometry.computeVertexNormals()}}
   const threads=cloth(T,0xc8c2ad);for(let k=0;k<u.Lg.length;k++){const hp=u.Lg[k].hp;for(const mesh of hp.children.slice())if(mesh.isMesh&&mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y+.26)<.002)remove(mesh);const shorts=hp.children.find(o=>o.isMesh&&o.material===m.pants&&o.geometry.type==='LatheGeometry');if(shorts){shorts.name='lucia-reference-denim-shorts-'+k;const a=shorts.geometry.attributes.position;for(let i=0;i<a.count;i++)if(Math.abs(a.getY(i)+.26)<.001){const angle=Math.atan2(a.getZ(i),a.getX(i));a.setY(i,-.26+.003*Math.sin(angle*9)+.002*Math.sin(angle*17))}a.needsUpdate=true;shorts.geometry.computeVertexNormals()}for(let j=0;j<9;j++){const phi=j/9*Math.PI*2,len=.007+(j%3)*.003;add(T,hp,new T.CylinderGeometry(.0008,.0005,len,4),threads,'lucia-denim-fray',Math.sin(phi)*.095,-.26-len*.45,Math.cos(phi)*.095)}}
-  const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);
+  const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);seatLuciaLegs(T,h);
+ }
+
+ function seatLuciaLegs(T,h){
+  const u=h.userData;
+  for(const leg of u.Lg){
+   const hp=leg.hp,dy=Math.max(0,.02-hp.position.y);
+   hp.position.y+=dy;
+   for(const child of hp.children)child.position.y-=dy;
+   const shorts=hp.children.find(o=>o.isMesh&&o.name.indexOf('lucia-reference-denim-shorts-')===0);
+   if(!shorts)throw new Error('Lucia shorts mesh missing');
+   shorts.updateMatrix();
+   const bounds=new T.Box3().setFromBufferAttribute(shorts.geometry.attributes.position).applyMatrix4(shorts.matrix);
+   const size=bounds.getSize(new T.Vector3());
+   const cap=add(T,hp,new T.SphereGeometry(1,24,16),u.m.pants,'lucia-denim-hip-socket');
+   cap.position.set((bounds.min.x+bounds.max.x)/2,-.025,(bounds.min.z+bounds.max.z)/2);
+   cap.scale.set(size.x*.49,.085,size.z*.49);
+  }
+  h.updateMatrixWorld(true);
+  u.luciaLegSockets=true;
  }
  function roundLuciaGeometry(T,mesh,old,region,u){
   const p=old.parameters;
