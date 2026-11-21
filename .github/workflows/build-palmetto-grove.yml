@@ -1,0 +1,52 @@
+name: Build Palmetto Grove winding neighborhood
+on:
+  push:
+    branches: [main]
+    paths: ['scripts/palmetto-grove.js','.github/workflows/build-palmetto-grove.yml','scripts/test-palmetto-grove.cjs']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install geometry test dependency
+        run: npm install --prefix "$RUNNER_TEMP/palmetto-test" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Test roads homes and neighborhood-only signs
+        run: node scripts/test-palmetto-grove.cjs
+      - name: Install into world builder and check JavaScript
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess,tempfile
+          p=Path('index.html');s=p.read_text(encoding='utf-8')
+          if '// PALMETTO_GROVE_V1' in s: raise SystemExit('Neighborhood already installed.')
+          if re.search(r'\b(?:const|let|var)\s+PG\b',s): raise SystemExit('PG identifier already used.')
+          anchor='function buildWorld(){'
+          if s.count(anchor)!=1: raise SystemExit('World builder changed.')
+          code=Path('scripts/palmetto-grove.js').read_text(encoding='utf-8')
+          s=s.replace(anchor,code+'\n'+anchor,1)
+          old='finalizeBatches();buildBaseMap();'
+          if s.count(old)!=1: raise SystemExit('World finalization changed; refusing ambiguous hook.')
+          s=s.replace(old,'buildPalmettoGrove();'+old,1)
+          checked=0
+          with tempfile.TemporaryDirectory() as d:
+              for body in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I):
+                  if not body.strip(): continue
+                  f=Path(d)/'check.js';f.write_text(body,encoding='utf-8')
+                  subprocess.run(['node','--check',str(f)],check=True);checked+=1
+          if not checked: raise SystemExit('No inline scripts checked.')
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit neighborhood implementation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Build winding Palmetto Grove streets homes driveways and local street signs'
+          git push origin HEAD:main
