@@ -1,0 +1,42 @@
+name: Subtle Lucia tan
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-subtle-tan.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  tan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Adjust only Lucia skin color
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess, tempfile
+          p=Path('js/reference-characters.js')
+          s=p.read_text(encoding='utf-8')
+          old="luciaC:{referenceLead:'lucia',name:'Lucia',realistic:true,female:true,luciaSummer:true,build:'slim',skin:0xa86b43"
+          new=old.replace('0xa86b43','0xa26740')
+          if new in s: raise SystemExit(0)
+          if s.count(old)!=1: raise SystemExit('Lucia skin anchor changed; refusing ambiguous edit.')
+          updated=s.replace(old,new,1)
+          with tempfile.TemporaryDirectory() as d:
+              check=Path(d)/'check.js'
+              check.write_text(updated,encoding='utf-8')
+              subprocess.run(['node','--check',str(check)],check=True)
+          p.write_text(updated,encoding='utf-8')
+          PY
+      - name: Commit skin-tone change
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Give Lucia a slightly deeper warm tan'
+          git push origin HEAD:main
