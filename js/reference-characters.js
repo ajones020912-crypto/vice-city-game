@@ -90,7 +90,34 @@
    shell.scale.copy(body.scale).multiplyScalar(1.045);shell.castShadow=true;
    leg.hp.add(shell);
   }
+  smoothLuciaDenim(T,h);
   u.luciaDenimSeat=true;
+ }
+
+ function smoothLuciaDenim(T,h){
+  const u=h.userData;
+  u.m.pants.flatShading=false;u.m.pants.bumpScale=.0003;u.m.pants.needsUpdate=true;
+  for(const joint of [u.hips,...u.Lg.map(l=>l.hp)])for(const mesh of joint.children){
+   if(!mesh.isMesh||mesh.material!==u.m.pants)continue;
+   const g=mesh.geometry,p=g.attributes.position;if(!p)continue;
+   g.computeVertexNormals();
+   const n=g.attributes.normal,groups=new Map();
+   for(let i=0;i<p.count;i++){
+    const key=[p.getX(i),p.getY(i),p.getZ(i)].map(v=>Math.round(v*1e6)).join(',');
+    if(!groups.has(key))groups.set(key,[]);groups.get(key).push(i);
+   }
+   const original=Float32Array.from(n.array);
+   for(const indices of groups.values()){
+    if(indices.length<2)continue;
+    for(const i of indices){
+     const base=new T.Vector3(original[i*3],original[i*3+1],original[i*3+2]),sum=new T.Vector3();
+     for(const j of indices){const v=new T.Vector3(original[j*3],original[j*3+1],original[j*3+2]);if(base.dot(v)>.6)sum.add(v);}
+     if(sum.lengthSq()>1e-12){sum.normalize();n.setXYZ(i,sum.x,sum.y,sum.z);}
+    }
+   }
+   n.needsUpdate=true;
+  }
+  u.luciaDenimSmoothed=true;
  }
  function roundLuciaGeometry(T,mesh,old,region,u){
   const p=old.parameters;
