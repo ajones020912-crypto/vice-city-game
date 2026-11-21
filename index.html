@@ -883,6 +883,26 @@ function buildRoadMeshes(){
   const seg=(s0,s1)=>{if(s1-s0<3)return;for(const side of[-1,1]){const off=side*(r.hw+1.4);
     if(r.o==='h')bakeG('walk',GEO.box,(s0+s1)/2,0,r.c+off,0,s1-s0,.17,2.8,[.78,.76,.72]);else bakeG('walk',GEO.box,r.c+off,0,(s0+s1)/2,0,2.8,.17,s1-s0,[.78,.76,.72])}};
   for(const g of gaps){seg(s,g[0]);s=Math.max(s,g[1])}}
+ // Landscaped medians on selected downtown boulevards, stopping before intersections.
+ for(const r of roads){
+  if(r.type!=='city'||r.w<18)continue;
+  const arterial=(r.o==='v'&&(r.c===0||r.c===180))||(r.o==='h'&&r.c===-330);
+  if(!arterial)continue;
+  for(let i=0;i<r.cross.length-1;i++){
+   const a=r.cross[i].p+r.cross[i].other.hw+2.5,b=r.cross[i+1].p-r.cross[i+1].other.hw-2.5;
+   if(b-a<20)continue;
+   const mid=(a+b)/2,len=b-a;
+   if(r.o==='h'){
+    bakeG('walk',GEO.box,mid,.08,r.c,0,len,.22,2.6,[.34,.39,.31]);
+    for(const side of[-1,1])bakeG('walk',GEO.box,mid,.10,r.c+side*1.42,0,len,.28,.18,[.72,.72,.66]);
+    for(let p=a+7;p<b-4;p+=12)for(const side of[-1,1])bakeG('plain',GEO.ico,p,.30,r.c+side*.48,rnd()*TAU,.78,.48,.62,pick([[.14,.34,.15],[.18,.42,.17],[.23,.4,.16]]));
+   }else{
+    bakeG('walk',GEO.box,r.c,.08,mid,0,2.6,.22,len,[.34,.39,.31]);
+    for(const side of[-1,1])bakeG('walk',GEO.box,r.c+side*1.42,.10,mid,0,.18,.28,len,[.72,.72,.66]);
+    for(let p=a+7;p<b-4;p+=12)for(const side of[-1,1])bakeG('plain',GEO.ico,r.c+side*.48,.30,p,rnd()*TAU,.62,.48,.78,pick([[.14,.34,.15],[.18,.42,.17],[.23,.4,.16]]));
+   }
+  }
+ }
 }
 // --- props
 const bulbCol=[1,.9,.6];
@@ -976,7 +996,7 @@ function makeParcels(){
    else{H=7+rnd()*14;style=pick(['deco','apt'])}
    parcels.push({x0:a,z0:b,x1:c,z1:e,cx,cz,H,style,mode,edgeS:j===nz-1,cityId:mode==='port'?'port':'dt'})}};
  const xr=G.xr,zr=G.zr.concat([420]);
- for(let i=0;i<xr.length-1;i++)for(let j=0;j<zr.length-1;j++){const hz0=zr[j]===-330?9:9,hz1=zr[j+1]===420?14:9;
+ for(let i=0;i<xr.length-1;i++)for(let j=0;j<zr.length-1;j++){if(xr[i]===-60&&xr[i+1]===0&&zr[j]===-30&&zr[j+1]===30)continue;const hz0=zr[j]===-330?9:9,hz1=zr[j+1]===420?14:9;
   const x0=xr[i]+9+2.9,x1=xr[i+1]-9-2.9,z0=zr[j]+9+2.9,z1=zr[j+1]-hz1-2.9;
   lot(x0,z0,x1,z1,zr[j+1]===420?'low':'core')}
  // port blocks
@@ -1220,12 +1240,36 @@ function forceShopDoors(){
  ];
  for(const shop of forced)ensureSafeForcedShop(shop);
 }
+// --- Central downtown park: a green break in the city grid.
+function buildCentralPark(){
+ const cx=-30,cz=0,w=48,d=48;
+ bakeG('plain',GEO.box,cx,.015,cz,0,w,.10,d,[.22,.43,.25]);
+ bakeG('walk',GEO.box,cx,.075,cz,0,3,.08,d-4,[.78,.75,.66]);
+ bakeG('walk',GEO.box,cx,.078,cz,0,w-4,.08,3,[.78,.75,.66]);
+ bakeG('walk',GEO.box,cx,.13,cz,0,10,.12,10,[.69,.69,.63]);
+ bakeG('plain',GEO.cyl,cx,.25,cz,0,2.8,.32,2.8,[.55,.68,.7]);
+ bakeG('water2',GEO.cyl,cx,.58,cz,0,2.25,.12,2.25,[.2,.72,.82]);
+ bakeG('plain',GEO.cyl,cx,.7,cz,0,.32,.8,.32,[.78,.83,.82]);
+ for(const [x,z,sc] of [[-49,-19,.9],[-11,-19,1],[-49,19,1],[-11,19,.9],[-41,-5,.8],[-19,5,.85]])oak(x,z,sc);
+ for(const [x,z] of [[-45,-10],[-15,-10],[-45,10],[-15,10]]){
+  bakeG('plain',GEO.box,x,.12,z,0,4,.24,1.5,[.25,.31,.23]);
+  bakeG('plain',GEO.box,x,.55,z,0,3.2,.18,.7,[.48,.29,.16]);
+  bakeG('plain',GEO.box,x,.92,z,0,3.2,.12,.7,[.35,.23,.14]);
+ }
+ for(const [x,z] of [[-51,0],[-9,0],[-30,-22],[-30,22]]){
+  for(let k=-1;k<=1;k++)bakeG('plain',GEO.ico,x+k*.8,.42,z,0,.58,.42,.58,pick([[.16,.36,.16],[.2,.43,.19],[.24,.4,.16]]));
+ }
+ for(const [x,z] of [[-52,-25],[-8,-25],[-52,25],[-8,25]]){
+  bakeG('plain',GEO.cyl6,x,.05,z,0,.12,2.8,.12,[.17,.2,.22]);
+  bakeG('lamp',GEO.sph,x,2.9,z,0,.28,.28,.28,[1,.82,.55]);
+ }
+}
 function buildWorld(){
  initMaterials();initPalm();defineRoads();buildNodes();bakeTerrain();buildTerrainMesh();buildRoadMeshes();
  makeParcels();houses();filterRoadParcels();assignShops();
  for(const p of parcels){if(p.style==='house')buildHouse(p);else{const built=building(p);if(built!==false&&p.shop)placeShopDoor(p)}}
  forceShopDoors();
- portExtras();streetProps();addOuterStreetlights();beachProps();swampProps();hillProps();keysProps();buildSignals();
+ portExtras();streetProps();addOuterStreetlights();beachProps();swampProps();hillProps();keysProps();buildSignals();buildCentralPark();
  finalizeBatches();buildBaseMap();
 }
 
