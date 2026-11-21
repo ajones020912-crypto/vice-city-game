@@ -1446,7 +1446,7 @@ function makeAircraftVisual(tk,color){
  const cockpit=new T.Mesh(new T.SphereGeometry(tk==='smallJet'?.83:.62,16,10,0,Math.PI*2,0,Math.PI/2),glass);cockpit.scale.set(1,.7,tk==='smallJet'?1.45:1.2);cockpit.position.set(0,.48,t.L*.22);ch.add(cockpit);
  if(tk==='smallJet'){for(const x of[-1,1]){const eng=new T.Mesh(new T.CylinderGeometry(.48,.55,2.4,12),dark);eng.rotation.x=Math.PI/2;eng.position.set(x*2.5,-.35,-t.L*.18);ch.add(eng)}}else{const hub=new T.Mesh(new T.CylinderGeometry(.16,.16,.38,12),dark);hub.rotation.x=Math.PI/2;hub.position.z=t.L/2+1.25;ch.add(hub);const prop=new T.Group();prop.name='propeller';for(let i=0;i<2;i++){const blade=new T.Mesh(new T.BoxGeometry(.13,2.35,.1),dark);blade.rotation.z=i*Math.PI/2;prop.add(blade)}prop.position.z=t.L/2+1.48;ch.add(prop)}
  const wheels=[];for(const x of[-.85,.85]){const wh=new T.Mesh(new T.CylinderGeometry(.22,.22,.16,10),dark);wh.rotation.z=Math.PI/2;wh.position.set(x,-.62,t.L*.2);ch.add(wh);wheels.push({piv:new T.Group(),w:wh,front:false})}
- return{g,ch,wheels,beam:{visible:false},tail:{material:dark},head:{material:white},bar:null,pm:paint};
+ return{g,ch,body:fus,wheels,beam:{visible:false},tail:{material:dark},head:{material:white},bar:null,pm:paint};
 }
 function makeCarVisual(tk,color){
  if(CAR_TYPES[tk].aircraft)return makeAircraftVisual(tk,color);
