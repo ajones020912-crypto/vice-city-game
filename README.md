@@ -1,68 +1,86 @@
 # Vice City 3D
 
-An open-world crime game that runs in your browser. Drive, race boats across the water, pull jobs, dodge a six-star heat system and explore a neon coastal city. Online multiplayer is on the way.
+Vice City 3D is a browser-based, open-world driving and adventure game set in a fictional neon coastal city. Explore the city, take on missions and side jobs, race rival drivers, fly aircraft, and build up your character's cash and reputation.
 
-**Play it:** https://vice-city-game-3tn7.onrender.com/
+**Play the game:** https://vice-city-game-3tn7.onrender.com/
 
-> Built with [three.js](https://threejs.org/) in a single HTML file. No install, no downloads — desktop Chrome recommended.
+The game is built with [Three.js](https://threejs.org/) and currently runs as a single-player browser game. Desktop Chrome is recommended.
 
 ---
 
-## Features
+## What's in the game
 
-### The city
-- **Eight districts:** Neon Beach downtown, Port Calusa docks, Palmetto Grove suburbs, Grassrun Bayou swamp, Mount Orrin hills, Kestrel Keys islands, the North Outskirts and the East Highway.
-- **Living streets:** AI traffic that follows lanes and traffic lights, pedestrians who react to danger, parked cars, street lamps and neon signs.
-- **Day/night cycle and weather:** sunsets, stars, wet reflective roads at night, rain, fog and tropical storms with lightning.
-- **Wildlife:** alligators roam the bayou — and they bite.
-
-### Two playable characters
-Switch between **Jason** and **Lucia** at any time (**C**). Switching while wanted helps throw the cops off your trail.
+### Explore the city
+- Eight districts to explore: Neon Beach downtown, Port Calusa docks, Palmetto Grove suburbs, Grassrun Bayou, Mount Orrin, Kestrel Keys, the North Outskirts, and the East Highway.
+- A downtown park with winding paths, a reflecting pond and fountain, a pavilion, benches, trees, and flower beds.
+- An airport with a runway, taxiways, airport buildings, a prop plane, and a small jet.
+- City traffic, pedestrians, parked vehicles, streetlights, traffic signals, and marked zebra crosswalks at city intersections.
+- A day-and-night cycle, changing weather, rain, fog, storms, and wet-looking roads.
 
 ### Vehicles
-- **Cars:** sedan, sports car, SUV, van, taxi and police cruiser — with fuel, damage, fire and explosions.
-- **Boats:** speedboats and airboats. Cops can't follow you onto the water.
-- **Sunshine Autos** dealership and personal garages (up to 8 vehicles).
-- **Mod garage** at Pay 'n' Spray: engine, armor and fuel-tank upgrades, plus resprays.
-- **Gas stations** to refuel, and **Scooter Bros** on your phone to deliver your ride.
+- Road vehicles include a sedan, sports car, SUV, van, taxi, and police cruiser.
+- Watercraft include speedboats and airboats.
+- Aircraft include a prop plane and a small jet.
+- Enter and exit vehicles, change camera views, use headlights, and visit garages.
+- Sunshine Autos dealership, personal vehicle storage, and Pay 'n' Spray vehicle customization and upgrades.
+- Gas stations for refueling and Scooter Bros vehicle delivery through the in-game phone.
 
-### Heat & police
-- **Six-star wanted system** with heat icons (face, clothes, vehicle, weapon, partner, CCTV).
-- Police cars and officers chase, shoot and arrest; a **helicopter with a searchlight** joins at 4+ stars.
-- Lose them by breaking line of sight, changing clothes, switching characters, using Pay 'n' Spray or escaping by boat.
+### Missions, jobs, and races
+- **10 story missions**, from the opening Welcome to the Coast checkpoint through deliveries, vehicle recovery, bayou missions, a Keys race, a smuggling run, a turf challenge, and The Big Score.
+- City work board activities: Courier Route, Roadside Mechanic, and Lost Cargo Recovery.
+- Taxi fares, car export orders, and other side activities.
+- Four street races: Downtown Circuit, Interstate Sprint, Bayou Dirt Rally, and Coastal Clash.
+- Race checkpoints, rival drivers, timed finishes, and medal targets. Coastal Clash has a five-minute cooldown after a completed race.
+- Shops, properties, safehouses, and hidden stashes to discover.
 
-### Things to do
-- **9 story missions** — deliveries, repo jobs, a bayou boss hunt, a race to the Keys, a boat smuggling run, a gang turf war and the big score.
-- **City work board (K):** Courier Route, Roadside Mechanic and Lost Cargo Recovery.
-- **Taxi fares, car export orders, gator hunting** and **three street races** with bronze/silver/gold medals.
-- **Store robberies** and **nonlethal hold-ups (B)**.
-- **Properties** that pay income and double as safehouses.
-- **25 hidden stashes** scattered around the map.
-- **Reputation tiers** that unlock better weapons, vehicles and missions.
+### Police and wanted system
+- A wanted-level system that attracts police attention as your criminal activity increases.
+- Police vehicles and officers pursue the player, with stronger responses at higher wanted levels.
+- Lose police attention by escaping, breaking line of sight, changing your appearance, switching characters, or using a Pay 'n' Spray.
+
+### Characters and progression
+- Play as Jason or Lucia and switch between them with **C**.
+- Earn cash and reputation by completing missions and activities.
+- Unlock additional equipment and opportunities as your reputation grows.
+- Save progress in your browser.
 
 ### Combat
-Fists, pistol, SMG, shotgun and rifle, headshots, and **Focus mode (F)** — slow motion with threats marked in red.
+- Switch between fists, pistol, SMG, shotgun, and rifle.
+- Aim and use the focus ability during encounters.
+- The game includes fictional combat and police-chase gameplay.
 
-### Your phone (P)
-Map, radio, Scooter Bros, WAINK vehicle scanner, texts, jobs, criminal profile, weather and quick save.
+### In-game phone
+Open the phone with **P**. Its apps include:
+- **Map** — view the city.
+- **Radio** — change stations.
+- **ViceFeed** — browse randomized posts from fictional city residents. Some posts react to in-game events such as weather, driving, and wanted status.
+- **Scooter Bros** — request vehicle delivery.
+- **WAINK** — vehicle scanner.
+- **Texts, Profile, Weather, Jobs, and Save** — check messages and player information, see conditions, access activities, and save.
 
-### Four radio stations (T)
-NEON FM (synthwave), Palm Beat 98 (reggaeton), Bass Coast (Miami bass) and Gulf Lo-Fi — all generated live in the browser.
+### Radio
+Four original in-game radio stations play procedurally generated audio:
+- NEON FM
+- Palm Beat 98
+- Bass Coast
+- Gulf Lo-Fi
 
-### Online multiplayer — coming soon
-A single shared online world for up to **24 players** is in development. The server is already in this repo; the **Multiplayer** button on the title screen stays disabled until the game side is finished.
+### Controls and interface
+- A clickable **CONTROLS** panel in the lower-left corner opens and closes the keyboard guide.
+- **RELEASE MOUSE** unlocks the cursor without pausing the game. Click back into the game to capture the mouse again.
+- Use the pause menu and in-game phone for additional options.
 
 ---
 
 ## Controls
 
-| Key | Action |
+| Key / input | Action |
 | --- | --- |
 | **W A S D** | Move / drive |
 | **Mouse** | Look / aim |
 | **Left click** | Shoot / punch |
-| **1 – 5**, mouse wheel | Switch weapon |
-| **E** | Enter/exit vehicle, enter buildings, use |
+| **1–5** or mouse wheel | Switch weapon |
+| **E** | Enter / exit vehicle, enter buildings, use |
 | **R** | Jobs, races, mod garage, rob store |
 | **K** | City work board |
 | **B** | Nonlethal hold-up |
@@ -70,33 +88,28 @@ A single shared online world for up to **24 players** is in development. The ser
 | **Space** | Jump / handbrake |
 | **F** | Focus mode |
 | **C** | Switch Jason / Lucia |
-| **P** | Phone |
+| **P** | Open phone |
 | **M** | Full map (drag to pan, scroll to zoom) |
 | **T** | Change radio station |
 | **H** | Headlights (auto / on / off) |
-| **V** | Camera view |
+| **V** | Change camera view |
 | **Q** | Graphics quality |
 | **J** | Quick save |
 | **Esc** | Pause |
+| **CONTROLS button** | Open / close the control guide |
+| **RELEASE MOUSE button** | Unlock the cursor without pausing |
 
 ---
 
 ## Multiplayer status
 
-Multiplayer is **in development** and currently disabled in the game.
+**Online multiplayer is not currently playable.** The game is currently single-player, and the Multiplayer option remains disabled.
 
-The plan is one **shared world** — no room codes. Pick a name, hit **Join world**, and you're in the same city as everyone else online, with a live player count on the title screen.
-
-What's ready:
-- `server.js` — Express + Socket.IO server for one shared world (up to 24 players), relaying each player's position, heading, character and whether they're in a vehicle.
-- `GET /api/online` — returns the current player count.
-- `GET /healthz` — health check for hosting.
-
-Still to do: switching the game's lobby from room codes to the shared world (`scripts/patch-shared-world.js`) and enabling the Multiplayer button.
+The repository contains an Express + Socket.IO server prototype in `server.js`, including online-player and health-check endpoints. The game still needs its shared-world connection and lobby integration before multiplayer can be enabled. To host the server, use a Render **Web Service**, not a Static Site.
 
 ---
 
-## Run it yourself
+## Run locally
 
 Requires [Node.js](https://nodejs.org/) 18 or newer.
 
@@ -107,13 +120,13 @@ npm start
 
 Then open http://localhost:3000.
 
-Single-player also works by simply opening `index.html` in a browser — the server is only needed for multiplayer.
+For single-player, you can also open `index.html` directly in a browser. The Node server is not required for the standalone single-player version.
 
 ---
 
-## Deploy on Render
+## Deploy the server on Render
 
-Create a **Web Service** (not a Static Site) from this repo:
+To run the Node server, create a **Web Service** connected to this repository.
 
 | Setting | Value |
 | --- | --- |
@@ -122,37 +135,43 @@ Create a **Web Service** (not a Static Site) from this repo:
 | Start command | `npm start` |
 | Health check path | `/healthz` |
 
-On the free plan the server sleeps after ~15 minutes without visitors, so the first visitor may wait up to a minute for it to wake up.
+The currently linked game page is hosted separately as a static site. A static site does not run the Socket.IO server.
 
 ---
 
 ## Project structure
 
-```
-index.html            The whole game: rendering, world, AI, missions, UI and the multiplayer client
-server.js             Express + Socket.IO server: serves the game and runs the shared online world
-package.json          Server dependencies and start script
-graphics-test.html    Small standalone page for testing the graphics stack
-scripts/              One-off patch scripts that update index.html
-  patch-post-processing.js   Post-processing upgrade (SSAO, FXAA, bloom, color grade)
-  patch-shared-world.js      Converts the room-code lobby to the shared world
-race/                 Race-related status and diagnostic files
-  race-cooldown-status.json  Coastal Clash cooldown workflow result
-  street-race-status.json    Street race setup status
-.github/workflows/    Manually-run GitHub Actions that apply game updates
-                      (graphics, traffic signals, crash animations, multiplayer)
+```text
+vice-city-game/
+├── index.html                 Main game: 3D world, vehicles, missions, UI, and gameplay
+├── server.js                  Express + Socket.IO server prototype
+├── package.json               Node dependencies and start scripts
+├── favicon.svg                Browser tab icon
+├── graphics-test.html         Standalone graphics test page
+├── assets/
+│   └── plane.fbx              Imported prop-plane model
+├── scripts/
+│   ├── patch-post-processing.js
+│   └── patch-shared-world.js
+├── race/
+│   ├── race-cooldown-status.json
+│   └── street-race-status.json
+└── .github/workflows/          Game update and maintenance workflows
 ```
 
-## Tech
+---
 
-- **three.js r128** (loaded from cdnjs) — rendering, with custom shaders for sky, water and post-processing (bloom, ambient occlusion, color grading)
-- **Web Audio API** — engine, sirens, effects and procedurally generated radio music
-- **Express + Socket.IO** — game server and online world
-- **localStorage** — save games (stored in your browser)
+## Technology
+
+- **Three.js r128** — 3D rendering, city, vehicles, lighting, and effects.
+- **FBXLoader** — loads the imported prop-plane model from `assets/plane.fbx`.
+- **Web Audio API** — vehicle sounds, sirens, effects, and generated radio audio.
+- **Express + Socket.IO** — server prototype for future online multiplayer.
+- **localStorage** — browser-based save data.
 
 ## Saving
 
-Progress autosaves every 30 seconds on foot, and you can save at any time with **J**, from the pause menu, the phone, or a safehouse. Saves live in your browser, so they don't carry over between devices or browsers.
+The game autosaves progress periodically. You can also save with **J**, from the pause menu, the phone, or a safehouse. Saves are stored in the browser's local storage, so they do not automatically transfer between browsers or devices.
 
 ---
 
