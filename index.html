@@ -897,9 +897,24 @@ function buildRoadMeshes(){
   for(let p=r.a;p<r.b;p+=150){const q=Math.min(p+150,r.b),y=.05;
    if(r.o==='h'){const x0=p,x1=q,z0=r.c-r.hw,z1=r.c+r.hw;B(key+'_h',(x0+x1)/2,r.c).quad([x0,y,z1],[x1,y,z1],[x1,y,z0],[x0,y,z0],0,1,0,(x0-r.a)/per,0,(x1-r.a)/per,1,col)}
    else{const z0=p,z1=q,x0=r.c-r.hw,x1=r.c+r.hw;B(key+'_v',r.c,(z0+z1)/2).quad([x0,y,z1],[x1,y,z1],[x1,y,z0],[x0,y,z0],0,1,0,0,(z1-r.a)/per,1,(z0-r.a)/per,col)}}}
- // plain dark asphalt intersection patches: no painted lines or crosswalks
+ // dark asphalt intersection patches
  for(const n of nodes){const hw=n.v.hw,hh=n.h.hw,y=.058;
   B('asph',n.x,n.z).quad([n.x-hw,y,n.z+hh],[n.x+hw,y,n.z+hh],[n.x+hw,y,n.z-hh],[n.x-hw,y,n.z-hh],0,1,0,0,0,hw/3,hh/3,col)}
+ // white zebra crosswalks on all four approaches to city intersections
+ for(const n of nodes){if(n.h.type!=='city'||n.v.type!=='city')continue;
+  const hw=n.v.hw,hh=n.h.hw,y=.069,bar=1.15,gap=1.05,count=6;
+  const stripe=(x0,z0,x1,z1)=>B('mark',(x0+x1)/2,(z0+z1)/2).quad([x0,y,z1],[x1,y,z1],[x1,y,z0],[x0,y,z0],0,1,0,0,0,1,1,[.92,.93,.91]);
+  // Crossings across the north and south legs
+  for(const side of [-1,1])for(let i=0;i<count;i++){
+   const z=n.z+side*(hh-4-i*(bar+gap));
+   stripe(n.x-hw+1.8,z-bar/2,n.x+hw-1.8,z+bar/2);
+  }
+  // Crossings across the east and west legs
+  for(const side of [-1,1])for(let i=0;i<count;i++){
+   const x=n.x+side*(hw-4-i*(bar+gap));
+   stripe(x-bar/2,n.z-hh+1.8,x+bar/2,n.z+hh-1.8);
+  }
+ }
  // sidewalks with gaps at crossings
  for(const r of roads){if(r.type!=='city')continue;let s=r.a;const gaps=r.cross.map(c=>[c.p-c.other.hw-.3,c.p+c.other.hw+.3]);gaps.push([r.b,r.b+1]);
   const seg=(s0,s1)=>{if(s1-s0<3)return;for(const side of[-1,1]){const off=side*(r.hw+1.4);
