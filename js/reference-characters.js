@@ -31,9 +31,35 @@
   const highlight=cloth(T,0x49342a);for(const side of[-1,1]){add(T,u.headP,tube(T,[[side*.078,.245,.048],[side*.098,.19,.06],[side*.104,.075,.02],[side*.091,.025,.01]],.012,16),side===1?highlight:m.hair,'lucia-face-framing-hair');add(T,u.headP,tube(T,[[side*.019,.203,.100],[side*.037,.210,.101],[side*.058,.206,.092]],.0037,14),m.brow,'lucia-arched-brow')}
   for(const mesh of u.headP.children.slice())if(mesh.isMesh){if(mesh.material===m.brow&&mesh.geometry.type==='BoxGeometry')remove(mesh);else if(mesh.material===m.eyeW){mesh.scale.x*=.98;mesh.scale.y*=.82}else if(mesh.material===m.lip){mesh.scale.x*=1.12;mesh.scale.y*=1.14}else if(mesh.material===m.skin&&mesh.geometry.type==='LatheGeometry'){const a=mesh.geometry.attributes.position;for(let i=0;i<a.count;i++){const y=a.getY(i),x=a.getX(i);a.setX(i,x*(1+.060*Math.exp(-Math.pow((y-.145)/.04,2))-.045*Math.exp(-Math.pow((y-.075)/.025,2))))}a.needsUpdate=true;mesh.geometry.computeVertexNormals()}}
   const threads=cloth(T,0xc8c2ad);for(let k=0;k<u.Lg.length;k++){const hp=u.Lg[k].hp;for(const mesh of hp.children.slice())if(mesh.isMesh&&mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y+.26)<.002)remove(mesh);const shorts=hp.children.find(o=>o.isMesh&&o.material===m.pants&&o.geometry.type==='LatheGeometry');if(shorts){shorts.name='lucia-reference-denim-shorts-'+k;const a=shorts.geometry.attributes.position;for(let i=0;i<a.count;i++)if(Math.abs(a.getY(i)+.26)<.001){const angle=Math.atan2(a.getZ(i),a.getX(i));a.setY(i,-.26+.003*Math.sin(angle*9)+.002*Math.sin(angle*17))}a.needsUpdate=true;shorts.geometry.computeVertexNormals()}for(let j=0;j<9;j++){const phi=j/9*Math.PI*2,len=.007+(j%3)*.003;add(T,hp,new T.CylinderGeometry(.0008,.0005,len,4),threads,'lucia-denim-fray',Math.sin(phi)*.095,-.26-len*.45,Math.cos(phi)*.095)}}
-  const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);
+  const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);fitLuciaShortsLegs(T,h);
  }
 
+
+ function fitLuciaShortsLegs(T,h){
+  const u=h.userData;
+  for(const leg of u.Lg){
+   const hp=leg.hp,kn=leg.kn;
+   const shorts=hp.children.find(o=>o.isMesh&&o.name.indexOf('lucia-reference-denim-shorts-')===0);
+   if(!shorts)throw new Error('Expected Lucia jean shorts');
+   shorts.updateMatrix();
+   const box=new T.Box3().setFromBufferAttribute(shorts.geometry.attributes.position).applyMatrix4(shorts.matrix);
+   const size=box.getSize(new T.Vector3()),center=box.getCenter(new T.Vector3());
+   const hip=add(T,hp,new T.SphereGeometry(1,24,16),u.m.skin,'lucia-skin-hip-bridge',center.x,.015,center.z);
+   hip.scale.set(size.x*.46,.12,size.z*.44);
+   const g=shorts.geometry,a=g.attributes.position;
+   for(let i=0;i<a.count;i++){
+    const y=a.getY(i),t=Math.max(0,Math.min(1,(y+.16)/.16));
+    a.setY(i,y+.035*t*t*(3-2*t));
+   }
+   a.needsUpdate=true;g.computeVertexNormals();g.computeBoundingSphere();g.computeBoundingBox();
+   const shin=leg.shin;shin.updateMatrix();
+   const sb=new T.Box3().setFromBufferAttribute(shin.geometry.attributes.position).applyMatrix4(shin.matrix);
+   const ss=sb.getSize(new T.Vector3()),sc=sb.getCenter(new T.Vector3());
+   const knee=add(T,kn,new T.SphereGeometry(1,24,16),u.m.skin,'lucia-skin-knee-bridge',sc.x,0,sc.z);
+   knee.scale.set(Math.max(.065,ss.x*.51),.075,Math.max(.060,ss.z*.51));
+  }
+  u.luciaShortsThighFit=true;
+ }
  function roundLuciaGeometry(T,mesh,old,region,u){
   const p=old.parameters;
   if(region!=='spine'||(mesh.material!==u.m.skin&&mesh.material!==u.m.shirt)||!p||!p.points||p.points.length<2)return old.clone();
@@ -47,7 +73,7 @@
    for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(to);const y=v.y;let xScale=1,zScale=1,frontOffset=0;
     if(region==='spine'&&y<.5){const waist=Math.exp(-Math.pow((y-.10)/.09,2)),chest=Math.exp(-Math.pow((y-.375)/.080,2))*Math.min(1,Math.max(0,(.5-y)/.05));xScale=1-.07*waist+.17*chest;zScale=1-.045*waist+(v.z>0?.10:.04)*chest;if(v.z>0){const arc=Math.pow(Math.min(1,v.z/.10),2),lobes=Math.min(1,(Math.exp(-Math.pow((v.x-.070)/.075,2))+Math.exp(-Math.pow((v.x+.070)/.075,2)))/1.04);frontOffset=(mesh.material===u.m.shirt?.064:.060)*chest*arc*lobes}}
     else if(region==='hips'){const hip=Math.exp(-Math.pow((y+.035)/.085,2)),waist=Math.exp(-Math.pow((y-.13)/.045,2));xScale=1+.16*hip-.025*waist;zScale=1+.10*hip-.015*waist}
-    else if(region==='thigh'){let k=Math.max(0,Math.min(1,(y+.45)/.4));k=k*k*(3-2*k);xScale=1+.12*k;zScale=1+.10*k}
+    else if(region==='thigh'){let k=Math.max(0,Math.min(1,(y+.45)/.4));k=k*k*(3-2*k);xScale=1+.18*k;zScale=1+.14*k}
     v.x *= xScale;
     v.z = v.z * zScale + frontOffset;
     function roundedInfluence(value, center, radius) {
