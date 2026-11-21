@@ -53,7 +53,7 @@
       top: { kind: 'tank', color: 0xf2f1ec },
       legs: { kind: 'trousers', color: 0xb39b6e },
       shoes: { kind: 'boots', color: 0x5a4330, sole: 0x2a2018 },
-      extras: ['watch'], detail: true,
+      extras: ['watch'], realistic: true,
     },
     luciaC: {
       name: 'Lucia', role: 'Lead · option C', build: 'slim',
@@ -61,7 +61,7 @@
       top: { kind: 'tank', color: 0x3c3e44 },
       legs: { kind: 'jeans', color: 0x1f2228, highWaist: true },
       shoes: { color: 0xf6f6f6, sole: 0xe2e2e2, accent: 0x3c3e44 },
-      extras: ['hoops', 'bracelets', 'ring', 'necklace'], detail: true,
+      extras: ['hoops', 'bracelets', 'ring', 'necklace'], realistic: true, female: true,
     },
     officer: {
       name: 'Officer', role: 'Police',
@@ -118,6 +118,7 @@
   // ---------------------------------------------------------------- builder
   function build(T, design, over) {
     const d = Object.assign({}, typeof design === 'string' ? DESIGNS[design] : design, over || {});
+    if (d.realistic) return buildHuman(T, d);
     const B = d.build || 'regular';
     const W = B === 'slim' ? 0.9 : B === 'stocky' ? 1.12 : 1;      // width factor
     const mat = (color, rough = 0.82, extra = {}) => new T.MeshStandardMaterial(Object.assign({ color, roughness: rough, metalness: 0, flatShading: true }, extra));
@@ -422,6 +423,140 @@
       if (ex2.includes('necklace')) { add(spine, new T.TorusGeometry(0.058, 0.0025, 4, 18), m.metal, 0, 0.585, 0.045, 1, 1.4, 1).rotation.x = 1.25; add(spine, ball(0.008, 5, 4), m.metal, 0, 0.535, 0.135); }
     }
     root.traverse((n) => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
+    root.userData = { hips, spine, headP, A, Lg, m, gun, guns, ph: Math.random() * 6, dead: 0, state: {}, design: d.name };
+    return root;
+  }
+
+  // ---------------------------------------------------------------- human-shaped builder
+  // Smooth, lathe-turned body parts with natural proportions. Same rig as build().
+  function buildHuman(T, d) {
+    const F = !!d.female;
+    const mat = (color, rough = 0.75, extra = {}) => new T.MeshStandardMaterial(Object.assign({ color, roughness: rough, metalness: 0 }, extra));
+    const tone = (hex, f) => { const c = new T.Color(hex); c.multiplyScalar(f); return c.getHex(); };
+    const m = {
+      skin: mat(d.skin, 0.62), hair: mat(d.hair, 0.7), shirt: mat(d.top.color, 0.88), pants: mat(d.legs.color, 0.9),
+      shoe: mat(d.shoes.color, 0.55), sole: mat(d.shoes.sole, 0.9), lip: mat(tone(d.skin, 0.8) | 0x180606, 0.5),
+      brow: mat(tone(d.hair, 0.9), 0.8), eyeW: mat(0xf2eee6, 0.35), iris: mat(0x3b2616, 0.3), pupil: mat(0x0c0c0c, 0.3),
+      metal: mat(0xd6b25a, 0.3, { metalness: 0.7 }), dark: mat(0x18191c, 0.45), white: mat(0xf4f2ec, 0.5),
+    };
+    const root = new T.Group();
+    const add = (parent, geo, material, x = 0, y = 0, z = 0, sx = 1, sy = 1, sz = 1) => { const me = new T.Mesh(geo, material); me.position.set(x, y, z); me.scale.set(sx, sy, sz); me.castShadow = true; me.receiveShadow = true; parent.add(me); return me; };
+    // a lathe from [radius, y] pairs (y may run top-to-bottom or bottom-to-top)
+    const lathe = (pts, seg = 18, scale = 1) => new T.LatheGeometry(pts.map(([r, y]) => new T.Vector2(Math.max(0.0005, r * scale), y)), seg);
+    const ball = (r, w = 16, h = 12, ...part) => new T.SphereGeometry(r, w, h, ...part);
+    const box = (x, y, z) => new T.BoxGeometry(x, y, z);
+    const slice = (pts, y0, y1) => pts.filter(([, y]) => y >= y0 && y <= y1);
+
+    // ---- rig (same names/offsets as the game)
+    const hips = new T.Group(); hips.position.y = 0.93; root.add(hips);
+    const spine = new T.Group(); spine.position.y = 0.08; hips.add(spine);
+    const headP = new T.Group(); headP.position.y = 0.6; spine.add(headP);
+
+    // ---- torso profile [radius, y] from waist (y=0 at spine) to neck base
+    const torso = F
+      ? [[0.001, -0.03], [0.142, -0.02], [0.128, 0.08], [0.124, 0.15], [0.138, 0.24], [0.158, 0.32], [0.165, 0.38], [0.162, 0.44], [0.158, 0.49], [0.13, 0.535], [0.07, 0.565], [0.045, 0.585], [0.001, 0.59]]
+      : [[0.001, -0.03], [0.152, -0.02], [0.148, 0.08], [0.152, 0.16], [0.168, 0.26], [0.185, 0.35], [0.195, 0.42], [0.196, 0.47], [0.17, 0.525], [0.1, 0.56], [0.055, 0.58], [0.001, 0.59]];
+    const DEPTH = F ? 0.66 : 0.62;
+    add(spine, lathe(torso), m.skin, 0, 0, 0, 1, 1, DEPTH);
+    // pelvis / hips (covered by trousers)
+    const pelvis = F
+      ? [[0.001, 0.09], [0.13, 0.085], [0.16, 0.03], [0.172, -0.03], [0.165, -0.08], [0.12, -0.11], [0.001, -0.115]]
+      : [[0.001, 0.09], [0.145, 0.085], [0.158, 0.03], [0.162, -0.03], [0.155, -0.08], [0.115, -0.11], [0.001, -0.115]];
+    add(hips, lathe(pelvis), m.pants, 0, 0, 0, 1, 1, 0.7);
+    // tank top: same shape as the torso, slightly larger, ending at the chest
+    const tank = slice(torso, -0.03, F ? 0.46 : 0.47).map(([r, y]) => [r * 1.035 + 0.002, y]);
+    tank.push([F ? 0.11 : 0.13, F ? 0.475 : 0.485], [0.001, F ? 0.476 : 0.486]);
+    add(spine, lathe(tank), m.shirt, 0, 0, 0, 1, 1, DEPTH * 1.03);
+    for (const sx of [-1, 1]) for (const sz of [1, -1]) { // straps over the shoulders
+      const st = add(spine, box(F ? 0.026 : 0.034, 0.085, 0.012), m.shirt, sx * (F ? 0.075 : 0.085), 0.51, sz * (F ? 0.088 : 0.095));
+      st.rotation.x = sz * -0.35;
+    }
+    // neck and shoulders
+    add(spine, lathe([[0.052, 0.54], [0.048, 0.6], [0.046, 0.66], [0.05, 0.72]]), m.skin);
+    for (const sx of [-1, 1]) add(spine, ball(F ? 0.05 : 0.06), m.skin, sx * (F ? 0.165 : 0.195), 0.5, 0, 1.05, 0.8, 0.85); // deltoids blend arm into torso
+
+    // ---- head: egg-shaped skull, narrower jaw
+    const skull = [[0.001, 0.035], [0.04, 0.04], [0.068, 0.062], [0.084, 0.095], [0.096, 0.135], [0.103, 0.175], [0.104, 0.205], [0.097, 0.245], [0.08, 0.278], [0.052, 0.298], [0.001, 0.306]];
+    add(headP, lathe(skull, 24), m.skin, 0, 0, 0.004, F ? 0.9 : 0.94, 1, 1.06);
+    for (const sx of [-1, 1]) add(headP, ball(0.026), m.skin, sx * (F ? 0.092 : 0.096), 0.165, -0.004, 0.42, 1, 0.75); // ears
+    // eyes: almond whites set into the face, iris + pupil
+    for (const sx of [-1, 1]) {
+      add(headP, ball(0.017), m.eyeW, sx * 0.036, 0.178, 0.09, 1.15, 0.6, 0.45);
+      add(headP, ball(0.0085), m.iris, sx * 0.036, 0.178, 0.096, 1, 1, 0.4);
+      add(headP, ball(0.0045), m.pupil, sx * 0.036, 0.178, 0.0995, 1, 1, 0.3);
+      add(headP, ball(0.02, 12, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), m.skin, sx * 0.036, 0.179, 0.089, 1.1, 0.5, 0.5); // upper lid
+      const brow = add(headP, box(0.036, F ? 0.005 : 0.008, 0.008), m.brow, sx * 0.038, 0.203, 0.096); brow.rotation.z = sx * (F ? -0.18 : -0.08);
+    }
+    // nose, mouth
+    add(headP, ball(0.014), m.skin, 0, 0.16, 0.1, 0.75, 1.6, 0.9);
+    add(headP, ball(0.013), m.skin, 0, 0.142, 0.107, 1.05, 0.85, 0.9);
+    add(headP, ball(0.016), m.lip, 0, 0.113, 0.094, 1.35, 0.32, 0.5);
+    add(headP, ball(0.016), m.lip, 0, 0.104, 0.093, 1.2, 0.36, 0.5);
+
+    // ---- hair
+    const cap = (y0, s = 1.035) => slice(skull, y0, 0.3).map(([r, y]) => [r * s, y]).concat([[0.001, 0.308]]);
+    if (d.hairStyle === 'buzz') {
+      const hb = add(headP, lathe(cap(0.19, 1.03).map(([r, y], i, a) => i === 0 ? [r, y] : [r, y]), 24), m.hair, 0, 0, 0.002, 0.95, 1, 1.07);
+      add(headP, ball(0.1, 20, 10, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.25), m.hair, 0, 0.17, -0.02, 1.0, 1.05, 1.02); // shorter at the back of the head
+    }
+    if (d.hairStyle === 'longdown') {
+      add(headP, lathe(cap(0.18, 1.06), 24), m.hair, 0, 0, -0.002, 0.93, 1, 1.08);
+      // length falling behind the shoulders: an open shell around the back of the head
+      const back = new T.CylinderGeometry(0.105, 0.135, 0.36, 20, 1, true, Math.PI * 0.6, Math.PI * 0.8); back.translate(0, -0.18, 0);
+      const bk = add(headP, back, m.hair, 0, 0.24, -0.006); bk.scale.set(1, 1, 0.9); // shell opening faces forward, hair sits behind the head
+      bk.material = m.hair.clone(); bk.material.side = T.DoubleSide;
+      for (const sx of [-1, 1]) { const st = add(headP, ball(0.03), m.hair, sx * 0.088, 0.08, 0.02, 0.7, 4.0, 1.1); st.rotation.z = sx * 0.12; } // strands framing the face
+      const fr = add(headP, ball(0.06), m.hair, 0.018, 0.255, 0.07, 1.4, 0.45, 0.6); fr.rotation.z = -0.25; // side-swept fringe
+    }
+
+    // ---- arms (hang from shoulder joint, y = 0 down)
+    const A = [];
+    for (const sx of [-1, 1]) {
+      const sh = new T.Group(); sh.position.set(sx * (F ? 0.18 : 0.215), 0.5, 0); spine.add(sh);
+      const upper = F ? [[0.046, 0.01], [0.049, -0.06], [0.045, -0.16], [0.038, -0.26], [0.036, -0.29]] : [[0.058, 0.01], [0.062, -0.06], [0.058, -0.15], [0.048, -0.25], [0.044, -0.29]];
+      add(sh, lathe(upper), m.skin);
+      const el = new T.Group(); el.position.y = -0.29; sh.add(el);
+      add(el, ball(F ? 0.036 : 0.044), m.skin);
+      const fore = F ? [[0.037, 0], [0.04, -0.06], [0.034, -0.16], [0.026, -0.25], [0.025, -0.27]] : [[0.045, 0], [0.05, -0.07], [0.043, -0.16], [0.032, -0.25], [0.03, -0.27]];
+      add(el, lathe(fore), m.skin);
+      add(el, ball(F ? 0.036 : 0.042), m.skin, 0, -0.315, 0.004, 0.75, 1.25, 0.5);             // hand
+      add(el, ball(F ? 0.014 : 0.017), m.skin, sx * -0.022, -0.298, 0.02, 0.9, 1.7, 0.9);        // thumb
+      A.push({ sh, el });
+    }
+
+    // ---- legs
+    const Lg = [];
+    for (const sx of [-1, 1]) {
+      const hp = new T.Group(); hp.position.set(sx * (F ? 0.092 : 0.095), -0.08, 0); hips.add(hp);
+      const thigh = F ? [[0.096, 0.02], [0.094, -0.08], [0.083, -0.22], [0.066, -0.38], [0.06, -0.43]] : [[0.098, 0.02], [0.096, -0.08], [0.086, -0.22], [0.07, -0.38], [0.064, -0.43]];
+      add(hp, lathe(thigh), m.pants);
+      const kn = new T.Group(); kn.position.y = -0.43; hp.add(kn);
+      add(kn, ball(F ? 0.06 : 0.064), m.pants);
+      const shinP = F ? [[0.058, 0], [0.064, -0.09], [0.056, -0.2], [0.042, -0.34], [0.044, -0.4]] : [[0.064, 0], [0.07, -0.09], [0.062, -0.2], [0.047, -0.34], [0.05, -0.4]];
+      const shin = add(kn, lathe(shinP), m.pants);
+      // shoes
+      if (d.shoes.kind === 'boots') { add(kn, lathe([[0.055, -0.32], [0.058, -0.4], [0.062, -0.43]]), m.shoe); }
+      add(kn, ball(0.058), m.shoe, 0, -0.432, 0.05, 0.95, 0.6, 2.1);
+      add(kn, box(0.112, 0.026, 0.255), m.sole, 0, -0.468, 0.052);
+      if (d.shoes.kind !== 'boots') { add(kn, box(0.114, 0.012, 0.12), mat(d.shoes.accent || 0x7a7a7a, 0.7), 0, -0.448, -0.005); for (let i = 0; i < 3; i++) add(kn, box(0.04, 0.005, 0.008), m.white, 0, -0.41 + i * 0.012, 0.085 - i * 0.012); }
+      Lg.push({ hp, kn, shin });
+    }
+    // waistband / belt
+    add(hips, new T.CylinderGeometry(F ? 0.135 : 0.147, F ? 0.135 : 0.147, 0.04, 24), F ? m.pants : mat(0x3b2a1c, 0.55), 0, 0.075, 0, 1, 1, F ? 0.72 : 0.7);
+    if (!F) add(hips, box(0.04, 0.03, 0.01), mat(0xb9bec4, 0.3, { metalness: 0.7 }), 0, 0.075, 0.104);
+
+    // ---- accessories
+    const ex = d.extras || [];
+    if (ex.includes('watch')) { add(A[1].el, new T.CylinderGeometry(0.034, 0.034, 0.022, 16), m.dark, 0, -0.245, 0); add(A[1].el, box(0.026, 0.004, 0.026), m.white, 0, -0.245, 0.031).rotation.x = Math.PI / 2; }
+    if (ex.includes('hoops')) for (const sx of [-1, 1]) add(headP, new T.TorusGeometry(0.016, 0.0025, 6, 16), m.metal, sx * 0.095, 0.125, 0.004).rotation.y = Math.PI / 2;
+    if (ex.includes('bracelets')) for (const y of [-0.245, -0.257]) add(A[0].el, new T.TorusGeometry(0.03, 0.003, 6, 16), m.metal, 0, y, 0).rotation.x = Math.PI / 2;
+    if (ex.includes('necklace')) { add(spine, new T.TorusGeometry(0.056, 0.002, 6, 24), m.metal, 0, 0.555, 0.02, 1, 1.25, 1).rotation.x = 1.15; add(spine, ball(0.006), m.metal, 0, 0.51, 0.1); }
+
+    // ---- weapon mount (same as the game rig)
+    const gun = new T.Group(); gun.position.set(0, -0.3, 0); A[1].el.add(gun);
+    const gm = mat(0x1b1d22, 0.4, { metalness: 0.6 });
+    const mk = (parts) => { const g = new T.Group(); for (const [w, h, dd, y, z] of parts) { const me = new T.Mesh(box(w, h, dd), gm); me.position.set(0, y, z || 0); g.add(me); } g.visible = false; gun.add(g); return g; };
+    const guns = { pistol: mk([[0.04, 0.2, 0.06, -0.1], [0.04, 0.06, 0.1, -0.02, 0.05]]), smg: mk([[0.05, 0.4, 0.07, -0.18], [0.04, 0.12, 0.05, -0.07, 0.09]]), shot: mk([[0.05, 0.7, 0.06, -0.3], [0.06, 0.25, 0.08, 0.05]]), rifle: mk([[0.05, 0.85, 0.07, -0.36], [0.04, 0.16, 0.06, -0.18, 0.1], [0.06, 0.22, 0.09, 0.08]]) };
     root.userData = { hips, spine, headP, A, Lg, m, gun, guns, ph: Math.random() * 6, dead: 0, state: {}, design: d.name };
     return root;
   }
