@@ -1494,15 +1494,40 @@ function carGeos(tk){
  return carGeoCache[tk]=o}
 function makeAircraftVisual(tk,color){
  const t=CAR_TYPES[tk],g=new T.Group(),ch=new T.Group();g.add(ch);
- const paint=new T.MeshStandardMaterial({color,metalness:.42,roughness:.42}),white=new T.MeshStandardMaterial({color:0xe9f1f5,metalness:.28,roughness:.35}),glass=new T.MeshStandardMaterial({color:0x18374b,metalness:.55,roughness:.18}),dark=new T.MeshStandardMaterial({color:0x18212a,roughness:.8});
- const fus=new T.Mesh(new T.CylinderGeometry(tk==='smallJet'?.72:.48,tk==='smallJet'?.78:.52,t.L,12),paint);fus.rotation.x=Math.PI/2;ch.add(fus);
- const nose=new T.Mesh(new T.ConeGeometry(tk==='smallJet'?.72:.48,tk==='smallJet'?2.4:1.5,12),white);nose.rotation.x=-Math.PI/2;nose.position.z=t.L/2+.65;ch.add(nose);
- const wing=new T.Mesh(new T.BoxGeometry(tk==='smallJet'?t.W: t.W, .18, tk==='smallJet'?2.1:2.7),paint);wing.position.set(0,.05,-.1);ch.add(wing);
- const tailWing=new T.Mesh(new T.BoxGeometry(t.W*.34,.13,1.15),white);tailWing.position.set(0,.28,-t.L*.39);ch.add(tailWing);
- const fin=new T.Mesh(new T.BoxGeometry(.16,1.45,1.35),paint);fin.position.set(0,.78,-t.L*.4);ch.add(fin);
- const cockpit=new T.Mesh(new T.SphereGeometry(tk==='smallJet'?.83:.62,16,10,0,Math.PI*2,0,Math.PI/2),glass);cockpit.scale.set(1,.7,tk==='smallJet'?1.45:1.2);cockpit.position.set(0,.48,t.L*.22);ch.add(cockpit);
- if(tk==='smallJet'){for(const x of[-1,1]){const eng=new T.Mesh(new T.CylinderGeometry(.48,.55,2.4,12),dark);eng.rotation.x=Math.PI/2;eng.position.set(x*2.5,-.35,-t.L*.18);ch.add(eng)}}else{const hub=new T.Mesh(new T.CylinderGeometry(.16,.16,.38,12),dark);hub.rotation.x=Math.PI/2;hub.position.z=t.L/2+1.25;ch.add(hub);const prop=new T.Group();prop.name='propeller';for(let i=0;i<2;i++){const blade=new T.Mesh(new T.BoxGeometry(.13,2.35,.1),dark);blade.rotation.z=i*Math.PI/2;prop.add(blade)}prop.position.z=t.L/2+1.48;ch.add(prop)}
- const wheels=[];for(const x of[-.85,.85]){const wh=new T.Mesh(new T.CylinderGeometry(.22,.22,.16,10),dark);wh.rotation.z=Math.PI/2;wh.position.set(x,-.62,t.L*.2);ch.add(wh);wheels.push({piv:new T.Group(),w:wh,front:false})}
+ const paint=new T.MeshStandardMaterial({color,metalness:.38,roughness:.38}),white=new T.MeshStandardMaterial({color:0xe9f1f5,metalness:.25,roughness:.38}),glass=new T.MeshStandardMaterial({color:0x15384f,metalness:.55,roughness:.16}),dark=new T.MeshStandardMaterial({color:0x18212a,roughness:.78}),rubber=new T.MeshStandardMaterial({color:0x090b0d,roughness:.95});
+ // Rounded fuselage and correctly pointed nose
+ const fus=new T.Mesh(new T.CylinderGeometry(tk==='smallJet'?.7:.46,tk==='smallJet'?.76:.5,t.L*.78,16),paint);fus.rotation.x=Math.PI/2;ch.add(fus);
+ const nose=new T.Mesh(new T.ConeGeometry(tk==='smallJet'?.7:.46,tk==='smallJet'?3.4:2.25,16),white);nose.rotation.x=Math.PI/2;nose.position.z=t.L*.43;ch.add(nose);
+ const tailCone=new T.Mesh(new T.ConeGeometry(.48,.9,12),paint);tailCone.rotation.x=-Math.PI/2;tailCone.position.z=-t.L*.47;ch.add(tailCone);
+ // Swept, tapered main wing instead of a rectangular block
+ const wingShape=new T.Shape();wingShape.moveTo(-.8,1.35);wingShape.lineTo(-t.W/2,.55);wingShape.lineTo(-t.W/2,-.85);wingShape.lineTo(-t.W*.28,-1.18);wingShape.lineTo(t.W*.28,-1.18);wingShape.lineTo(t.W/2,-.85);wingShape.lineTo(t.W/2,.55);wingShape.lineTo(.8,1.35);wingShape.closePath();
+ const wingGeo=new T.ShapeGeometry(wingShape);wingGeo.rotateX(Math.PI/2);const wing=new T.Mesh(wingGeo,paint);wing.position.y=.08;ch.add(wing);
+ const flap=new T.Mesh(new T.BoxGeometry(t.W*.7,.055,.28),white);flap.position.set(0,.11,-.82);ch.add(flap);
+ // Tailplane and upright fin
+ const tailWing=new T.Mesh(new T.BoxGeometry(t.W*.34,.12,1.25),white);tailWing.position.set(0,.23,-t.L*.39);ch.add(tailWing);
+ const finShape=new T.Shape();finShape.moveTo(-.65,0);finShape.lineTo(.55,0);finShape.lineTo(.35,1.65);finShape.lineTo(-.2,1.25);finShape.closePath();
+ const finGeo=new T.ShapeGeometry(finShape);const fin=new T.Mesh(finGeo,paint);fin.position.set(0,-.05,-t.L*.4);ch.add(fin);
+ // Cockpit glazing and side windows
+ const cockpit=new T.Mesh(new T.SphereGeometry(tk==='smallJet'?.82:.62,18,12,0,Math.PI*2,0,Math.PI/2),glass);cockpit.scale.set(1,.72,tk==='smallJet'?1.5:1.3);cockpit.position.set(0,.52,t.L*.19);ch.add(cockpit);
+ if(tk==='smallJet'){
+  for(const side of[-1,1]){
+   const eng=new T.Mesh(new T.CylinderGeometry(.48,.57,2.6,16),dark);eng.rotation.x=Math.PI/2;eng.position.set(side*2.65,-.28,-t.L*.17);ch.add(eng);
+   const intake=new T.Mesh(new T.TorusGeometry(.47,.075,8,18),white);intake.position.set(side*2.65,-.28,-t.L*.17+1.31);ch.add(intake);
+   for(let i=0;i<4;i++){const win=new T.Mesh(new T.BoxGeometry(.055,.19,.34),glass);win.position.set(side*.69,.46,t.L*.12-i*.8);ch.add(win)}
+  }
+ }else{
+  const hub=new T.Mesh(new T.CylinderGeometry(.18,.18,.42,12),dark);hub.rotation.x=Math.PI/2;hub.position.z=t.L*.5+.2;ch.add(hub);
+  const prop=new T.Group();prop.name='propeller';for(let i=0;i<2;i++){const blade=new T.Mesh(new T.BoxGeometry(.16,2.55,.12),dark);blade.rotation.z=i*Math.PI/2;prop.add(blade)}prop.position.z=t.L*.5+.43;ch.add(prop);
+  for(const side of[-1,1]){const strut=new T.Mesh(new T.BoxGeometry(.07,.65,.07),dark);strut.position.set(side*1.1,-.27,-.05);ch.add(strut)}
+ }
+ // Three visible landing wheels with struts
+ const wheels=[];
+ for(const x of[-.9,.9]){
+  const strut=new T.Mesh(new T.CylinderGeometry(.055,.07,.62,8),white);strut.position.set(x,-.42,t.L*.13);ch.add(strut);
+  const wh=new T.Mesh(new T.CylinderGeometry(.24,.24,.18,14),rubber);wh.rotation.z=Math.PI/2;wh.position.set(x,-.77,t.L*.13);ch.add(wh);wheels.push({w:wh,front:false});
+ }
+ const noseStrut=new T.Mesh(new T.CylinderGeometry(.05,.06,.5,8),white);noseStrut.position.set(0,-.38,t.L*.39);ch.add(noseStrut);
+ const noseWheel=new T.Mesh(new T.CylinderGeometry(.16,.16,.14,12),rubber);noseWheel.rotation.z=Math.PI/2;noseWheel.position.set(0,-.65,t.L*.39);ch.add(noseWheel);wheels.push({w:noseWheel,front:true});
  return{g,ch,body:fus,wheels,beam:{visible:false},tail:{material:dark},head:{material:white},bar:null,pm:paint};
 }
 function makeCarVisual(tk,color){
@@ -1805,16 +1830,28 @@ const _p2=[0,0];
 function carCircles(c,out){const t=c.t,sn=Math.sin(c.h),cs=Math.cos(c.h),o=t.L/2-.95;out[0]=[c.x+sn*o,c.z+cs*o];out[1]=[c.x,c.z];out[2]=[c.x-sn*o,c.z-cs*o];return out}
 const _cc=[null,null,null];
 function stepAircraft(c,dt){
- const t=c.t,inp=c.inp,ground=heightAt(c.x,c.z)+.9;
- let speed=c.speed,throttle=inp.thr>0?inp.thr:0;
- if(inp.thr<0)speed=Math.max(0,speed-30*dt);else speed=Math.min(t.top,speed+throttle*(c.tk==='smallJet'?12:8)*dt);
- if(!c.airborne&&speed>20&&keys[' '])c.airborne=true;
- if(c.airborne){const climb=(keys[' ']?1:0)-(keys['shift']?1:0);c.vy=(c.vy||0)+(climb*8-1.8)*dt;c.vy=clamp(c.vy,-12,13);c.y+=c.vy*dt;if(c.y<=ground){c.y=ground;c.vy=0;c.airborne=false;c.pitch=0}else c.pitch=lerp(c.pitch,climb*.16,dt*2.4)}
- else{c.y=ground;c.vy=0;c.pitch=0}
- c.h+=inp.steer*(c.airborne?1.05:.65)*dt*(.35+speed/35);
- c.vx=Math.sin(c.h)*speed;c.vz=Math.cos(c.h)*speed;c.vf=speed;c.vl=0;c.braking=inp.thr<0;c.fuel=Math.max(0,c.fuel-dt*(throttle>0?.12:0));
+ const t=c.t,inp=c.inp,ground=heightAt(c.x,c.z)+.88;
+ let speed=c.speed,throttle=Math.max(0,inp.thr);
+ if(inp.thr<0)speed=Math.max(0,speed-26*dt);
+ else if(throttle>0)speed=Math.min(t.top,speed+throttle*(c.tk==='smallJet'?13:9)*dt);
+ else speed=Math.max(0,speed-(c.airborne?1.0:3.5)*dt);
+ // Build speed on the runway, then press Space once to lift off.
+ if(!c.airborne&&speed>17&&keys[' ']){c.airborne=true;c.vy=2.4}
+ if(c.airborne){
+  // Stable level flight: releasing Space no longer makes the aircraft fall.
+  const climb=keys[' ']?5.2:keys['shift']?-5.2:0;
+  c.vy=lerp(c.vy||0,climb,Math.min(1,dt*2.1));
+  c.y+=c.vy*dt;
+  if(c.y<=ground){c.y=ground;c.vy=0;c.airborne=false;c.pitch=0}
+  else c.pitch=lerp(c.pitch,keys[' ']?-.12:keys['shift']?.12:0,Math.min(1,dt*2.5));
+ }else{c.y=ground;c.vy=0;c.pitch=0}
+ c.h+=inp.steer*(c.airborne?.9:.52)*dt*(.3+speed/32);
+ c.vx=Math.sin(c.h)*speed;c.vz=Math.cos(c.h)*speed;c.vf=speed;c.vl=0;c.braking=inp.thr<0;
+ c.fuel=Math.max(0,c.fuel-dt*(throttle>0?.1:0));
  if(c.fuel<=0){c.inp.thr=0;c.vx*=.995;c.vz*=.995}
- c.roll=lerp(c.roll,-inp.steer*(c.airborne?.28:.08),dt*3);c.age+=dt;
+ c.roll=lerp(c.roll,-inp.steer*(c.airborne?.32:.07),Math.min(1,dt*3));
+ const prop=c.v.getObjectByName('propeller');if(prop)prop.rotation.z+=(7+speed*.65)*dt;
+ c.age+=dt;
 }
 function stepCar(c,dt){
  const t=c.t,inp=c.inp;if(t.aircraft)return stepAircraft(c,dt);if(t.boat)return stepBoat(c,dt);c.age+=dt;const up=c.up||{},pw=1+.15*(up.eng||0)+.18*(up.turbo||0),tw=1+.07*(up.eng||0);
