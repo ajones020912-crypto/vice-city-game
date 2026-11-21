@@ -474,6 +474,9 @@
       ? [[0.001, 0.09], [0.13, 0.085], [0.16, 0.03], [0.172, -0.03], [0.165, -0.08], [0.12, -0.11], [0.001, -0.115]]
       : [[0.001, 0.09], [0.145, 0.085], [0.158, 0.03], [0.162, -0.03], [0.155, -0.08], [0.115, -0.11], [0.001, -0.115]]).map(([r, y]) => [r * W, y]);
     add(hips, lathe(pelvis, 22, 0.93), m.pants, 0, 0, 0, 1, 0.92, 0.66);
+    // City cast: a seat piece in the trouser/shorts fabric that widens out over the tops of the thighs,
+    // so the legs run into the hips instead of starting under a narrower hip block.
+    if (!/^(Jason|Lucia)$/.test(d.name)) add(hips, lathe([[0.15, 0.06], [0.175, 0.0], [0.194, -0.05], [0.197, -0.09], [0.186, -0.12], [0.152, -0.148], [0.085, -0.164], [0.001, -0.168]], 24, W * (F ? 1.02 : 1)), m.pants, 0, 0, 0, 1, 1, 0.62);
     add(spine, lathe([[0.052, 0.54], [0.048, 0.6], [0.046, 0.66], [0.05, 0.72]]), m.skin);                               // neck
     const shX = (F ? 0.18 : 0.215) * W;
     for (const sx of [-1, 1]) add(spine, ball(F ? 0.05 : 0.06 * W), m.skin, sx * (shX - 0.02), 0.5, 0, 1.05, 0.8, 0.85);  // deltoids
@@ -756,9 +759,43 @@
     const gm = mat(0x1b1d22, 0.4, { metalness: 0.6 });
     const mk = (parts) => { const g = new T.Group(); for (const [w, h, dd, y, z] of parts) { const me = new T.Mesh(box(w, h, dd), gm); me.position.set(0, y, z || 0); g.add(me); } g.visible = false; gun.add(g); return g; };
     const guns = { pistol: mk([[0.04, 0.2, 0.06, -0.1], [0.04, 0.06, 0.1, -0.02, 0.05]]), smg: mk([[0.05, 0.4, 0.07, -0.18], [0.04, 0.12, 0.05, -0.07, 0.09]]), shot: mk([[0.05, 0.7, 0.06, -0.3], [0.06, 0.25, 0.08, 0.05]]), rifle: mk([[0.05, 0.85, 0.07, -0.36], [0.04, 0.16, 0.06, -0.18, 0.1], [0.06, 0.22, 0.09, 0.08]]) };
+    // ---- fabric texture on clothing (city cast; the two leads are left as they are)
+    if (!/^(Jason|Lucia)$/.test(d.name)) {
+      applyFabric(T, m.shirt, tk === 'hoodie' ? 'knit' : 'cotton', tk === 'hoodie' ? 0.55 : 0.16);
+      applyFabric(T, m.pants, lk === 'jeans' ? 'denim' : 'cotton', lk === 'jeans' ? 0.4 : 0.14);
+      applyFabric(T, m.jacket, 'cotton', 0.18); applyFabric(T, m.trim, 'cotton', 0.14);
+    }
     root.userData = { hips, spine, headP, A, Lg, m, gun, guns, ph: Math.random() * 6, dead: 0, state: {}, design: d.name };
     return root;
   }
+
+  // ---------------------------------------------------------------- fabric textures
+  // Tiling fabric normal maps drawn on a canvas: cotton weave, denim twill and ribbed knit.
+  const fabricCache = new Map();
+  function fabricTex(T, kind) {
+    if (fabricCache.has(kind)) return fabricCache.get(kind);
+    const N = 128, cv = document.createElement('canvas'); cv.width = cv.height = N;
+    const g = cv.getContext('2d'), img = g.createImageData(N, N), H = new Float32Array(N * N), TAU = Math.PI * 2;
+    const wob = (x, y) => (Math.sin(TAU * (3 * x + 2 * y) + 1.3) + Math.sin(TAU * (5 * x - 4 * y) + 4.1) + Math.sin(TAU * 7 * y + 2.7)) / 3;
+    const fine = (x, y) => (Math.sin(TAU * (37 * x + 11 * y) + 5.9) * Math.sin(TAU * (13 * x - 41 * y) + 0.8) + Math.sin(TAU * (53 * x + 29 * y) + 3.3)) / 2;
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const x = i / N, y = j / N; let h;
+      if (kind === 'denim') h = 0.5 + 0.5 * Math.sin(TAU * (16 * x + 16 * y)) + 0.12 * fine(x, y) + 0.1 * wob(x, y);       // diagonal twill
+      else if (kind === 'knit') h = Math.abs(Math.sin(TAU * 10 * x)) * (0.75 + 0.25 * Math.sin(TAU * 24 * y)) + 0.05 * fine(x, y); // ribbed knit
+      else h = (0.5 + 0.5 * Math.sin(TAU * 20 * x)) * (0.5 + 0.5 * Math.sin(TAU * 20 * y)) + 0.1 * fine(x, y) + 0.06 * wob(x, y); // cotton weave
+      H[j * N + i] = h;
+    }
+    const at = (i, j) => H[((j + N) % N) * N + ((i + N) % N)];
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const dx = (at(i + 1, j) - at(i - 1, j)) * 1.5, dy = (at(i, j + 1) - at(i, j - 1)) * 1.5, l = Math.hypot(dx, dy, 1), o = (j * N + i) * 4;
+      img.data[o] = (-dx / l * 0.5 + 0.5) * 255; img.data[o + 1] = (-dy / l * 0.5 + 0.5) * 255; img.data[o + 2] = (1 / l * 0.5 + 0.5) * 255; img.data[o + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    const t = new T.CanvasTexture(cv); t.wrapS = t.wrapT = T.RepeatWrapping;
+    const r = { cotton: [13, 9], denim: [7, 8], knit: [5, 4] }[kind]; t.repeat.set(r[0], r[1]);
+    fabricCache.set(kind, t); return t;
+  }
+  function applyFabric(T, m, kind, amount) { if (!m || !m.isMeshStandardMaterial || typeof document === 'undefined') return; m.normalMap = fabricTex(T, kind); m.normalScale = new T.Vector2(amount, amount); m.needsUpdate = true; }
 
   // ---------------------------------------------------------------- draw-call merging
   // Merges the static meshes under each rig joint into one mesh per material,
@@ -777,12 +814,12 @@
       }
       for (const [material, list] of byMat) {
         if (list.length < 2) continue;
-        const pos = [], nor = [], idx = []; let base = 0;
+        const pos = [], nor = [], uvs = [], idx = []; let base = 0;
         for (const c of list) {
           c.updateMatrix();
           const geo = c.geometry.clone().applyMatrix4(c.matrix);
-          const p = geo.attributes.position, nn = geo.attributes.normal;
-          for (let i = 0; i < p.count; i++) { pos.push(p.getX(i), p.getY(i), p.getZ(i)); if (nn) nor.push(nn.getX(i), nn.getY(i), nn.getZ(i)); else nor.push(0, 1, 0); }
+          const p = geo.attributes.position, nn = geo.attributes.normal, uu = geo.attributes.uv;
+          for (let i = 0; i < p.count; i++) { pos.push(p.getX(i), p.getY(i), p.getZ(i)); if (nn) nor.push(nn.getX(i), nn.getY(i), nn.getZ(i)); else nor.push(0, 1, 0); if (uu) uvs.push(uu.getX(i), uu.getY(i)); else uvs.push(0, 0); }
           if (geo.index) for (let i = 0; i < geo.index.count; i++) idx.push(geo.index.getX(i) + base);
           else for (let i = 0; i < p.count; i++) idx.push(i + base);
           base += p.count; geo.dispose(); g.remove(c);
@@ -790,6 +827,7 @@
         const merged = new T.BufferGeometry();
         merged.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
         merged.setAttribute('normal', new T.Float32BufferAttribute(nor, 3));
+        merged.setAttribute('uv', new T.Float32BufferAttribute(uvs, 2));
         merged.setIndex(base > 65535 ? new T.Uint32BufferAttribute(idx, 1) : new T.Uint16BufferAttribute(idx, 1));
         merged.computeBoundingSphere();
         const me = new T.Mesh(merged, material); me.castShadow = true; me.receiveShadow = true; g.add(me);
