@@ -114,7 +114,7 @@
       [B(0.17, 0.07, 0.12), M(-0.88, 0.86, ax - 0.48, -0.2), mid],
       [B(0.02, 0.04, 0.12), M(0.8, 0.85, ax - 0.48), dk],
       [B(0.02, 0.04, 0.12), M(-0.8, 0.85, ax - 0.48), dk],
-      [B(1.5, 0.03, 0.12), M(0, 0.905, -L2 + 0.2), dk],                       // ducktail lip
+      [B(1.5, 0.03, 0.12), M(0, 0.875, -L2 + 0.2), dk],                       // ducktail lip
     ]);
     // ---- lights: thin slanted headlight slits and a full-width tail bar
     const head = parts(T, [
@@ -144,5 +144,9 @@
     0x1bb5a3, 0x22d3ee, 0x3a8bff, 0x2343c9, 0x13234f, 0xf4f4f1, 0xb9bec6, 0x5a6270, 0x16181c, 0xc9a24a,
   ];
 
-  window.VCSupercar = { geos, COLORS };
+  // The game's paint shader shows colour values as-is (no sRGB decode), which washes them out,
+  // so the game gets each colour converted to linear; COLORS keeps the colours as they should look.
+  const GAME_COLORS = window.THREE ? COLORS.map((h) => new window.THREE.Color(h).convertSRGBToLinear().getHex()) : COLORS;
+
+  window.VCSupercar = { geos, COLORS, GAME_COLORS };
 })();
