@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+<defs>
+ <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#24105c"/><stop offset=".48" stop-color="#d52b9c"/><stop offset="1" stop-color="#ff9b43"/></linearGradient>
+ <linearGradient id="gold" x2=".1" y2="1"><stop stop-color="#fff5d6"/><stop offset=".28" stop-color="#ffd36a"/><stop offset=".62" stop-color="#ed8c36"/><stop offset="1" stop-color="#9d3b24"/></linearGradient>
+ <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="3" result="b"/><feOffset dy="3"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <clipPath id="round"><rect x="5" y="5" width="118" height="118" rx="18"/></clipPath>
+</defs>
+<g clip-path="url(#round)">
+ <rect width="128" height="128" fill="#090611"/>
+ <rect x="7" y="7" width="114" height="114" rx="16" fill="url(#bg)" stroke="#ff5ad9" stroke-width="3"/>
+ <circle cx="88" cy="46" r="25" fill="#ffcf76" opacity=".45"/>
+ <path d="M0 92 L19 73 31 85 49 65 63 84 80 70 98 88 113 73 132 91 V128 H0Z" fill="#32145e"/>
+ <path d="M0 102 Q35 95 64 104 T128 101 V128 H0Z" fill="#120c30"/>
+ <path d="M0 110 Q32 105 64 111 T128 109" fill="none" stroke="#ff9bdb" stroke-width="2" opacity=".8"/>
+ <g fill="#150d2d"><path d="M91 72 Q88 49 79 35 Q91 44 94 55 Q94 38 104 28 Q99 46 98 58 Q107 46 118 45 Q105 56 100 69Z"/><path d="M19 87 Q17 72 10 64 Q20 68 23 77 Q24 64 33 58 Q28 73 27 83 Q35 75 43 77 Q33 82 28 91Z"/></g>
+ <text x="64" y="95" text-anchor="middle" font-family="Arial Black,Impact,sans-serif" font-size="55" font-weight="900" letter-spacing="-4" fill="url(#gold)" stroke="#21102f" stroke-width="7" paint-order="stroke" filter="url(#shadow)">#D</text>
+ <text x="64" y="113" text-anchor="middle" font-family="Arial,sans-serif" font-size="8" font-weight="bold" letter-spacing="2" fill="#fff2e8">VICE CITY</text>
+</g></svg>
