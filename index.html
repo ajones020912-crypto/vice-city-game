@@ -886,7 +886,8 @@ function buildRoadMeshes(){
  // Landscaped medians on selected downtown boulevards, stopping before intersections.
  for(const r of roads){
   if(r.type!=='city'||r.w<22)continue;
-  const arterial=(r.o==='v'&&(r.c===0||r.c===180))||(r.o==='h'&&r.c===-330);
+  // Keep the road beside the central park clear: its center strip must remain asphalt, not planted grass.
+  const arterial=(r.o==='v'&&r.c===180)||(r.o==='h'&&r.c===-330);
   if(!arterial)continue;
   for(let i=0;i<r.cross.length-1;i++){
    const a=r.cross[i].p+r.cross[i].other.hw+2.5,b=r.cross[i+1].p-r.cross[i+1].other.hw-2.5;
