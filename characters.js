@@ -53,15 +53,15 @@
       top: { kind: 'tank', color: 0xf2f1ec },
       legs: { kind: 'trousers', color: 0xb39b6e },
       shoes: { kind: 'boots', color: 0x5a4330, sole: 0x2a2018 },
-      extras: ['watch'],
+      extras: ['watch'], detail: true,
     },
     luciaC: {
       name: 'Lucia', role: 'Lead · option C', build: 'slim',
       skin: 0xb9784e, hair: 0x4a2c1a, hairStyle: 'longdown',
       top: { kind: 'tank', color: 0x3c3e44 },
       legs: { kind: 'jeans', color: 0x1f2228, highWaist: true },
-      shoes: { color: 0xf6f6f6, sole: 0xe2e2e2 },
-      extras: ['hoops'],
+      shoes: { color: 0xf6f6f6, sole: 0xe2e2e2, accent: 0x3c3e44 },
+      extras: ['hoops', 'bracelets', 'ring', 'necklace'], detail: true,
     },
     officer: {
       name: 'Officer', role: 'Police',
@@ -207,7 +207,7 @@
 
     // ---- neck + head
     add(spine, limb(0.052, 0.058, 0.1, 6), m.skin, 0, 0.66, 0);
-    const head = add(headP, ball(0.118, 10, 8), m.skin, 0, 0.165, 0.005, 0.93, 1.08, 1.0);
+    const head = add(headP, d.detail ? ball(0.118, 16, 12) : ball(0.118, 10, 8), m.skin, 0, 0.165, 0.005, 0.93, 1.08, 1.0);
     add(headP, ball(0.1, 8, 5), m.skin, 0, 0.1, 0.022, 0.85, 0.6, 0.9); // jaw
     for (const sx of [-1, 1]) add(headP, ball(0.026, 5, 4), m.skin, sx * 0.112, 0.16, -0.004, 0.5, 1, 0.8); // ears
     const nose = add(headP, new T.ConeGeometry(0.018, 0.045, 4), m.skin, 0, 0.152, 0.118); nose.rotation.x = Math.PI / 2;
@@ -339,6 +339,88 @@
       rifle: mk([[0.05, 0.85, 0.07, -0.36], [0.04, 0.16, 0.06, -0.18, 0.1], [0.06, 0.22, 0.09, 0.08]]),
     };
 
+    if (d.detail) detailPass();
+    function detailPass() {
+      const shade = (hex, f) => { const c = new T.Color(hex); c.multiplyScalar(f); return c.getHex(); };
+      const skinDark = mat(shade(d.skin, 0.78), 0.75), lip = mat(shade(d.skin, 0.68) | 0x200808, 0.55), iris = mat(0x4a2f1c, 0.4);
+      const female = d.build === 'slim';
+      // ---- face
+      for (const sx of [-1, 1]) {
+        add(headP, ball(0.03, 6, 5), m.skin, sx * 0.062, 0.148, 0.074, 1, 0.5, 0.35);          // cheekbones
+        add(headP, ball(0.0085, 6, 5), iris, sx * 0.042, 0.181, 0.104, 1, 1, 0.5);              // iris
+        add(headP, box(0.044, 0.01, 0.014), skinDark, sx * 0.042, 0.194, 0.101);               // upper eyelid
+        add(headP, ball(0.014, 5, 4), skinDark, sx * 0.118, 0.16, 0.004, 0.3, 0.7, 0.5);        // inner ear
+        add(headP, ball(0.006, 4, 3), skinDark, sx * 0.01, 0.137, 0.116);                      // nostril
+        if (female) add(headP, box(0.012, 0.016, 0.004), m.dark, sx * 0.064, 0.188, 0.099).rotation.z = sx * -0.6; // lashes
+      }
+      add(headP, box(0.018, 0.045, 0.016), m.skin, 0, 0.165, 0.108);                           // nose bridge
+      add(headP, ball(0.015, 6, 5), m.skin, 0, 0.143, 0.115);                                   // nose tip
+      add(headP, ball(0.036, 7, 5), m.skin, 0, 0.075, 0.064, 1, 0.75, 0.8);                     // chin
+      add(headP, box(0.052, 0.011, 0.012), lip, 0, 0.11, 0.111);                                // upper lip
+      add(headP, box(0.046, 0.013, 0.012), lip, 0, 0.099, 0.109);                               // lower lip
+      if (!female) { // short stubble shadow along the jaw and upper lip
+        const stub = new T.MeshStandardMaterial({ color: d.hair, roughness: 1, transparent: true, opacity: 0.35, flatShading: true });
+        add(headP, ball(0.102, 10, 6, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.4), stub, 0, 0.12, 0.022, 0.88, 0.75, 0.9);
+        for (const sx of [-1, 1]) add(headP, box(0.046, 0.016, 0.014), m.hair, sx * 0.044, 0.214, 0.104).rotation.z = sx * -0.1; // heavier brows
+      }
+      // ---- hair detail
+      if (d.hairStyle === 'buzz') add(headP, ball(0.122, 12, 6, 0, Math.PI * 2, Math.PI * 0.42, Math.PI * 0.09), mat(shade(d.hair, 1.6), 0.95), 0, 0.165, -0.022, 0.97, 1.08, 1.0); // faded sides (lighter, shorter)
+      if (d.hairStyle === 'longdown') {
+        const h2 = mat(shade(d.hair, 1.18), 0.75);
+        for (const [x, z, sy, r] of [[-0.06, -0.09, 1.6, -0.1], [0.06, -0.09, 1.5, 0.1], [0, -0.11, 1.7, 0]]) { const c = add(headP, ball(0.07, 7, 6), x ? h2 : m.hair, x, -0.02, z, 1, sy, 0.55); c.rotation.z = r; }
+        for (const sx of [-1, 1]) { const w = add(headP, ball(0.045, 6, 5), h2, sx * 0.1, -0.12, -0.02, 0.9, 1.3, 0.9); w.rotation.z = sx * 0.4; } // soft waves on the shoulders
+      }
+      // ---- neck, shoulders, collarbones (visible with tank tops)
+      if (d.top.kind === 'tank') {
+        add(spine, new T.CylinderGeometry(0.168 * W, 0.168 * W, 0.025, 10), mat(shade(d.top.color, 0.85), 0.9), 0, 0.03, 0, 1, 1, 0.67); // hem
+        if (female) for (let i = -3; i <= 3; i++) add(spine, box(0.004, 0.34, 0.004), mat(shade(d.top.color, 0.8), 0.9), i * 0.035, 0.24, 0.137); // ribbing
+      }
+      // ---- arms: muscle, elbows, hands with fingers
+      for (const { sh, el } of A) {
+        add(sh, ball(0.05, 7, 5), m.skin, 0, -0.13, 0.025, 1, 1.4, 0.9);   // biceps
+        add(sh, ball(0.046, 6, 5), m.skin, 0, -0.14, -0.02, 1, 1.3, 0.8);  // triceps
+        add(el, ball(0.045, 6, 5), m.skin, 0, -0.01, -0.01);               // elbow
+        add(el, ball(0.044, 6, 5), m.skin, 0, -0.08, 0.008, 1, 1.5, 0.9);   // forearm muscle
+        add(el, box(0.07, 0.075, 0.032), m.skin, 0, -0.305, 0.004);        // palm
+        const f = add(el, box(0.066, 0.065, 0.026), m.skin, 0, -0.365, 0.012); f.rotation.x = 0.35; // fingers
+        for (let i = 0; i < 3; i++) add(el, box(0.002, 0.05, 0.028), skinDark, -0.017 + i * 0.017, -0.37, 0.013);
+        const th = add(el, box(0.022, 0.05, 0.022), m.skin, 0, -0.31, 0.04); th.rotation.x = 0.5; // thumb
+      }
+      // ---- trousers: waistband, belt loops, pockets, seams, hems
+      if (!['shorts', 'runshorts', 'cargoshorts', 'bikeshorts'].includes(d.legs.kind)) {
+        const seam = mat(shade(d.legs.color, d.legs.kind === 'jeans' ? 1.6 : 0.8), 0.9), band = mat(shade(d.legs.color, 0.8), 0.9);
+        add(hips, new T.CylinderGeometry(0.172 * W, 0.172 * W, 0.045, 12), band, 0, 0.08, 0, 1, 1, 0.69);
+        for (const a of [-1.2, -0.45, 0.45, 1.2, Math.PI]) add(hips, box(0.012, 0.05, 0.01), band, Math.sin(a) * 0.17 * W, 0.08, Math.cos(a) * 0.118 * W);
+        if (!female) { add(hips, new T.CylinderGeometry(0.174 * W, 0.174 * W, 0.028, 12), mat(0x3b2a1c, 0.6), 0, 0.08, 0, 1, 1, 0.7); add(hips, box(0.045, 0.035, 0.012), m.steel, 0, 0.08, 0.123); }
+        add(hips, box(0.006, 0.12, 0.006), seam, 0, -0.02, 0.118);                                   // fly
+        for (const sx of [-1, 1]) {
+          const fp = add(hips, box(0.06, 0.006, 0.006), seam, sx * 0.1, 0.02, 0.11); fp.rotation.z = sx * 0.7;   // front pocket opening
+          add(hips, box(0.075, 0.08, 0.012), band, sx * 0.075, -0.02, -0.112);                                   // back pocket
+        }
+        Lg.forEach(({ hp, kn }, i) => {
+          const sx = i ? 1 : -1;
+          add(hp, box(0.005, 0.42, 0.005), seam, sx * 0.083, -0.21, 0);   // outer side seam
+          add(kn, box(0.005, 0.4, 0.005), seam, sx * 0.064, -0.2, 0);
+          if (d.legs.kind === 'trousers') add(hp, box(0.004, 0.4, 0.004), mat(shade(d.legs.color, 1.15), 0.9), 0, -0.21, 0.083); // pressed crease
+          add(kn, limb(0.06, 0.062, 0.04, 9), band, 0, -0.36, 0);         // hem
+        });
+      }
+      // ---- shoes: laces, toe cap, layered sole
+      Lg.forEach(({ kn }) => {
+        const boots = d.shoes.kind === 'boots';
+        for (let i = 0; i < (boots ? 4 : 3); i++) add(kn, box(0.05, 0.006, 0.01), boots ? mat(0xc9a66b, 0.8) : m.white, 0, -0.405 + i * (boots ? 0.03 : 0.012) - (boots ? 0.05 : 0), 0.08 - i * 0.012);
+        add(kn, ball(0.05, 7, 5), mat(shade(d.shoes.color, boots ? 0.8 : 0.95), 0.6), 0, -0.45, 0.15, 1.1, 0.6, 0.8);   // toe cap
+        add(kn, box(0.118, 0.012, 0.255), mat(shade(d.shoes.sole, 0.75), 0.9), 0, -0.482, 0.05);                         // outsole
+        if (boots) { add(kn, box(0.1, 0.035, 0.07), m.sole, 0, -0.47, -0.04); add(kn, box(0.03, 0.04, 0.01), m.shoe, 0, -0.29, -0.06); } // heel + pull tab
+        else add(kn, box(0.122, 0.018, 0.12), mat(d.shoes.accent || 0x888888, 0.7), 0, -0.45, -0.01);                        // side panel
+      });
+      // ---- jewellery & watch
+      const ex2 = d.extras;
+      if (ex2.includes('watch')) { add(A[1].el, box(0.03, 0.03, 0.012), m.dark, 0, -0.235, 0.048); add(A[1].el, box(0.022, 0.022, 0.004), m.white, 0, -0.235, 0.055); }
+      if (ex2.includes('bracelets')) for (const y of [-0.23, -0.245]) add(A[0].el, new T.TorusGeometry(0.044, 0.004, 4, 12), m.metal, 0, y, 0).rotation.x = Math.PI / 2;
+      if (ex2.includes('ring')) add(A[0].el, new T.TorusGeometry(0.009, 0.003, 4, 8), m.metal, 0.015, -0.37, 0.03);
+      if (ex2.includes('necklace')) { add(spine, new T.TorusGeometry(0.058, 0.0025, 4, 18), m.metal, 0, 0.585, 0.045, 1, 1.4, 1).rotation.x = 1.25; add(spine, ball(0.008, 5, 4), m.metal, 0, 0.535, 0.135); }
+    }
     root.traverse((n) => { if (n.isMesh) { n.castShadow = true; n.receiveShadow = true; } });
     root.userData = { hips, spine, headP, A, Lg, m, gun, guns, ph: Math.random() * 6, dead: 0, state: {}, design: d.name };
     return root;
