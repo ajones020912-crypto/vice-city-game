@@ -1,1 +1,161 @@
-placeholder
+name: Hero logo fullscreen homescreen
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/hero-logo-fullscreen.yml'
+permissions:
+  contents: write
+concurrency:
+  group: hero-logo-fullscreen
+  cancel-in-progress: true
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fullscreen hero logo with buttons below
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          new_css = r'''
+          /* ===== VC3D Homescreen (fullscreen) ===== */
+          #overlay{
+            position:fixed;inset:0;z-index:50;
+            display:flex !important;align-items:center;justify-content:center;
+            place-items:unset;
+            background:#050810;
+          }
+          .home-card{
+            width:100% !important;height:100% !important;
+            max-width:none !important;max-height:none !important;
+            margin:0;padding:0;
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            gap:0;
+            background:transparent !important;border:none !important;border-radius:0 !important;
+            box-shadow:none !important;text-align:center;position:relative;overflow:hidden;
+          }
+          .home-card:before{display:none !important}
+          .home-logo-wrap{
+            position:relative;
+            width:min(960px,96vw);
+            aspect-ratio:1200/640;
+            max-height:min(64vh,580px);
+            margin:0 auto 28px;
+            overflow:hidden;border-radius:18px;
+            background:linear-gradient(180deg,#2a0a4a,#ff6b3d 70%,#1a1030);
+            box-shadow:0 24px 70px #000c,0 0 0 1px #ffffff16,0 0 120px #ff4f9a55;
+          }
+          .home-logo-wrap img{
+            width:100%;height:100%;object-fit:cover;display:block;
+          }
+          .home-logo-fade{display:none}
+          .home-kicker,.home-title,.home-sub{display:none}
+          .home-actions{
+            display:grid;grid-template-columns:1fr 1fr;gap:14px;
+            width:min(460px,92vw);padding:0;margin:0;
+            position:relative;z-index:2;
+          }
+          .home-btn{
+            margin:0;min-height:80px;text-align:left;padding:16px 18px;border-radius:14px;
+            background:linear-gradient(135deg,#e83f8c,#ff6e9f);
+            font-size:15px;letter-spacing:1.2px;
+            border:1px solid #ffffff28;
+            box-shadow:0 10px 32px #ff4f9a55;
+            transition:transform .14s,box-shadow .14s,filter .14s;
+          }
+          .home-btn:hover{
+            filter:brightness(1.1);transform:translateY(-2px);
+            box-shadow:0 14px 40px #ff4f9a77;
+          }
+          .home-btn.alt{
+            background:linear-gradient(135deg,#167e83,#27b5a7);
+            box-shadow:0 10px 32px #27b5a755;
+          }
+          .home-btn.alt:hover{box-shadow:0 14px 40px #27b5a777}
+          .home-btn small{
+            display:block;color:#fff;opacity:.88;font-size:11px;
+            font-weight:normal;letter-spacing:0;margin-top:5px;
+          }
+          .home-btn.multiplayer-soon{
+            position:relative;opacity:.75;cursor:not-allowed;
+            background:linear-gradient(135deg,#294c59,#426875);
+            padding-top:26px;box-shadow:none;
+          }
+          .home-btn.multiplayer-soon:after{
+            content:'COMING SOON';position:absolute;top:8px;right:10px;
+            padding:4px 8px;border-radius:4px;background:#ffd23a;color:#17232b;
+            font-size:9px;font-weight:900;letter-spacing:1.2px;box-shadow:0 2px 8px #0005;
+          }
+          .home-btn.multiplayer-soon:hover{
+            filter:none;transform:none;
+            background:linear-gradient(135deg,#294c59,#426875);box-shadow:none;
+          }
+          .continue-btn{
+            grid-column:1/-1;min-height:48px;text-align:center;
+            background:linear-gradient(135deg,#2c4a73,#3a5f94);
+            box-shadow:0 6px 20px #0006;
+          }
+          .home-status{
+            margin:20px 0 0;color:#c5d8e8;min-height:18px;font-size:13px;
+            text-shadow:0 1px 8px #000a;
+          }
+          .home-foot{
+            position:absolute;left:0;right:0;bottom:20px;
+            border:none;margin:0;padding:0;
+            color:#9bb0c0;font-size:12px;letter-spacing:.4px;
+            text-shadow:0 1px 6px #0008;
+          }
+          @media(max-width:560px){
+            .home-logo-wrap{width:min(340px,94vw);max-height:min(36vh,220px);margin-bottom:18px;border-radius:12px}
+            .home-actions{grid-template-columns:1fr;width:min(300px,90vw);gap:10px}
+            .home-btn{min-height:64px}
+            .continue-btn{grid-column:auto}
+            .home-foot{bottom:12px;font-size:11px;padding:0 12px}
+          }
+          /* ===== end homescreen ===== */
+          '''
+
+          s2, n = re.subn(
+              r'/\* ===== VC3D Homescreen[\s\S]*?/\* ===== end homescreen ===== \*/',
+              new_css.strip(),
+              s,
+              count=1,
+          )
+          if n != 1:
+              raise SystemExit(f'CSS replace failed ({n})')
+          s = s2
+
+          # Prefer JPG if present, else keep SVG
+          if Path('assets/vc3d-logo.jpg').exists():
+              s = s.replace('/assets/vc3d-logo.svg', '/assets/vc3d-logo.jpg')
+              s = s.replace('vc3d-logo.svg', 'vc3d-logo.jpg')
+
+          if 'home-logo-wrap' not in s:
+              raise SystemExit('home-logo-wrap missing')
+
+          p.write_text(s, encoding='utf-8')
+          print(f'Done ({p.stat().st_size} bytes)')
+          PY
+
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if git diff --cached --quiet; then echo 'No changes'; exit 0; fi
+          git commit -m 'UI: large fullscreen hero logo with Singleplayer/Multiplayer buttons below'
+          git pull --rebase origin main || true
+          git push origin HEAD:main
