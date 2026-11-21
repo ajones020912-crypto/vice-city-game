@@ -1631,6 +1631,38 @@ function makeCarVisual(tk,color){
  if(tk==='taxi'){const s=new T.Mesh(new T.BoxGeometry(.7,.22,.3),new T.MeshStandardMaterial({color:0xfff2a0,emissive:0xffe066,emissiveIntensity:.95,roughness:.4}));s.position.set(0,t.gh[2][1]+.12,t.gh[2][0]-.4);ch.add(s)}
  const wheels=[],gm=tk==='rareCoupe'?lowPolyWheelGeo(t.wr):wheelGeo(t.wr);
  for(const sz of[1,-1])for(const sx of[1,-1]){const piv=new T.Group();piv.position.set(sx*(t.W/2-.2),t.wr,sz*t.wb/2);const w=new T.Mesh(gm,wheelMat);w.castShadow=true;if(sx<0)w.rotation.y=Math.PI;piv.add(w);ch.add(piv);wheels.push({piv,w,front:sz>0})}
+ if(tk==='rareCoupe'){
+  const mat=(hex,rough=.55,metal=.08)=>new T.MeshStandardMaterial({color:hex,roughness:rough,metalness:metal,flatShading:true});
+  const dark=mat(0x090d17,.42,.12),glassDark=mat(0x10182a,.24,.28),accent=mat(0x292638,.48,.18),lamp=mat(0xf4f7ff,.22,.12);
+  const add=(geo,m,x=0,y=0,z=0)=>{const o=new T.Mesh(geo,m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;ch.add(o);return o};
+  const panel=(pts,depth,m,x=0,y=0,z=0)=>add(extrudeLowPolyProfile(pts,depth),m,x,y,z);
+  // Deep front intake, lower splitter and angular corner intakes.
+  add(new T.BoxGeometry(1.18,.28,.055),dark,0,.43,t.L/2+.055);
+  add(new T.BoxGeometry(1.68,.075,.28),accent,0,.285,t.L/2+.09);
+  for(const side of[-1,1]){
+   const intake=add(new T.BoxGeometry(.34,.25,.06),dark,side*.72,.48,t.L/2+.045);intake.rotation.z=side*.12;
+   // Thin, sharp LED headlight strips on the front corners.
+   const sh=new T.Shape();sh.moveTo(0,0);sh.lineTo(.48,.055);sh.lineTo(.34,.13);sh.lineTo(.04,.105);sh.closePath();
+   const hg=new T.ExtrudeGeometry(sh,{depth:.035,bevelEnabled:false,curveSegments:1});
+   hg.rotateY(0);
+   add(hg,lamp,side*.46,.68,t.L/2+.075).rotation.y=side*.08;
+   // Recessed side air intake behind the door.
+   const vent=add(new T.BoxGeometry(.045,.34,.66),dark,side*(t.W/2+.006),.53,-.34);vent.rotation.y=side*.16;
+   const ventLip=add(new T.BoxGeometry(.055,.055,.72),accent,side*(t.W/2+.012),.34,-.34);ventLip.rotation.y=side*.16;
+   // Angular side skirt and wheel-arch shoulder accents.
+   add(new T.BoxGeometry(.075,.12,1.55),accent,side*(t.W/2+.015),.27,-.02);
+   const shoulder=add(new T.BoxGeometry(.07,.14,.78),pm,side*(t.W/2-.015),.72,t.wb/2);shoulder.rotation.y=side*.04;
+  }
+  // Low rear diffuser and a subtle raised rear deck lip.
+  add(new T.BoxGeometry(1.25,.13,.18),dark,0,.34,-t.L/2-.035);
+  add(new T.BoxGeometry(1.42,.07,.18),accent,0,.66,-t.L/2+.18);
+  // Narrow red rear light bar.
+  add(new T.BoxGeometry(1.35,.075,.035),mat(0xff263f,.25),0,.78,-t.L/2-.055);
+  // Faceted hood creases emphasize the long, low nose.
+  for(const side of[-1,1]){
+   const crease=add(new T.BoxGeometry(.035,.025,1.18),accent,side*.48,.79,.72);crease.rotation.x=-.035;
+  }
+ }
  return{g,ch,body,tail,head,beam,bar,wheels,pm}}
 
 // ================= HUMANS =================
