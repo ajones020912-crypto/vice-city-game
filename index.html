@@ -2550,10 +2550,35 @@ const audio=(()=>{let ctx=null,eng=null,engG=null,sir=null,sirG=null,master=null
   bodyOsc=ctx.createOscillator();bodyOsc.setPeriodicWave(ctx.createPeriodicWave(new Float32Array([0,0,0,0,0,0]),new Float32Array([0,1,.32,.12,.06,.025])));bodyFilter=ctx.createBiquadFilter();bodyFilter.type='lowpass';bodyFilter.frequency.value=550;bodyGain=ctx.createGain();bodyGain.gain.value=0;bodyOsc.connect(bodyFilter);bodyFilter.connect(bodyGain);bodyGain.connect(engineBus);bodyOsc.start();
   subOsc=ctx.createOscillator();subOsc.type='sine';subGain=ctx.createGain();subGain.gain.value=0;subOsc.connect(subGain);subGain.connect(engineBus);subOsc.start();
   const air=ctx.createBufferSource();air.buffer=noiseBuf;air.loop=true;airFilter=ctx.createBiquadFilter();airFilter.type='bandpass';airFilter.Q.value=.5;airGain=ctx.createGain();airGain.gain.value=0;air.connect(airFilter);airFilter.connect(airGain);airGain.connect(engineBus);air.start();
+  mkPlaneVoices();
   radioBus.gain.value=.72;const delay=ctx.createDelay(1),feedback=ctx.createGain(),echo=ctx.createGain(),filter=ctx.createBiquadFilter();delay.delayTime.value=.28;feedback.gain.value=.19;echo.gain.value=.13;filter.type='lowpass';filter.frequency.value=2600;radioBus.connect(delay);delay.connect(filter);filter.connect(echo);echo.connect(master);filter.connect(feedback);feedback.connect(delay);
  };
+ // PLANE_AUDIO_V1: original synthesized aircraft sound. Prop plane: piston drone + propeller blade buzz.
+ // Small jet: turbine whine that spools up and down, exhaust roar and thrust rumble. Both: wind over the airframe.
+ let pv=null;
+ function mkPlaneVoices(){
+  const g=v=>{const x=ctx.createGain();x.gain.value=v;return x},bq=(type,f,Q)=>{const x=ctx.createBiquadFilter();x.type=type;x.frequency.value=f;x.Q.value=Q;return x},
+   noise=()=>{const n=ctx.createBufferSource();n.buffer=noiseBuf;n.loop=true;n.start(ctx.currentTime+Math.random()*.4);return n},out=g(1);out.connect(engineBus);
+  const pOsc=ctx.createOscillator(),pOsc2=ctx.createOscillator(),pLp=bq('lowpass',600,.9),pG=g(0);pOsc.type='sawtooth';pOsc2.type='square';pOsc.connect(pLp);pOsc2.connect(pLp);pLp.connect(pG);pG.connect(out);pOsc.start();pOsc2.start();
+  const bladeN=noise(),bladeBp=bq('bandpass',600,.9),bladeAM=g(.5),bladeG=g(0),lfo=ctx.createOscillator(),lfoD=g(.5);lfo.type='sine';lfo.frequency.value=30;lfo.connect(lfoD);lfoD.connect(bladeAM.gain);bladeN.connect(bladeBp);bladeBp.connect(bladeAM);bladeAM.connect(bladeG);bladeG.connect(out);lfo.start();
+  const jw1=ctx.createOscillator(),jw2=ctx.createOscillator(),jwHp=bq('highpass',900,.5),jwG=g(0);jw1.type='triangle';jw2.type='sine';jw1.frequency.value=2000;jw2.frequency.value=3000;jw1.connect(jwHp);jw2.connect(jwHp);jwHp.connect(jwG);jwG.connect(out);jw1.start();jw2.start();
+  const roarN=noise(),roarBp=bq('bandpass',450,.6),roarG=g(0);roarN.connect(roarBp);roarBp.connect(roarG);roarG.connect(out);
+  const rumN=noise(),rumLp=bq('lowpass',110,.8),rumG=g(0);rumN.connect(rumLp);rumLp.connect(rumG);rumG.connect(out);
+  const wN=noise(),wBp=bq('bandpass',450,.45),wG=g(0);wN.connect(wBp);wBp.connect(wG);wG.connect(out);
+  pv={pOsc,pOsc2,pLp,pG,lfo,bladeBp,bladeG,jw1,jw2,jwG,roarBp,roarG,rumG,wBp,wG}}
+ function planeTick(t,car,on,speed,throttle){if(!pv)return;const P=pv,jet=on&&car.tk==='smallJet',prop=on&&!jet,set=(prm,v,tc)=>prm.setTargetAtTime(v,t,tc);
+  // propeller plane: engine rpm follows the throttle quickly
+  const rpm=900+throttle*1500+Math.min(400,speed*6),fire=rpm/60*3,blade=rpm/60*2;
+  set(P.pOsc.frequency,fire,.18);set(P.pOsc2.frequency,fire*.5,.18);set(P.pLp.frequency,300+throttle*900,.2);set(P.pG.gain,prop?.045+throttle*.055:0,.15);
+  set(P.lfo.frequency,blade,.18);set(P.bladeBp.frequency,480+throttle*520,.2);set(P.bladeG.gain,prop?.035+throttle*.07:0,.15);
+  // jet: turbine spools slowly toward the throttle
+  const whine=2000+throttle*3200+Math.min(800,speed*8);
+  set(P.jw1.frequency,whine,1.1);set(P.jw2.frequency,whine*1.502,1.1);set(P.jwG.gain,jet?.012+throttle*.016:0,.6);
+  set(P.roarBp.frequency,380+throttle*700,.8);set(P.roarG.gain,jet?.018+throttle*.1:0,.7);set(P.rumG.gain,jet?.025+throttle*.08:0,.8);
+  // wind over the airframe grows with airspeed, mostly once airborne
+  set(P.wBp.frequency,350+speed*12,.3);set(P.wG.gain,on?Math.min(.09,speed*speed*.00004)*(car.airborne?1:.45):0,.3)}
  A.setPaused=function(on){on=!!on;if(paused===on)return;paused=on;if(!ctx||!engineBus)return;const t=ctx.currentTime;engineBus.gain.cancelScheduledValues(t);engineBus.gain.setTargetAtTime(on?0:1,t,on?.025:.08);radioBus.gain.setTargetAtTime(on?0:.72,t,.08)};
- A.tick=function(spd,thr,inCar,sirenLvl){legacyTick(spd,thr,false,sirenLvl);if(!ctx||!engineBus||paused)return;const t=ctx.currentTime,car=pl.car,kind=car?car.tk:'sedan',boat=!!(car&&car.t.boat),speed=Math.max(0,Math.abs(Number(spd)||0)),throttle=Math.min(1,Math.abs(Number(thr)||0)),limits=[0,9,18,30,45,65,95];let gear=0;while(gear<5&&speed>limits[gear+1])gear++;const phase=(speed-limits[gear])/(limits[gear+1]-limits[gear]),rpm=boat?Math.min(5200,950+speed*130+throttle*700):Math.min(6500,900+phase*4200+throttle*600),tone=kind==='sports'?2:kind==='van'||kind==='suv'?1.2:1.6,f=Math.max(26,rpm/60*tone),active=inCar&&!(car&&car.dead);
+ A.tick=function(spd,thr,inCar,sirenLvl){legacyTick(spd,thr,false,sirenLvl);if(!ctx||!engineBus||paused)return;const t=ctx.currentTime,car=pl.car,kind=car?car.tk:'sedan',boat=!!(car&&car.t.boat),speed=Math.max(0,Math.abs(Number(spd)||0)),throttle=Math.min(1,Math.abs(Number(thr)||0)),limits=[0,9,18,30,45,65,95];let gear=0;while(gear<5&&speed>limits[gear+1])gear++;const phase=(speed-limits[gear])/(limits[gear+1]-limits[gear]),rpm=boat?Math.min(5200,950+speed*130+throttle*700):Math.min(6500,900+phase*4200+throttle*600),tone=kind==='sports'?2:kind==='van'||kind==='suv'?1.2:1.6,f=Math.max(26,rpm/60*tone),inPlane=!!(inCar&&car&&car.t&&car.t.aircraft&&!car.dead),active=inCar&&!(car&&car.dead)&&!inPlane;planeTick(t,car,inPlane,speed,throttle);
   bodyOsc.frequency.setTargetAtTime(f,t,.1);subOsc.frequency.setTargetAtTime(f*.5,t,.12);bodyFilter.frequency.setTargetAtTime(350+rpm*.10+throttle*850,t,.12);bodyGain.gain.setTargetAtTime(active?.045+throttle*.045+Math.min(.025,speed*.0007):0,t,.08);subGain.gain.setTargetAtTime(active?.022+throttle*.018:0,t,.1);airFilter.frequency.setTargetAtTime(650+speed*16+throttle*400,t,.12);airGain.gain.setTargetAtTime(active?.003+throttle*.012+Math.min(.008,speed*.0002):0,t,.1);
  };
 R.o=function(f,type,d,v,fc,t){const os=ctx.createOscillator(),g=ctx.createGain(),fl=ctx.createBiquadFilter();os.type=type;os.frequency.value=f;fl.type='lowpass';fl.frequency.value=fc||2200;const duration=Math.max(.06,d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.001,v),t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+duration);os.connect(fl);fl.connect(g);g.connect(radioBus);os.onended=()=>{os.disconnect();fl.disconnect();g.disconnect()};os.start(t);os.stop(t+duration+.03)};
