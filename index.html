@@ -1443,9 +1443,9 @@ function makeCarVisual(tk,color){
  const body=new T.Mesh(gs.body,pm),gh=new T.Mesh(gs.gh,glassMat),trim=new T.Mesh(gs.trim,trimMat),head=new T.Mesh(gs.head,headMat),tail=new T.Mesh(gs.tail,tailOff),beam=new T.Mesh(gs.beam,beamMat);
  for(const m of[body,gh,trim])m.castShadow=true;body.receiveShadow=true;ch.add(body,gh,trim,head,tail);
  // Detailed exterior kit: fascia, glass divisions, handles, mirrors and lamps.
- // The cabin glass shell is narrower than the lower body; keep side glazing on
- // the actual cabin edge instead of hanging it out beyond the doors.
- const cabinSide=t.W/2-.205;
+ // Side glazing is built from the exact cabin profile, not floating
+ // rectangular blocks. This makes the glass follow each vehicle's roofline.
+ const cabinSide=(t.W-.42)/2+.012;
  const part=(geo,mat,x,y,z,rx=0,ry=0,rz=0)=>{const m=new T.Mesh(geo,mat);m.position.set(x,y,z);m.rotation.set(rx,ry,rz);m.castShadow=true;ch.add(m);return m};
  const mat=(color,rough=.5,metal=.25,emissive=0)=>new T.MeshStandardMaterial({color,roughness:rough,metalness:metal,emissive,emissiveIntensity:emissive?1.4:0});
  const dark=mat(0x171c22,.68,.18),chrome=mat(0x9ba5ad,.32,.78),rubber=mat(0x17191c,.86,.04),lamp=mat(0xfff2cf,.2,.22,0xffd88a),redLamp=mat(0xc41425,.28,.18,0x65000a);
@@ -1462,13 +1462,24 @@ function makeCarVisual(tk,color){
   // Tail-light housings and red lenses.
   part(new T.BoxGeometry(.52,.20,.075),dark,sx*(t.W*.34),.78,-t.L/2-.09);
   part(new T.BoxGeometry(.43,.13,.035),redLamp,sx*(t.W*.34),.79,-t.L/2-.14);
-  // Side windows, chrome window trim and door handles.
-  for(const z of[-.68,.35]){
-   part(new T.BoxGeometry(.035,.48,.82),glassMat,sx*(cabinSide+.018),1.16,z);
-   part(new T.BoxGeometry(.045,.035,.9),chrome,sx*(cabinSide+.045),1.405,z);
-   part(new T.BoxGeometry(.045,.035,.9),chrome,sx*(cabinSide+.045),.915,z);
-  }
-  part(new T.BoxGeometry(.045,.07,.075),chrome,sx*(cabinSide+.045),.78,-.35);
+  // Custom side-window pane: inset the real cabin outline slightly so the
+  // glass sits inside a painted frame and follows sloped windshields/roof.
+  const profile=t.gh,center=profile.reduce((q,p)=>[q[0]+p[0]/profile.length,q[1]+p[1]/profile.length],[0,0]);
+  const pane=profile.map(([z,y])=>[center[0]+(z-center[0])*.91,center[1]+(y-center[1])*.84]);
+  const sideShape=new T.Shape();
+  pane.forEach(([z,y],i)=>i?sideShape.lineTo(sx>0?-z:z,y):sideShape.moveTo(sx>0?-z:z,y));
+  sideShape.closePath();
+  const sideGlass=new T.Mesh(new T.ShapeGeometry(sideShape),new T.MeshPhysicalMaterial({color:0x173247,roughness:.12,metalness:.48,transparent:true,opacity:.9,clearcoat:1,side:T.DoubleSide}));
+  sideGlass.rotation.y=sx*Math.PI/2;sideGlass.position.x=sx*cabinSide;ch.add(sideGlass);
+  const framePts=pane.map(([z,y])=>new T.Vector3(sx*cabinSide,y,z));
+  const frameGeo=new T.BufferGeometry().setFromPoints([...framePts,framePts[0]]);
+  ch.add(new T.Line(frameGeo,new T.LineBasicMaterial({color:0x252b31})));
+  // A slim B-pillar separates the front and rear door glass.
+  const splitZ=(pane.reduce((q,p)=>q+p[0],0)/pane.length)*.12;
+  const pillarPts=[new T.Vector3(sx*(cabinSide+.006),center[1]-.10,splitZ),new T.Vector3(sx*(cabinSide+.006),center[1]+.25,splitZ)];
+  ch.add(new T.Line(new T.BufferGeometry().setFromPoints(pillarPts),new T.LineBasicMaterial({color:0x20262c})));
+  // Door handle sits on the painted door skin below the window line.
+  part(new T.BoxGeometry(.035,.065,.16),chrome,sx*(t.W/2-.015),.78,-.35);
   // Mirror housings and dark mirror glass.
   part(new T.BoxGeometry(.23,.14,.25),pm,sx*(cabinSide+.14),t.gh[2][1]-.04,.62,0,0,sx*.12);
   part(new T.BoxGeometry(.025,.09,.16),dark,sx*(cabinSide+.265),t.gh[2][1]-.025,.62);
