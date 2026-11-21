@@ -1,0 +1,119 @@
+name: Disable Multiplayer (Coming Soon)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/disable-mp-coming-soon.yml'
+permissions:
+  contents: write
+concurrency:
+  group: disable-mp-coming-soon
+  cancel-in-progress: true
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Put Coming Soon badge on Multiplayer and disable it
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          # --- Button markup ---
+          # Match current or already-patched button
+          btn_re = re.compile(
+              r'<button id="multiplayerOpen"[^>]*>.*?</button>',
+              re.S,
+          )
+          new_btn = (
+              '<button id="multiplayerOpen" class="home-btn alt multiplayer-soon" type="button" disabled '
+              'aria-label="Multiplayer — Coming Soon">'
+              'MULTIPLAYER <small>Online play is in development</small></button>'
+          )
+          s2, n = btn_re.subn(new_btn, s, count=1)
+          if n != 1:
+              raise SystemExit('Could not find multiplayerOpen button')
+          s = s2
+          print('Patched multiplayer button markup')
+
+          # --- CSS for badge ---
+          css = (
+              ".home-btn.multiplayer-soon{position:relative;opacity:.72;cursor:not-allowed;"
+              "background:linear-gradient(135deg,#294c59,#426875);padding-top:25px}"
+              ".home-btn.multiplayer-soon:after{content:'COMING SOON';position:absolute;"
+              "top:8px;right:10px;padding:4px 8px;border-radius:4px;background:#ffd23a;"
+              "color:#17232b;font-size:9px;font-weight:900;letter-spacing:1.2px;"
+              "box-shadow:0 2px 8px #0005}"
+              ".home-btn.multiplayer-soon:hover{background:linear-gradient(135deg,#294c59,#426875)}"
+          )
+          if '.home-btn.multiplayer-soon' not in s:
+              anchor = '.home-btn.alt{background:linear-gradient(135deg,#167e83,#27b5a7)}'
+              if anchor not in s:
+                  # Fallback: append near end of first <style> block
+                  s = s.replace('</style>', css + '</style>', 1)
+                  print('Injected Coming Soon CSS (fallback)')
+              else:
+                  s = s.replace(anchor, anchor + css, 1)
+                  print('Injected Coming Soon CSS')
+          else:
+              print('Coming Soon CSS already present')
+
+          # --- Neutralize click handler ---
+          # Replace any multiplayerOpen.onclick assignment with a no-op + force disabled
+          onclick_re = re.compile(
+              r"document\.getElementById\('multiplayerOpen'\)\.onclick\s*=\s*\(\)\s*=>\s*\{[\s\S]*?\};",
+          )
+          s2, n = onclick_re.subn(
+              "document.getElementById('multiplayerOpen').onclick=()=>{};"
+              "document.getElementById('multiplayerOpen').disabled=true;",
+              s,
+              count=1,
+          )
+          if n == 1:
+              s = s2
+              print('Neutralized multiplayerOpen onclick')
+          else:
+              # Broader fallback
+              if "document.getElementById('multiplayerOpen').onclick=" in s:
+                  s = s.replace(
+                      "document.getElementById('multiplayerOpen').onclick=",
+                      "document.getElementById('multiplayerOpen').disabled=true;"
+                      "document.getElementById('multiplayerOpen').onclick=",
+                      1,
+                  )
+                  print('Forced disabled before onclick (fallback)')
+              else:
+                  print('WARNING: no multiplayerOpen.onclick found')
+
+          # Sanity checks
+          if 'multiplayer-soon' not in s:
+              raise SystemExit('multiplayer-soon class missing after patch')
+          if 'COMING SOON' not in s and "content:'COMING SOON'" not in s:
+              raise SystemExit('COMING SOON badge missing after patch')
+          if 'disabled' not in s[s.find('multiplayerOpen'):s.find('multiplayerOpen') + 220]:
+              raise SystemExit('disabled attribute missing on button')
+
+          p.write_text(s, encoding='utf-8')
+          print(f'index.html ready ({p.stat().st_size} bytes)')
+          PY
+
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+            exit 0
+          fi
+          git commit -m 'UI: Multiplayer button Coming Soon badge + disabled while MP is in progress'
+          git push origin HEAD:main
