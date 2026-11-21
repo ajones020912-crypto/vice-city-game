@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "stage": "syntax_check",
+  "source_blob": "e7ca0f9845d72a34f04b7f53f407678a19255193",
+  "result": "applied",
+  "checked_scripts": 1,
+  "race": "Coastal Clash",
+  "start": [
+    260,
+    -270
+  ],
+  "rivals": 3
+}
