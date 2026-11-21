@@ -29,118 +29,21 @@ jobs:
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
 
-          new_fn = r'''function animHuman(h,dt,s){
- const u=h.userData,{hips,spine,A,Lg}=u;
- // Smooth speed channels: idle / walk / run blend
- const spd=Math.max(0,s.speed||0);
- const walkW=clamp(spd/2.2,0,1);
- const runW=clamp((spd-3.2)/3.6,0,1);
- const moveW=clamp(walkW+runW*.35,0,1);
- const cadence=1.7+spd*1.05+runW*1.1;
- u.ph=(u.ph||0)+dt*cadence;
- u.phArm=(u.phArm||0)+(u.ph-(u.phArm||0))*Math.min(1,dt*10);
- const ph=u.ph;
- const phA=u.phArm;
- const s1=Math.sin(ph), c1=Math.cos(ph);
- const sArm=Math.sin(phA);
+          new_fn = '''function animHuman(h,dt,s){\n const u=h.userData,{hips,spine,A,Lg}=u;\n const spd=Math.max(0,s.speed||0);\n const walkW=clamp(spd/2.2,0,1);\n const runW=clamp((spd-3.2)/3.6,0,1);\n const moveW=clamp(walkW+runW*.35,0,1);\n const cadence=1.7+spd*1.05+runW*1.1;\n u.ph=(u.ph||0)+dt*cadence;\n u.phArm=(u.phArm||0)+(u.ph-(u.phArm||0))*Math.min(1,dt*10);\n const ph=u.ph;\n const s1=Math.sin(ph), c1=Math.cos(ph);\n const sArm=Math.sin(u.phArm);\n\n if(s.dead){\n  u.dead=Math.min(1,(u.dead||0)+dt*3.2);const d=u.dead;\n  h.rotation.x=-d*Math.PI/2*.97;h.position.y=(s.baseY||0)+d*.16;\n  A[0].sh.rotation.set(-.5*d,0,.9*d);A[1].sh.rotation.set(-.3*d,0,-.9*d);\n  Lg[0].hp.rotation.x=-.3*d;Lg[1].hp.rotation.x=.2*d;\n  Lg[0].kn.rotation.x=.2*d;Lg[1].kn.rotation.x=.15*d;\n  return;\n }\n u.dead=0;h.rotation.x=0;\n\n const hipAmp=(.42+.22*runW)*moveW;\n const legL=s1*hipAmp;\n const legR=-s1*hipAmp;\n const kneeAmp=(.55+.55*runW)*moveW;\n const kneeL=Math.max(0,Math.sin(ph+1.15))*kneeAmp;\n const kneeR=Math.max(0,Math.sin(ph+1.15+Math.PI))*kneeAmp;\n const plantL=Math.max(0,-s1)*moveW*.04;\n const plantR=Math.max(0,s1)*moveW*.04;\n\n const lerpA=(key,target,rate)=>{\n  const k='_a_'+key;const prev=u[k];const t=prev==null?target:prev+(target-prev)*Math.min(1,dt*rate);\n  u[k]=t;return t;\n };\n const lh=lerpA('lh',legL,18), rh=lerpA('rh',legR,18);\n const lk=lerpA('lk',kneeL+plantL*2,16), rk=lerpA('rk',kneeR+plantR*2,16);\n Lg[0].hp.rotation.x=lh;Lg[1].hp.rotation.x=rh;\n Lg[0].kn.rotation.x=lk;Lg[1].kn.rotation.x=rk;\n\n const bob=Math.abs(s1)*(.028+.02*runW)*moveW;\n const idleBreath=Math.sin(ph*.85)*.01*(1-moveW);\n const hipY=.93-.018*moveW+bob+idleBreath;\n hips.position.y=lerpA('hy',hipY,14);\n hips.rotation.z=lerpA('hz',c1*.04*moveW,12);\n hips.rotation.y=lerpA('hyaw',s1*.06*moveW,12);\n\n const lean=.02+runW*.16+moveW*.03;\n spine.rotation.x=lerpA('sx',lean+Math.sin(ph*.9)*.01*(1-moveW*.5),12);\n spine.rotation.z=lerpA('sz',s1*.03*moveW,12);\n spine.rotation.y=lerpA('sy',-s1*.07*moveW,10);\n spine.position.y=.08+(s.aim?0:Math.sin(ph*.45)*.0025);\n\n if(u.headP){\n  u.headP.rotation.x=lerpA('hx',Math.sin(ph*.85+.6)*.02*(1-moveW*.7),10);\n  u.headP.rotation.z=lerpA('hzhd',-c1*.02*moveW,10);\n }\n\n const armAmp=(.55+.45*runW)*moveW;\n const aL=-sArm*armAmp;\n const aR=sArm*armAmp;\n const idleSway=Math.sin(ph*.8)*.04*(1-moveW);\n const shx0=lerpA('ax0',aL+idleSway,14);\n const shx1=lerpA('ax1',aR-idleSway,14);\n const elbow=-(.1+.2*moveW+.45*runW);\n A[0].sh.rotation.set(shx0,0,.05+.03*moveW);\n A[1].sh.rotation.set(shx1,0,-.05-.03*moveW);\n A[0].el.rotation.x=lerpA('el0',elbow,12);\n A[1].el.rotation.x=lerpA('el1',elbow,12);\n\n for(const k in u.guns)u.guns[k].visible=k===s.weapon;\n\n if(s.aim&&s.weapon){\n  const long=s.weapon!=='pistol';\n  A[1].sh.rotation.set(-1.5,0,-.04);A[1].el.rotation.x=-.08;\n  A[0].sh.rotation.set(-1.25-(long?.1:0),0,long?.35:.5);A[0].el.rotation.x=-.4;\n  spine.rotation.x=.04;\n }else if(s.punch>0){\n  const p=Math.sin(Math.min(s.punch,1)*Math.PI);\n  A[1].sh.rotation.set(-1.45*p,0,-.1);A[1].el.rotation.x=-.2-.1*p;\n  A[0].sh.rotation.x=.4*p;spine.rotation.y=-.5*p;\n }\n}\n'''
 
- if(s.dead){
-  u.dead=Math.min(1,(u.dead||0)+dt*3.2);const d=u.dead;
-  h.rotation.x=-d*Math.PI/2*.97;h.position.y=(s.baseY||0)+d*.16;
-  A[0].sh.rotation.set(-.5*d,0,.9*d);A[1].sh.rotation.set(-.3*d,0,-.9*d);
-  Lg[0].hp.rotation.x=-.3*d;Lg[1].hp.rotation.x=.2*d;
-  Lg[0].kn.rotation.x=.2*d;Lg[1].kn.rotation.x=.15*d;
-  return;
- }
- u.dead=0;h.rotation.x=0;
-
- const hipAmp=(.42+.22*runW)*moveW;
- const legL=s1*hipAmp;
- const legR=-s1*hipAmp;
- const kneeAmp=(.55+.55*runW)*moveW;
- const kneeL=Math.max(0, Math.sin(ph+1.15))*kneeAmp;
- const kneeR=Math.max(0, Math.sin(ph+1.15+Math.PI))*kneeAmp;
- const plantL=Math.max(0,-s1)*moveW*.04;
- const plantR=Math.max(0, s1)*moveW*.04;
-
- const lerpA=(key,target,rate)=>{
-  const k='_a_'+key;const prev=u[k];const t=prev==null?target:prev+(target-prev)*Math.min(1,dt*rate);
-  u[k]=t;return t;
- };
- const lh=lerpA('lh',legL,18), rh=lerpA('rh',legR,18);
- const lk=lerpA('lk',kneeL+plantL*2,16), rk=lerpA('rk',kneeR+plantR*2,16);
- Lg[0].hp.rotation.x=lh;Lg[1].hp.rotation.x=rh;
- Lg[0].kn.rotation.x=lk;Lg[1].kn.rotation.x=rk;
-
- const bob=Math.abs(s1)*(.028+.02*runW)*moveW;
- const idleBreath=Math.sin(ph*.85)*.01*(1-moveW);
- const hipY=.93-.018*moveW+bob+idleBreath;
- hips.position.y=lerpA('hy',hipY,14);
- hips.rotation.z=lerpA('hz',c1*.04*moveW,12);
- hips.rotation.y=lerpA('hyaw',s1*.06*moveW,12);
-
- const lean=.02+runW*.16+moveW*.03;
- spine.rotation.x=lerpA('sx',lean+Math.sin(ph*.9)*.01*(1-moveW*.5),12);
- spine.rotation.z=lerpA('sz',s1*.03*moveW,12);
- spine.rotation.y=lerpA('sy',-s1*.07*moveW,10);
- spine.position.y=.08+(s.aim?0:Math.sin(ph*.45)*.0025);
-
- if(u.headP){
-  u.headP.rotation.x=lerpA('hx',Math.sin(ph*.85+.6)*.02*(1-moveW*.7),10);
-  u.headP.rotation.z=lerpA('hzhd',-c1*.02*moveW,10);
- }
-
- const armAmp=(.55+.45*runW)*moveW;
- const aL=-sArm*armAmp;
- const aR= sArm*armAmp;
- const idleSway=Math.sin(ph*.8)*.04*(1-moveW);
- const shx0=lerpA('ax0',aL+idleSway,14);
- const shx1=lerpA('ax1',aR-idleSway,14);
- const elbow=-(.1+.2*moveW+.45*runW);
- A[0].sh.rotation.set(shx0,0,.05+.03*moveW);
- A[1].sh.rotation.set(shx1,0,-.05-.03*moveW);
- A[0].el.rotation.x=lerpA('el0',elbow,12);
- A[1].el.rotation.x=lerpA('el1',elbow,12);
-
- for(const k in u.guns)u.guns[k].visible=k===s.weapon;
-
- if(s.aim&&s.weapon){
-  const long=s.weapon!=='pistol';
-  A[1].sh.rotation.set(-1.5,0,-.04);A[1].el.rotation.x=-.08;
-  A[0].sh.rotation.set(-1.25-(long?.1:0),0,long?.35:.5);A[0].el.rotation.x=-.4;
-  spine.rotation.x=.04;
- }else if(s.punch>0){
-  const p=Math.sin(Math.min(s.punch,1)*Math.PI);
-  A[1].sh.rotation.set(-1.45*p,0,-.1);A[1].el.rotation.x=-.2-.1*p;
-  A[0].sh.rotation.x=.4*p;spine.rotation.y=-.5*p;
- }
-}
-'''
-
-          m = re.search(
-              r'function animHuman\(h,dt,s\)\{[\s\S]*?\n\}\n\n\n// ================= INPUT =================',
-              s,
-          )
-          if not m:
-              m = re.search(
-                  r'function animHuman\(h,dt,s\)\{[\s\S]*?\n\}\n\n// ================= INPUT =================',
-                  s,
-              )
-          if not m:
-              raise SystemExit('animHuman function block not found')
-
-          s = s[:m.start()] + new_fn + '\n\n// ================= INPUT =================' + s[m.end():]
-          s = s.replace(
-              '// ================= INPUT =================// ================= INPUT =================',
-              '// ================= INPUT =================',
-          )
-
-          if 'Soft secondary phase' not in s and 'cadence=1.7' not in s and 'cadence=1.7+spd' not in s:
-              if 'lerpA' not in s[s.find('function animHuman'):s.find('function animHuman')+800]:
-                  raise SystemExit('New animHuman not inserted')
+          start = s.find('function animHuman(h,dt,s){')
+          if start < 0:
+              raise SystemExit('animHuman not found')
+          marker = '// ================= INPUT ================='
+          end = s.find(marker, start)
+          if end < 0:
+              raise SystemExit('INPUT marker not found after animHuman')
+          # strip trailing whitespace/newlines between fn and marker
+          s = s[:start] + new_fn + '\n' + s[end:]
+          if 'lerpA' not in s or 'cadence=1.7' not in s:
+              raise SystemExit('new animHuman missing markers')
           p.write_text(s, encoding='utf-8')
           print(f'Done ({p.stat().st_size} bytes)')
-          print('has smoother gait:', 'lerpA' in s and 'cadence' in s)
           PY
 
       - name: Commit
