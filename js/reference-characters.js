@@ -1,3 +1,4 @@
+// LUCIA_CROPPED_TANK_V1
 // LUCIA_ROUND_TAN_V1
 // LUCIA_FORWARD_FIT_V1
 // LUCIA_TANK_FIT_V1
@@ -19,9 +20,9 @@
  function lucia(T,h){
   const u=h.userData,m=u.m; m.skin.roughness=.74;m.hair.roughness=.82;m.lip.color.setHex(0x9a5e55);m.lip.roughness=.65;m.iris.color.setHex(0x543c26);
   for(const mesh of u.spine.children.slice())if(mesh.isMesh&&((mesh.material===m.shirt)||(mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y-.195)<.002)))remove(mesh);
-  const profile=[[.143,.025],[.14,.055],[.132,.14],[.145,.26],[.1534,.30],[.1576,.32],[.1618,.34],[.166,.36],[.16775,.375],[.1695,.39],[.17125,.405],[.173,.42],[.1717143,.435],[.1704286,.45],[.17,.455],[.135,.485],[.104,.495]];
+  const profile=[[.1406667,.22],[.145,.26],[.1534,.30],[.1576,.32],[.1618,.34],[.166,.36],[.16775,.375],[.1695,.39],[.17125,.405],[.173,.42],[.1717143,.435],[.1704286,.45],[.17,.455],[.135,.485],[.104,.495]];
   const tank=add(T,u.spine,new T.LatheGeometry(profile.map(p=>new T.Vector2(...p)),28),m.shirt,'lucia-dark-tank-top');tank.scale.z=.66;
-  const hem=add(T,u.spine,new T.TorusGeometry(.143,.0035,6,28),m.trim,'lucia-tank-hem',0,.03,0);hem.scale.y=.66;hem.rotation.x=Math.PI/2;
+  const hem=add(T,u.spine,new T.TorusGeometry(.1406667,.0035,6,28),m.trim,'lucia-tank-hem',0,.2235,0);hem.scale.y=.66;hem.rotation.x=Math.PI/2;
   for(const side of[-1,1])for(const back of[false,true]){const a=new T.Vector3(side*.095,back?.475:.465,back?-.092:.092),b=new T.Vector3(side*.105,.553,0),delta=b.clone().sub(a),strap=add(T,u.spine,new T.BoxGeometry(.035,delta.length(),.012),m.shirt,'lucia-tank-strap');strap.position.copy(a.add(b).multiplyScalar(.5));strap.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),delta.normalize())}
   add(T,u.headP,ponyCap(T),m.hair,'lucia-reference-hair-cap');
   add(T,u.headP,tube(T,[[0,.28,-.095],[.025,.31,-.16],[.035,.22,-.215],[.02,.07,-.23],[-.015,-.08,-.205],[.005,-.14,-.17]],.052,28),m.hair,'lucia-reference-ponytail');
