@@ -1,0 +1,81 @@
+name: Logo object embed for GTA font
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/logo-object-embed.yml'
+permissions:
+  contents: write
+concurrency:
+  group: logo-object-embed
+  cancel-in-progress: true
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Use object tag for logo SVG
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          # Replace img logo with object so external @font-face (Pricedown) can load
+          old = '<img src="/assets/vc3d-logo.svg" alt="Vice City 3D" width="1200" height="640" draggable="false">'
+          new = (
+              '<object type="image/svg+xml" data="/assets/vc3d-logo.svg" '
+              'class="home-logo-obj" width="1200" height="640" aria-label="Vice City 3D">'
+              '<img src="/assets/vc3d-logo.svg" alt="Vice City 3D" width="1200" height="640" draggable="false">'
+              '</object>'
+          )
+          if old in s:
+              s = s.replace(old, new, 1)
+              print('Replaced img with object')
+          elif 'home-logo-obj' in s:
+              print('Already using object')
+          else:
+              # looser
+              s2, n = re.subn(
+                  r'<img src="/assets/vc3d-logo\.(svg|jpg)"[^>]*>',
+                  new,
+                  s,
+                  count=1,
+              )
+              if n != 1:
+                  raise SystemExit('Could not find logo img')
+              s = s2
+              print('Replaced via regex')
+
+          # CSS for object
+          if '.home-logo-obj' not in s:
+              inject = (
+                  '.home-logo-wrap object.home-logo-obj,'
+                  '.home-logo-wrap img{width:100%;height:100%;object-fit:cover;display:block;border:0}'
+              )
+              if '/* ===== end homescreen ===== */' in s:
+                  s = s.replace(
+                      '/* ===== end homescreen ===== */',
+                      inject + '\n/* ===== end homescreen ===== */',
+                      1,
+                  )
+                  print('Injected object CSS')
+              else:
+                  print('WARN: no CSS marker')
+
+          p.write_text(s, encoding='utf-8')
+          print('done', p.stat().st_size)
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && echo 'No changes' && exit 0
+          git commit -m 'UI: embed logo as object so Pricedown GTA font can load'
+          git pull --rebase origin main || true
+          git push origin HEAD:main
