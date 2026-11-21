@@ -2241,8 +2241,8 @@ class Ped{
  }
  flee(fx,fz,t=8){if(this.dead||this.cop||this.gang)return;this.state='flee';this.fx=fx;this.fz=fz;this.t=t;this.speed=5.8}
  update(dt){
-  const d2=(this.x-pl.x)**2+(this.z-pl.z)**2;if(d2>150*150){this.kill();return}
-  this.h.visible=d2<125*125;let sp=0,aim=false;
+  const d2=(this.x-pl.x)**2+(this.z-pl.z)**2;if(d2>380*380){this.kill();return}
+  this.h.visible=d2<230*230;let sp=0,aim=false;
   if(this.dead){this.t-=dt;this.x+=this.vx*dt;this.z+=this.vz*dt;this.vx*=1-4*dt;this.vz*=1-4*dt;if(this.t<0){this.kill();return}if(this.t<1.5)this.h.scale.setScalar(this.scale*Math.max(.01,this.t/1.5));
    this.y=heightAt(this.x,this.z)}
   else if(this.state==='down'){this.t-=dt;this.vx*=1-3*dt;this.vz*=1-3*dt;this.x+=this.vx*dt;this.z+=this.vz*dt;if(this.t<0){if(this.gang){this.state='gang';this.hostile=true}else{this.state='flee';this.t=8;this.speed=5.8;this.fx=this.x-this.vx;this.fz=this.z-this.vz}}}
@@ -2295,12 +2295,12 @@ function activatePed(x,z,cop,walkRoad=null,walkSide=0){const pool=cop?cops:peds;
 // population around the player
 let popT=0;const SW=1.4;
 function pickSidewalk(){ // Spawn on real city sidewalks, away from intersections and road edges.
- const range=190;let tries=0;
+ const range=320;let tries=0;
  while(tries++<24){const r=roads[Math.floor(Math.random()*roads.length)];if(r.type!=='city')continue;
   let p;if(r.o==='h'){if(Math.abs(r.c-pl.z)>range)continue;p=pl.x+(Math.random()*2-1)*range;if(p<r.a+8||p>r.b-8)continue;}else{if(Math.abs(r.c-pl.x)>range)continue;p=pl.z+(Math.random()*2-1)*range;if(p<r.a+8||p>r.b-8)continue}
   if(r.cross.some(c=>Math.abs(c.p-p)<c.other.hw+7))continue;
   const side=Math.random()<.5?-1:1,off=r.hw+SW,x=r.o==='h'?p:r.c+side*off,z=r.o==='h'?r.c+side*off:p;
-  if(Math.hypot(x-pl.x,z-pl.z)<125)continue;if(heightAt(x,z)<WL+.2)continue;
+  if(Math.hypot(x-pl.x,z-pl.z)<250)continue;if(heightAt(x,z)<WL+.2)continue;
   if(footprintHitsRoad(x-.4,z-.4,x+.4,z+.4,.05))continue;
   let bad=false;for(const c of queryCols(x,z,.6))if(circleBox([x,z],.5,c))bad=true;if(!bad)return[x,z,r,side]}
  return null}
@@ -3734,6 +3734,15 @@ function updateCityFeatures(dt){if(G.state!=='play'){if(!pl.alive){cancelMugging
 function cityHud(dt){const hp=clamp(pl.hp,0,100),armor=clamp(pl.armor,0,100);hpTrailValue=hp>hpTrailValue?hp:Math.max(hp,hpTrailValue-dt*25);$('#hpValue').textContent=Math.ceil(hp)+' / 100';$('#armorValue').textContent=Math.ceil(armor)+' / 100';$('#hpTrail').style.width=hpTrailValue+'%';$('#healthTrack').setAttribute('aria-valuenow',Math.round(hp));$('#armorTrack').setAttribute('aria-valuenow',Math.round(armor));$('#healthTrack').classList.toggle('low-health',hp<=25);$('#hpb').style.width=hp+'%';$('#hpb').style.background=hp<=25?'linear-gradient(90deg,#e34b58,#ff9a75)':'linear-gradient(90deg,#25ba86,#8df3ba)';$('#regenStatus').textContent=hp>=100?'Healthy':pl.wanted>0?'Lose the police to recover':pl.swim?'Recovery paused in water':pl.lastHit<8?'Recovery in '+Math.ceil(8-pl.lastHit)+'s':'Regenerating +3 HP/s';}
 
 
+const originalPedFlee=Ped.prototype.flee;Ped.prototype.flee=function(fx,fz,t=8){
+ if(this.walkRoad&&!this.cop&&!this.gang){
+  this.state='flee';this.t=t;this.speed=5.8;
+  const dir=Math.random()<.5?-1:1;
+  if(this.walkRoad.o==='h'){this.fx=this.x-dir*10;this.fz=this.z}else{this.fx=this.x;this.fz=this.z-dir*10}
+  return;
+ }
+ return originalPedFlee.call(this,fx,fz,t);
+};
 const originalPedInit=Ped.prototype.init;Ped.prototype.init=function(...args){originalPedInit.apply(this,args);this.wasRobbed=false;this.wallet=25+Math.floor(Math.random()*76);this.beingRobbed=false};
 const originalPedUpdate=Ped.prototype.update;Ped.prototype.update=function(dt){
  if(this.beingRobbed&&this.active&&!this.dead){this.vx=this.vz=0;this.dir=Math.atan2(pl.x-this.x,pl.z-this.z);this.h.visible=true;this.h.position.set(this.x,this.y,this.z);this.h.rotation.y=this.dir;animHuman(this.h,dt,{speed:0,dead:false,weapon:null});for(const a of this.h.userData.A){a.sh.rotation.x=-2.5;a.el.rotation.x=-.5}return}
