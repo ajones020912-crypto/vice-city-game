@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "front_crush": true,
+  "rear_crush": true,
+  "side_dent": true,
+  "progressive_bounded_damage": true,
+  "shared_geometry_safe": true,
+  "transformed_parts_supported": true,
+  "wheels_preserved": true,
+  "repair_restores_shape": true,
+  "physics_fields_unchanged": true,
+  "aircraft_excluded": true,
+  "owned_geometry_cleanup": true,
+  "checked_scripts": 1,
+  "legacy_effects_preserved": false,
+  "scope": "Road-vehicle visual crumpling only; original collision response and health damage preserved"
+}
