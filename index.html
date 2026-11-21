@@ -2572,7 +2572,7 @@ const audio=(()=>{let ctx=null,eng=null,engG=null,sir=null,sirG=null,master=null
   set(P.pOsc.frequency,fire,.18);set(P.pOsc2.frequency,fire*.5,.18);set(P.pLp.frequency,300+throttle*900,.2);set(P.pG.gain,prop?.045+throttle*.055:0,.15);
   set(P.lfo.frequency,blade,.18);set(P.bladeBp.frequency,480+throttle*520,.2);set(P.bladeG.gain,prop?.035+throttle*.07:0,.15);
   // jet: turbine spools slowly toward the throttle
-  const whine=2000+throttle*3200+Math.min(800,speed*8);
+  const whine=jet?2000+throttle*3200+Math.min(800,speed*8):2000; // rests at idle pitch when not in the jet
   set(P.jw1.frequency,whine,1.1);set(P.jw2.frequency,whine*1.502,1.1);set(P.jwG.gain,jet?.012+throttle*.016:0,.6);
   set(P.roarBp.frequency,380+throttle*700,.8);set(P.roarG.gain,jet?.018+throttle*.1:0,.7);set(P.rumG.gain,jet?.025+throttle*.08:0,.8);
   // wind over the airframe grows with airspeed, mostly once airborne
