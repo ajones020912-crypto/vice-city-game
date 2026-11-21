@@ -968,7 +968,10 @@ function rooftop(x0,z0,x1,z1,y,big){
  if(big){bakeG('plain',GEO.cyl6,(x0+x1)/2,y,(z0+z1)/2,0,.12,rr(10,22),.12,[.7,.7,.72]);bakeG('glow',GEO.sph,(x0+x1)/2,y+16,(z0+z1)/2,0,.35,.35,.35,[1,.1,.1])}}
 function building(p){
  if(footprintHitsRoad(p.x0,p.z0,p.x1,p.z1,1.1))return false;
- const {x0,z0,x1,z1,H,style}=p,col=p.col||pick(PAL);let y=0,ax0=x0,az0=z0,ax1=x1,az1=z1;
+ let {x0,z0,x1,z1,H,style}=p;const col=p.col||pick(PAL);
+ // Pull each building footprint inward to create a wider, continuous sidewalk buffer.
+ const sidewalkInset=2.4;x0+=sidewalkInset;z0+=sidewalkInset;x1-=sidewalkInset;z1-=sidewalkInset;if(x1-x0<7||z1-z0<7)return false;
+ let y=0,ax0=x0,az0=z0,ax1=x1,az1=z1;
  const tiers=H>70?3:H>34?2:1,fr=tiers===3?[.5,.3,.2]:tiers===2?[.62,.38]:[1];
  for(let t=0;t<tiers;t++){const th=H*fr[t];
   if(t===0&&style!=='ware'&&th>5){wallQ('f_store','s',ax0,az0,ax1,az1,0,4.5,[1,1,1],12,4.5);for(const f of['n','e','w'])wallQ('f_store',f,ax0,az0,ax1,az1,0,4.5,[1,1,1],12,4.5);
@@ -1143,9 +1146,8 @@ function buildSignals(){
   for(const axis of['h','v'])for(const dir of[1,-1]){
    const nx=axis==='h'?-dir:0,nz=axis==='v'?-dir:0;
    // signal heads are positioned on the outer sidewalk corners below.
-   const px=nd.x+dir*(nd.v.hw+2.8);
-   const pz=nd.z+(axis==='h'?-dir:dir)*(nd.h.hw+2.8);
-   if(queryCols(px,pz,.55).some(col=>col.h>2&&px>col.x0-.5&&px<col.x1+.5&&pz>col.z0-.5&&pz<col.z1+.5))continue;
+   const px=nd.x+dir*(nd.v.hw+1.9);
+   const pz=nd.z+(axis==='h'?-dir:dir)*(nd.h.hw+1.9);
    const hx=px+nx*1.8,hz=pz+nz*1.8;
    const angle=Math.atan2(nx,nz),baseY=5.7;
    const metal=[.9,.58,.035],black=[.025,.032,.038];
