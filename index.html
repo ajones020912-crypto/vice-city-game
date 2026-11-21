@@ -904,7 +904,7 @@ function buildRoadMeshes(){
     for(const side of[-1,1])bakeG('walk',GEO.box,r.c+side*1.82,.10,mid,0,.18,.28,len,[.72,.72,.66]);
     const edge=B('mark',r.c,mid),yy=.115;
     for(const side of[-1,1]){const xc=r.c+side*1.98;edge.quad([xc-.09,yy,b],[xc+.09,yy,b],[xc+.09,yy,a],[xc-.09,yy,a],0,1,0,0,0,1,1,[1,.78,.08])}
-    for(let p=a+7;p<b-4;p+=12)for(const side of[-1,1])bakeG('plain',GEO.ico,r.c+side*.48,.30,p,rnd()*TAU,.62,.48,.78,pick([[.14,.34,.15],[.18,.42,.17],[.23,.4,.16]]));
+    if(!(r.o==='v'&&r.c===0))for(let p=a+7;p<b-4;p+=12)for(const side of[-1,1])bakeG('plain',GEO.ico,r.c+side*.48,.30,p,rnd()*TAU,.62,.48,.78,pick([[.14,.34,.15],[.18,.42,.17],[.23,.4,.16]]));
    }
   }
  }
@@ -1118,7 +1118,7 @@ function keysProps(){
 }
 function nearRoad(x,z,m){for(const r of roads){if(r.o==='h'){if(x>r.a-m&&x<r.b+m&&Math.abs(z-r.c)<r.hw+m)return true}else if(z>r.a-m&&z<r.b+m&&Math.abs(x-r.c)<r.hw+m)return true}return false}
 function streetProps(){
- for(const r of roads){if(r.type==='dirt')continue;const step=r.type==='hwy'?60:34,off=r.hw+1.5;
+ for(const r of roads){if(r.type==='dirt')continue;const step=r.type==='hwy'?60:34,off=r.hw+(r.type==='city'?4.2:3.5);
   for(let p=r.a+20;p<r.b-10;p+=step){let skip=false;for(const c of r.cross)if(Math.abs(c.p-p)<c.other.hw+4)skip=true;if(skip)continue;
    const side=((p/step|0)%2)?1:-1;
    if(r.type==='city'&&(r.sig||r.c<600)){const pos=r.o==='h'?[p,r.c+side*off]:[r.c+side*off,p],face=r.o==='h'?[0,-side]:[-side,0];lamp(pos[0],pos[1],face)}
@@ -1129,7 +1129,7 @@ function streetProps(){
  // Overhead US signal poles and arms are built with their one-sided heads in buildSignals().
 }
 let sigMesh=null;const _ic=new T.Color();
-function addOuterStreetlights(){for(const r of roads){if(r.type==='dirt')continue;if(r.type!=='hwy'&&r.c<600)continue;const step=r.type==='hwy'?70:60;for(let p=r.a+25;p<r.b-20;p+=step){if(r.cross.some(c=>Math.abs(c.p-p)<c.other.hw+7))continue;for(const side of[-1,1]){const off=r.hw+2.5,x=r.o==='h'?p:r.c+side*off,z=r.o==='h'?r.c+side*off:p;lamp(x,z,r.o==='h'?[0,-side]:[-side,0])}}}}
+function addOuterStreetlights(){for(const r of roads){if(r.type==='dirt')continue;if(r.type!=='hwy'&&r.c<600)continue;const step=r.type==='hwy'?70:60;for(let p=r.a+25;p<r.b-20;p+=step){if(r.cross.some(c=>Math.abs(c.p-p)<c.other.hw+7))continue;for(const side of[-1,1]){const off=r.hw+4.2,x=r.o==='h'?p:r.c+side*off,z=r.o==='h'?r.c+side*off:p;lamp(x,z,r.o==='h'?[0,-side]:[-side,0])}}}}
 
 function buildSignals(){
  // US_ONE_SIDED_SIGNALS_V1
@@ -1141,11 +1141,13 @@ function buildSignals(){
  G.usSignalHeads=[];
  for(const nd of G.sigNodes){nd.si=i;
   for(const axis of['h','v'])for(const dir of[1,-1]){
-   const hx=axis==='h'?nd.x+dir*(nd.v.hw+1.8):nd.x-dir*nd.v.w*.25;
-   const hz=axis==='h'?nd.z+dir*nd.h.w*.25:nd.z+dir*(nd.h.hw+1.8);
-   const px=axis==='h'?hx:nd.x-dir*(nd.v.hw+1.8);
-   const pz=axis==='h'?nd.z+dir*(nd.h.hw+1.8):hz;
-   const nx=axis==='h'?-dir:0,nz=axis==='v'?-dir:0,angle=Math.atan2(nx,nz),baseY=5.7;
+   const nx=axis==='h'?-dir:0,nz=axis==='v'?-dir:0;
+   // signal heads are positioned on the outer sidewalk corners below.
+   const px=nd.x+dir*(nd.v.hw+2.8);
+   const pz=nd.z+(axis==='h'?-dir:dir)*(nd.h.hw+2.8);
+   if(queryCols(px,pz,.55).some(col=>col.h>2&&px>col.x0-.5&&px<col.x1+.5&&pz>col.z0-.5&&pz<col.z1+.5))continue;
+   const hx=px+nx*1.8,hz=pz+nz*1.8;
+   const angle=Math.atan2(nx,nz),baseY=5.7;
    const metal=[.9,.58,.035],black=[.025,.032,.038];
    bakeG('plain',GEO.cyl6,px,0,pz,0,.14,8.15,.14,metal);
    bakeG('plain',GEO.cyl6,px,0,pz,0,.27,.48,.27,metal);addCol(px-.2,pz-.2,px+.2,pz+.2,8.15);
@@ -1165,7 +1167,7 @@ function buildSignals(){
    G.usSignalHeads.push({x:hx,z:hz,axis,dir,nx,nz});
   }
  }
- sigMesh.frustumCulled=false;world.add(sigMesh);updateSignals(0);
+ sigMesh.count=i;sigMesh.frustumCulled=false;world.add(sigMesh);updateSignals(0);
 }
 
 const CYC=28;
