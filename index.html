@@ -3430,10 +3430,12 @@ const RACES=[
  {id:'dt',name:'Downtown Circuit',start:[-30,-270],cps:[[240,-270],[240,270],[-240,270],[-240,-270],[-30,-270]],gold:75,silver:90,bronze:112},
  {id:'hwy',name:'Interstate Sprint',start:[380,-250],cps:[[380,100],[380,400],[100,420],[-400,420],[-900,420]],gold:55,silver:66,bronze:82},
  {id:'bayou',name:'Bayou Dirt Rally',start:[430,60],cps:[[800,60],[800,300],[1000,300],[1000,60],[1400,60]],gold:64,silver:78,bronze:98}];
+// COASTAL_RACE_COOLDOWN_300_V1
 // COASTAL_CLASH_V1
 (()=>{
  const race={id:'coastal_clash',name:'Coastal Clash',start:[260,-270],cps:[[300,-270],[300,270],[-180,270],[-180,-270],[260,-270]],gold:110,silver:140,bronze:180,ready:false};
  const colors=[0xffc857,0x42c9ff,0x81df75];let retry=null;
+ function cooldownLeft(){const until=Number(pl.stats&&pl.stats.coastalRaceReadyAt);return Number.isFinite(until)?Math.max(0,Math.ceil((until-Date.now())/1000)):0}
  RACES.push(race);
  const active=()=>SJ.kind==='race'&&SJ.coastal;
  function configure(){
@@ -3447,9 +3449,10 @@ const RACES=[
  function landCar(c){return c&&!c.dead&&!c.t.boat&&!c.t.aircraft&&c.fuel>0}
  function freeze(c){c.vx=c.vz=c.vf=c.vl=c.yr=0;c.inp.thr=c.inp.steer=0;c.inp.hb=1}
  function clearRivals(job){for(const r of job.rivals||[]){const c=r.car;if(pl.car===c)ejectPlayer();if(cars.includes(c))removeCar(c)}}
- const originalEnd=endJob;endJob=function(){if(active()){const job=SJ;clearRivals(job);retry={until:G.time+45,stats:pl.stats};}return originalEnd.apply(this,arguments)};
+ const originalEnd=endJob;endJob=function(){if(active()){const job=SJ;clearRivals(job);retry={until:G.time+Math.max(45,cooldownLeft()+45),stats:pl.stats};}return originalEnd.apply(this,arguments)};
  const originalStart=startRace;
  function beginCoastal(warp){
+  const wait=cooldownLeft();if(wait){toast('Coastal Clash available in '+Math.floor(wait/60)+':'+String(wait%60).padStart(2,'0'),2500);return false}
   const c=pl.car;if(!landCar(c)){toast('Use a working road car for Coastal Clash.');return false}
   if(SJ.kind||G.work||pl.inside||G.busy){toast('Finish your current activity first.');return false}
   if(c.speed>2.5){toast('Stop your car to line up for the race.');return false}
@@ -3489,10 +3492,10 @@ const RACES=[
  function position(){const p=progress(SJ.car,SJ.i);return 1+SJ.rivals.filter(r=>r.finished||(!r.car.dead&&progress(r.car,r.i)>p)).length}
  function result(){
   const job=SJ,rank=1+job.rivals.filter(r=>r.finished&&r.time<=job.t).length,t=job.t,pay=[1500,800,400,0][rank-1];
-  ensurePl();const best=pl.best[race.id],record=!best||t<best;if(record)pl.best[race.id]=t;
+  ensurePl();pl.stats.coastalRaceReadyAt=Date.now()+300000;const best=pl.best[race.id],record=!best||t<best;if(record)pl.best[race.id]=t;
   const medal=Math.max(0,4-rank),prev=pl.medals[race.id]||0;if(medal>prev){pl.medals[race.id]=medal;addRep([0,2,3,5][medal]-[0,2,3,5][prev])}
   pl.cash+=pay;if(rank===1)pl.stats.racesWon=(pl.stats.racesWon||0)+1;G.hudDirty=true;endJob();
-  audio.jingle(rank===1);showBanner(['1ST PLACE','2ND PLACE','3RD PLACE','4TH PLACE'][rank-1],'Coastal Clash · '+fmtT(t)+' · +$'+pay+(record?' · NEW BEST':'')+' · Y to retry',rank===1?'#ffd23a':'#9fe8ff',4500);saveGame(false);
+  audio.jingle(rank===1);showBanner(['1ST PLACE','2ND PLACE','3RD PLACE','4TH PLACE'][rank-1],'Coastal Clash · '+fmtT(t)+' · +$'+pay+(record?' · NEW BEST':'')+' · Available again in 5:00',rank===1?'#ffd23a':'#9fe8ff',4500);saveGame(false);
  }
  const originalUpdate=updateJob;updateJob=function(dt){
   if(!active())return originalUpdate.apply(this,arguments);

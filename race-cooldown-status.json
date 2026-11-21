@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "stage": "syntax_check",
+  "result": "applied",
+  "cooldown_seconds": 300,
+  "trigger": "completed_race",
+  "saved_in": "pl.stats.coastalRaceReadyAt",
+  "checked_scripts": 1
+}
