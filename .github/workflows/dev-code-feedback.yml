@@ -1,0 +1,82 @@
+name: Clear developer-code correctness feedback
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/dev-code-feedback.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: dev-code-feedback
+  cancel-in-progress: false
+jobs:
+  feedback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Improve code feedback and rerun flight tests
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import ast, json, re, subprocess, tempfile, os
+          p=Path('index.html');s=p.read_text(encoding='utf-8');report={'ok':False}
+          try:
+              if '// DEV_CODE_FEEDBACK_V1' in s: raise RuntimeError('Code feedback already updated.')
+              def once(old,new):
+                  global s
+                  if s.count(old)!=1: raise RuntimeError('Unexpected feedback anchor: '+old[:100])
+                  s=s.replace(old,new,1)
+              once("message:'Incorrect developer code.'","message:'Incorrect code. Please try again.'")
+              once("return{ok:true,message:active?'Flight enabled. Resume to fly. Space up, X down, Shift boost.':'Unlocked. Stand on dry ground before enabling flight.'};","return{ok:true,message:active?'Correct code! Flight enabled. Click Resume to fly. Space up, X down, Shift boost.':'Correct code! Flight unlocked. Stand on dry ground, then click Dev Mode to enable flight.'};")
+              old="const submit=async()=>{if(unlock.disabled)return;unlock.disabled=true;try{const result=await devFlightUnlock(input.value);input.value='';status.textContent=result.message;if(result.ok)input.blur()}catch(error){status.textContent='Could not check the code. Reload and try again.'}finally{unlock.disabled=false;devFlightRender()}};"
+              new="const submit=async()=>{if(unlock.disabled)return;unlock.disabled=true;unlock.textContent='Checking...';panel.hidden=false;status.hidden=false;status.setAttribute('aria-live','polite');status.style.cssText='display:block;min-height:36px;margin:10px 0 0;font-size:13px;line-height:1.5;font-weight:700';status.style.color='#cfe0f5';status.textContent='Checking code...';input.style.borderColor='#8de0f777';try{const result=await devFlightUnlock(input.value);input.value='';status.textContent=result.message;const incorrect=!result.ok&&result.message.startsWith('Incorrect code.');status.style.color=result.ok?'#8df3ba':incorrect?'#ff7a7a':'#ffd23a';input.style.borderColor=status.style.color;if(result.ok)input.blur();else input.focus()}catch(error){status.textContent='Could not check the code. Please try again.';status.style.color='#ffd23a'}finally{unlock.disabled=false;unlock.textContent='Unlock flight';devFlightRender()}};"
+              once(old,new)
+              once('// DEV_FLIGHT_V1','// DEV_CODE_FEEDBACK_V1\n// DEV_FLIGHT_V1')
+              ui_setup="const assert=require('assert');let reply={ok:true,message:'Correct code! Flight enabled. Click Resume to fly.'},fail=false,blurred=0,focused=0;const panel={hidden:true},status={hidden:true,style:{},setAttribute(){}},input={value:'VC-FLY-7429',style:{},blur(){blurred++},focus(){focused++}},unlock={disabled:false,textContent:'Unlock flight'};async function devFlightUnlock(){if(fail)throw Error('test');return reply}function devFlightRender(){};"
+              ui_checks="(async()=>{await submit();assert(status.textContent.startsWith('Correct code!')&&status.style.color==='#8df3ba'&&blurred===1&&!panel.hidden&&!status.hidden);reply={ok:false,message:'Incorrect code. Please try again.'};await submit();assert(status.textContent===reply.message&&status.style.color==='#ff7a7a'&&focused===1);reply={ok:false,message:'Available on foot, outdoors, in single-player free roam.'};await submit();assert(status.style.color==='#ffd23a'&&!status.textContent.startsWith('Incorrect'));fail=true;await submit();assert(status.textContent.startsWith('Could not check')&&!unlock.disabled&&unlock.textContent==='Unlock flight');console.log(JSON.stringify({correct_message_green:true,incorrect_message_red:true,eligibility_not_mislabeled:true,feedback_visible:true,verification_error_message:true,button_reenabled:true}));})().catch(error=>{console.error(error);process.exit(1)});"
+              result=subprocess.run(['node','-e',ui_setup+new+ui_checks],check=True,capture_output=True,text=True);report.update(json.loads(result.stdout))
+              original_workflow=Path('.github/workflows/dev-flight-mode.yml').read_text(encoding='utf-8')
+              fixtures={}
+              for line in original_workflow.splitlines():
+                  stripped=line.strip()
+                  for key in ['setup','checks']:
+                      if stripped.startswith(key+'='): fixtures[key]=ast.literal_eval(ast.parse(stripped).body[0].value)
+              if len(fixtures)!=2: raise RuntimeError('Cannot locate original flight tests.')
+              a=s.index('// DEV_FLIGHT_V1');b=s.index('function mountDevFlightMenu()',a)
+              result=subprocess.run(['node','-e',fixtures['setup']+s[a:b]+fixtures['checks']],check=True,capture_output=True,text=True);report.update(json.loads(result.stdout))
+              checked=0
+              for js in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I):
+                  if not js.strip(): continue
+                  with tempfile.NamedTemporaryFile(mode='w',suffix='.js',delete=False) as f:
+                      f.write(js);name=f.name
+                  try: subprocess.run(['node','--check',name],check=True,capture_output=True)
+                  finally: os.unlink(name)
+                  checked+=1
+              if not checked: raise RuntimeError('No inline JavaScript found.')
+              p.write_text(s,encoding='utf-8');report.update(ok=True,checked_scripts=checked,scope='Developer-code feedback text, colors and checking state only; code and flight rules unchanged')
+          except Exception as exc:
+              report['error']=str(exc)
+              if isinstance(exc,subprocess.CalledProcessError): report['stderr']=(exc.stderr or b'').decode(errors='replace')[-3000:]
+          Path('scripts').mkdir(exist_ok=True)
+          Path('scripts/dev-code-feedback-status.json').write_text(json.dumps(report,indent=2)+'\n')
+          print(json.dumps(report))
+          PY
+      - name: Commit tested feedback or diagnostic report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html scripts/dev-code-feedback-status.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Show explicit correct or incorrect developer-code feedback'
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Require successful feedback change
+        run: node -e "if(!require('./scripts/dev-code-feedback-status.json').ok)process.exit(1)"
