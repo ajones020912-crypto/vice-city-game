@@ -1,3 +1,4 @@
+// LUCIA_TAN_SMOOTH_V1
 // LUCIA_ROUND_DENIM_V2
 // LUCIA_PHOTO_REFERENCE_V1
 // LUCIA_FACE_LEG_REVERT_V1
@@ -12,7 +13,7 @@
  const originalBuild=api.build;let printTexture=null;
  const looks={
   jasonC:{referenceLead:'jason',name:'Jason',realistic:true,skin:0xc98e68,hair:0x2d211b,hairStyle:'short',beard:false,jacket:null,top:{kind:'tee',color:0x626a68},legs:{kind:'trousers',color:0x6a593f},shoes:{kind:'boots',color:0x594735,sole:0x29231e},extras:['watch']},
-  luciaC:{referenceLead:'lucia',name:'Lucia',realistic:true,female:true,luciaSummer:true,build:'slim',skin:0xb17e5a,hair:0x24150f,hairStyle:'referencePonytail',jacket:null,top:{kind:'tank',color:0x762b3d},legs:{kind:'shorts',color:0x466f98,highWaist:true},shoes:{color:0xf8f4ee,sole:0xe2e2e2,accent:0x9b5961},extras:['hoops','bracelets','ring','necklace']}
+  luciaC:{referenceLead:'lucia',name:'Lucia',realistic:true,female:true,luciaSummer:true,build:'slim',skin:0xa36d48,hair:0x24150f,hairStyle:'referencePonytail',jacket:null,top:{kind:'tank',color:0x762b3d},legs:{kind:'shorts',color:0x466f98,highWaist:true},shoes:{color:0xf8f4ee,sole:0xe2e2e2,accent:0x9b5961},extras:['hoops','bracelets','ring','necklace']}
  };
  for(const id of Object.keys(looks))api.DESIGNS[id]=Object.assign({},api.DESIGNS[id],looks[id]);
  function add(T,parent,geometry,material,name,x=0,y=0,z=0){const mesh=new T.Mesh(geometry,material);mesh.name=name;mesh.position.set(x,y,z);mesh.castShadow=true;parent.add(mesh);return mesh}
@@ -34,6 +35,20 @@
   if(!valid){const fitted=g.clone();fitted.computeBoundingBox();const box=fitted.boundingBox,w=Math.max(.001,box.max.x-box.min.x),height=Math.max(.001,box.max.y-box.min.y),out=[];for(let i=0;i<p.count;i++)out.push((p.getX(i)-box.min.x)/w,(p.getY(i)-box.min.y)/height);fitted.setAttribute('uv',new T.Float32BufferAttribute(out,2));denim.geometry=fitted;}
   const maps=luciaVisibleDenimTextures(T);for(const material of new Set([u.m.pants,denim.material])){material.map=maps.color;material.bumpMap=maps.height;material.bumpScale=.00065;material.roughnessMap=maps.rough;material.roughness=.98;material.metalness=0;material.flatShading=false;material.needsUpdate=true;}u.luciaVisibleDenim=true;u.luciaRoundDenimVersion=2;
  }
+
+ function smoothLuciaSkinSurface(T,h){
+  const u=h.userData;h.updateMatrixWorld(true);u.m.skin.flatShading=false;u.m.skin.needsUpdate=true;let changed=0;
+  h.traverse(mesh=>{
+   if(!mesh.isMesh||mesh.material!==u.m.skin)return;for(let parent=mesh;parent;parent=parent.parent)if(parent===u.headP)return;
+   const original=mesh.geometry,p=original.attributes.position;if(!p)return;const matrix=new T.Matrix4().copy(h.matrixWorld).invert().multiply(mesh.matrixWorld),inverse=matrix.clone().invert(),box=new T.Box3().setFromBufferAttribute(p).applyMatrix4(matrix);if(Math.max(...box.getSize(new T.Vector3()).toArray())<.13)return;
+   const ids=[],points=[],groups=[],lookup=new Map();for(let i=0;i<p.count;i++){const v=new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(matrix),key=v.toArray().map(x=>Math.round(x*1e5)).join(',');if(!lookup.has(key)){lookup.set(key,points.length);points.push(v);groups.push([]);}const id=lookup.get(key);ids.push(id);groups[id].push(i);}
+   const neighbors=points.map(()=>new Set()),edges=new Map(),index=original.index,count=index?index.count:p.count;for(let i=0;i<count;i+=3){const triangle=[0,1,2].map(k=>ids[index?index.getX(i+k):i+k]);if(new Set(triangle).size<3)continue;for(let j=0;j<3;j++){const a=triangle[j],b=triangle[(j+1)%3],key=a<b?a+','+b:b+','+a;neighbors[a].add(b);neighbors[b].add(a);edges.set(key,(edges.get(key)||0)+1);}}
+   const pinned=new Set();for(const [key,count] of edges)if(count!==2)for(const id of key.split(',').map(Number))pinned.add(id);const start=points.map(v=>v.clone());let surface=points.map(v=>v.clone());
+   for(const rate of [.18,-.185,.18,-.185])surface=surface.map((v,i)=>{if(pinned.has(i)||!neighbors[i].size)return v.clone();const mean=new T.Vector3();for(const j of neighbors[i])mean.add(surface[j]);mean.multiplyScalar(1/neighbors[i].size);return v.clone().addScaledVector(mean.sub(v),rate);});
+   const g=original.clone(),out=g.attributes.position;for(let i=0;i<surface.length;i++){const delta=surface[i].clone().sub(start[i]);if(delta.length()>.0008)delta.setLength(.0008);const v=start[i].clone().add(delta).applyMatrix4(inverse);for(const j of groups[i])out.setXYZ(j,v.x,v.y,v.z);}out.needsUpdate=true;g.computeVertexNormals();const n=g.attributes.normal;for(const group of groups){const normal=new T.Vector3();for(const i of group)normal.add(new T.Vector3(n.getX(i),n.getY(i),n.getZ(i)));normal.normalize();for(const i of group)n.setXYZ(i,normal.x,normal.y,normal.z);}n.needsUpdate=true;g.computeBoundingBox();g.computeBoundingSphere();mesh.geometry=g;changed++;
+  });
+  if(!changed)throw Error('No body surfaces qualified for smoothing');u.luciaSkinSmoothed=true;u.luciaSmoothedMeshCount=changed;
+ }
  function fitLuciaPhotoReference(T,h){
   const u=h.userData,m=u.m;h.updateMatrixWorld(true);
   function reshape(mesh,space,shape){
@@ -47,7 +62,7 @@
    if(cloth){mesh.material=mesh.material.clone();mesh.material.color.setHex(0x151619);mesh.material.roughness=.92;mesh.material.flatShading=false;}
    reshape(mesh,u.spine,v=>{const waist=Math.exp(-Math.pow((v.y-.16)/.10,2));v.x*=1-.025*waist;const f=Math.max(0,Math.min(1,v.z/.06)),front=f*f*(3-2*f),chest=Math.exp(-Math.pow((v.y-.385)/.105,2)),round=Math.exp(-Math.pow((Math.abs(v.x)-.065)/.095,2));v.z+=front*chest*(.004+.014*round);});
   }
-  m.shirt.color.setHex(0x151619);m.skin.color.setHex(0xb17e5a);m.skin.roughness=.78;m.pants.color.setHex(0x4b739a);denim.material.color.setHex(0x4b739a);
+  m.shirt.color.setHex(0x151619);m.skin.color.setHex(0xa36d48);m.skin.roughness=.80;m.pants.color.setHex(0x4b739a);denim.material.color.setHex(0x4b739a);
   const hipMeshes=[];h.traverse(o=>{if(o.isMesh&&(o===denim||o.parent===u.hips||u.Lg.some(l=>o.parent===l.hp)))hipMeshes.push(o);});
   for(const mesh of hipMeshes)reshape(mesh,u.hips,v=>{const hip=Math.exp(-Math.pow((v.y+.045)/.14,2)),thigh=Math.exp(-Math.pow((v.y+.22)/.13,2));v.x*=1+.025*hip+.018*thigh;v.z*=1+.07*hip+.025*thigh;});
   for(const child of u.headP.children.slice())if(child.isMesh&&(child.material===m.hair||/hair|ponytail|curl/i.test(child.name)))u.headP.remove(child);
@@ -59,7 +74,7 @@
    add(T,leg.kn,new T.CylinderGeometry(.052,.059,.105,16),m.shoe,'lucia-photo-high-top-cuff',0,ankle+.045,0);const toe=add(T,leg.kn,new T.SphereGeometry(1,16,10),white,'lucia-photo-white-toe',0,ankle-.012,.112);toe.scale.set(.050,.027,.057);
    for(let i=0;i<3;i++)add(T,leg.kn,new T.BoxGeometry(.058,.006,.008),white,'lucia-photo-lace',0,ankle+.018+i*.023,.061-i*.006);
   }
-  fitLuciaVisibleDenim(T,h);u.faceUncovered=true;u.luciaPhotoReference=true;u.luciaPhotoReferenceVersion=1;
+  fitLuciaVisibleDenim(T,h);smoothLuciaSkinSurface(T,h);u.faceUncovered=true;u.luciaPhotoReference=true;u.luciaPhotoReferenceVersion=1;
  }
  function lucia(T,h){
   const u=h.userData,m=u.m; m.skin.roughness=.74;m.hair.roughness=.82;m.lip.color.setHex(0xa6535d);m.lip.roughness=.65;m.iris.color.setHex(0x543c26);

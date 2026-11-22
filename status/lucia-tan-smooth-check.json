@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "animationCases": 12,
+  "skinColor": "a36d48",
+  "changedVertices": 6863,
+  "maxDisplacement": 0.0008000140585089359,
+  "smoothedBodyMeshes": 15,
+  "bodyBoundariesPinned": true,
+  "polygonAndMeshCountsUnchanged": true,
+  "faceAndHairGeometryUnchanged": true,
+  "bustGarmentGeometryUnchanged": true,
+  "denimGeometryAndTexturesUnchanged": true,
+  "rigOffsetsUnchanged": true,
+  "otherCharactersUnchanged": true,
+  "scope": "Geometry, material and animation tests only; rendered appearance and live deployment not verified."
+}
