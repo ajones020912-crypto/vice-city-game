@@ -1,0 +1,59 @@
+name: Smooth Lucia hip and upper thigh without changing leg rig
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-hip-thigh-smooth.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-photo-reference
+  cancel-in-progress: false
+jobs:
+  smooth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-hip-thigh" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Prepare scoped hip surface refinement
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-hip-thigh/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_HIP_THIGH_SMOOTH_V1'))process.exit(0);if(!s.includes('// LUCIA_CLOTHING_ONLY_V1'))throw Error('Reviewed model changed');fs.writeFileSync('/tmp/lucia-hip-before.js',s);
+          function once(a,b){if(s.split(a).length!==2)throw Error('Ambiguous smoothing anchor: '+a);s=s.replace(a,b);}
+          once("const hip=add(T,hp,new T.SphereGeometry(1,24,16),u.m.skin,'lucia-skin-hip-bridge'","const hip=add(T,hp,new T.SphereGeometry(1,48,32),u.m.skin,'lucia-skin-hip-bridge'");
+          once('function smoothLuciaSkinSurface(T,h){','function smoothLuciaSkinSurface(T,h,hipOnly=false){');
+          once('if(!mesh.isMesh||mesh.material!==u.m.skin)return;for(let parent=mesh;parent;parent=parent.parent)if(parent===u.headP)return;','if(!mesh.isMesh||mesh.material!==u.m.skin)return;if(hipOnly&&mesh.parent!==u.hips&&!u.Lg.some(l=>mesh.parent===l.hp))return;for(let parent=mesh;parent;parent=parent.parent)if(parent===u.headP)return;');
+          once('for(const rate of [.18,-.185,.18,-.185])surface=surface.map','for(const rate of (hipOnly?[.28,-.29,.28,-.29,.28,-.29]:[.18,-.185,.18,-.185]))surface=surface.map');
+          once('const delta=surface[i].clone().sub(start[i]);if(delta.length()>.0008)delta.setLength(.0008);','const delta=surface[i].clone().sub(start[i]);let weight=1;if(hipOnly){const leg=u.Lg.find(l=>mesh.parent===l.hp);if(leg){const anchor=leg.hp.getWorldPosition(new T.Vector3()).applyMatrix4(new T.Matrix4().copy(h.matrixWorld).invert()),t=Math.max(0,Math.min(1,(start[i].y-anchor.y+.26)/.14));weight=t*t*(3-2*t);}}delta.multiplyScalar(weight);const limit=hipOnly?.003*weight:.0008;if(delta.length()>limit)delta.setLength(limit);');
+          once('u.luciaSkinSmoothed=true;u.luciaSmoothedMeshCount=changed;','if(hipOnly){u.luciaHipThighSmoothed=true;u.luciaHipThighMeshCount=changed;}else{u.luciaSkinSmoothed=true;u.luciaSmoothedMeshCount=changed;}');
+          once('fitLuciaPhotoReference(T,h);hideLuciaClothingOnly(T,h);','fitLuciaPhotoReference(T,h);hideLuciaClothingOnly(T,h);smoothLuciaSkinSurface(T,h,true);');s='// LUCIA_HIP_THIGH_SMOOTH_V1\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-hip-after.js',s);
+          JS
+      - name: Check unchanged lower legs joints upper body and animations
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/lucia-hip-thigh/node_modules/acorn'),T=require(process.env.RUNNER_TEMP+'/lucia-hip-thigh/node_modules/three');if(!fs.existsSync('/tmp/lucia-hip-after.js')){if(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_HIP_THIGH_SMOOTH_V1'))process.exit(0);throw Error('Candidate missing');}
+          function load(file){const c={window:{},console,Math,T,clamp:(x,a,b)=>Math.max(a,Math.min(b,x))};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c;}const before=load('/tmp/lucia-hip-before.js'),after=load('/tmp/lucia-hip-after.js'),old=before.window.VCCharacters,cur=after.window.VCCharacters;
+          const target=(o,h)=>o.isMesh&&o.material===h.userData.m.skin&&(o.parent===h.userData.hips||h.userData.Lg.some(l=>o.parent===l.hp));function signature(h,filter=()=>true){const out=[];h.traverse(o=>{if(o.isMesh&&filter(o))out.push([o.name,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray(),Object.keys(o.geometry.attributes).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.color?m.color.getHex():null,m.roughness,m.metalness])]);});return JSON.stringify(out);}
+          for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)),'Unrelated character changed');const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');assert(signature(a,o=>!target(o,a))===signature(b,o=>!target(o,b)),'Geometry outside hip and thigh changed');assert(a.userData.m.skin.color.getHex()===b.userData.m.skin.color.getHex());
+          const joints=h=>{const u=h.userData;return [u.hips.position.toArray(),u.spine.position.toArray(),u.headP.position.toArray(),...u.A.flatMap(x=>[x.sh.position.toArray(),x.el.position.toArray()]),...u.Lg.flatMap(x=>[x.hp.position.toArray(),x.kn.position.toArray()])];};assert(JSON.stringify(joints(a))===JSON.stringify(joints(b)));
+          a.updateMatrixWorld(true);b.updateMatrixWorld(true);let denserBridges=0,changedThighVertices=0,maxThighShift=0;for(let k=0;k<2;k++){const la=a.userData.Lg[k],lb=b.userData.Lg[k],ga=la.hp.getObjectByName('lucia-skin-hip-bridge'),gb=lb.hp.getObjectByName('lucia-skin-hip-bridge');assert(ga&&gb&&gb.geometry.attributes.position.count>ga.geometry.attributes.position.count*3);denserBridges++;const aa=la.hp.children.filter(o=>target(o,a)&&o.name!=='lucia-skin-hip-bridge'),bb=lb.hp.children.filter(o=>target(o,b)&&o.name!=='lucia-skin-hip-bridge');assert(aa.length===bb.length);const hipY=la.hp.getWorldPosition(new T.Vector3()).y;for(let j=0;j<aa.length;j++){const x=aa[j],y=bb[j],p=x.geometry.attributes.position,q=y.geometry.attributes.position;assert(p.count===q.count);for(let i=0;i<p.count;i++){const va=new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(x.matrixWorld),vb=new T.Vector3().fromBufferAttribute(q,i).applyMatrix4(y.matrixWorld),d=va.distanceTo(vb);assert(d<.00303);if(va.y<hipY-.26)assert(d<.00003,'Lower thigh changed');if(d>1e-6)changedThighVertices++;maxThighShift=Math.max(maxThighShift,d);}}}assert(denserBridges===2&&changedThighVertices>0);
+          function walk(n,fn){fn(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,fn);}else if(v&&typeof v.type==='string')walk(v,fn);}}const animators=[];for(const m of fs.readFileSync('index.html','utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;walk(acorn.parse(m[1],{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='animHuman')animators.push(m[1].slice(n.start,n.end));});}assert(animators.length===1);vm.runInContext(animators[0],after);for(const p of ['js/one-hand-hit.js','js/gun-animation.js'])vm.runInContext(fs.readFileSync(p,'utf8'),after);const animate=after.window.VCGunAnimation.wrap(after.window.VCOneHandHit.wrap(after.animHuman),T);let cases=0;
+          for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),u=h.userData;assert(u.luciaHipThighSmoothed&&u.guns.pistol&&u.guns.rifle);assert(!h.getObjectByName('lucia-dark-tank-top')&&!h.getObjectByName('lucia-seamless-denim'));for(const state of [{speed:0,weapon:null,punch:0},{speed:2,weapon:null,punch:0},{speed:7,weapon:null,punch:0},{speed:0,weapon:null,punch:1},{speed:0,weapon:'pistol',aim:true},{speed:0,weapon:'rifle',aim:true}]){for(let i=0;i<90;i++)animate(h,1/60,state);h.updateMatrixWorld(true);h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh)for(const key of ['position','normal','uv'])if(o.geometry.attributes[key])assert(Array.from(o.geometry.attributes[key].array).every(Number.isFinite));});cases++;}}
+          fs.copyFileSync('/tmp/lucia-hip-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-hip-thigh-check.json',JSON.stringify({passed:true,animationCases:cases,denserBridges,changedThighVertices,maxThighShift,localizedHipAndUpperThighSmoothing:true,lowerLegsAndUpperBodyUnchanged:true,rigOffsetsUnchanged:true,skinColorUnchanged:true,otherCharactersUnchanged:true,scope:'Existing hip and upper-thigh surface refinement and structural animation checks; rendered joint transitions and live deployment not verified.'},null,2)+'\n');
+          JS
+      - name: Publish only validated hip and thigh changes
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-hip-thigh-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Smooth Lucia hip bridges and upper thighs while preserving working leg rig'
+          git push origin HEAD:main
