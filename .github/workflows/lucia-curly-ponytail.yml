@@ -1,0 +1,71 @@
+name: Give Lucia a messy curly ponytail
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-curly-ponytail.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  curls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-curls" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Prepare hair-only replacement
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('js/reference-characters.js');s=p.read_text();Path('/tmp/lucia-curls-before.js').write_text(s)
+          if 'function makeLuciaCurlyPonytail(' in s: raise SystemExit('Curly ponytail already installed.')
+          anchor='finishLuciaV4(T,h);'
+          if s.count(anchor)!=1: raise SystemExit('The previous appearance update must be installed first.')
+          s=s.replace(anchor,anchor+'makeLuciaCurlyPonytail(T,h);',1)
+          helper='''
+           function makeLuciaCurlyPonytail(T,h){
+            const u=h.userData;
+            for(const mesh of u.headP.children.slice())if(mesh.name==='lucia-reference-ponytail'||mesh.name==='lucia-messy-tail-lock')remove(mesh);
+            for(let k=0;k<8;k++){
+             const points=[],phase=k*Math.PI*.7639,length=.36+(k%4)*.018,turns=3.7+(k%3)*.45;
+             for(let j=0;j<=96;j++){
+              const t=j/96,spread=Math.sin(Math.min(1,t*4)*Math.PI/2),coil=(.014+(k%3)*.003)*spread*(1-.25*t),angle=t*turns*Math.PI*2+phase;
+              const x=Math.cos(phase)*.023*spread+Math.cos(angle)*coil+.008*Math.sin(t*7+phase)*spread;
+              const y=.285-t*length;
+              const z=-.12-.10*Math.sin(t*Math.PI*.65)+Math.sin(phase)*.016*spread+Math.sin(angle)*coil;
+              points.push([x,y,z]);
+             }
+             add(T,u.headP,tube(T,points,.010+(k%2)*.0015,128),u.m.hair,'lucia-curly-ponytail-ringlet');
+            }
+            u.luciaCurlyPonytail=true;
+           }
+          '''
+          marker=' function finishLuciaV4('
+          if s.count(marker)!=1: raise SystemExit('Expected one appearance helper.')
+          s=s.replace(marker,helper+marker,1)
+          Path('/tmp/lucia-curls-after.js').write_text(s)
+          subprocess.run(['node','--check','/tmp/lucia-curls-after.js'],check=True)
+          PY
+      - name: Verify curls and preservation of non-hair geometry
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-curls/node_modules/three');
+          function load(p){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}
+          const old=load('/tmp/lucia-curls-before.js'),cur=load('/tmp/lucia-curls-after.js');assert(JSON.stringify(old.DESIGNS)===JSON.stringify(cur.DESIGNS));
+          const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');
+          function signature(h){const out=[];h.traverse(o=>{if(!o.isMesh||o.name==='lucia-reference-ponytail'||o.name==='lucia-messy-tail-lock'||o.name==='lucia-curly-ponytail-ringlet')return;out.push([o.name,o.position.toArray(),o.scale.toArray(),Array.from(o.geometry.attributes.position.array)]);});return JSON.stringify(out);}
+          assert(signature(a)===signature(b));let count=0;b.traverse(o=>{if(o.name==='lucia-curly-ponytail-ringlet')count++;});assert(count===8);assert(!b.getObjectByName('lucia-reference-ponytail'));assert(b.getObjectByName('lucia-hair-tie'));assert(b.getObjectByName('lucia-v4-nose-tip'));assert(b.getObjectByName('lucia-v4-lower-lip'));assert(b.userData.m.hair.color.getHex()===0x2d1b12);
+          for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge});assert(h.userData.luciaCurlyPonytail);h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});}
+          fs.copyFileSync('/tmp/lucia-curls-after.js','js/reference-characters.js');
+          JS
+      - name: Commit curly ponytail after checks
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Replace Lucia straight ponytail with full messy brown ringlets'
+          git push origin HEAD:main
