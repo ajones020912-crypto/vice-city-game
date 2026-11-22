@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "cupCoverageRays": 6,
+  "poseChecks": 6,
+  "circularCupOutlinesReplaced": true,
+  "taperedCenterPanel": true,
+  "frontUnderwireAndNecklineEdging": true,
+  "backAndExistingStrapGeometryUnchanged": true,
+  "bodyGeometrySkinToneMaterialsAndRigUnchanged": true,
+  "otherCharactersUnchanged": true,
+  "visualReference": "Black high-apex bra front flat lay: https://www.hankypanky.com/products/signature-lace-high-apex-unlined-bra-black ; silhouette reference only, opaque black retained, lace not copied.",
+  "scope": "Front garment geometry refinement only. Structural tests do not verify rendered realism, trim attachment, clipping, or live deployment."
+}
