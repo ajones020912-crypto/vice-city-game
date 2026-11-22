@@ -1,0 +1,47 @@
+name: Subtle vertical ribbing on Lucia dark grey tank
+on:
+  push:
+    branches: [lucia-outfits]
+    paths: ['.github/workflows/lucia-tank-subtle-ribbing.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-outfits-swimwear
+  cancel-in-progress: false
+jobs:
+  fabric:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: lucia-outfits
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-ribs" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Prepare shallow vertical fabric ribbing without changing tank fit
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-ribs/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_TANK_SUBTLE_RIBBING_V1'))process.exit(0);if(!s.includes('// LUCIA_DARK_GREY_OUTER_TANK_V1'))throw Error('Installed dark grey tank required');fs.writeFileSync('/tmp/lucia-ribs-before.js',s);function walk(n,f){f(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f);}else if(v&&typeof v.type==='string')walk(v,f);}}const nodes=[];walk(acorn.parse(s,{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='lucia')nodes.push(n);});if(nodes.length!==1)throw Error('Lucia builder changed');const node=nodes[0],helper=String.raw`
+           function addLuciaTankSubtleRibbing(T,h){
+            const u=h.userData,group=h.getObjectByName('lucia-dark-grey-tank-outfit');if(!group)throw Error('Tank outfit missing');if(!addLuciaTankSubtleRibbing.map){const width=256,height=64,data=new Uint8Array(width*height*4);for(let y=0;y<height;y++)for(let x=0;x<width;x++){const value=Math.round(128+30*Math.cos(2*Math.PI*8*x/width)+Math.cos(2*Math.PI*16*y/height)),k=(y*width+x)*4;data[k]=data[k+1]=data[k+2]=value;data[k+3]=255;}const texture=new T.DataTexture(data,width,height,T.RGBAFormat);texture.name='lucia-fine-vertical-rib-knit-height';texture.wrapS=texture.wrapT=T.RepeatWrapping;texture.repeat.set(16,1);texture.magFilter=T.LinearFilter;texture.minFilter=T.LinearMipmapLinearFilter;texture.generateMipmaps=true;texture.anisotropy=2;texture.needsUpdate=true;addLuciaTankSubtleRibbing.map=texture;}h.updateMatrixWorld(true);const inverse=new T.Matrix4().copy(u.spine.matrixWorld).invert();let meshes=0,generatedUVs=0;group.traverse(o=>{if(!o.isMesh)return;const p=o.geometry.attributes.position,uv=o.geometry.attributes.uv;let valid=!!(uv&&uv.count===p.count&&uv.itemSize===2),umin=Infinity,umax=-Infinity,vmin=Infinity,vmax=-Infinity;if(valid)for(let i=0;i<uv.count;i++){const x=uv.getX(i),y=uv.getY(i);if(!Number.isFinite(x)||!Number.isFinite(y)){valid=false;break;}umin=Math.min(umin,x);umax=Math.max(umax,x);vmin=Math.min(vmin,y);vmax=Math.max(vmax,y);}valid=valid&&umax-umin>.001&&vmax-vmin>.001;if(!valid){const g=o.geometry.clone(),M=inverse.clone().multiply(o.matrixWorld),out=[],v=new T.Vector3();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(M);out.push(v.x/.9+.5,v.y/.55);}g.setAttribute('uv',new T.Float32BufferAttribute(out,2));o.geometry=g;generatedUVs++;}for(const material of Array.isArray(o.material)?o.material:[o.material]){material.bumpMap=addLuciaTankSubtleRibbing.map;material.bumpScale=.00022;material.needsUpdate=true;}meshes++;});if(!meshes)throw Error('No tank fabric meshes');u.luciaTankRibbing={direction:'vertical',style:'subtle rib knit',bumpScale:.00022,meshes,generatedUVs};
+           }
+          `;s=s.slice(0,node.body.end-1)+'\n addLuciaTankSubtleRibbing(T,h);\n'+s.slice(node.body.end-1);s=s.slice(0,node.start)+helper+s.slice(node.start);s='// LUCIA_TANK_SUBTLE_RIBBING_V1\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-ribs-after.js',s);
+          JS
+      - name: Check rib map geometry preservation and unchanged outfit selection
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-ribs/node_modules/three');if(!fs.existsSync('/tmp/lucia-ribs-after.js')){assert(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_TANK_SUBTLE_RIBBING_V1'));process.exit(0);}function load(file){const c={window:{},console,Math};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}const old=load('/tmp/lucia-ribs-before.js'),cur=load('/tmp/lucia-ribs-after.js');function signature(h){const rows=[];h.traverse(o=>{const tank=!!o.userData.luciaOuterTank,row=[o.type,o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()];if(o.isMesh)row.push(Object.keys(o.geometry.attributes).sort().filter(k=>!tank||k!=='uv').map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.metalness,m.skinning,m.transparent,m.opacity,tank?null:m.bumpScale,tank?null:!!m.bumpMap,!!m.map]));rows.push(row);});return JSON.stringify(rows);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)),'Other character changed');let poses=0,meshes=0,generatedUVs=0;for(const merge of [false,true]){const a=old.build(T,'luciaC',{merge}),h=cur.build(T,'luciaC',{merge}),u=h.userData,group=h.getObjectByName('lucia-dark-grey-tank-outfit');assert(signature(a)===signature(h),'Geometry colour opacity materials or rig changed beyond tank bump map and optional UVs');assert(u.luciaTankVisible&&group.visible&&u.luciaOutfit===a.userData.luciaOutfit);assert(h.getObjectByName('lucia-tailored-bra').visible&&h.getObjectByName('lucia-fitted-black-briefs').visible);generatedUVs+=u.luciaTankRibbing.generatedUVs;group.traverse(o=>{if(!o.isMesh)return;const uv=o.geometry.attributes.uv;assert(uv&&Array.from(uv.array).every(Number.isFinite));for(const m of Array.isArray(o.material)?o.material:[o.material]){assert(m.color.getHex()===0x3b3d40&&!m.transparent&&m.opacity===1&&m.bumpScale===.00022&&m.bumpMap&&m.bumpMap.isDataTexture);assert(m.bumpMap.repeat.x===16&&m.bumpMap.repeat.y===1);const image=m.bumpMap.image,data=image.data;let dx=0,dy=0;for(let y=0;y<image.height;y++)for(let x=0;x<image.width;x++){const i=(y*image.width+x)*4;dx+=Math.abs(data[i]-data[(y*image.width+(x+1)%image.width)*4]);dy+=Math.abs(data[i]-data[(((y+1)%image.height)*image.width+x)*4]);assert(data[i+3]===255);}assert(dx>dy*2.5,'Ribs must vary across width rather than become horizontal bands');meshes++;}});for(const angle of [-.7,0,.7]){u.spine.rotation.y=angle*.2;u.A[0].sh.rotation.x=angle;u.A[1].sh.rotation.x=-angle;h.updateMatrixWorld(true);h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh)for(const k of ['position','normal'])if(o.geometry.attributes[k])assert(Array.from(o.geometry.attributes[k].array).every(Number.isFinite));});poses++;}}fs.copyFileSync('/tmp/lucia-ribs-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-tank-ribbing-check.json',JSON.stringify({passed:true,branch:'lucia-outfits',texture:'subtle vertical rib knit',bumpScale:.00022,colour:'#3b3d40',fabricMaterialChecks:meshes,generatedUVChecks:generatedUVs,poseChecks:poses,tankFitOpacityAndDefaultPreserved:true,baseGarmentsBodySkinToneAndRigUnchanged:true,otherCharactersUnchanged:true,scope:'Procedural greyscale bump texture only, with UV coordinates generated where absent. No vertex positions or silhouettes changed. Structural checks do not verify GPU rendering, perceived rib strength, clipping or live deployment.'},null,2)+'\n');
+          JS
+      - name: Publish validated fabric adjustment only to outfit branch
+        run: |
+          git fetch origin lucia-outfits
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/lucia-outfits)" || { echo 'Outfit branch changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-tank-ribbing-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Add subtle vertical rib-knit bump texture preserving Lucia dark grey tank fit'
+          git push origin HEAD:refs/heads/lucia-outfits
