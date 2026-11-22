@@ -1,0 +1,73 @@
+name: Install and browser-test detailed SUVs in the actual game
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/install-suv-live.yml'
+      - 'js/suv-details-live.js'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: install-suv-live
+  cancel-in-progress: false
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install parser and browser-test dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/suv-detail" --no-package-lock --ignore-scripts acorn@8 three@0.128.0 playwright@1
+          "$RUNNER_TEMP/suv-detail/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Integrate SUV module using the actual boot syntax tree
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/suv-detail/node_modules/acorn');
+          let html=fs.readFileSync('index.html','utf8');
+          if(html.includes('// SUV_DETAILS_LIVE_V2')){console.log('SUV hook already installed; running browser checks again.');process.exit(0);}
+          const candidates=[];
+          function walk(n,parent,visit){visit(n,parent);for(const v of Object.values(n)){if(Array.isArray(v)){for(const q of v)if(q&&typeof q.type==='string')walk(q,n,visit);}else if(v&&typeof v.type==='string')walk(v,n,visit);}}
+          for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;const ast=acorn.parse(m[1],{ecmaVersion:'latest'});let factory=false,factorySource='',typeSource='';const boots=[];walk(ast,null,(n,p)=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='makeCarVisual'){factory=true;factorySource=m[1].slice(n.start,n.end);}if(n.type==='VariableDeclarator'&&n.id.type==='Identifier'&&n.id.name==='CAR_TYPES'&&n.init)typeSource=m[1].slice(n.start,n.end)+';';if(n.type==='CallExpression'&&n.callee.type==='Identifier'&&n.callee.name==='boot'&&n.arguments.length===0&&p.type==='ExpressionStatement')boots.push(p.start);});if(factory)candidates.push({m,boots,factorySource,typeSource});}
+          if(candidates.length===1){fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/suv-original-factory.js',candidates[0].factorySource);fs.writeFileSync('status/suv-original-types.js',candidates[0].typeSource);}
+          if(candidates.length!==1||candidates[0].boots.length!==1)throw Error('Cannot identify a unique game factory and actual boot statement; no changes written.');
+          const {m,boots}=candidates[0],hook="// SUV_DETAILS_LIVE_V2\nif(!window.VCSUVDetails||window.VCSUVDetails.version!==2)throw Error('SUV detail module failed to load');\nconst originalSUVLiveFactory=makeCarVisual;\nmakeCarVisual=function(tk,color){const v=originalSUVLiveFactory.apply(this,arguments);if(tk!=='suv')return v;try{return window.VCSUVDetails.enhance(T,v,CAR_TYPES[tk],color);}catch(error){G.suvDetailError=String(error.message||error);console.error('SUV enhancement failed',error);return v;}};\nG.suvDetailVersion=2;\nif(new URLSearchParams(location.search).get('suv-qa')==='1')window.__runSUVLiveCheck=function(){\n const check=(condition,message)=>{if(!condition)throw Error(message);},t=CAR_TYPES.suv,registry=JSON.stringify(CAR_TYPES),base=originalSUVLiveFactory('suv',0x356c87),before=originalSUVLiveFactory('suv',0x356c87);\n const refs={g:base.g,ch:base.ch,body:base.body,pm:base.pm,wheels:base.wheels},oldWheelObjects=base.wheels.map(w=>({entry:w,w:w.w,piv:w.piv}));\n function metrics(v){let meshes=0,triangles=0;v.g.traverse(o=>{if(o.isMesh){meshes++;const a=o.geometry.attributes.position;check(a&&Array.from(a.array).every(Number.isFinite),'Non-finite SUV geometry');triangles+=(o.geometry.index?o.geometry.index.count:a.count)/3;}});return{meshes,triangles};}\n const old=metrics(base);window.VCSUVDetails.enhance(T,base,t,0x356c87);const added=metrics(base);\n check(base.suvDetailed,'SUV was not enhanced');for(const k of Object.keys(refs))check(base[k]===refs[k],'Original '+k+' replaced');\n for(let i=0;i<oldWheelObjects.length;i++){const a=oldWheelObjects[i],b=base.wheels[i];check(a.entry===b&&a.w===b.w&&a.piv===b.piv,'Wheel rig replaced');}\n check(JSON.stringify(CAR_TYPES)===registry,'Physics/type configuration changed');check(added.triangles-old.triangles<=3500,'SUV triangle budget exceeded');check(added.meshes-old.meshes<=14,'SUV draw-call budget exceeded');\n const after=makeCarVisual('suv',0x356c87);check(after.suvDetailed&&!G.suvDetailError,'Live factory did not enhance the SUV');\n if(CAR_TYPES.sedan)check(!makeCarVisual('sedan',0x356c87).suvDetailed,'Non-SUV was modified');\n const detailBounds=new T.Box3().setFromObject(after.g.getObjectByName('suv-exterior-details'));check(detailBounds.min.x>=-t.W/2-.04&&detailBounds.max.x<=t.W/2+.04&&detailBounds.min.z>=-t.L/2-.04&&detailBounds.max.z<=t.L/2+.04,'Detail geometry exceeds vehicle footprint');\n function preview(v){const scene=new T.Scene();scene.background=new T.Color(0x23303c);scene.add(v.g);scene.add(new T.AmbientLight(0xffffff,.85));const lamp=new T.DirectionalLight(0xffffff,1.1);lamp.position.set(4,8,6);scene.add(lamp);const floor=new T.Mesh(new T.PlaneGeometry(30,30),new T.MeshStandardMaterial({color:0x55616a,roughness:1}));floor.rotation.x=-Math.PI/2;floor.position.y=-.04;scene.add(floor);const cam=new T.PerspectiveCamera(35,1.5,.1,100);cam.position.set(t.L*1.05,t.L*.65,t.L*1.3);cam.lookAt(0,1,0);const renderer=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setSize(900,600);renderer.outputEncoding=T.sRGBEncoding;renderer.render(scene,cam);check(renderer.info.render.calls>0,'SUV preview did not render');const image=renderer.domElement.toDataURL('image/png');renderer.dispose();return image;}\n return{passed:true,version:2,before:old,after:added,addedTriangles:added.triangles-old.triangles,addedMeshes:added.meshes-old.meshes,dimensions:{W:t.W,L:t.L},beforePNG:preview(before),afterPNG:preview(after)};\n};\n",code=m[1].slice(0,boots[0])+hook+'\n'+m[1].slice(boots[0]);acorn.parse(code,{ecmaVersion:'latest'});
+          html=html.slice(0,m.index)+'<script src="js/suv-details-live.js?v=2"></script>\n'+html.slice(m.index,m.index+m[0].indexOf(m[1]))+code+html.slice(m.index+m[0].indexOf(m[1])+m[1].length);
+          for(const s of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(s[1].trim())acorn.parse(s[1],{ecmaVersion:'latest'});
+          fs.writeFileSync('index.html',html);
+          JS
+      - name: Test the actual game factory and render before and after SUV previews
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 > "$RUNNER_TEMP/suv-http.log" 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do curl --silent --fail http://127.0.0.1:8765/ > /dev/null && break; sleep 1; done
+          node <<'JS'
+          const fs=require('fs'),cp=require('child_process'),{chromium}=require(process.env.RUNNER_TEMP+'/suv-detail/node_modules/playwright');
+          (async()=>{const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--use-angle=swiftshader','--enable-unsafe-swiftshader']});try{const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&/boot failed|boot subsystem error|SUV enhancement failed|Shader Error/i.test(m.text()))errors.push(m.text());});await page.addInitScript(()=>{window.requestAnimationFrame=()=>0;});await page.route('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',route=>route.fulfill({path:process.env.RUNNER_TEMP+'/suv-detail/node_modules/three/build/three.min.js',contentType:'application/javascript'}));await page.goto('http://127.0.0.1:8765/?suv-qa=1',{waitUntil:'load',timeout:180000});await page.waitForFunction(()=>typeof window.__runSUVLiveCheck==='function',null,{timeout:30000});const result=await page.evaluate(()=>window.__runSUVLiveCheck());if(errors.length)throw Error(errors.join('\n'));fs.mkdirSync('status',{recursive:true});for(const [key,name]of [['beforePNG','suv-before.png'],['afterPNG','suv-after.png']]){fs.writeFileSync('status/'+name,Buffer.from(result[key].split(',')[1],'base64'));delete result[key];}result.indexBlob=cp.execFileSync('git',['hash-object','index.html'],{encoding:'utf8'}).trim();result.sourceCommit=process.env.GITHUB_SHA;result.checkedAt=new Date().toISOString();fs.writeFileSync('status/suv-live-check.json',JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result));}finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1);});
+          JS
+      - name: Commit only after actual model browser checks pass
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git rm -f --ignore-unmatch status/suv-install-failed.txt
+          git add -- index.html status/suv-live-check.json status/suv-before.png status/suv-after.png status/suv-original-factory.js status/suv-original-types.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Integrate detailed SUVs into live game after actual-model browser checks'
+          git push origin HEAD:main
+      - name: Preserve source diagnostics without publishing a failed game patch
+        if: ${{ failure() }}
+        run: |
+          git restore --source=HEAD -- index.html
+          test -f status/suv-original-factory.js || exit 0
+          printf 'SUV installation failed; no game patch was published by this step. Check Actions run %s.\n' "$GITHUB_RUN_ID" > status/suv-install-failed.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/suv-original-factory.js status/suv-original-types.js status/suv-install-failed.txt
+          git diff --cached --quiet && exit 0
+          git commit -m 'Save SUV source diagnostics after unsuccessful integration checks'
+          git push origin HEAD:main
