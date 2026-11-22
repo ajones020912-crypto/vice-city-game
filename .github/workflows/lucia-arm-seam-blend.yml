@@ -1,0 +1,49 @@
+name: Blend Lucia shoulder and upper arm joins without changing shape or rig
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-arm-seam-blend.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-photo-reference
+  cancel-in-progress: false
+jobs:
+  blend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-arm-blend" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Adapt successful contact shading blend to shoulder regions only
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-arm-blend/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_ARM_SEAM_BLEND_V1'))process.exit(0);if(!s.includes('// LUCIA_PELVIS_SEAM_BLEND_V1'))throw Error('Working lower body blend required');fs.writeFileSync('/tmp/lucia-arm-before.js',s);function walk(n,fn){fn(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,fn);}else if(v&&typeof v.type==='string')walk(v,fn);}}const found=[];walk(acorn.parse(s,{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='blendLuciaPelvisSeams')found.push(n);});if(found.length!==1)throw Error('Working smoothing implementation changed');let helper=s.slice(found[0].start,found[0].end);function replace(a,b){if(helper.split(a).length!==2)throw Error('Reviewed smoothing fragment changed: '+a);helper=helper.replace(a,b);}
+          replace('function blendLuciaPelvisSeams(','function blendLuciaArmSeams(');replace('const u=h.userData;','const u=h.userData;h.updateMatrixWorld(true);const shoulderInverse=new T.Matrix4().copy(u.hips.matrixWorld).invert(),shoulderCenters=u.A.map(a=>new T.Vector3().setFromMatrixPosition(a.sh.matrixWorld).applyMatrix4(shoulderInverse));function nearShoulder(p,pad=0){return shoulderCenters.some(c=>Math.pow((p.x-c.x)/(.15+pad),2)+Math.pow((p.y-c.y)/(.17+pad),2)+Math.pow((p.z-c.z)/(.17+pad),2)<=1);}');
+          replace("o.name==='lucia-pelvis-skin-bridge'||(o.material===u.m.skin&&(o.parent===u.spine||o.parent===u.hips||u.Lg.some(l=>o.parent===l.hp)))",'o.material===u.m.skin&&(o.parent===u.spine||u.A.some(a=>o.parent===a.sh))');replace('v.y>=-.25&&v.y<=.18','nearShoulder(v)');replace('p.y<-.278||p.y>.208','!nearShoulder(p,radius)');replace('Math.min(a.y,b.y,c.y)>.208||Math.max(a.y,b.y,c.y)<-.278','![a,b,c].some(v=>nearShoulder(v,.08))');replace('p.y<-.25||p.y>.18','!nearShoulder(p)');replace('u.luciaPelvisSeamBlend=','u.luciaArmSeamBlend=');
+          const call='blendLuciaPelvisSeams(T,h);';if(s.split(call).length!==2)throw Error('Working blend call changed');s=s.replace(call,call+'blendLuciaArmSeams(T,h);');const marker='function blendLuciaPelvisSeams(';if(s.split(marker).length!==2)throw Error('Helper boundary changed');s=s.replace(marker,helper+'\n '+marker);s='// LUCIA_ARM_SEAM_BLEND_V1\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-arm-after.js',s);
+          JS
+      - name: Verify localized shading changes and preserved model and arm movement
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-arm-blend/node_modules/three');if(!fs.existsSync('/tmp/lucia-arm-after.js')){if(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_ARM_SEAM_BLEND_V1'))process.exit(0);throw Error('Candidate missing');}function load(file){const c={window:{},console,Math};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}const old=load('/tmp/lucia-arm-before.js'),cur=load('/tmp/lucia-arm-after.js');function signature(h,includeNormals){const out=[];h.traverse(o=>{const row=[o.type,o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()];if(o.isMesh)row.push(Object.keys(o.geometry.attributes).filter(k=>includeNormals||k!=='normal').sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.metalness,m.flatShading,m.skinning]));out.push(row);});return JSON.stringify(out);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id),true)===signature(cur.build(T,id),true),'Unrelated character changed');
+          const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');assert(signature(a,false)===signature(b,false),'Non-normal model data changed');assert(JSON.stringify(a.userData.luciaPelvisSeamBlend)===JSON.stringify(b.userData.luciaPelvisSeamBlend),'Working lower body blend changed');assert(b.userData.luciaArmSeamBlend.changed>=20,'Insufficient shoulder contact normals blended');a.updateMatrixWorld(true);b.updateMatrixWorld(true);const aa=[],bb=[];a.traverse(o=>{if(o.isMesh)aa.push(o);});b.traverse(o=>{if(o.isMesh)bb.push(o);});assert(aa.length===bb.length);const inv=new T.Matrix4().copy(b.userData.hips.matrixWorld).invert(),centers=b.userData.A.map(a=>new T.Vector3().setFromMatrixPosition(a.sh.matrixWorld).applyMatrix4(inv)),sideCounts=[0,0];let changed=0;for(let j=0;j<aa.length;j++){const x=aa[j].geometry.attributes.normal,y=bb[j].geometry.attributes.normal;if(!x&&!y)continue;assert(x&&y&&x.count===y.count);const M=inv.clone().multiply(bb[j].matrixWorld);for(let i=0;i<x.count;i++)if(x.getX(i)!==y.getX(i)||x.getY(i)!==y.getY(i)||x.getZ(i)!==y.getZ(i)){const p=new T.Vector3().fromBufferAttribute(bb[j].geometry.attributes.position,i).applyMatrix4(M),n=new T.Vector3().fromBufferAttribute(y,i);assert(centers.some(c=>Math.pow((p.x-c.x)/.15,2)+Math.pow((p.y-c.y)/.17,2)+Math.pow((p.z-c.z)/.17,2)<=1.00001),'Normals outside shoulder regions changed');assert(n.toArray().every(Number.isFinite)&&Math.abs(n.length()-1)<1e-5);sideCounts[p.distanceToSquared(centers[0])<=p.distanceToSquared(centers[1])?0:1]++;changed++;}}assert(changed===b.userData.luciaArmSeamBlend.changed);assert(sideCounts.every(n=>n>=5),'Both shoulders must receive blending');
+          let poses=0;for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),u=h.userData,m=h.getObjectByName('lucia-pelvis-skin-bridge');assert(m&&m.isSkinnedMesh&&u.luciaPelvisGapBridge&&u.guns.pistol&&u.guns.rifle&&u.luciaArmSeamBlend);for(const pose of [[0,0,0,0],[.5,-.5,.15,.15],[.9,-.9,.45,.45],[0,-.9,0,-.7],[-.8,-.8,.5,.5],[-.9,-.9,1,1]]){u.A[0].sh.rotation.x=pose[0];u.A[1].sh.rotation.x=pose[1];u.A[0].el.rotation.x=pose[2];u.A[1].el.rotation.x=pose[3];h.updateMatrixWorld(true);m.onBeforeRender();h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});assert(Array.from(m.skeleton.boneMatrices).every(Number.isFinite));poses++;}}
+          fs.copyFileSync('/tmp/lucia-arm-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-arm-seam-blend-check.json',JSON.stringify({passed:true,changedNormalVertices:changed,shoulderVertexCounts:sideCounts,affected:b.userData.luciaArmSeamBlend.affected,poseChecks:poses,allPositionsAndIndicesUnchanged:true,skinWeightsAndMaterialsUnchanged:true,allRigTransformsUnchanged:true,workingLowerBodyBlendPreserved:true,otherCharactersUnchanged:true,scope:'Shoulder and upper arm contact-normal blending only. No new layers, shape changes or topology welding. Pose checks are structural, not visual verification of animation seams. Rendered appearance and live deployment not verified.'},null,2)+'\n');
+          JS
+      - name: Publish only validated arm blending
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-arm-seam-blend-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Blend Lucia shoulder and upper arm shading while preserving model and rig'
+          git push origin HEAD:main
