@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "animationCases": 12,
+  "coverageRays": 12,
+  "closedConnectedBridgeSurface": true,
+  "normalizedFourJointSkinWeights": true,
+  "existingBodyGeometryAndMaterialsUnchanged": true,
+  "rigOffsetsUnchanged": true,
+  "currentSkinColorPreserved": true,
+  "otherCharactersUnchanged": true,
+  "scope": "Additive closed pelvis bridge, bind-pose center-ray coverage and structural animation checks. This is not a full-body topology weld; rendered blends, pose-dependent gaps and live deployment not verified."
+}

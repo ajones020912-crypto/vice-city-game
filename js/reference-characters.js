@@ -1,3 +1,4 @@
+// LUCIA_PELVIS_GAP_REPAIR_V1
 // LUCIA_WARM_TAN_V2
 // LUCIA_CLOTHING_DETAILS_V2
 // LUCIA_HIP_THIGH_SMOOTH_V1
@@ -95,7 +96,16 @@
   if(!garments.some(o=>o.name==='lucia-dark-tank-top')||!garments.some(o=>o.name==='lucia-seamless-denim'))throw Error('Expected tank and shorts meshes missing');
   u.luciaRemovedClothing=garments.map(o=>o.name);for(const mesh of garments)mesh.parent.remove(mesh);
  }
- function lucia(T,h){
+ 
+ function installLuciaPelvisBridge(T,h){
+  const u=h.userData;if(h.getObjectByName('lucia-pelvis-skin-bridge'))return;h.updateMatrixWorld(true);const geometry=new T.SphereGeometry(1,48,32),p=geometry.attributes.position,indices=[],weights=[],toRoot=new T.Matrix4().copy(h.matrixWorld).invert().multiply(u.hips.matrixWorld),v=new T.Vector3(),smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};
+  for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i);v.set(v.x*.170,v.y*.160-.010,v.z*.117-.007);const spine=smooth((v.y-.010)/.105),legs=(1-spine)*.30*smooth((-.040-v.y)/.110),right=smooth((v.x+.065)/.130);indices.push(0,1,2,3);weights.push(1-spine-legs,spine,legs*(1-right),legs*right);v.applyMatrix4(toRoot);p.setXYZ(i,v.x,v.y,v.z);}p.needsUpdate=true;geometry.setAttribute('skinIndex',new T.Uint16BufferAttribute(indices,4));geometry.setAttribute('skinWeight',new T.Float32BufferAttribute(weights,4));geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();
+  const material=u.m.skin.clone();material.skinning=true;material.flatShading=false;material.needsUpdate=true;const mesh=new T.SkinnedMesh(geometry,material);mesh.name='lucia-pelvis-skin-bridge';mesh.castShadow=true;mesh.receiveShadow=true;mesh.frustumCulled=false;h.add(mesh);
+  const joints=[u.hips,u.spine,u.Lg[0].hp,u.Lg[1].hp],bones=joints.map((joint,i)=>{const bone=new T.Bone();bone.name='lucia-pelvis-follow-bone-'+i;bone.matrixAutoUpdate=false;h.add(bone);return bone;}),inverseRoot=new T.Matrix4();
+  function synchronize(){inverseRoot.copy(h.matrixWorld).invert();for(let i=0;i<bones.length;i++){bones[i].matrix.copy(inverseRoot).multiply(joints[i].matrixWorld);bones[i].matrixWorld.copy(joints[i].matrixWorld);bones[i].matrixWorldNeedsUpdate=false;}}
+  h.updateMatrixWorld(true);synchronize();const skeleton=new T.Skeleton(bones);mesh.bind(skeleton);mesh.onBeforeRender=function(){synchronize();skeleton.update();};mesh.onBeforeRender();u.luciaPelvisGapBridge=true;
+ }
+function lucia(T,h){
   const u=h.userData,m=u.m; m.skin.roughness=.74;m.hair.roughness=.82;m.lip.color.setHex(0xa6535d);m.lip.roughness=.65;m.iris.color.setHex(0x543c26);
   for(const mesh of u.spine.children.slice())if(mesh.isMesh&&((mesh.material===m.shirt)||(mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y-.195)<.002)))remove(mesh);
   const profile=[[.1406667,.22],[.145,.26],[.1534,.30],[.1576,.32],[.1618,.34],[.166,.36],[.16775,.375],[.1695,.39],[.17125,.405],[.173,.42],[.1717143,.435],[.1704286,.45],[.17,.455],[.135,.485],[.104,.495]];
@@ -109,7 +119,9 @@
   for(const mesh of u.headP.children.slice())if(mesh.isMesh){if(mesh.material===m.brow&&mesh.geometry.type==='BoxGeometry')remove(mesh);else if(mesh.material===m.eyeW){mesh.scale.x*=.98;mesh.scale.y*=.82}else if(mesh.material===m.lip){mesh.scale.x*=1.16;mesh.scale.y*=1.12}else if(mesh.material===m.skin&&mesh.geometry.type==='LatheGeometry'){const a=mesh.geometry.attributes.position;for(let i=0;i<a.count;i++){const y=a.getY(i),x=a.getX(i);a.setX(i,x*(1+.085*Math.exp(-Math.pow((y-.145)/.04,2))-.065*Math.exp(-Math.pow((y-.075)/.025,2))))}a.needsUpdate=true;mesh.geometry.computeVertexNormals()}}
   const threads=cloth(T,0xc8c2ad);for(let k=0;k<u.Lg.length;k++){const hp=u.Lg[k].hp;for(const mesh of hp.children.slice())if(mesh.isMesh&&mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y+.26)<.002)remove(mesh);const shorts=hp.children.find(o=>o.isMesh&&o.material===m.pants&&o.geometry.type==='LatheGeometry');if(shorts){shorts.name='lucia-reference-denim-shorts-'+k;const a=shorts.geometry.attributes.position;for(let i=0;i<a.count;i++)if(Math.abs(a.getY(i)+.26)<.001){const angle=Math.atan2(a.getZ(i),a.getX(i));a.setY(i,-.26+.003*Math.sin(angle*9)+.002*Math.sin(angle*17))}a.needsUpdate=true;shorts.geometry.computeVertexNormals()}for(let j=0;j<9;j++){const phi=j/9*Math.PI*2,len=.007+(j%3)*.003;add(T,hp,new T.CylinderGeometry(.0008,.0005,len,4),threads,'lucia-denim-fray',Math.sin(phi)*.095,-.26-len*.45,Math.cos(phi)*.095)}}
   const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);fitLuciaShortsLegs(T,h);denimLuciaShorts(T,h);joinLuciaShoulders(T,h);refineLuciaV3(T,h);installLuciaDenimV3(T,h);fitLuciaReferenceBodyClothes(T,h);finishLuciaV4(T,h);makeLuciaCurlyPonytail(T,h);fitLuciaFrontHair(T,h);addLuciaBackCurls(T,h);polishLuciaV5(T,h);enlargeLuciaEyes(T,h);smoothLuciaHipTransition(T,h);finishLuciaReferenceOutfit(T,h);fitLuciaPhotoReference(T,h);hideLuciaClothingOnly(T,h);removeLuciaClothingDetails(T,h);smoothLuciaSkinSurface(T,h,true);
- }
+ 
+ installLuciaPelvisBridge(T,h);
+}
 
 
  function fitLuciaShortsLegs(T,h){
