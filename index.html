@@ -3145,7 +3145,12 @@ function updateTracers(dt){for(const t of tracers)if(t.t>0){t.t-=dt;if(t.t<=0)t.
 function carHitPeds(c){const sp=c.speed;if(sp<1.5&&!c.dead)return;const sn=Math.sin(c.h),cs=Math.cos(c.h),hl=c.t.L/2+.2,hw=c.t.W/2+.3;
  for(const p of allPeds()){if(!p.active||p.dead||p.state==='down')continue;const dx=p.x-c.x,dz=p.z-c.z;if(dx*dx+dz*dz>30)continue;
   const lf=dx*sn+dz*cs,ll=dx*cs-dz*sn;if(Math.abs(lf)<hl&&Math.abs(ll)<hw&&sp>2.2){const byP=c.occ==='player';hurtPed(p,sp*7,c.x-c.vx*.1,c.z-c.vz*.1,'car',byP);if(byP){audio.thud(.4);G.shake=Math.max(G.shake,.25)}}}
- if(!pl.car&&pl.alive&&sp>3&&!pl.inside){const dx=pl.x-c.x,dz=pl.z-c.z;if(dx*dx+dz*dz<30){const lf=dx*sn+dz*cs,ll=dx*cs-dz*sn;if(Math.abs(lf)<hl&&Math.abs(ll)<hw){hurtPlayer(sp*2.2);pl.vx=c.vx*1.1;pl.vz=c.vz*1.1;pl.vy=3}}}}
+ // CAR_HITS_PLAYER_V2: only the car driving INTO you hurts (closing speed along car->player); walking into a car,
+ // a parked one or the side of one passing by just pushes you. One hit per contact, scaled by impact speed.
+ if(!pl.car&&pl.alive&&!pl.inside&&sp>2.5&&!(pl.carHitT>G.time)){const dx=pl.x-c.x,dz=pl.z-c.z;if(dx*dx+dz*dz<30){const lf=dx*sn+dz*cs,ll=dx*cs-dz*sn;
+  if(Math.abs(lf)<hl&&Math.abs(ll)<hw){const d=Math.hypot(dx,dz)||1,ux=dx/d,uz=dz/d,carToward=c.vx*ux+c.vz*uz;
+   if(carToward>2.5){pl.carHitT=G.time+.8;hurtPlayer(Math.min(95,4+carToward*carToward*.22+carToward*1.2));
+    pl.vx=c.vx*.9+ux*carToward*.4;pl.vz=c.vz*.9+uz*carToward*.4;pl.vy=2+Math.min(5,carToward*.25);G.shake=Math.max(G.shake||0,Math.min(.8,carToward/20));audio.thud(Math.min(1,carToward/15))}}}}}
 
 
 // ================= INTERIORS =================
