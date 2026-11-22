@@ -4768,7 +4768,7 @@ removeCar=function(c){if(c&&c._crumple){for(const p of c._crumple.parts)p.geomet
 // DEV_CODE_FEEDBACK_V1
 // DEV_FLIGHT_V1
 const devFlightState={unlocked:false,active:false,anchor:null,epoch:0};let devFlightRender=()=>{};
-const devFlightAllowed=()=>!G.multiplayer&&pl.alive&&!pl.car&&!pl.inside&&!MS.active&&!SJ.kind&&!G.work&&!G.busy&&!G.robbery&&!G.mugging;
+const devFlightAllowed=()=>!G.multiplayer&&pl.alive&&!pl.car&&!pl.inside&&!G.work&&!G.busy&&!G.robbery&&!G.mugging;
 function devFlightClearKeys(){for(const k in keys)keys[k]=false;mouseDown=false}
 function devFlightStop(land){
  const anchor=devFlightState.anchor;devFlightState.active=false;devFlightState.anchor=null;devFlightClearKeys();
@@ -4782,12 +4782,12 @@ function devFlightEnable(){
  devFlightState.anchor={x:pl.x,y:pl.y,z:pl.z,h:pl.h};devFlightState.active=true;devFlightClearKeys();pl.vx=pl.vy=pl.vz=0;pl.y=ground+1.5;pl.swim=false;camInit=false;devFlightRender();return true;
 }
 async function devFlightUnlock(raw){
- if(G.state!=='paused'||!devFlightAllowed())return{ok:false,message:'Available on foot, outdoors, in single-player free roam.'};
+ if(G.state!=='paused'||G.multiplayer)return{ok:false,message:'Dev Mode is single-player only.'};
  const token=++devFlightState.epoch,data=new TextEncoder().encode(String(raw).trim().toUpperCase());
  const digest=await crypto.subtle.digest('SHA-256',data),hash=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');
- if(token!==devFlightState.epoch||G.state!=='paused'||!devFlightAllowed())return{ok:false,message:'Game state changed. Try again.'};
+ if(token!==devFlightState.epoch||G.state!=='paused'||G.multiplayer)return{ok:false,message:'Game state changed. Try again.'};
  if(hash!=='d5e1da7ce70c5fbfa581aa73383ff10fa5b1c1edf831759a7b5f633a99e3beaa')return{ok:false,message:'Incorrect code. Please try again.'};
- devFlightState.unlocked=true;const active=devFlightEnable();devFlightRender();return{ok:true,message:active?'Correct code! Flight enabled. Click Resume to fly. Space up, X down, Shift boost.':'Correct code! Flight unlocked. Stand on dry ground, then click Dev Mode to enable flight.'};
+ devFlightState.unlocked=true;const active=devFlightEnable();devFlightRender();return{ok:true,message:active?'Correct code! Flight enabled. Click Resume to fly. Space up, X down, Shift boost.':'Correct code! Dev tools unlocked below. Flight works on foot, outdoors, on dry ground.'};
 }
 const devFlightOriginalFoot=playerOnFoot;
 playerOnFoot=function(dt){
@@ -4811,7 +4811,7 @@ function mountDevFlightMenu(){
  const resume=document.getElementById('pResume'),card=document.querySelector('#pause .card');if(!resume||!card)return;
  const button=document.createElement('button');button.id='pDevMode';button.type='button';button.textContent='Dev Mode';resume.insertAdjacentElement('afterend',button);
  const panel=document.createElement('div');panel.hidden=true;panel.style.cssText='margin-top:12px;padding:12px;border:1px solid #8de0f777;border-radius:10px;text-align:left';
- panel.innerHTML='<label for="devModeCode">Developer code</label><input id="devModeCode" type="password" maxlength="40" autocomplete="off" style="display:block;box-sizing:border-box;width:100%;padding:10px;margin:8px 0;background:#071426;color:white;border:1px solid #8de0f777;border-radius:6px"><button id="devModeUnlock" type="button">Unlock flight</button><p id="devModeStatus" role="status" style="font-size:12px;line-height:1.5"></p>';
+ panel.innerHTML='<label for="devModeCode">Developer code</label><input id="devModeCode" type="password" maxlength="40" autocomplete="off" style="display:block;box-sizing:border-box;width:100%;padding:10px;margin:8px 0;background:#071426;color:white;border:1px solid #8de0f777;border-radius:6px"><button id="devModeUnlock" type="button">Unlock</button><p id="devModeStatus" role="status" style="font-size:12px;line-height:1.5"></p>';
  card.appendChild(panel);const input=panel.querySelector('input'),unlock=panel.querySelector('button'),status=panel.querySelector('p');
  const badge=document.createElement('div');badge.hidden=true;badge.textContent='DEV FLIGHT | WASD move | Space up | X down | Shift boost | Saves paused';badge.style.cssText='position:fixed;top:12px;right:12px;z-index:45;padding:8px 12px;border-radius:8px;background:#071426e8;color:#8df3ba;font:12px Arial;pointer-events:none';document.body.appendChild(badge);
  devFlightRender=()=>{button.textContent=devFlightState.active?'Dev Mode: ON':devFlightState.unlocked?'Dev Mode: OFF':'Dev Mode';button.disabled=!!G.multiplayer;button.title=G.multiplayer?'Single-player only':'';badge.hidden=!devFlightState.active};
@@ -4875,7 +4875,7 @@ Object.defineProperty(window,'__vcDev',{get(){return devOK()?DEVAPI:undefined},c
  sel([['','Time of day…'],['7','Morning'],['12','Noon'],['18.5','Sunset'],['23','Night']],v=>{if(v)DEVAPI.time(+v)},'Time of day');
  panel.appendChild(box);
  const perf=document.createElement('div');perf.hidden=true;perf.id='devPerf';perf.style.cssText='position:fixed;top:48px;right:12px;z-index:45;padding:6px 10px;border-radius:8px;background:#071426e8;color:#8df3ba;font:12px ui-monospace,monospace;pointer-events:none';document.body.appendChild(perf);DEV.perfEl=perf;
- function refresh(){box.hidden=!devOK();bGod.textContent='God mode: '+(DEV.god?'ON':'OFF');bWant.textContent='Never wanted: '+(DEV.noWanted?'ON':'OFF');bPerf.textContent='FPS meter: '+(DEV.perf?'ON':'OFF');qs.value=String(G.quality);perf.hidden=!DEV.perf}
+ function refresh(){box.hidden=!devOK();for(const el of[panel.querySelector('label'),panel.querySelector('#devModeCode'),panel.querySelector('#devModeUnlock')])if(el)el.hidden=devOK();bGod.textContent='God mode: '+(DEV.god?'ON':'OFF');bWant.textContent='Never wanted: '+(DEV.noWanted?'ON':'OFF');bPerf.textContent='FPS meter: '+(DEV.perf?'ON':'OFF');qs.value=String(G.quality);perf.hidden=!DEV.perf}
  const prev=devFlightRender;devFlightRender=function(){prev.apply(this,arguments);refresh()};refresh();
  // a new game or loaded save locks dev mode again; switch the extras off with it
  const prevReset=devFlightReset;devFlightReset=function(){DEV.god=DEV.noWanted=false;DEVAPI.perf(false);return prevReset.apply(this,arguments)};
