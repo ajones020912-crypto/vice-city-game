@@ -10,7 +10,7 @@
  const originalBuild=api.build;let printTexture=null;
  const looks={
   jasonC:{referenceLead:'jason',name:'Jason',realistic:true,skin:0xc98e68,hair:0x2d211b,hairStyle:'short',beard:false,jacket:null,top:{kind:'tee',color:0x626a68},legs:{kind:'trousers',color:0x6a593f},shoes:{kind:'boots',color:0x594735,sole:0x29231e},extras:['watch']},
-  luciaC:{referenceLead:'lucia',name:'Lucia',realistic:true,female:true,luciaSummer:true,build:'slim',skin:0xa06c4d,hair:0x2d1b12,hairStyle:'referencePonytail',jacket:null,top:{kind:'tank',color:0x202124},legs:{kind:'shorts',color:0x36536d,highWaist:true},shoes:{color:0xf6f6f6,sole:0xe2e2e2,accent:0x303338},extras:['hoops','bracelets','ring','necklace']}
+  luciaC:{referenceLead:'lucia',name:'Lucia',realistic:true,female:true,luciaSummer:true,build:'slim',skin:0xa06c4d,hair:0x24150f,hairStyle:'referencePonytail',jacket:null,top:{kind:'tank',color:0x762b3d},legs:{kind:'shorts',color:0x466f98,highWaist:true},shoes:{color:0xf8f4ee,sole:0xe2e2e2,accent:0x9b5961},extras:['hoops','bracelets','ring','necklace']}
  };
  for(const id of Object.keys(looks))api.DESIGNS[id]=Object.assign({},api.DESIGNS[id],looks[id]);
  function add(T,parent,geometry,material,name,x=0,y=0,z=0){const mesh=new T.Mesh(geometry,material);mesh.name=name;mesh.position.set(x,y,z);mesh.castShadow=true;parent.add(mesh);return mesh}
@@ -19,7 +19,7 @@
  function tube(T,points,radius,segments=18){const path=new T.CatmullRomCurve3(points.map(p=>new T.Vector3(...p))),g=new T.TubeGeometry(path,segments,radius,8,false),a=g.attributes.position;for(let i=0;i<=segments;i++){const t=i/segments,c=path.getPointAt(t),scale=Math.max(.07,Math.sin(Math.PI*Math.min(.95,t*.85+.12))*(1-t*.65));for(let j=0;j<=8;j++){const k=i*9+j;a.setXYZ(k,c.x+(a.getX(k)-c.x)*scale,c.y+(a.getY(k)-c.y)*scale,c.z+(a.getZ(k)-c.z)*scale)}}g.computeVertexNormals();return g}
  function ponyCap(T){const p=[],uv=[],idx=[],rows=20,cols=48;for(let i=0;i<=rows;i++)for(let j=0;j<=cols;j++){const phi=j/cols*Math.PI*2,end=Math.PI*(.60-.14*Math.max(0,Math.cos(phi))+.07*Math.max(0,-Math.cos(phi))),theta=end*i/rows;p.push(Math.sin(theta)*Math.sin(phi)*.103,.196+Math.cos(theta)*.115,-.003+Math.sin(theta)*Math.cos(phi)*.120);uv.push(j/cols,i/rows)}for(let i=0;i<rows;i++)for(let j=0;j<cols;j++){const a=i*(cols+1)+j,b=a+cols+1;idx.push(a,b,a+1,b,b+1,a+1)}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();return g}
  function lucia(T,h){
-  const u=h.userData,m=u.m; m.skin.roughness=.74;m.hair.roughness=.82;m.lip.color.setHex(0x9a5e55);m.lip.roughness=.65;m.iris.color.setHex(0x543c26);
+  const u=h.userData,m=u.m; m.skin.roughness=.74;m.hair.roughness=.82;m.lip.color.setHex(0xa6535d);m.lip.roughness=.65;m.iris.color.setHex(0x543c26);
   for(const mesh of u.spine.children.slice())if(mesh.isMesh&&((mesh.material===m.shirt)||(mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y-.195)<.002)))remove(mesh);
   const profile=[[.1406667,.22],[.145,.26],[.1534,.30],[.1576,.32],[.1618,.34],[.166,.36],[.16775,.375],[.1695,.39],[.17125,.405],[.173,.42],[.1717143,.435],[.1704286,.45],[.17,.455],[.135,.485],[.104,.495]];
   const tank=add(T,u.spine,new T.LatheGeometry(profile.map(p=>new T.Vector2(...p)),28),m.shirt,'lucia-dark-tank-top');tank.scale.z=.66;
