@@ -3254,11 +3254,17 @@ function addCrime(p,opts={}){
 // RED_LIGHTS_V1: entering a signalled junction on red counts as running it; 3 within 7 seconds = one more wanted star
 const RL={node:null,runs:[]},WANTED_AT=[0,1,4,8,14,22,30];
 function updateRedLights(){
- const c=pl.car;if(G.state!=='play'||!c||c.dead||c.t.aircraft||c.t.boat||c.airborne||!G.sigNodes){RL.node=null;return}
+ // RIGHT_ON_RED_V1: decided when you leave the junction. Entering on red and turning right is legal;
+ // going straight or turning left on red counts as running it.
+ const c=pl.car;if(G.state!=='play'||!c||c.dead||c.t.aircraft||c.t.boat||c.airborne||!G.sigNodes){RL.node=null;RL.entry=null;return}
  let at=null;for(const nd of G.sigNodes)if(Math.abs(c.x-nd.x)<nd.v.hw&&Math.abs(c.z-nd.z)<nd.h.hw){at=nd;break}
- if(at&&at!==RL.node&&c.speed>4){
-  const axis=Math.abs(c.vx)>Math.abs(c.vz)?'h':'v';
-  if(sigState(at,G.time,axis)===0){const now=G.time;RL.runs=RL.runs.filter(t=>now-t<7);RL.runs.push(now);
+ if(at&&at!==RL.node){RL.entry=null;
+  if(c.speed>4){const axis=Math.abs(c.vx)>Math.abs(c.vz)?'h':'v',l=Math.hypot(c.vx,c.vz)||1;RL.entry={nd:at,red:sigState(at,G.time,axis)===0,fx:c.vx/l,fz:c.vz/l}}}
+ if(RL.entry&&at!==RL.entry.nd){const e=RL.entry;RL.entry=null;
+  const l=Math.hypot(c.vx,c.vz);
+  // car heading h: forward=(sin h,cos h); steering right lowers h, so a right turn gives cross(entry,exit) > 0
+  const turn=l>.5?(e.fx*(c.vz/l)-e.fz*(c.vx/l)):0,rightTurn=turn>.5;
+  if(e.red&&!rightTurn){const now=G.time;RL.runs=RL.runs.filter(t=>now-t<7);RL.runs.push(now);
    if(RL.runs.length>=3){RL.runs=[];const next=Math.min(6,(pl.wanted||0)+1);addCrime(Math.max(.1,WANTED_AT[next]-(pl.crime||0)));toast('🚦 Ran 3 red lights: the police want a word',2200)}
    else toast('🚦 Ran a red light ('+RL.runs.length+'/3)',1300)}}
  RL.node=at;
