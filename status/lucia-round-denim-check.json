@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "animationCases": 12,
+  "previousChestFront": 0.20367714643478393,
+  "newChestFront": 0.17846865355968478,
+  "reducedForwardProjection": true,
+  "broaderSofterCurve": true,
+  "bodyAndTankUseSameShape": true,
+  "denimColorBumpAndRoughnessTextures": true,
+  "shared256pxTextureCache": true,
+  "pocketsAndCuffsPreserved": true,
+  "denimPositionsAndSkinWeightsUnchanged": true,
+  "rigOffsetsUnchanged": true,
+  "faceHairAndOtherCharactersUnchanged": true,
+  "scope": "Geometry, material shader-template and animation tests; rendered appearance and live deployment not yet verified."
+}

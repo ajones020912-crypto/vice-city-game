@@ -1,3 +1,4 @@
+// LUCIA_ROUND_DENIM_V2
 // LUCIA_PHOTO_REFERENCE_V1
 // LUCIA_FACE_LEG_REVERT_V1
 // LUCIA_CROPPED_TANK_V1
@@ -20,6 +21,19 @@
  function tube(T,points,radius,segments=18){const path=new T.CatmullRomCurve3(points.map(p=>new T.Vector3(...p))),g=new T.TubeGeometry(path,segments,radius,8,false),a=g.attributes.position;for(let i=0;i<=segments;i++){const t=i/segments,c=path.getPointAt(t),scale=Math.max(.07,Math.sin(Math.PI*Math.min(.95,t*.85+.12))*(1-t*.65));for(let j=0;j<=8;j++){const k=i*9+j;a.setXYZ(k,c.x+(a.getX(k)-c.x)*scale,c.y+(a.getY(k)-c.y)*scale,c.z+(a.getZ(k)-c.z)*scale)}}g.computeVertexNormals();return g}
  function ponyCap(T){const p=[],uv=[],idx=[],rows=20,cols=48;for(let i=0;i<=rows;i++)for(let j=0;j<=cols;j++){const phi=j/cols*Math.PI*2,end=Math.PI*(.60-.14*Math.max(0,Math.cos(phi))+.07*Math.max(0,-Math.cos(phi))),theta=end*i/rows;p.push(Math.sin(theta)*Math.sin(phi)*.103,.196+Math.cos(theta)*.115,-.003+Math.sin(theta)*Math.cos(phi)*.120);uv.push(j/cols,i/rows)}for(let i=0;i<rows;i++)for(let j=0;j<cols;j++){const a=i*(cols+1)+j,b=a+cols+1;idx.push(a,b,a+1,b,b+1,a+1)}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();return g}
 
+
+ function luciaVisibleDenimTextures(T){
+  if(luciaVisibleDenimTextures.cache)return luciaVisibleDenimTextures.cache;const size=256,color=new Uint8Array(size*size*4),height=new Uint8Array(size*size*4),rough=new Uint8Array(size*size*4);
+  for(let y=0;y<size;y++)for(let x=0;x<size;x++){const twill=(x+2*y)%16<6?20:-13,warp=x%2===0?6:-6,weft=y%4===0?5:-2,noise=((x*73+y*151+x*y*3)%17)-8,wash=9*Math.sin(2*Math.PI*x/size)*Math.cos(4*Math.PI*y/size),c=Math.max(0,Math.min(255,218+twill+warp+weft+noise+wash)),b=Math.max(0,Math.min(255,128+twill*.7+warp+weft)),r=Math.max(0,Math.min(255,235+noise+twill*.2)),i=(y*size+x)*4;color[i]=c;color[i+1]=Math.min(255,c+2);color[i+2]=Math.min(255,c+5);color[i+3]=255;height[i]=height[i+1]=height[i+2]=b;height[i+3]=255;rough[i]=rough[i+1]=rough[i+2]=r;rough[i+3]=255;}
+  function texture(data,isColor){const t=new T.DataTexture(data,size,size,T.RGBAFormat);t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(3,2);t.magFilter=T.LinearFilter;t.minFilter=T.LinearMipmapLinearFilter;t.generateMipmaps=true;if(isColor)t.encoding=T.sRGBEncoding;t.anisotropy=2;t.needsUpdate=true;return t;}
+  return luciaVisibleDenimTextures.cache={color:texture(color,true),height:texture(height,false),rough:texture(rough,false)};
+ }
+ function fitLuciaVisibleDenim(T,h){
+  const u=h.userData,denim=h.getObjectByName('lucia-seamless-denim');if(!denim||!denim.isSkinnedMesh)throw Error('Expected animated denim garment');const g=denim.geometry,p=g.attributes.position,uv=g.attributes.uv;let valid=!!(uv&&uv.itemSize===2&&uv.count===p.count),umin=Infinity,umax=-Infinity,vmin=Infinity,vmax=-Infinity;
+  if(valid)for(let i=0;i<uv.count;i++){const a=uv.getX(i),b=uv.getY(i);if(!Number.isFinite(a)||!Number.isFinite(b)){valid=false;break;}umin=Math.min(umin,a);umax=Math.max(umax,a);vmin=Math.min(vmin,b);vmax=Math.max(vmax,b);}valid=valid&&umax-umin>.01&&vmax-vmin>.01;
+  if(!valid){const fitted=g.clone();fitted.computeBoundingBox();const box=fitted.boundingBox,w=Math.max(.001,box.max.x-box.min.x),height=Math.max(.001,box.max.y-box.min.y),out=[];for(let i=0;i<p.count;i++)out.push((p.getX(i)-box.min.x)/w,(p.getY(i)-box.min.y)/height);fitted.setAttribute('uv',new T.Float32BufferAttribute(out,2));denim.geometry=fitted;}
+  const maps=luciaVisibleDenimTextures(T);for(const material of new Set([u.m.pants,denim.material])){material.map=maps.color;material.bumpMap=maps.height;material.bumpScale=.00065;material.roughnessMap=maps.rough;material.roughness=.98;material.metalness=0;material.flatShading=false;material.needsUpdate=true;}u.luciaVisibleDenim=true;u.luciaRoundDenimVersion=2;
+ }
  function fitLuciaPhotoReference(T,h){
   const u=h.userData,m=u.m;h.updateMatrixWorld(true);
   function reshape(mesh,space,shape){
@@ -31,7 +45,7 @@
   for(const mesh of u.spine.children){
    if(!mesh.isMesh)continue;const cloth=mesh.material===m.shirt||/tank|shoulder-strap/.test(mesh.name);if(mesh.material!==m.skin&&!cloth)continue;
    if(cloth){mesh.material=mesh.material.clone();mesh.material.color.setHex(0x151619);mesh.material.roughness=.92;mesh.material.flatShading=false;}
-   reshape(mesh,u.spine,v=>{const waist=Math.exp(-Math.pow((v.y-.16)/.10,2));v.x*=1-.025*waist;const front=Math.max(0,Math.min(1,v.z/.035)),chest=Math.exp(-Math.pow((v.y-.39)/.085,2)),round=Math.exp(-Math.pow((Math.abs(v.x)-.070)/.070,2));v.z+=front*chest*(.012+.033*round);});
+   reshape(mesh,u.spine,v=>{const waist=Math.exp(-Math.pow((v.y-.16)/.10,2));v.x*=1-.025*waist;const f=Math.max(0,Math.min(1,v.z/.06)),front=f*f*(3-2*f),chest=Math.exp(-Math.pow((v.y-.385)/.105,2)),round=Math.exp(-Math.pow((Math.abs(v.x)-.065)/.095,2));v.z+=front*chest*(.004+.014*round);});
   }
   m.shirt.color.setHex(0x151619);m.skin.color.setHex(0xb17e5a);m.skin.roughness=.78;m.pants.color.setHex(0x4b739a);denim.material.color.setHex(0x4b739a);
   const hipMeshes=[];h.traverse(o=>{if(o.isMesh&&(o===denim||o.parent===u.hips||u.Lg.some(l=>o.parent===l.hp)))hipMeshes.push(o);});
@@ -45,7 +59,7 @@
    add(T,leg.kn,new T.CylinderGeometry(.052,.059,.105,16),m.shoe,'lucia-photo-high-top-cuff',0,ankle+.045,0);const toe=add(T,leg.kn,new T.SphereGeometry(1,16,10),white,'lucia-photo-white-toe',0,ankle-.012,.112);toe.scale.set(.050,.027,.057);
    for(let i=0;i<3;i++)add(T,leg.kn,new T.BoxGeometry(.058,.006,.008),white,'lucia-photo-lace',0,ankle+.018+i*.023,.061-i*.006);
   }
-  u.faceUncovered=true;u.luciaPhotoReference=true;u.luciaPhotoReferenceVersion=1;
+  fitLuciaVisibleDenim(T,h);u.faceUncovered=true;u.luciaPhotoReference=true;u.luciaPhotoReferenceVersion=1;
  }
  function lucia(T,h){
   const u=h.userData,m=u.m; m.skin.roughness=.74;m.hair.roughness=.82;m.lip.color.setHex(0xa6535d);m.lip.roughness=.65;m.iris.color.setHex(0x543c26);
