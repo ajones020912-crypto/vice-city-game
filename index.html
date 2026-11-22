@@ -2594,6 +2594,38 @@ function carCarCollide(a,b){
 }
 // ================= PLAYER =================
 function hurtPlayer(d){if(!pl.alive)return;if(pl.armor>0){const a=Math.min(pl.armor,d*.7);pl.armor-=a;d-=a}pl.hp-=d;pl.lastHit=0;G.hudDirty=true;G.flash=.35;if(pl.hp<=0){pl.hp=0;playerDied()}}
+// CAR_BREAKIN_V1: most parked cars are locked. Breaking in takes time at the door and can set off an alarm;
+// carjacking needs the car (nearly) stopped. Cars you own, bought, rented, saved or already got into stay open.
+const LOCK={sedan:[.7,3.5,.35],suv:[.8,4,.4],van:[.6,3,.3],taxi:[.5,3,.3],sports:[.95,6,.85],police:[1,5,1]}; // [chance locked, seconds, alarm chance]
+function lockInfo(c){const t=c.t;if(t.aircraft)return[1,7,.6];if(t.boat)return[.5,3,.2];return LOCK[c.tk]||[.7,4,.4]}
+function carLocked(c){
+ if(c.occ||c.owned||c.keep||c.missionCar||c===G.ownedCar||c.mode==='player')return false;
+ if(c.lockRoll===undefined)c.lockRoll=Math.random();return c.lockRoll<lockInfo(c)[0];
+}
+function carEnterPrompt(c){
+ if(c.occ&&c.occ!=='player')return c.speed>4?'Car is moving: get in front of it to stop it':'[E] Carjack '+c.t.name;
+ return carLocked(c)?'[E] Break into '+c.t.name+' (locked)':'[E] Enter '+c.t.name;
+}
+function tryEnterCar(c){
+ if(!c||c.dead||pl.car)return;
+ if(G.breakin){if(G.breakin.c===c)return;G.breakin=null}
+ if(c.occ&&c.occ!=='player'){if(c.speed>4){toast('Too fast: you can only carjack a stopped car',1600);return}
+  G.breakin={c,t:0,need:1.1,jack:true,alarm:false,rang:false};return}
+ if(!carLocked(c)){enterCar(c);return}
+ const [,need,alarm]=lockInfo(c);G.breakin={c,t:0,need,jack:false,alarm:Math.random()<alarm,rang:false};pl.vx=pl.vz=0;
+}
+function breakinPrompt(){const b=G.breakin,pc=Math.min(99,Math.floor(b.t/b.need*100));
+ const bar='▮'.repeat(Math.round(pc/10))+'▯'.repeat(10-Math.round(pc/10));
+ return (b.jack?'Pulling the driver out ':'Breaking in ')+bar+' '+pc+'%'+(b.rang?' · 🚨 ALARM':'')+' · move away to cancel'}
+function updateBreakin(dt){const b=G.breakin;if(!b)return;const c=b.c;
+ if(G.state!=='play')return;
+ const d=Math.hypot(c.x-pl.x,c.z-pl.z);
+ if(pl.car||!pl.alive||c.dead||d>4.8||(b.jack?c.speed>4:!!c.occ)){G.breakin=null;G.hudDirty=true;if(!pl.car&&pl.alive&&!c.dead)toast(b.jack?'Carjack failed':'Break-in cancelled',1200);return}
+ if(b.jack&&c.inp){c.inp.thr=0;c.inp.hb=1;c.vx*=.85;c.vz*=.85} // driver holds still while you grab the door
+ b.t+=dt;
+ if(b.alarm&&!b.rang&&b.t>b.need*.4){b.rang=true;addWanted(1,'alarm');toast('🚨 Car alarm!',1600);}
+ if(b.t>=b.need){G.breakin=null;c.lockRoll=1;enterCar(c)}
+}
 function enterCar(c){
  if(!c||pl.car||c.dead)return;
  if(c.occ&&c.occ!=='player'){ // carjack
@@ -3657,7 +3689,7 @@ function onKey(k,e){
   if(pl.car){if(pl.car.t.aircraft&&pl.car.airborne){toast('Land the aircraft before exiting');return}if(pl.car.speed<12)ejectPlayer();else toast('Slow down before exiting');return}
   const d=nearestDoor();if(d){enterInterior(d);return}
   const sp=nearSpot();if(sp){useSpot(sp);return}
-  const c=nearestCar();if(c)enterCar(c);return}
+  const c=nearestCar();if(c)tryEnterCar(c);return}
  if(k==='r')onR();
  if(k==='h'){G.lights=G.lights==='auto'?'on':G.lights==='on'?'off':'auto';toast('💡 Headlights: '+G.lights.toUpperCase(),1400)}
  if(k==='t')cycleStation();
@@ -3730,7 +3762,7 @@ function updateGators(dt){
   for(const c of cars){if(c.speed<4)continue;if(Math.hypot(c.x-a.x,c.z-a.z)<2.3){hurtGator(a,c.speed*8,c.occ==='player');break}}
  }}
 function showPrompt(t){if(t!==lastPrompt){lastPrompt=t;promptEl.textContent=t;promptEl.style.display=t?'block':'none'}}
-function simulate(dt){
+function simulate(dt){updateBreakin(dt);
  G.time+=dt;updateEconomy(dt);G.clock=(G.clock+dt*.06)%24;
  const play=G.state==='play'&&pl.alive;
  if(!pl.inside){
@@ -3768,7 +3800,7 @@ function simulate(dt){
   ring.rotation.y+=dt*.7;
   if(play&&!MS.active&&!SJ.kind&&!G.work)for(const q of givers){if(!q.g.visible)continue;const d=Math.hypot(q.m.giver[0]-pl.x,q.m.giver[1]-pl.z);if(d<3){startMission(q.m)}}
   // prompts
-  let pr='';if(play){if(pl.car)pr=carPrompt();else{const d=nearestDoor();if(d)pr='[E] Enter '+d.name;else{const sp=nearSpot();if(sp)pr=sp.prompt;else{const c=nearestCar();if(c&&!c.dead)pr='[E] '+(c.occ&&c.occ!=='player'?'Carjack ':'Enter ')+c.t.name}}}
+  let pr='';if(play){if(G.breakin)pr=breakinPrompt();else if(pl.car)pr=carPrompt();else{const d=nearestDoor();if(d)pr='[E] Enter '+d.name;else{const sp=nearSpot();if(sp)pr=sp.prompt;else{const c=nearestCar();if(c&&!c.dead)pr=carEnterPrompt(c)}}}
    const near=givers.find(q=>q.g.visible&&Math.hypot(q.m.giver[0]-pl.x,q.m.giver[1]-pl.z)<12);if(MS.active)near&&0;else if(near&&!pr)pr='Step into the marker to start: '+near.m.title+' ($'+near.m.reward+')'}
   showPrompt(pr);
   $('#cross').style.display=play&&!pl.car&&pl.weapon!=='fists'?'block':'none';
@@ -4609,7 +4641,13 @@ function interactWork(){const w=G.work;if(!w)return false;if(pl.inside||Math.hyp
 function updateCityWork(dt){const w=G.work;if(!w)return;if(!pl.alive){endWork('Work ended. Completed stops remain paid.');return}w.time-=dt;if(w.time<=0){endWork('Contract expired. Completed stops remain paid.');return}if(w.servicing){if(pl.car||pl.inside||Math.hypot(pl.x-w.target.x,pl.z-w.target.z)>8){w.servicing=0;hideActionProgress()}else{w.servicing+=dt;actionProgress('REPAIRING ROADSIDE UNIT','Stay nearby until the repair finishes.',w.servicing/4);if(w.servicing>=4){hideActionProgress();completeWorkStop();return}}}const def=CITY_JOBS[w.kind];setObjective('Stop '+(w.done+1)+'/'+def.stops+' · '+Math.ceil(w.time)+'s · '+Math.round(Math.hypot(pl.x-w.target.x,pl.z-w.target.z))+'m · press R at marker',def.name.toUpperCase())}
 function workMenu(){G.shopTitle='CITY WORK BOARD';openShop('citywork')}
 SHOP_ITEMS.citywork=()=>{const list=Object.entries(CITY_JOBS).map(([kind,d])=>({n:d.name,p:0,locked:!!G.work,d:d.stops+' stops · $'+d.pay+' per stop + $'+d.bonus+' completion bonus',btn:'Accept',f:()=>startCityWork(kind)}));if(G.work)list.unshift({n:'Cancel active work',p:0,d:'Keep money already earned. Lose the completion bonus.',btn:'Cancel job',f:()=>{endWork('Contract cancelled.');closeShop()}});return list};
-function regenerateHealth(dt){if(pl.alive&&pl.hp>0&&pl.hp<100&&pl.lastHit>=8&&pl.wanted===0&&!pl.swim&&!G.mugging&&!G.robbery){pl.hp=Math.min(100,pl.hp+3*dt);G.hudDirty=true;return true}return false}
+// SAFEHOUSE_REGEN_V1: heal fast inside a safehouse or at a property you own (even while wanted), on top of normal regen
+function inSafehouse(){if(pl.inside)return!!(pl.inside.door&&pl.inside.door.kind==='safe');if(pl.car)return false;
+ for(const p of PROPS)if(pl.props[p.id]&&Math.hypot(pl.x-p.x,pl.z-p.z)<6)return true;return false}
+function safehouseRegen(dt){if(!pl.alive||pl.hp<=0||!inSafehouse()){G.safeRest=false;return false}
+ if(pl.hp<100&&(pl.lastHit||0)>=1){pl.hp=Math.min(100,pl.hp+15*dt);G.hudDirty=true;if(!G.safeRest){G.safeRest=true;toast('🏠 Resting at the safehouse: health regenerating',2000)}return true}
+ return false}
+function regenerateHealth(dt){if(safehouseRegen(dt))return true;if(pl.alive&&pl.hp>0&&pl.hp<100&&pl.lastHit>=8&&pl.wanted===0&&!pl.swim&&!G.mugging&&!G.robbery){pl.hp=Math.min(100,pl.hp+3*dt);G.hudDirty=true;return true}return false}
 function updateLocalStreetlights(dt){nearbyLampTimer-=dt;if(nearbyLampTimer>0)return;nearbyLampTimer=.3;const limit=G.quality===0?2:6;const near=SK.night>.15&&!pl.inside?streetLampSites.map(p=>({p,d:(p.x-pl.x)**2+(p.z-pl.z)**2})).filter(v=>v.d<65*65).sort((a,b)=>a.d-b.d).slice(0,limit):[];for(let i=0;i<localStreetLights.length;i++){const light=localStreetLights[i],site=near[i];light.visible=!!site;if(site){light.position.set(site.p.x,site.p.y,site.p.z);light.intensity=1.9*SK.night}}}
 function updateCityFeatures(dt){if(G.state!=='play'){if(!pl.alive){cancelMugging();cancelStoreRobbery();endWork()}return}regenerateHealth(dt);updateStoreRobbery(dt);updateMugging(dt);updateCityWork(dt);updateLocalStreetlights(dt);skyU.cloudTime.value=G.time}
 function cityHud(dt){const hp=clamp(pl.hp,0,100),armor=clamp(pl.armor,0,100);hpTrailValue=hp>hpTrailValue?hp:Math.max(hp,hpTrailValue-dt*25);$('#hpValue').textContent=Math.ceil(hp)+' / 100';$('#armorValue').textContent=Math.ceil(armor)+' / 100';$('#hpTrail').style.width=hpTrailValue+'%';$('#healthTrack').setAttribute('aria-valuenow',Math.round(hp));$('#armorTrack').setAttribute('aria-valuenow',Math.round(armor));$('#healthTrack').classList.toggle('low-health',hp<=25);$('#hpb').style.width=hp+'%';$('#hpb').style.background=hp<=25?'linear-gradient(90deg,#e34b58,#ff9a75)':'linear-gradient(90deg,#25ba86,#8df3ba)';$('#regenStatus').textContent=hp>=100?'Healthy':pl.wanted>0?'Lose the police to recover':pl.swim?'Recovery paused in water':pl.lastHit<8?'Recovery in '+Math.ceil(8-pl.lastHit)+'s':'Regenerating +3 HP/s';}
