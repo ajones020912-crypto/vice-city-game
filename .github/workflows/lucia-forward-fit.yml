@@ -1,0 +1,69 @@
+name: Restore Lucia proportions and adjust forward contour
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-forward-fit.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-forward-fit
+  cancel-in-progress: false
+jobs:
+  forward-fit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install matching Three.js for model tests
+        timeout-minutes: 2
+        continue-on-error: true
+        run: npm install --prefix "$RUNNER_TEMP/lucia-forward-check" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Undo latest widening and validate localized forward fit
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, subprocess, tempfile
+          p=Path('js/reference-characters.js');original=p.read_text(encoding='utf-8');s=original;report={'ok':False}
+          try:
+              if '// LUCIA_FORWARD_FIT_V1' in s: raise RuntimeError('Forward-contour update already applied.')
+              changes=[('let xScale=1,zScale=1;','let xScale=1,zScale=1,frontOffset=0;'),('xScale=1-.12*waist+.17*chest;zScale=1-.08*waist+(v.z>0?.24:.06)*chest',"xScale=1-.07*waist+.07*chest;zScale=1-.045*waist+(v.z>0?.10:.04)*chest;if(v.z>0){const arc=Math.pow(Math.min(1,v.z/.10),2),lobes=Math.min(1,(Math.exp(-Math.pow((v.x-.065)/.065,2))+Math.exp(-Math.pow((v.x+.065)/.065,2)))/1.02);frontOffset=(mesh.material===u.m.shirt?.064:.060)*chest*arc*lobes}"),('xScale=1+.36*hip-.04*waist;zScale=1+(v.z<0?.30:.14)*hip-.025*waist','xScale=1+.16*hip-.025*waist;zScale=1+.10*hip-.015*waist'),('xScale=1+.26*k;zScale=1+.20*k','xScale=1+.12*k;zScale=1+.10*k'),('v.x*=xScale;v.z*=zScale;v.applyMatrix4(from)','v.x*=xScale;v.z=v.z*zScale+frontOffset;v.applyMatrix4(from)'),('const profile=[[.143,.025],[.14,.055],[.132,.14],[.145,.26],[.166,.36],[.173,.42],[.17,.455],[.135,.485],[.104,.495]];','const profile=[[.143,.025],[.14,.055],[.132,.14],[.145,.26],[.1534,.30],[.1576,.32],[.1618,.34],[.166,.36],[.16775,.375],[.1695,.39],[.17125,.405],[.173,.42],[.1717143,.435],[.1704286,.45],[.17,.455],[.135,.485],[.104,.495]];')]
+              test="const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-forward-check/node_modules/three');function load(path){const box={window:{},console,Math};vm.createContext(box);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),box);vm.runInContext(fs.readFileSync(path,'utf8'),box);return box.window.VCCharacters}const before=load(process.argv[1]),after=load(process.argv[2]),base=load(process.argv[3]);function sig(h){const a=[];h.traverse(o=>{if(o.isMesh)a.push([o.name,Array.from(o.geometry.attributes.position.array),...(Array.isArray(o.material)?o.material:[o.material]).map(m=>m.color?m.color.getHex():null)])});return JSON.stringify(a)}function direct(h){return JSON.stringify(h.children.filter(o=>o.isMesh).map(o=>[o.name,Array.from(o.geometry.attributes.position.array)]))}for(const id of Object.keys(before.DESIGNS))if(id!=='luciaC')assert(sig(before.build(T,id))===sig(after.build(T,id)));\nconst current=before.build(T,'luciaC'),desired=after.build(T,'luciaC'),baseline=base.build(T,'luciaC'),c=current.userData,u=desired.userData,b=baseline.userData;assert(direct(u.hips)===direct(b.hips));for(let i=0;i<2;i++)assert(direct(u.Lg[i].hp)===direct(b.Lg[i].hp));assert(sig(c.headP)===sig(u.headP));assert(u.m.shirt.color.getHex()===0x303338&&desired.getObjectByName('lucia-dark-tank-top'));\nconst pick=r=>r.spine.children.find(o=>o.isMesh&&o.material===r.m.skin&&o.geometry.attributes.position);const a=pick(u).geometry.attributes.position,ba=pick(b).geometry.attributes.position;assert(a.count===ba.count);for(let i=0;i<a.count;i++){assert(Math.abs(a.getX(i)-ba.getX(i))<.000001&&Math.abs(a.getY(i)-ba.getY(i))<.000001);if(ba.getZ(i)<=0)assert(Math.abs(a.getZ(i)-ba.getZ(i))<.000001)}\nfunction front(mesh){mesh.updateMatrix();const a=mesh.geometry.attributes.position,v=new T.Vector3();let maximum=-Infinity;for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(mesh.matrix);if(v.y>=.30&&v.y<=.44)maximum=Math.max(maximum,v.z)}assert(Number.isFinite(maximum));return maximum}const newFront=front(pick(u)),oldFront=front(pick(c)),baseFront=front(pick(b)),tankFront=front(desired.getObjectByName('lucia-dark-tank-top'));assert(newFront>oldFront+.015&&newFront>baseFront+.035);assert(tankFront>=newFront-.005);\nconst joints=r=>[r.hips.position.toArray(),r.spine.position.toArray(),r.headP.position.toArray(),...r.A.flatMap(x=>[x.sh.position.toArray(),x.el.position.toArray()]),...r.Lg.flatMap(x=>[x.hp.position.toArray(),x.kn.position.toArray()])];assert(JSON.stringify(joints(c))===JSON.stringify(joints(u)));for(const merge of[false,true]){const h=after.build(T,'luciaC',{merge}),r=h.userData;r.A[0].sh.rotation.x=.6;r.A[1].el.rotation.x=1;r.Lg[0].hp.rotation.x=-.5;r.Lg[1].kn.rotation.x=.7;h.updateMatrixWorld(true);assert(r.guns.pistol&&r.guns.rifle);h.traverse(o=>{if(o.isMesh)for(const key of['position','normal','uv'])if(o.geometry.attributes[key])assert(Array.from(o.geometry.attributes[key].array).every(Number.isFinite))})}\nconsole.log(JSON.stringify({latest_hip_thigh_waist_and_width_changes_undone:true,forward_projection_increased:true,chest_width_restored:true,rear_chest_unchanged:true,tank_refitted:true,face_hair_and_joints_preserved:true,other_characters_unchanged:true,merged_model_valid:true,finite_geometry:true,forward_measurements:{previous:oldFront,revised:newFront,pre_widening:baseFront,tank:tankFront}}));"
+              for old,new in changes:
+                  if s.count(old)!=1: raise RuntimeError('Current shape changed; refusing an ambiguous edit.')
+                  s=s.replace(old,new,1)
+              old_marker='// LUCIA_SHAPE_V2'+chr(10)
+              if s.count(old_marker)!=1: raise RuntimeError('Cannot uniquely identify the latest widening update.')
+              s=s.replace(old_marker,'// LUCIA_FORWARD_FIT_V1'+chr(10),1)
+              baseline=subprocess.check_output(['git','show','3c3f9a70a0ad0245460e9ecc9aef029663d04609:js/reference-characters.js'],timeout=30).decode('utf-8')
+              with tempfile.TemporaryDirectory() as d:
+                  a=Path(d)/'before.js';b=Path(d)/'after.js';c=Path(d)/'baseline.js';a.write_text(original);b.write_text(s);c.write_text(baseline)
+                  subprocess.run(['node','--check',str(b)],check=True,capture_output=True,timeout=30)
+                  result=subprocess.run(['node','-e',test,str(a),str(b),str(c)],check=True,capture_output=True,text=True,timeout=90);report.update(json.loads(result.stdout))
+              p.write_text(s,encoding='utf-8');report.update(ok=True,scope='Undo the latest overall widening; localized forward contour with opaque tank refit; no gameplay changes')
+          except Exception as exc:
+              report['error']=str(exc)
+              if isinstance(exc,subprocess.CalledProcessError): report['stderr']=(exc.stderr.decode(errors='replace') if isinstance(exc.stderr,bytes) else str(exc.stderr or ''))[-3000:]
+          Path('status').mkdir(exist_ok=True)
+          Path('status/lucia-forward-fit.json').write_text(json.dumps(report,indent=2)+chr(10),encoding='utf-8')
+          print(json.dumps(report))
+          PY
+      - name: Commit validated forward fit or diagnostic report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-forward-fit.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Undo latest Lucia widening and refine forward tank contour'
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Require successful contour update
+        run: node -e "if(!require('./status/lucia-forward-fit.json').ok)process.exit(1)"

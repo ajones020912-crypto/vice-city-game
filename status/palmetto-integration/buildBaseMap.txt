@@ -1,0 +1,13 @@
+function buildBaseMap(){
+ const S=WS*2/MAPPX,[c,x]=cv(S,S),id=x.createImageData(S,S),o=[0,0,0],d=id.data;
+ for(let j=0;j<S;j+=2)for(let i=0;i<S;i+=2){const wx=-WS+i*MAPPX,wz=-WS+j*MAPPX,h=heightAt(wx,wz);groundCol(wx,wz,h,o);let r=o[0],g=o[1],b=o[2];
+  if(h<WL){const k=clamp((WL-h)/3.4,0,1);r=.2-.12*k;g=.55-.3*k;b=.7-.28*k}else if(h>6){const k=h/50;r+=k*.2;g+=k*.15;b+=k*.1}
+  const R=Math.min(255,r*300),Gc=Math.min(255,g*300),Bc=Math.min(255,b*300);
+  for(let dj=0;dj<2;dj++)for(let di=0;di<2;di++){const p=((j+dj)*S+i+di)*4;d[p]=R;d[p+1]=Gc;d[p+2]=Bc;d[p+3]=255}}
+ x.putImageData(id,0,0);
+ x.fillStyle='rgba(60,60,70,.55)';for(const b of colAll)if(b.h>6&&b.x1-b.x0>6)x.fillRect((b.x0+WS)/MAPPX,(b.z0+WS)/MAPPX,(b.x1-b.x0)/MAPPX,(b.z1-b.z0)/MAPPX);
+ for(const r of roads){x.strokeStyle=r.type==='hwy'?'#f2c14e':r.type==='dirt'?'#8a6c42':'#d8d8d8';x.lineWidth=Math.max(1.6,r.w/MAPPX*(r.type==='hwy'?.9:.8));x.beginPath();
+  if(r.o==='h'){x.moveTo((r.a+WS)/MAPPX,(r.c+WS)/MAPPX);x.lineTo((r.b+WS)/MAPPX,(r.c+WS)/MAPPX)}else{x.moveTo((r.c+WS)/MAPPX,(r.a+WS)/MAPPX);x.lineTo((r.c+WS)/MAPPX,(r.b+WS)/MAPPX)}x.stroke()}
+ baseMap=c;
+}
+const REGIONS=[['NEON BEACH',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['NORTH OUTSKIRTS',-400,1100,1000,1600,0,0],['EAST HIGHWAY',900,-200,1700,600,0,0]];

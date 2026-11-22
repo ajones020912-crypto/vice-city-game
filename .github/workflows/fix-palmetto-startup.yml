@@ -1,0 +1,60 @@
+name: Fix Palmetto roadClear startup error
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-palmetto-startup.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install regression test dependency
+        run: npm install --prefix "$RUNNER_TEMP/palmetto-test" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Remove undefined dependency in source and installed game
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess,tempfile
+          bad="const pgOldRoadClear=roadClear;roadClear=function(x,z,r=3){return pgOldRoadClear(x,z,r)&&!pgNear(x,z,r)};"
+          old="if(roadClear(tx,tz,4))palm(tx,tz,.8)"
+          new="if(!nearRoad(tx,tz,4))palm(tx,tz,.8)"
+          updates={}
+          for path in ['scripts/palmetto-grove.js','index.html']:
+              p=Path(path);s=p.read_text(encoding='utf-8')
+              if s.count(bad)!=1 or s.count(old)!=1: raise SystemExit('Expected one confirmed startup bug in '+path+'; refusing ambiguous edit.')
+              s=s.replace(bad,'// Use nearRoad for clearance; roadClear is not part of this build.',1).replace(old,new,1)
+              updates[p]=s
+          test=Path('scripts/test-palmetto-grove.cjs');t=test.read_text(encoding='utf-8')
+          stub='roadClear(){return true},'
+          if t.count(stub)!=1: raise SystemExit('Unexpected regression fixture.')
+          t=t.replace(stub,'',1)
+          hook='vm.createContext(c);'
+          if t.count(hook)!=1: raise SystemExit('Unexpected test context.')
+          t=t.replace(hook,"assert(!('roadClear' in c));"+hook,1)
+          updates[test]=t
+          with tempfile.TemporaryDirectory() as d:
+              for p,s in updates.items():
+                  bodies=re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I) if p.name=='index.html' else [s]
+                  if not any(b.strip() for b in bodies): raise SystemExit('No scripts to validate in '+str(p))
+                  for body in bodies:
+                      if not body.strip(): continue
+                      check=Path(d)/'check.js';check.write_text(body,encoding='utf-8')
+                      subprocess.run(['node','--check',str(check)],check=True)
+          for p,s in updates.items(): p.write_text(s,encoding='utf-8')
+          PY
+      - name: Run neighborhood with roadClear deliberately absent
+        run: node scripts/test-palmetto-grove.cjs
+      - name: Commit startup repair only after checks pass
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html scripts/palmetto-grove.js scripts/test-palmetto-grove.cjs
+          git diff --cached --quiet && exit 0
+          git commit -m 'Fix startup ReferenceError by removing Palmetto roadClear dependency'
+          git push origin HEAD:main

@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "version": 2,
+  "before": {
+    "meshes": 13,
+    "triangles": 1576
+  },
+  "after": {
+    "meshes": 24,
+    "triangles": 3752
+  },
+  "addedTriangles": 2176,
+  "addedMeshes": 11,
+  "dimensions": {
+    "W": 1.96,
+    "L": 4.8
+  },
+  "indexBlob": "b16fd15c5450564c8800bcc4ea71b644a83c842e",
+  "sourceCommit": "6f58bbac34330cb055d87efa62c796210ddf21c0",
+  "checkedAt": "2026-11-22T04:02:40.823Z"
+}

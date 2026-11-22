@@ -1,0 +1,67 @@
+name: Stronger Lucia silhouette shaping
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-shape-v2.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-shape-v2
+  cancel-in-progress: false
+jobs:
+  shape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install matching Three.js for tests
+        timeout-minutes: 2
+        continue-on-error: true
+        run: npm install --prefix "$RUNNER_TEMP/lucia-shape-check" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Strengthen Lucia shaping and verify models
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, re, subprocess, tempfile
+          p=Path('js/reference-characters.js');original=p.read_text(encoding='utf-8');s=original;report={'ok':False}
+          try:
+              if '// LUCIA_SHAPE_V2' in s: raise RuntimeError('Stronger shaping already applied.')
+              changes=[('xScale=1-.07*waist+.07*chest;zScale=1-.045*waist+(v.z>0?.10:.04)*chest','xScale=1-.12*waist+.17*chest;zScale=1-.08*waist+(v.z>0?.24:.06)*chest'),('xScale=1+.16*hip-.025*waist;zScale=1+.10*hip-.015*waist','xScale=1+.36*hip-.04*waist;zScale=1+(v.z<0?.30:.14)*hip-.025*waist'),('xScale=1+.12*k;zScale=1+.10*k','xScale=1+.26*k;zScale=1+.20*k')]
+              test="const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-shape-check/node_modules/three');function load(path){const box={window:{},console,Math};vm.createContext(box);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),box);vm.runInContext(fs.readFileSync(path,'utf8'),box);return box.window.VCCharacters}const before=load(process.argv[1]),after=load(process.argv[2]);function sig(h){const a=[];h.traverse(o=>{if(o.isMesh)a.push([o.name,Array.from(o.geometry.attributes.position.array),...(Array.isArray(o.material)?o.material:[o.material]).map(m=>m.color?m.color.getHex():null)])});return JSON.stringify(a)}for(const id of Object.keys(before.DESIGNS))if(id!=='luciaC')assert(sig(before.build(T,id))===sig(after.build(T,id)),'Unrelated character changed: '+id);\nconst a=before.build(T,'luciaC'),b=after.build(T,'luciaC'),old=a.userData,u=b.userData;assert(b.getObjectByName('lucia-dark-tank-top')&&u.m.shirt.color.getHex()===0x303338);assert(sig(old.headP)===sig(u.headP));const joints=r=>[r.hips.position.toArray(),r.spine.position.toArray(),r.headP.position.toArray(),...r.A.flatMap(x=>[x.sh.position.toArray(),x.el.position.toArray()]),...r.Lg.flatMap(x=>[x.hp.position.toArray(),x.kn.position.toArray()])];assert(JSON.stringify(joints(old))===JSON.stringify(joints(u)));\nconst pick=(parent,mat)=>parent.children.find(o=>o.isMesh&&o.material===mat&&o.geometry.attributes.position);function extent(mesh,y0,y1,axis='x'){mesh.updateMatrix();const a=mesh.geometry.attributes.position,v=new T.Vector3();let lo=Infinity,hi=-Infinity;for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(mesh.matrix);if(v.y>=y0&&v.y<=y1){lo=Math.min(lo,v[axis]);hi=Math.max(hi,v[axis])}}assert(Number.isFinite(lo+hi));return hi-lo}\nconst ratios={hips:extent(pick(u.hips,u.m.pants),-.08,.04)/extent(pick(old.hips,old.m.pants),-.08,.04),waist:extent(pick(u.spine,u.m.skin),.06,.16)/extent(pick(old.spine,old.m.skin),.06,.16),thighs:extent(pick(u.Lg[0].hp,u.m.skin),-.1,.03)/extent(pick(old.Lg[0].hp,old.m.skin),-.1,.03),bust:extent(pick(u.spine,u.m.skin),.30,.44)/extent(pick(old.spine,old.m.skin),.30,.44),hip_depth:extent(pick(u.hips,u.m.pants),-.08,.04,'z')/extent(pick(old.hips,old.m.pants),-.08,.04,'z')};assert(ratios.hips>1.12&&ratios.waist<.97&&ratios.thighs>1.1&&ratios.bust>1.07&&ratios.hip_depth>1.1);assert(extent(b.getObjectByName('lucia-reference-denim-shorts-0'),-.1,.03)>extent(a.getObjectByName('lucia-reference-denim-shorts-0'),-.1,.03)*1.1);\nfor(const merge of[false,true]){const h=after.build(T,'luciaC',{merge}),r=h.userData;r.A[0].sh.rotation.x=.6;r.A[1].el.rotation.x=1;r.Lg[0].hp.rotation.x=-.5;r.Lg[1].kn.rotation.x=.7;h.updateMatrixWorld(true);assert(r.guns.pistol&&r.guns.rifle);h.traverse(o=>{if(o.isMesh)for(const key of['position','normal','uv'])if(o.geometry.attributes[key])assert(Array.from(o.geometry.attributes[key].array).every(Number.isFinite))})}\nconsole.log(JSON.stringify({stronger_shaping:true,tank_and_shorts_preserved:true,clothing_refitted:true,face_and_hair_unchanged:true,animation_joints_unchanged:true,other_characters_unchanged:true,merged_model_valid:true,finite_geometry:true,ratios_vs_previous:ratios}));"
+              for old,new in changes:
+                  if s.count(old)!=1: raise RuntimeError('Shaping implementation changed; refusing an ambiguous edit.')
+                  s=s.replace(old,new,1)
+              s='// LUCIA_SHAPE_V2'+chr(10)+s
+              with tempfile.TemporaryDirectory() as d:
+                  a=Path(d)/'before.js';b=Path(d)/'after.js';a.write_text(original);b.write_text(s)
+                  subprocess.run(['node','--check',str(b)],check=True,capture_output=True,timeout=30)
+                  result=subprocess.run(['node','-e',test,str(a),str(b)],check=True,capture_output=True,text=True,timeout=90)
+                  report.update(json.loads(result.stdout))
+              p.write_text(s,encoding='utf-8');report.update(ok=True,scope='Stronger Lucia-only silhouette shaping; same shaping applied to clothing; no gameplay changes')
+          except Exception as exc:
+              report['error']=str(exc)
+              if isinstance(exc,subprocess.CalledProcessError): report['stderr']=(exc.stderr.decode(errors='replace') if isinstance(exc.stderr,bytes) else str(exc.stderr or ''))[-3000:]
+          Path('status').mkdir(exist_ok=True)
+          Path('status/lucia-shape-v2.json').write_text(json.dumps(report,indent=2)+chr(10),encoding='utf-8')
+          print(json.dumps(report))
+          PY
+      - name: Commit validated shaping or diagnostic report
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-shape-v2.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Strengthen Lucia silhouette and refit clothing together'
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Require successful shape update
+        run: node -e "if(!require('./status/lucia-shape-v2.json').ok)process.exit(1)"

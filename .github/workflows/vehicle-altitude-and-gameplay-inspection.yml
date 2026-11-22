@@ -1,0 +1,69 @@
+name: Fix altitude collisions and inspect gameplay integration
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/vehicle-altitude-and-gameplay-inspection.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  inspect-and-fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/gameplay-inspect" --no-package-lock --ignore-scripts acorn@8
+      - name: Extract complete source sections and prepare altitude collision guard
+        run: |
+          node <<'JS'
+          const fs=require('fs'),crypto=require('crypto'),acorn=require(process.env.RUNNER_TEMP+'/gameplay-inspect/node_modules/acorn');
+          const original=fs.readFileSync('index.html','utf8');if(original.includes('// VEHICLE_ALTITUDE_COLLISION_GUARD_V1'))throw Error('Altitude collision guard already installed.');
+          const dir='status/gameplay-inspection';fs.mkdirSync(dir,{recursive:true});const manifest={source_sha256:crypto.createHash('sha256').update(original).digest('hex'),gameplay_change:'Vehicle altitude-overlap guard only; other gameplay systems inspected without modification.',sections:[]},used=new Map();
+          const exact=new Set(['simulate','stepCar','stepAircraft','carCarCollide','controlAI','playerOnFoot','resolveFoot','clearWanted','addCrime','renderShop','enterInterior','exitInterior','buildExtras','buildInteriors','buildWorld','forceShopDoors','roadSpotNear','saveGame','applySave','newGame','buyItem','shopBuy','clamp','lerp','wrapA']);
+          function write(name,kind,code){const base=name.replace(/[^a-zA-Z0-9_.-]/g,'_'),n=(used.get(base)||0)+1;used.set(base,n);const file=base+(n>1?'-'+n:'')+'.txt';fs.writeFileSync(dir+'/'+file,code+'\n');manifest.sections.push({name,kind,file,bytes:Buffer.byteLength(code)});}
+          let collisionCount=0;
+          for(const match of original.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){
+           const source=match[1];if(!source.trim())continue;const ast=acorn.parse(source,{ecmaVersion:'latest'}),stack=[ast];
+           while(stack.length){const node=stack.pop();
+            if(node.type==='FunctionDeclaration'&&node.id){const name=node.id.name;if(name==='carCarCollide')collisionCount++;if(exact.has(name)||/interior|robbery|bank|wanted|heat|police|cop|hud|cctv/i.test(name))write(name,'function',source.slice(node.start,node.end));}
+            if(node.type==='ClassDeclaration'&&node.id&&/Car|Ped|Police|Cop/i.test(node.id.name))write(node.id.name,'class',source.slice(node.start,node.end));
+            if(node.type==='VariableDeclarator'&&node.id.type==='Identifier'){const name=node.id.name;if(['CAR_TYPES','INT','SHOP_ITEMS','SHOPS','SHOP_NAMES','pl','G','starsFor'].includes(name)||/wanted|pursuit|robbery|bank/i.test(name))write(name,'declaration','const '+source.slice(node.start,node.end)+';');}
+            if(node.type==='AssignmentExpression'){const name=source.slice(node.left.start,node.left.end);if(/^(CAR_TYPES|INT|SHOP_ITEMS|SHOPS)(\.|\[)/.test(name))write(name,'assignment',source.slice(node.start,node.end)+';');}
+            for(const value of Object.values(node)){if(Array.isArray(value)){for(const child of value)if(child&&typeof child.type==='string')stack.push(child);}else if(value&&typeof value.type==='string')stack.push(value);}
+           }
+          }
+          if(collisionCount!==1||original.split('boot();').length!==2)throw Error('Collision or boot integration point changed.');
+          const patch=String.raw`// VEHICLE_ALTITUDE_COLLISION_GUARD_V1
+          function vehicleAltitudeRange(c){
+           const t=c.t||{},air=!!t.aircraft,y=Number.isFinite(c.y)?c.y:0,L=Number(t.L)||4.5,W=Number(t.W)||2;
+           const tilt=Math.abs(Math.sin(c.pitch||0))*L*.5+Math.abs(Math.sin(c.roll||0))*W*.5;
+           return [y-(air?.95:.10)-tilt,y+Math.max(2.2,Number(t.H)||0)+tilt];
+          }
+          function vehiclesOverlapAltitude(a,b){const x=vehicleAltitudeRange(a),y=vehicleAltitudeRange(b);return x[1]+.15>=y[0]&&y[1]+.15>=x[0];}
+          const originalAltitudeCarCollision=carCarCollide;
+          carCarCollide=function(a,b){if(!vehiclesOverlapAltitude(a,b))return;return originalAltitudeCarCollision.apply(this,arguments);};
+          `;
+          fs.writeFileSync('/tmp/vehicle-altitude-patch.js',patch);fs.writeFileSync('/tmp/vehicle-altitude-index.html',original.replace('boot();',patch+'\nboot();'));manifest.next_requests={safehouse:'Investigate wanted persistence or HUD refresh after existing clearWanted call.',police:'Follow player into enterable interiors except safehouses.',banks:'Add enterable robbable banks; police may enter banks.',speeds_mph:{supercars:300,police:250,other_road_cars:200},excluded_from_road_speed_change:['boats','aircraft']};fs.writeFileSync(dir+'/manifest.json',JSON.stringify(manifest,null,2)+'\n');
+          JS
+      - name: Verify altitude filtering preserves ground collisions and return values
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert');let hits=0;const c={Math,Number,carCarCollide(a,b){hits++;a.hp--;b.hp--;return 'collision-kept';}};vm.createContext(c);vm.runInContext(fs.readFileSync('/tmp/vehicle-altitude-patch.js','utf8'),c);
+          const road=y=>({y,hp:100,pitch:0,roll:0,t:{W:2,L:4.5}}),plane=y=>({y,hp:100,pitch:0,roll:0,t:{W:12,L:8,aircraft:true}});
+          let p=plane(200),r=road(0);assert(c.carCarCollide(p,r)===undefined&&hits===0&&p.hp===100&&r.hp===100);assert(c.carCarCollide(r,p)===undefined&&hits===0);assert(c.carCarCollide(plane(.88),road(0))==='collision-kept'&&hits===1);assert(c.carCarCollide(road(0),road(0))==='collision-kept'&&hits===2);assert(c.carCarCollide(road(12),road(0))===undefined&&hits===2);assert(c.carCarCollide(plane(100),plane(150))===undefined&&hits===2);
+          const banked=plane(5);banked.roll=.7;assert(c.vehiclesOverlapAltitude(banked,road(0)));assert(c.carCarCollide(banked,road(0))==='collision-kept'&&hits===3);
+          JS
+          node --check /tmp/vehicle-altitude-patch.js
+          node <<'JS'
+          const fs=require('fs'),cp=require('child_process'),html=fs.readFileSync('/tmp/vehicle-altitude-index.html','utf8');let count=0;for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;fs.writeFileSync('/tmp/gameplay-inline-check.js',m[1]);cp.execFileSync('node',['--check','/tmp/gameplay-inline-check.js']);count++;}if(!count)throw Error('No inline scripts checked');fs.copyFileSync('/tmp/vehicle-altitude-index.html','index.html');
+          JS
+      - name: Commit altitude fix and inspection reports only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html status/gameplay-inspection
+          git diff --cached --quiet && exit 0
+          git commit -m 'Prevent altitude separated vehicle collisions and record gameplay integration source'
+          git push origin HEAD:main

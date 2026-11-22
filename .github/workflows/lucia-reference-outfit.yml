@@ -1,0 +1,94 @@
+name: Refine Lucia black crop tank and dark denim shorts
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-reference-outfit.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  outfit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-outfit-ref" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Prepare outfit-only garment and material refinement
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('js/reference-characters.js');s=p.read_text();Path('/tmp/lucia-outfit-before.js').write_text(s)
+          if 'function finishLuciaReferenceOutfit(' in s: raise SystemExit('Reference outfit already installed.')
+          def edit(a,b):
+           global s
+           if s.count(a)!=1: raise SystemExit('Unexpected outfit anchor: '+a[:100])
+           s=s.replace(a,b,1)
+          edit("top:{kind:'tank',color:0x303338}","top:{kind:'tank',color:0x202124}")
+          edit("legs:{kind:'shorts',color:0x7497b3,highWaist:true}","legs:{kind:'shorts',color:0x36536d,highWaist:true}")
+          edit('smoothLuciaHipTransition(T,h);','smoothLuciaHipTransition(T,h);finishLuciaReferenceOutfit(T,h);')
+          helper='''
+           function finishLuciaReferenceOutfit(T,h){
+            const u=h.userData,m=u.m,tank=u.spine.children.find(o=>o.name==='lucia-dark-tank-top'),denim=h.getObjectByName('lucia-seamless-denim');
+            if(!tank||!denim||!denim.isSkinnedMesh)throw Error('Expected crop tank and animated seamless shorts');
+            m.shirt.color.setHex(0x202124);m.shirt.roughness=.94;m.shirt.side=T.DoubleSide;m.shirt.needsUpdate=true;
+            if(!finishLuciaReferenceOutfit.fabric){const n=128,data=new Uint8Array(n*n*4);for(let y=0;y<n;y++)for(let x=0;x<n;x++){const v=128+((x*17+y*31+x*y)%7)-3+(x%4===0?3:0),i=(y*n+x)*4;data[i]=data[i+1]=data[i+2]=v;data[i+3]=255;}const t=new T.DataTexture(data,n,n,T.RGBAFormat);t.wrapS=t.wrapT=T.RepeatWrapping;t.magFilter=t.minFilter=T.LinearFilter;t.needsUpdate=true;finishLuciaReferenceOutfit.fabric=t;}
+            for(const o of u.spine.children)if(o.isMesh&&(o.material===m.shirt||o.name.indexOf('lucia-continuous-shoulder-strap-')===0)){o.material.color.setHex(0x202124);o.material.roughness=.94;o.material.bumpMap=finishLuciaReferenceOutfit.fabric;o.material.bumpScale=.00012;o.material.needsUpdate=true;}
+            const hem=u.spine.children.find(o=>o.name==='lucia-tank-hem');if(hem)hem.material=m.shirt;
+            const old=tank.geometry,g=old.index?old.toNonIndexed():old.clone(),p=g.attributes.position,n=g.attributes.normal,uv=g.attributes.uv,out=[],normals=[],tex=[];
+            function vertex(i){return {p:new T.Vector3(p.getX(i),p.getY(i),p.getZ(i)),n:new T.Vector3(n.getX(i),n.getY(i),n.getZ(i)),uv:new T.Vector2(uv?uv.getX(i):0,uv?uv.getY(i):0)};}
+            function distance(v){const side=Math.min(1,Math.abs(v.p.x)/.105),cut=v.p.z>=0?.452+.043*Math.pow(side,1.65):.476+.019*Math.pow(side,1.5);return cut-v.p.y;}
+            function blend(a,b,t){return {p:a.p.clone().lerp(b.p,t),n:a.n.clone().lerp(b.n,t).normalize(),uv:a.uv.clone().lerp(b.uv,t)};}
+            for(let i=0;i<p.count;i+=3){const tri=[vertex(i),vertex(i+1),vertex(i+2)],polygon=[];for(let j=0;j<3;j++){const a=tri[j],b=tri[(j+1)%3],da=distance(a),db=distance(b);if(da>=0)polygon.push(a);if((da>=0)!==(db>=0))polygon.push(blend(a,b,da/(da-db)));}for(let j=1;j<polygon.length-1;j++)for(const v of [polygon[0],polygon[j],polygon[j+1]]){out.push(v.p.x,v.p.y,v.p.z);normals.push(v.n.x,v.n.y,v.n.z);tex.push(v.uv.x,v.uv.y);}}
+            if(out.length<90)throw Error('Neckline clipping removed too much cloth');
+            const fitted=new T.BufferGeometry();fitted.setAttribute('position',new T.Float32BufferAttribute(out,3));fitted.setAttribute('normal',new T.Float32BufferAttribute(normals,3));fitted.setAttribute('uv',new T.Float32BufferAttribute(tex,2));fitted.computeBoundingBox();fitted.computeBoundingSphere();tank.geometry=fitted;g.dispose();old.dispose();
+            for(const leg of u.Lg)for(const o of leg.hp.children.slice())if(o.name==='lucia-denim-fray')remove(o);
+            const material=denim.material,previous=material.onBeforeCompile;material.color.setHex(0x36536d);material.roughness=.96;denim.geometry.computeBoundingBox();const b=denim.geometry.boundingBox,top=b.max.y,bottom=b.min.y;
+            material.onBeforeCompile=function(shader,renderer){if(previous)previous.call(this,shader,renderer);if(!shader.vertexShader.includes('#include <begin_vertex>')||!shader.fragmentShader.includes('#include <color_fragment>'))throw Error('Denim shader integration changed');shader.uniforms.uLuciaDenimEdges={value:new T.Vector2(top,bottom)};
+             shader.vertexShader='varying vec3 vLuciaDenimBind;'+String.fromCharCode(10)+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>'+String.fromCharCode(10)+'vLuciaDenimBind=position;');
+             shader.fragmentShader='varying vec3 vLuciaDenimBind; uniform vec2 uLuciaDenimEdges;'+String.fromCharCode(10)+shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+              {
+               vec3 lp=vLuciaDenimBind;float wt=uLuciaDenimEdges.x;float hm=uLuciaDenimEdges.y;
+               float cuff=1.0-smoothstep(hm+.027,hm+.037,lp.y);diffuseColor.rgb*=mix(vec3(1.0),vec3(1.32,1.29,1.23),cuff);
+               float fold=1.0-smoothstep(.0007,.0022,abs(lp.y-(hm+.034)));diffuseColor.rgb*=1.0-.18*fold;
+               float front=step(.025,lp.z),back=step(.025,-lp.z),xx=abs(lp.x);
+               float waist=(1.0-smoothstep(.0007,.0016,min(abs(lp.y-(wt-.012)),abs(lp.y-(wt-.024)))));
+               float fly=(1.0-smoothstep(.0006,.0015,xx))*step(wt-.15,lp.y)*step(lp.y,wt-.025)*front;
+               float pocketY=wt-.040-.8*max(0.0,xx-.070);float pocket=(1.0-smoothstep(.0006,.0015,abs(lp.y-pocketY)))*step(.060,xx)*step(xx,.165)*front;
+               float bx=abs(xx-.095),low=wt-.175+.35*bx;
+               float backPocket=min(1.0,(1.0-smoothstep(.0006,.0015,abs(bx-.031)))+(1.0-smoothstep(.0006,.0015,abs(lp.y-(wt-.075))))+(1.0-smoothstep(.0006,.0015,abs(lp.y-low))))*step(bx,.033)*step(wt-.18,lp.y)*step(lp.y,wt-.073)*back;
+               float stitch=clamp(waist+fly+pocket+backPocket,0.0,1.0);diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.48,.41,.30),stitch*.35);
+               float button=(1.0-smoothstep(.002,.004,length(vec2(lp.x,lp.y-(wt-.014)))))*front;diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.60,.59,.54),button*.8);
+              }
+             `);
+            };
+            material.customProgramCacheKey=()=> 'lucia-reference-denim-v1';material.needsUpdate=true;u.luciaReferenceOutfit=true;
+           }
+          '''
+          edit(' function finishLuciaV4(',helper+' function finishLuciaV4(')
+          Path('/tmp/lucia-outfit-after.js').write_text(s)
+          subprocess.run(['node','--check','/tmp/lucia-outfit-after.js'],check=True)
+          PY
+      - name: Verify clothing scope neckline shader skinning and unchanged face and body
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-outfit-ref/node_modules/three');
+          function load(p){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}
+          const old=load('/tmp/lucia-outfit-before.js'),cur=load('/tmp/lucia-outfit-after.js');assert(JSON.stringify(old.DESIGNS.jasonC)===JSON.stringify(cur.DESIGNS.jasonC));const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');
+          function preserved(h){const out=[];h.traverse(o=>{if(!o.isMesh||o.name==='lucia-dark-tank-top'||o.name==='lucia-denim-fray')return;out.push([o.name,o.position.toArray(),o.scale.toArray(),Array.from(o.geometry.attributes.position.array)]);});return JSON.stringify(out);}
+          assert(preserved(a)===preserved(b));assert(b.userData.m.shirt.color.getHex()===0x202124);const d=b.getObjectByName('lucia-seamless-denim');assert(d&&d.isSkinnedMesh&&d.material.skinning&&d.material.color.getHex()===0x36536d);assert(!b.getObjectByName('lucia-denim-fray'));
+          const shader={uniforms:{},vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:T.ShaderLib.standard.fragmentShader};d.material.onBeforeCompile(shader,{});assert(shader.vertexShader.includes('vLuciaDenimBind=position;'));assert(shader.fragmentShader.includes('float cuff=')&&shader.fragmentShader.includes('float backPocket='));assert(shader.uniforms.uLuciaDenimEdges.value.x>shader.uniforms.uLuciaDenimEdges.value.y);
+          const tank=b.getObjectByName('lucia-dark-tank-top'),p=tank.geometry.attributes.position;let centerFront=false;for(let i=0;i<p.count;i++)if(Math.abs(p.getX(i))<.012&&p.getZ(i)>.03){assert(p.getY(i)<.460);centerFront=true;}assert(centerFront);
+          for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),u=h.userData,m=h.getObjectByName('lucia-seamless-denim');assert(u.luciaReferenceOutfit&&u.luciaContinuousShoulders);for(const angle of [-.6,0,.6]){u.Lg[0].hp.rotation.x=angle;u.Lg[1].hp.rotation.x=-angle;h.updateMatrixWorld(true);m.onBeforeRender();assert(Array.from(m.skeleton.boneMatrices).every(Number.isFinite));}h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});}
+          fs.copyFileSync('/tmp/lucia-outfit-after.js','js/reference-characters.js');console.log('Geometry and shader-template checks passed; garment likeness and rendered shader still need in-game review.');
+          JS
+      - name: Commit outfit only after checks
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Refine Lucia scoop neck black crop tank and clean dark cuffed denim appearance'
+          git push origin HEAD:main

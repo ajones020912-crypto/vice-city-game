@@ -1,0 +1,110 @@
+name: Lucia messy hair face tan and punch animation
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-appearance-punch-v4.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-v4" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Prepare appearance and punch changes without publishing unchecked files
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess
+          p=Path('js/reference-characters.js');s=p.read_text();Path('/tmp/lucia-v4-before.js').write_text(s)
+          if 'function finishLuciaV4(' in s: raise SystemExit('V4 already installed.')
+          def once(text,a,b):
+           if text.count(a)!=1: raise SystemExit('Unexpected anchor: '+a[:100])
+           return text.replace(a,b,1)
+          s=once(s,'skin:0x854d2c,hair:0x35251f','skin:0x68391f,hair:0x2d1b12')
+          s=once(s,'[.005,-.14,-.17]],.045,40)','[.005,-.14,-.17]],.050,40)')
+          s=once(s,'installLuciaDenimV3(T,h);','installLuciaDenimV3(T,h);finishLuciaV4(T,h);')
+          face='''
+           function finishLuciaV4(T,h){
+            const u=h.userData,m=u.m;m.hair.color.setHex(0x2d1b12);m.brow.color.setHex(0x4b2e1e);m.lip.color.setHex(0x9f6255);m.lip.roughness=.65;
+            for(const o of u.headP.children.slice()){
+             if(!o.isMesh)continue;
+             if(o.material===m.lip){remove(o);continue;}
+             if(o.material===m.skin&&Math.abs(o.position.x)<.005&&o.position.z>.09&&o.position.y>.12&&o.position.y<.19){remove(o);continue;}
+             if(o.name==='lucia-reference-hair-cap'){o.scale.x*=1.035;o.scale.z*=1.035;}
+            }
+            function ellipsoid(name,mat,x,y,z,sx,sy,sz){const o=add(T,u.headP,new T.SphereGeometry(1,24,16),mat,name,x,y,z);o.scale.set(sx,sy,sz);return o;}
+            ellipsoid('lucia-v4-nose-bridge',m.skin,0,.164,.109,.010,.025,.012);
+            ellipsoid('lucia-v4-nose-tip',m.skin,0,.140,.122,.014,.010,.013);
+            for(const side of [-1,1]){ellipsoid('lucia-v4-nose-wing',m.skin,side*.011,.136,.115,.007,.006,.008);ellipsoid('lucia-v4-upper-lip',m.lip,side*.010,.112,.113,.013,.0048,.006);}
+            ellipsoid('lucia-v4-lower-lip',m.lip,0,.103,.113,.023,.006,.007);
+            for(const side of [-1,1]){
+             add(T,u.headP,tube(T,[[side*.060,.283,.058],[side*.095,.290,.075],[side*.117,.252,.068],[side*.108,.197,.074]],.005,24),m.hair,'lucia-messy-temple-lock');
+             add(T,u.headP,tube(T,[[side*.065,.283,-.074],[side*.107,.294,-.091],[side*.126,.256,-.107],[side*.114,.218,-.114]],.0035,24),m.hair,'lucia-messy-flyaway');
+             add(T,u.headP,tube(T,[[side*.018,.289,-.126],[side*.046,.269,-.204],[side*.040,.168,-.243],[side*.018,.074,-.252]],.004,24),m.hair,'lucia-messy-tail-lock');
+            }
+            u.luciaAppearanceV4=true;
+           }
+          '''
+          s=once(s,' function roundLuciaGeometry(',face+' function roundLuciaGeometry(')
+          Path('/tmp/lucia-v4-after.js').write_text(s)
+          game=Path('index.html').read_text()
+          old='''  const p=Math.sin(Math.min(s.punch,1)*Math.PI);
+            A[1].sh.rotation.set(-1.45*p,0,-.1);A[1].el.rotation.x=-.2-.1*p;
+            A[0].sh.rotation.x=.4*p;spine.rotation.y=-.5*p;'''
+          game=once(game,old,"  if(u.referenceLead==='luciaC'){applyLuciaPunchV4(u,s.punch);}else{\n"+old+'\n  }')
+          game=once(game,' const u=h.userData,{hips,spine,A,Lg}=u;',' const u=h.userData,{hips,spine,A,Lg}=u;\n if(!(s.punch>0))u._luciaPunchActive=false;')
+          punch='''function applyLuciaPunchV4(u,p){
+           if(!u._luciaPunchActive||p>(u._luciaPunchLast||0)+.05){u._luciaPunchActive=true;u._luciaPunchStart=Math.max(.001,p);u._luciaPunchSerial=(u._luciaPunchSerial||0)+1;u._luciaPunchArm=(u._luciaPunchSerial-1)%2;}
+           u._luciaPunchLast=p;const t=Math.max(0,Math.min(1,1-p/u._luciaPunchStart)),frames=[[0,-.65,-1.45,.05,.02,.02],[.18,-.42,-1.55,.18,.08,.02],[.40,-1.60,-.12,-.28,-.12,.13],[.52,-1.55,-.17,-.30,-.12,.12],[.78,-.80,-1.4,.01,0,.03],[1,0,-.15,0,0,0]];
+           let k=0;while(k<frames.length-2&&t>frames[k+1][0])k++;const a=frames[k],b=frames[k+1],r=Math.max(0,Math.min(1,(t-a[0])/(b[0]-a[0]))),ease=r*r*(3-2*r),q=a.map((v,i)=>v+(b[i]-v)*ease),w=Math.min(1,t/.12)*Math.min(1,(1-t)/.15),arm=u._luciaPunchArm,sign=arm===1?1:-1,hit=u.A[arm],guard=u.A[1-arm];
+           const blend=(x,y)=>x+(y-x)*w;
+           hit.sh.rotation.x=blend(hit.sh.rotation.x,q[1]);hit.sh.rotation.y=blend(hit.sh.rotation.y,0);hit.sh.rotation.z=blend(hit.sh.rotation.z,-sign*.10);hit.el.rotation.x=blend(hit.el.rotation.x,q[2]);
+           guard.sh.rotation.x=blend(guard.sh.rotation.x,-.78);guard.sh.rotation.z=blend(guard.sh.rotation.z,sign*.13);guard.el.rotation.x=blend(guard.el.rotation.x,-1.35);
+           u.spine.rotation.y+=sign*q[3]*w;u.hips.rotation.y+=sign*q[4]*w;u.spine.rotation.x+=q[5]*w;
+          }
+          '''
+          game=once(game,'function animHuman(h,dt,s){',punch+'function animHuman(h,dt,s){')
+          Path('/tmp/lucia-v4-index.html').write_text(game)
+          Path('/tmp/lucia-v4-punch.js').write_text(punch)
+          start=game.index('function animHuman(h,dt,s){');end=game.index('// ================= INPUT =================',start)
+          Path('/tmp/lucia-v4-anim.js').write_text(game[start:end])
+          for path in ['/tmp/lucia-v4-after.js','/tmp/lucia-v4-punch.js','/tmp/lucia-v4-anim.js']: subprocess.run(['node','--check',path],check=True)
+          for code in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',game,re.I):
+           if code.strip():
+            Path('/tmp/lucia-v4-syntax.js').write_text(code);subprocess.run(['node','--check','/tmp/lucia-v4-syntax.js'],check=True)
+          PY
+      - name: Test model colors features punch phases and rig safety
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-v4/node_modules/three');
+          function load(path){const c={window:{},console,Math,clamp:(x,a,b)=>Math.max(a,Math.min(b,x))};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(path,'utf8'),c);return c;}
+          const old=load('/tmp/lucia-v4-before.js'),c=load('/tmp/lucia-v4-after.js'),api=c.window.VCCharacters;assert(JSON.stringify(api.DESIGNS.jasonC)===JSON.stringify(old.window.VCCharacters.DESIGNS.jasonC));
+          vm.runInContext(fs.readFileSync('/tmp/lucia-v4-punch.js','utf8')+fs.readFileSync('/tmp/lucia-v4-anim.js','utf8'),c);
+          for(const merge of [false,true]){
+           const h=api.build(T,'luciaC',{merge}),u=h.userData;assert(u.m.skin.color.getHex()===0x68391f);assert(u.m.hair.color.getHex()===0x2d1b12);assert(u.m.brow.color.getHex()===0x4b2e1e);assert(u.luciaContinuousShoulders&&u.luciaSeamlessDenim&&u.luciaAppearanceV4);
+           if(!merge){assert(h.getObjectByName('lucia-v4-nose-tip'));assert(h.getObjectByName('lucia-v4-nose-bridge'));assert(h.getObjectByName('lucia-v4-lower-lip'));assert(h.getObjectByName('lucia-messy-flyaway'));}
+           let extension=0;
+           for(let attack=0;attack<2;attack++){
+            c.animHuman(h,1/60,{speed:0,punch:0,weapon:null});
+            for(let i=0;i<=24;i++){c.animHuman(h,1/60,{speed:0,punch:Math.max(.0001,.4*(1-i/25)),weapon:null});extension=Math.min(extension,u.A[0].sh.rotation.x,u.A[1].sh.rotation.x);h.updateMatrixWorld(true);for(const arm of u.A)for(const joint of [arm.sh,arm.el])assert(joint.rotation.toArray().slice(0,3).every(Number.isFinite));}
+           }
+           assert(u._luciaPunchSerial===2&&extension<-.9);
+           for(const speed of [0,2,6])for(let i=0;i<60;i++)c.animHuman(h,1/60,{speed,punch:0,weapon:null});
+           c.animHuman(h,1/60,{speed:0,punch:0,aim:true,weapon:'pistol'});assert(!u._luciaPunchActive);
+           h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});
+          }
+          fs.copyFileSync('/tmp/lucia-v4-after.js','js/reference-characters.js');fs.copyFileSync('/tmp/lucia-v4-index.html','index.html');
+          JS
+      - name: Commit only after source and animation checks pass
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Give Lucia messy thicker brown hair defined lips nose deeper tan and staged alternating punches'
+          git push origin HEAD:main

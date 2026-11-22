@@ -1,0 +1,66 @@
+name: Give Lucia much larger expressive eyes
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-large-expressive-eyes.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  eyes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-large-eyes" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Increase sizing and keep eye surfaces visible
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('js/reference-characters.js');s=p.read_text();Path('/tmp/lucia-large-before.js').write_text(s)
+          if 'addLuciaBackCurls(T,h);' not in s: raise SystemExit('Back-scalp curls must finish first.')
+          start=s.index(' function enlargeLuciaEyes(T,h){');end=s.index('\n function ',start+2);block=s[start:end]
+          def edit(a,b):
+           global block
+           if block.count(a)!=1: raise SystemExit('Unexpected eye-helper anchor: '+a[:90])
+           block=block.replace(a,b,1)
+          edit('v.x=center.x+(v.x-center.x)*1.25;v.y=center.y+(v.y-center.y)*1.35;','v.x=center.x+(v.x-center.x)*1.60;v.y=center.y+(v.y-center.y)*1.85;v.z+=forward;')
+          fit='''
+            const faces=meshes.filter(o=>o.material===u.m.skin&&o.geometry.type==='LatheGeometry');
+            for(const eye of eyes){let surface=-Infinity;for(const face of faces){face.updateMatrix();const a=face.geometry.attributes.position,v=new T.Vector3();for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(face.matrix);if(Math.abs(v.x-eye.center.x)<eye.size.x*.7&&Math.abs(v.y-eye.center.y)<eye.size.y*1.5)surface=Math.max(surface,v.z);}}
+             eye.forward=Number.isFinite(surface)?Math.max(0,Math.min(.025,surface+.005-bounds(eye.mesh).max.z)):0;
+            }
+          '''
+          edit('const changes=[];',fit+'  const changes=[];')
+          edit('changes.push([o,eye.center]);','changes.push([o,eye.center,eye.forward]);')
+          edit('for(const [o,center] of changes)','for(const [o,center,forward] of changes)')
+          edit('u.luciaLargerEyes=true;','u.luciaLargerEyes=true;u.luciaEyeVisibilityFit=eyes.map(e=>e.forward);')
+          s=s[:start]+block+s[end:];Path('/tmp/lucia-large-after.js').write_text(s)
+          subprocess.run(['node','--check','/tmp/lucia-large-after.js'],check=True)
+          PY
+      - name: Verify major size increase visibility and unchanged hair body and facial features
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-large-eyes/node_modules/three');
+          function load(p){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}
+          const old=load('/tmp/lucia-large-before.js'),cur=load('/tmp/lucia-large-after.js');assert(JSON.stringify(old.DESIGNS)===JSON.stringify(cur.DESIGNS));const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');
+          function bounds(o){o.updateMatrix();const p=o.geometry.attributes.position,box=new T.Box3(),v=new T.Vector3();for(let i=0;i<p.count;i++)box.expandByPoint(v.fromBufferAttribute(p,i).applyMatrix4(o.matrix));return box;}
+          const eyes=h=>h.userData.headP.children.filter(o=>o.isMesh&&o.material===h.userData.m.eyeW),ae=eyes(a),be=eyes(b);assert(ae.length===2&&be.length===2);b.updateMatrixWorld(true);
+          const m=b.userData.m,occluders=b.userData.headP.children.filter(o=>o.isMesh&&(o.material===m.eyeW||o.material===m.iris||(o.material===m.skin&&o.geometry.type==='LatheGeometry')));
+          for(let i=0;i<2;i++){const x=bounds(ae[i]),y=bounds(be[i]),s=x.getSize(new T.Vector3()),t=y.getSize(new T.Vector3()),c=y.getCenter(new T.Vector3()),oldCenter=x.getCenter(new T.Vector3());assert(Math.abs(t.x/s.x-1.60/1.25)<.001);assert(Math.abs(t.y/s.y-1.85/1.35)<.001);assert(Math.abs(c.x-oldCenter.x)<1e-5&&Math.abs(c.y-oldCenter.y)<1e-5);assert(c.z-oldCenter.z>=-1e-5&&c.z-oldCenter.z<=.02501);const origin=c.clone().applyMatrix4(b.userData.headP.matrixWorld);origin.z+=1;const hits=new T.Raycaster(origin,new T.Vector3(0,0,-1),0,2).intersectObjects(occluders,false);assert(hits.length&&hits[0].object.material!==m.skin,'Eye center is hidden by face mesh');}
+          function preserved(h){const out=[];h.traverse(o=>{if(!o.isMesh)return;const inHead=o.parent===h.userData.headP;if(!inHead||o.material===h.userData.m.brow||/hair|curl|ponytail|brow|nose|lip/i.test(o.name))out.push([o.name,o.position.toArray(),o.scale.toArray(),Array.from(o.geometry.attributes.position.array)]);});return JSON.stringify(out);}
+          assert(preserved(a)===preserved(b));assert(b.userData.luciaBackScalpCurls&&b.userData.luciaFrontHairFit);
+          for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge});h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});}
+          fs.copyFileSync('/tmp/lucia-large-after.js','js/reference-characters.js');
+          JS
+      - name: Commit much larger eyes after checks
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Give Lucia eyes 60 percent wider and 85 percent taller with bounded face clearance'
+          git push origin HEAD:main

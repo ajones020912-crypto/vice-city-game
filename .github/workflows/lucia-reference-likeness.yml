@@ -1,0 +1,99 @@
+name: Reference inspired Lucia face and hair refinement
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-reference-likeness.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  reference:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-reference" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Prepare reference inspired face proportions and soft ponytail
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('js/reference-characters.js');s=p.read_text();Path('/tmp/lucia-reference-before.js').write_text(s)
+          if 'function prepareLuciaReferenceLook(' in s: raise SystemExit('Reference pass already installed.')
+          def edit(a,b):
+           global s
+           if s.count(a)!=1: raise SystemExit('Unexpected reference-pass anchor: '+a[:100])
+           s=s.replace(a,b,1)
+          edit('skin:0x68391f,hair:0x2d1b12','skin:0xa06c4d,hair:0x2d2119')
+          edit('v.x=center.x+(v.x-center.x)*1.60;v.y=center.y+(v.y-center.y)*1.85;','v.x=center.x+(v.x-center.x)*1.10;v.y=center.y+(v.y-center.y)*1.10;')
+          edit('fitLuciaFrontHair(T,h);','prepareLuciaReferenceLook(T,h);fitLuciaFrontHair(T,h);')
+          edit('enlargeLuciaEyes(T,h);','enlargeLuciaEyes(T,h);finishLuciaReferenceLook(T,h);')
+          helper='''
+           // Reference direction: Rockstar GTA VI official screenshot gallery.
+           // Original procedural geometry; no Rockstar model or texture assets are imported.
+           function prepareLuciaReferenceLook(T,h){
+            const u=h.userData;
+            for(const o of u.headP.children){
+             if(!o.isMesh)continue;
+             if(o.material===u.m.skin&&o.geometry.type==='LatheGeometry'){
+              const old=o.geometry,g=old.clone(),p=g.attributes.position;
+              for(let i=0;i<p.count;i++){const y=p.getY(i),cheek=Math.exp(-Math.pow((y-.145)/.045,2)),jaw=Math.exp(-Math.pow((y-.085)/.030,2));p.setX(i,p.getX(i)*(1+.018*cheek+.020*jaw));if(p.getZ(i)>0)p.setZ(i,p.getZ(i)+.0015*cheek);}
+              p.needsUpdate=true;g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();o.geometry=g;old.dispose();
+             }
+             if(o.name==='lucia-v4-nose-tip')o.scale.multiplyScalar(.94);
+             if(o.name==='lucia-v4-nose-wing')o.scale.x*=.94;
+             if(o.name==='lucia-v4-nose-bridge'){o.scale.x*=1.04;o.scale.z*=1.03;}
+            }
+           }
+           function finishLuciaReferenceLook(T,h){
+            const u=h.userData,m=u.m;
+            const removeNames=new Set(['lucia-reference-ponytail','lucia-curly-ponytail-ringlet','lucia-back-scalp-curl','lucia-short-front-curl','lucia-soft-face-framing-curl','lucia-messy-temple-lock','lucia-messy-flyaway','lucia-messy-tail-lock','lucia-face-framing-hair']);
+            for(const o of u.headP.children.slice())if(o.isMesh&&(removeNames.has(o.name)||o.material===m.lip))remove(o);
+            m.hair.color.setHex(0x2d2119);m.hair.roughness=.68;m.hair.bumpScale=.00018;m.hair.flatShading=false;m.hair.needsUpdate=true;
+            m.brow.color.setHex(0x3a281f);m.iris.color.setHex(0x4a3123);m.lip.color.setHex(0x9c695d);m.lip.roughness=.55;m.skin.roughness=.76;
+            const tail=[[0,.280,-.105],[.010,.300,-.145],[.025,.250,-.185],[.015,.150,-.210],[-.005,.055,-.210],[.008,-.020,-.180]];
+            add(T,u.headP,tube(T,tail,.040,64),m.hair,'lucia-reference-soft-ponytail');
+            const path=new T.CatmullRomCurve3(tail.map(v=>new T.Vector3(...v)),false,'centripetal');
+            for(let k=0;k<5;k++){
+             const points=[],phase=k*Math.PI*2/5;
+             for(let i=0;i<=48;i++){const t=i/48,v=path.getPoint(t),w=Math.sin(Math.PI*t);v.x+=(Math.cos(phase)*.012+.004*Math.sin(t*8+phase))*w;v.z+=(Math.sin(phase)*.010+.003*Math.cos(t*7+phase))*w;points.push(v.toArray());}
+             add(T,u.headP,tube(T,points,.006,64),m.hair,'lucia-reference-soft-tail-lock');
+            }
+            const cap=u.headP.children.find(o=>o.name==='lucia-reference-hair-cap');if(!cap)throw Error('Missing fitted scalp');
+            const p=cap.geometry.attributes.position,n=cap.geometry.attributes.normal,cols=64;
+            function surface(row,col,offset){row=Math.max(0,Math.min(23.999,row));col=((col%cols)+cols)%cols;const a=Math.floor(row),b=Math.floor(col),fy=row-a,fx=col-b,v=new T.Vector3(),normal=new T.Vector3();for(const [di,dj,w] of [[0,0,(1-fy)*(1-fx)],[0,1,(1-fy)*fx],[1,0,fy*(1-fx)],[1,1,fy*fx]]){const k=(a+di)*cols+(b+dj)%cols;v.addScaledVector(new T.Vector3(p.getX(k),p.getY(k),p.getZ(k)),w);normal.addScaledVector(new T.Vector3(n.getX(k),n.getY(k),n.getZ(k)),w);}return v.addScaledVector(normal.normalize(),offset).toArray();}
+            for(const side of [-1,1]){
+             for(let k=0;k<3;k++){const points=[];for(let j=0;j<=32;j++){const t=j/32;points.push(surface(20-15*t,side*(2+k*3)*(1-t)+side*(15+k)*t,.002));}add(T,u.headP,tube(T,points,.0028,48),m.hair,'lucia-reference-swept-lock');}
+             add(T,u.headP,tube(T,[[side*.079,.240,.060],[side*.098,.210,.062],[side*.103,.170,.050],[side*.096,.137,.046]],.0045,40),m.hair,'lucia-reference-loose-temple-strand');
+            }
+            function lip(upper){const g=new T.SphereGeometry(1,32,16),p=g.attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i),y=p.getY(i),z=p.getZ(i),xx=x*(upper?.024:.023),bow=upper?.0014*(Math.exp(-Math.pow((xx-.007)/.006,2))+Math.exp(-Math.pow((xx+.007)/.006,2)))-.0008*Math.exp(-Math.pow(xx/.004,2)):0;p.setXYZ(i,xx,(upper?.109:.101)+y*(upper?.0045:.0055)+bow,(upper?.111:.112)+z*(upper?.005:.006)-.001*x*x);}p.needsUpdate=true;g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();add(T,u.headP,g,m.lip,upper?'lucia-reference-upper-lip':'lucia-reference-lower-lip');}
+            lip(true);lip(false);u.luciaCurlyPonytail=false;u.luciaBackScalpCurls=false;u.luciaReferenceLook=true;
+           }
+          '''
+          edit(' function finishLuciaV4(',helper+' function finishLuciaV4(')
+          Path('/tmp/lucia-reference-after.js').write_text(s)
+          subprocess.run(['node','--check','/tmp/lucia-reference-after.js'],check=True)
+          PY
+      - name: Verify natural proportions preserved body and working character rigs
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-reference/node_modules/three');
+          function load(p){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}
+          const old=load('/tmp/lucia-reference-before.js'),cur=load('/tmp/lucia-reference-after.js');assert(JSON.stringify(old.DESIGNS.jasonC)===JSON.stringify(cur.DESIGNS.jasonC));const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');
+          function body(h){const out=[];function visit(o){if(o===h.userData.headP)return;if(o.isMesh)out.push([o.name,o.position.toArray(),o.scale.toArray(),Array.from(o.geometry.attributes.position.array)]);for(const child of o.children)visit(child);}visit(h);return JSON.stringify(out);}
+          assert(body(a)===body(b));assert(b.userData.m.skin.color.getHex()===0xa06c4d);assert(b.userData.m.hair.color.getHex()===0x2d2119);assert(b.getObjectByName('lucia-reference-soft-ponytail'));assert(b.getObjectByName('lucia-hair-tie'));assert(b.getObjectByName('lucia-reference-hair-cap'));assert(b.getObjectByName('lucia-reference-upper-lip'));assert(b.getObjectByName('lucia-reference-lower-lip'));assert(!b.getObjectByName('lucia-curly-ponytail-ringlet')&&!b.getObjectByName('lucia-back-scalp-curl'));
+          function bounds(o){o.updateMatrix();const p=o.geometry.attributes.position,box=new T.Box3(),v=new T.Vector3();for(let i=0;i<p.count;i++)box.expandByPoint(v.fromBufferAttribute(p,i).applyMatrix4(o.matrix));return box;}
+          const eyes=h=>h.userData.headP.children.filter(o=>o.isMesh&&o.material===h.userData.m.eyeW),ae=eyes(a),be=eyes(b);assert(ae.length===2&&be.length===2);for(let i=0;i<2;i++){const x=bounds(ae[i]).getSize(new T.Vector3()),y=bounds(be[i]).getSize(new T.Vector3());assert(Math.abs(y.x/x.x-1.10/1.60)<.001);assert(Math.abs(y.y/x.y-1.10/1.85)<.001);}
+          for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),u=h.userData;assert(u.luciaReferenceLook&&u.luciaFrontHairFit&&u.luciaContinuousShoulders&&u.luciaSeamlessDenim);for(const angle of [-.6,0,.6]){u.A[0].sh.rotation.x=angle;u.A[1].sh.rotation.x=-angle;u.Lg[0].hp.rotation.x=angle;u.Lg[1].hp.rotation.x=-angle;h.updateMatrixWorld(true);const denim=h.getObjectByName('lucia-seamless-denim');denim.onBeforeRender();assert(Array.from(denim.skeleton.boneMatrices).every(Number.isFinite));}h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});}
+          fs.copyFileSync('/tmp/lucia-reference-after.js','js/reference-characters.js');console.log('Geometry and rig checks passed. Visual likeness is approximate and requires in-game review.');
+          JS
+      - name: Commit reference inspired model pass after checks
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Refine Lucia toward GTA VI inspired facial proportions and softer swept back ponytail'
+          git push origin HEAD:main

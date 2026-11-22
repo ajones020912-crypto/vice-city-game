@@ -1,0 +1,130 @@
+name: Fix leg sockets inside pelvis
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-leg-sockets.yml'
+permissions:
+  contents: write
+concurrency:
+  group: fix-leg-sockets
+  cancel-in-progress: true
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Raise leg joints into pelvis + stable hip bob
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          orig = s
+
+          old_pelvis = 'mk(new T.BoxGeometry(.34,.2,.21),m.pants,hips,0,0,0);'
+          new_pelvis = 'mk(new T.BoxGeometry(.36,.26,.22),m.pants,hips,0,-.02,0);'
+          if old_pelvis in s:
+              s = s.replace(old_pelvis, new_pelvis, 1)
+              print('Pelvis mesh enlarged')
+          else:
+              print('WARN: pelvis mesh pattern not found')
+
+          old_leg = (
+              "const leg=(sx)=>{const hp=new T.Group();hp.position.set(sx*.1,-.08,0);hips.add(hp);"
+              "const thigh=mk(capsule(.085,.44),m.pants,hp);"
+              "const kn=new T.Group();kn.position.y=-.43;hp.add(kn);"
+              "const shin=mk(capsule(.066,.42),m.pants,kn);"
+              "mk(new T.BoxGeometry(.11,.07,.25),m.shoe,kn,0,-.44,.05);"
+              "return{hp,kn,thigh,shin}};"
+          )
+          new_leg = (
+              "const leg=(sx)=>{const hp=new T.Group();hp.position.set(sx*.09,.02,0);hips.add(hp);"
+              "const thigh=mk(capsule(.09,.46),m.pants,hp,0,.06,0);"
+              "const kn=new T.Group();kn.position.y=-.42;hp.add(kn);"
+              "const shin=mk(capsule(.068,.42),m.pants,kn);"
+              "mk(new T.BoxGeometry(.11,.07,.25),m.shoe,kn,0,-.44,.05);"
+              "return{hp,kn,thigh,shin}};"
+          )
+          if old_leg in s:
+              s = s.replace(old_leg, new_leg, 1)
+              print('Leg joints raised into pelvis')
+          elif 'hp.position.set(sx*.1,-.08,0)' in s:
+              s = s.replace('hp.position.set(sx*.1,-.08,0)', 'hp.position.set(sx*.09,.02,0)', 1)
+              s = s.replace(
+                  'const thigh=mk(capsule(.085,.44),m.pants,hp);',
+                  'const thigh=mk(capsule(.09,.46),m.pants,hp,0,.06,0);',
+                  1,
+              )
+              print('Leg joints raised (loose)')
+          else:
+              raise SystemExit('leg construction pattern not found')
+
+          old_bob = (
+              "const bob=Math.abs(s1)*(.02+.01*runW)*moveW;\n"
+              " const idleBreath=Math.sin(ph*.85)*.01*(1-moveW);\n"
+              " const hipY=.93-.01*moveW+bob+idleBreath;\n"
+              " hips.position.y=lerpA('hy',hipY,14);"
+          )
+          new_bob = (
+              "const idleBreath=Math.sin(ph*.85)*.006*(1-moveW);\n"
+              " const hipY=.93+idleBreath;\n"
+              " hips.position.y=lerpA('hy',hipY,20);"
+          )
+          if old_bob in s:
+              s = s.replace(old_bob, new_bob, 1)
+              print('Stabilized hip bob')
+          else:
+              s2 = s.replace(
+                  "const bob=Math.abs(s1)*(.02+.01*runW)*moveW;",
+                  "const bob=0;",
+                  1,
+              )
+              s2 = s2.replace(
+                  "const hipY=.93-.01*moveW+bob+idleBreath;",
+                  "const hipY=.93+Math.sin(ph*.85)*.006*(1-moveW);",
+                  1,
+              )
+              if s2 != s:
+                  s = s2
+                  print('Stabilized hip bob (loose)')
+              else:
+                  print('WARN: bob pattern not found')
+
+          s = s.replace('const hipAmp=(.32+.14*runW)*moveW;', 'const hipAmp=(.26+.12*runW)*moveW;')
+          s = s.replace('const kneeAmp=(.4+.35*runW)*moveW;', 'const kneeAmp=(.34+.28*runW)*moveW;')
+
+          if 'hips.rotation.set(0,0,0)' not in s:
+              s = s.replace(
+                  'u.dead=0;h.rotation.x=0;',
+                  'u.dead=0;h.rotation.x=0;hips.rotation.set(0,0,0);',
+                  1,
+              )
+
+          if s == orig:
+              raise SystemExit('No changes applied')
+
+          p.write_text(s, encoding='utf-8')
+          print(f'Done ({p.stat().st_size} bytes)')
+          t = p.read_text(encoding='utf-8')
+          print('joint raised', 'hp.position.set(sx*.09,.02,0)' in t)
+          print('thigh bury', 'capsule(.09,.46),m.pants,hp,0,.06,0)' in t)
+          PY
+
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if git diff --cached --quiet; then echo 'No changes'; exit 0; fi
+          git commit -m 'Fix: seat leg joints inside pelvis so thighs stay attached while walking'
+          git pull --rebase origin main || true
+          git push origin HEAD:main

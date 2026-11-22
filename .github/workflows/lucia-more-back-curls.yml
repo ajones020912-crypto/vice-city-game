@@ -1,0 +1,71 @@
+name: Add more curls to back of Lucia head
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-more-back-curls.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  curls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-back-curls" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Prepare curls fitted to rear scalp surface
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('js/reference-characters.js');s=p.read_text();Path('/tmp/lucia-back-before.js').write_text(s)
+          if 'function addLuciaBackCurls(' in s: raise SystemExit('Back scalp curls already installed.')
+          if 'v.x=center.x+(v.x-center.x)*1.25;v.y=center.y+(v.y-center.y)*1.35;' not in s: raise SystemExit('Further eye enlargement must finish first.')
+          anchor='fitLuciaFrontHair(T,h);'
+          if s.count(anchor)!=1: raise SystemExit('Expected fitted front scalp helper.')
+          s=s.replace(anchor,anchor+'addLuciaBackCurls(T,h);',1)
+          helper='''
+           function addLuciaBackCurls(T,h){
+            const u=h.userData,cap=u.headP.children.find(o=>o.name==='lucia-reference-hair-cap');
+            if(!cap||!u.luciaFrontHairFit)throw Error('Expected fitted scalp surface');
+            const p=cap.geometry.attributes.position,n=cap.geometry.attributes.normal,cols=64,rows=24;
+            if(p.count!==1601)throw Error('Scalp grid dimensions changed');
+            function sample(row,col,offset){
+             row=Math.max(0,Math.min(rows-.001,row));col=((col%cols)+cols)%cols;const a=Math.floor(row),b=Math.floor(col),fy=row-a,fx=col-b,v=new T.Vector3(),normal=new T.Vector3();
+             for(const [di,dj,w] of [[0,0,(1-fy)*(1-fx)],[0,1,(1-fy)*fx],[1,0,fy*(1-fx)],[1,1,fy*fx]]){const k=(a+di)*cols+(b+dj)%cols;v.addScaledVector(new T.Vector3(p.getX(k),p.getY(k),p.getZ(k)),w);normal.addScaledVector(new T.Vector3(n.getX(k),n.getY(k),n.getZ(k)),w);}
+             return v.addScaledVector(normal.normalize(),offset).toArray();
+            }
+            for(let k=0;k<12;k++){
+             const points=[],center=16+(k+.5)*32/12,start=2+(k%3)*.6,end=21-(k%2)*1.2,turns=2.6+(k%3)*.4;
+             for(let j=0;j<=96;j++){const t=j/96,phase=t*turns*Math.PI*2+k*.7,envelope=Math.sin(Math.PI*t),row=start+(end-start)*t+.65*Math.cos(phase)*envelope,col=center+.85*Math.sin(phase)*envelope,offset=.003+.0018*(1+Math.cos(phase))*envelope;points.push(sample(row,col,offset));}
+             add(T,u.headP,tube(T,points,.0045+(k%3)*.0005,96),u.m.hair,'lucia-back-scalp-curl');
+            }
+            u.luciaBackScalpCurls=true;
+           }
+          '''
+          marker=' function finishLuciaV4('
+          if s.count(marker)!=1: raise SystemExit('Appearance helper boundary changed.')
+          s=s.replace(marker,helper+marker,1);Path('/tmp/lucia-back-after.js').write_text(s)
+          subprocess.run(['node','--check','/tmp/lucia-back-after.js'],check=True)
+          PY
+      - name: Verify back scalp placement and preserve existing model
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-back-curls/node_modules/three');
+          function load(p){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}
+          const old=load('/tmp/lucia-back-before.js'),cur=load('/tmp/lucia-back-after.js');assert(JSON.stringify(old.DESIGNS)===JSON.stringify(cur.DESIGNS));const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');
+          function signature(h){const out=[];h.traverse(o=>{if(!o.isMesh||o.name==='lucia-back-scalp-curl')return;out.push([o.name,o.position.toArray(),o.scale.toArray(),Array.from(o.geometry.attributes.position.array)]);});return JSON.stringify(out);}
+          assert(signature(a)===signature(b));const cap=b.getObjectByName('lucia-reference-hair-cap');cap.geometry.computeBoundingBox();const box=cap.geometry.boundingBox,center=box.getCenter(new T.Vector3());let count=0;b.traverse(o=>{if(o.name!=='lucia-back-scalp-curl')return;count++;o.geometry.computeBoundingBox();assert(o.geometry.boundingBox.max.z<center.z+.010);assert(o.geometry.boundingBox.min.y>box.min.y-.015);});assert(count===12);assert(b.userData.luciaLargerEyes&&b.userData.luciaCurlyPonytail&&b.userData.luciaFrontHairFit);
+          for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge});assert(h.userData.luciaBackScalpCurls);h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});}
+          fs.copyFileSync('/tmp/lucia-back-after.js','js/reference-characters.js');
+          JS
+      - name: Commit back scalp curls after checks
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Add fitted messy dark brown curls across rear scalp preserving ponytail and front hair'
+          git push origin HEAD:main

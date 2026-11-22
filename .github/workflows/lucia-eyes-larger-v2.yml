@@ -1,0 +1,52 @@
+name: Further enlarge Lucia eyes after front hair fix
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-eyes-larger-v2.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  eyes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-eyes-v2" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Increase existing eye sizing without stacking duplicate transforms
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('js/reference-characters.js');s=p.read_text();Path('/tmp/lucia-eyes-v2-before.js').write_text(s)
+          if 'fitLuciaFrontHair(T,h);' not in s: raise SystemExit('Front-hair model fix must finish first.')
+          old='v.x=center.x+(v.x-center.x)*1.15;v.y=center.y+(v.y-center.y)*1.20;'
+          new='v.x=center.x+(v.x-center.x)*1.25;v.y=center.y+(v.y-center.y)*1.35;'
+          if s.count(old)!=1: raise SystemExit('Eye enlargement source changed; refusing duplicate or ambiguous scaling.')
+          s=s.replace(old,new,1);Path('/tmp/lucia-eyes-v2-after.js').write_text(s)
+          subprocess.run(['node','--check','/tmp/lucia-eyes-v2-after.js'],check=True)
+          PY
+      - name: Check additional eye growth preserved hair brows and other features
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-eyes-v2/node_modules/three');
+          function load(p){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}
+          const old=load('/tmp/lucia-eyes-v2-before.js'),cur=load('/tmp/lucia-eyes-v2-after.js');assert(JSON.stringify(old.DESIGNS)===JSON.stringify(cur.DESIGNS));const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');
+          function box(o){o.updateMatrix();const p=o.geometry.attributes.position,b=new T.Box3(),v=new T.Vector3();for(let i=0;i<p.count;i++)b.expandByPoint(v.fromBufferAttribute(p,i).applyMatrix4(o.matrix));return b;}
+          const eyes=h=>h.userData.headP.children.filter(o=>o.isMesh&&o.material===h.userData.m.eyeW),ae=eyes(a),be=eyes(b);assert(ae.length===2&&be.length===2);
+          for(let i=0;i<2;i++){const x=box(ae[i]),y=box(be[i]),s=x.getSize(new T.Vector3()),t=y.getSize(new T.Vector3());assert(Math.abs(t.x/s.x-1.25/1.15)<.001);assert(Math.abs(t.y/s.y-1.35/1.20)<.001);assert(x.getCenter(new T.Vector3()).distanceTo(y.getCenter(new T.Vector3()))<1e-5);}
+          function preserved(h){const out=[];h.traverse(o=>{if(!o.isMesh)return;const inHead=o.parent===h.userData.headP,keep=!inHead||o.material===h.userData.m.brow||/hair|curl|ponytail|brow|nose|lip/i.test(o.name);if(keep)out.push([o.name,o.position.toArray(),o.scale.toArray(),Array.from(o.geometry.attributes.position.array)]);});return JSON.stringify(out);}
+          assert(preserved(a)===preserved(b));assert(b.userData.luciaFrontHairFit&&b.userData.luciaCurlyPonytail&&b.userData.luciaLargerEyes);
+          for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge});h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});}
+          fs.copyFileSync('/tmp/lucia-eyes-v2-after.js','js/reference-characters.js');
+          JS
+      - name: Commit further eye enlargement after checks
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Increase Lucia eyes to 25 percent wider and 35 percent taller preserving fitted front hair'
+          git push origin HEAD:main

@@ -1,0 +1,115 @@
+name: Fix leg detach while walking
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-leg-detach.yml'
+permissions:
+  contents: write
+concurrency:
+  group: fix-leg-detach
+  cancel-in-progress: true
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch hip rotation and waist gap
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          orig = s
+
+          # 1) Stop rotating the whole hips group (causes leg/body shear)
+          s = s.replace(
+              "hips.rotation.z=lerpA('hz',c1*.04*moveW,12);\n hips.rotation.y=lerpA('hyaw',s1*.06*moveW,12);",
+              "hips.rotation.set(0,0,0);",
+          )
+          s = s.replace(
+              "hips.rotation.z=lerpA('hz',c1*.04*moveW,12);",
+              "hips.rotation.z=0;",
+          )
+          s = s.replace(
+              "hips.rotation.y=lerpA('hyaw',s1*.06*moveW,12);",
+              "hips.rotation.y=0;",
+          )
+
+          # 2) Fixed spine height so waist does not open a gap
+          s = s.replace(
+              "spine.position.y=.08+(s.aim?0:Math.sin(ph*.45)*.0025);",
+              "spine.position.y=.08;",
+          )
+          s = s.replace(
+              "spine.position.y=.08+(s.aim?0:Math.sin(u.ph*.4)*.002)}",
+              "spine.position.y=.08}",
+          )
+
+          # 3) Milder leg swing so thighs stay under pelvis mesh
+          s = s.replace(
+              "const hipAmp=(.42+.22*runW)*moveW;",
+              "const hipAmp=(.32+.14*runW)*moveW;",
+          )
+          s = s.replace(
+              "const kneeAmp=(.55+.55*runW)*moveW;",
+              "const kneeAmp=(.4+.35*runW)*moveW;",
+          )
+
+          # 4) Smaller vertical bob
+          s = s.replace(
+              "const bob=Math.abs(s1)*(.028+.02*runW)*moveW;",
+              "const bob=Math.abs(s1)*(.02+.01*runW)*moveW;",
+          )
+          s = s.replace(
+              "const hipY=.93-.018*moveW+bob+idleBreath;",
+              "const hipY=.93-.01*moveW+bob+idleBreath;",
+          )
+
+          # 5) Zero any leftover lateral hip joint drift if present
+          if "Lg[0].hp.rotation.y" not in s[s.find('function animHuman'):s.find('function animHuman')+2500]:
+              s = s.replace(
+                  "Lg[0].hp.rotation.x=lh;Lg[1].hp.rotation.x=rh;\n Lg[0].kn.rotation.x=lk;Lg[1].kn.rotation.x=rk;",
+                  "Lg[0].hp.rotation.x=lh;Lg[1].hp.rotation.x=rh;\n Lg[0].kn.rotation.x=lk;Lg[1].kn.rotation.x=rk;\n Lg[0].hp.rotation.y=Lg[1].hp.rotation.y=Lg[0].hp.rotation.z=Lg[1].hp.rotation.z=0;",
+              )
+
+          if s == orig:
+              # Try alternate patterns from older animHuman
+              s2 = s
+              s2 = re.sub(
+                  r"hips\.position\.y=\.93-\.02\*moving\+Math\.abs\(Math\.sin\(u\.ph\)\)\*\.035\*moving\+idleBreath;",
+                  "hips.position.y=.93-.01*moving+Math.abs(Math.sin(u.ph))*.02*moving+idleBreath;hips.rotation.set(0,0,0);",
+                  s2,
+              )
+              if s2 != s:
+                  s = s2
+                  print('Patched older animHuman bob path')
+              else:
+                  raise SystemExit('No hip/leg patterns matched — animHuman may have changed')
+
+          p.write_text(s, encoding='utf-8')
+          print(f'Done ({p.stat().st_size} bytes)')
+          # show a few confirms
+          chunk = p.read_text(encoding='utf-8')
+          print('hips.rotation.set', 'hips.rotation.set(0,0,0)' in chunk or 'hips.rotation.z=0' in chunk)
+          print('hipAmp mild', 'hipAmp=(.32' in chunk)
+          PY
+
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          if git diff --cached --quiet; then echo 'No changes'; exit 0; fi
+          git commit -m 'Fix: stop hip-group rotation shearing legs off the body while walking'
+          git pull --rebase origin main || true
+          git push origin HEAD:main

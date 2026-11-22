@@ -1,0 +1,84 @@
+name: Smooth Lucia denim without changing coverage
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-denim-smoothing.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  smooth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-smooth-test" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Add denim shading smoothing
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('js/reference-characters.js');s=p.read_text(encoding='utf-8')
+          Path('/tmp/lucia-smooth-before.js').write_text(s,encoding='utf-8')
+          anchor='  u.luciaDenimSeat=true;'
+          if 'function smoothLuciaDenim(' in s: raise SystemExit('Smoothing already installed.')
+          if s.count(anchor)!=1: raise SystemExit('Denim builder changed; refusing ambiguous edit.')
+          helper='''
+           function smoothLuciaDenim(T,h){
+            const u=h.userData;
+            u.m.pants.flatShading=false;u.m.pants.bumpScale=.0003;u.m.pants.needsUpdate=true;
+            for(const joint of [u.hips,...u.Lg.map(l=>l.hp)])for(const mesh of joint.children){
+             if(!mesh.isMesh||mesh.material!==u.m.pants)continue;
+             const g=mesh.geometry,p=g.attributes.position;if(!p)continue;
+             g.computeVertexNormals();
+             const n=g.attributes.normal,groups=new Map();
+             for(let i=0;i<p.count;i++){
+              const key=[p.getX(i),p.getY(i),p.getZ(i)].map(v=>Math.round(v*1e6)).join(',');
+              if(!groups.has(key))groups.set(key,[]);groups.get(key).push(i);
+             }
+             const original=Float32Array.from(n.array);
+             for(const indices of groups.values()){
+              if(indices.length<2)continue;
+              for(const i of indices){
+               const base=new T.Vector3(original[i*3],original[i*3+1],original[i*3+2]),sum=new T.Vector3();
+               for(const j of indices){const v=new T.Vector3(original[j*3],original[j*3+1],original[j*3+2]);if(base.dot(v)>.6)sum.add(v);}
+               if(sum.lengthSq()>1e-12){sum.normalize();n.setXYZ(i,sum.x,sum.y,sum.z);}
+              }
+             }
+             n.needsUpdate=true;
+            }
+            u.luciaDenimSmoothed=true;
+           }
+          '''
+          s=s.replace(anchor,'  smoothLuciaDenim(T,h);\n'+anchor,1)
+          s=s.replace(' function roundLuciaGeometry(',helper+' function roundLuciaGeometry(',1)
+          Path('/tmp/lucia-smooth-after.js').write_text(s,encoding='utf-8')
+          subprocess.run(['node','--check','/tmp/lucia-smooth-after.js'],check=True)
+          PY
+      - name: Verify all vertex positions and joint transforms are unchanged
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert');
+          const T=require(process.env.RUNNER_TEMP+'/lucia-smooth-test/node_modules/three');
+          function load(path){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(path,'utf8'),c);return c.window.VCCharacters;}
+          const old=load('/tmp/lucia-smooth-before.js'),cur=load('/tmp/lucia-smooth-after.js');
+          function sig(root){const out=[];root.traverse(o=>{out.push([o.name,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray(),o.isMesh?Array.from(o.geometry.attributes.position.array):null,o.isMesh&&o.geometry.attributes.uv?Array.from(o.geometry.attributes.uv.array):null]);});return JSON.stringify(out);}
+          for(const merge of [false,true]){
+            const a=old.build(T,'luciaC',{merge}),b=cur.build(T,'luciaC',{merge});
+            assert(sig(a)===sig(b),'Geometry, UVs, or transforms changed');
+            assert(b.userData.m.pants.map&&b.userData.m.pants.flatShading===false);
+            for(const angle of [-.6,0,.6]){b.userData.Lg[0].hp.rotation.x=angle;b.updateMatrixWorld(true);b.traverse(o=>{if(o.isMesh)assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));});}
+          }
+          fs.copyFileSync('/tmp/lucia-smooth-after.js','js/reference-characters.js');
+          console.log('Geometry-preservation and normal checks passed; visual smoothing still needs in-game review.');
+          JS
+      - name: Commit denim smoothing
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Smooth Lucia denim shading and soften cloth bump without changing geometry'
+          git push origin HEAD:main

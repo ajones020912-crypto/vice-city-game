@@ -1,0 +1,80 @@
+name: Add detailed SUV exterior visuals
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/detail-suv-visuals.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  suv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/suv-detail" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Prepare additive SUV detail extension without replacing original vehicle parts
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/suv-detail/node_modules/acorn'),s=fs.readFileSync('index.html','utf8');if(s.includes('// SUV_DETAILS_V1'))throw Error('SUV detail extension already installed.');let dims=null,factories=0;
+          for(const m of s.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;const ast=acorn.parse(m[1],{ecmaVersion:'latest'}),stack=[ast];while(stack.length){const n=stack.pop();if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='makeCarVisual')factories++;if(n.type==='VariableDeclarator'&&n.id.type==='Identifier'&&n.id.name==='CAR_TYPES'&&n.init&&n.init.type==='ObjectExpression'){const suv=n.init.properties.find(p=>p.key&&(p.key.name||p.key.value)==='suv');if(suv&&suv.value.type==='ObjectExpression'){dims={};for(const p of suv.value.properties){const k=p.key&&(p.key.name||p.key.value);if(['W','L','H','wb','wr'].includes(k)&&p.value.type==='Literal'&&typeof p.value.value==='number')dims[k]=p.value.value;}}}for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')stack.push(x);}else if(v&&typeof v.type==='string')stack.push(v);}}}
+          if(factories!==1||!dims||!['W','L','wb','wr'].every(k=>dims[k]>0)||s.split('boot();').length!==2)throw Error('SUV dimensions or original visual factory changed.');fs.writeFileSync('/tmp/suv-detail-dims.json',JSON.stringify(dims));
+          const core=String.raw`// SUV_DETAILS_V1
+          function addDetailedSUV(T,v,t,color){
+           if(!v.g||!v.ch||!v.body||!v.pm||!Array.isArray(v.wheels)||!v.wheels.length)throw Error('SUV visual contract changed');
+           const W=t.W,L=t.L;v.ch.updateMatrixWorld(true);const originalBounds=new T.Box3().setFromObject(v.ch),H=Number(t.H)||Math.max(1.5,Math.min(2.2,originalBounds.max.y));
+           const trim=new T.MeshStandardMaterial({color:0x20242a,roughness:.86}),steel=new T.MeshStandardMaterial({color:0xa0a6ac,roughness:.36,metalness:.72}),amber=new T.MeshStandardMaterial({color:0xe8a43b,roughness:.4,emissive:0x462300}),paint=v.pm;
+           const front=v.head&&v.head.material&&!Array.isArray(v.head.material)?v.head.material:new T.MeshStandardMaterial({color:0xe7f0f4,roughness:.35}),rear=v.tail&&v.tail.material&&!Array.isArray(v.tail.material)?v.tail.material:new T.MeshStandardMaterial({color:0xa9212d,roughness:.4});
+           const parts=[];
+           function part(g,m,x,y,z,rx=0,ry=0,rz=0,list=parts){const o=new T.Mesh(g,m);o.position.set(x,y,z);o.rotation.set(rx,ry,rz);list.push(o);return o;}
+           const box=(w,h,d,m,x,y,z,rx=0,ry=0,rz=0,list=parts)=>part(new T.BoxGeometry(w,h,d),m,x,y,z,rx,ry,rz,list);
+           function batch(list,parent,name){const groups=new Map();for(const o of list){o.updateMatrix();const g=o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone();g.applyMatrix4(o.matrix);const a=g.attributes;if(!groups.has(o.material))groups.set(o.material,{p:[],n:[],uv:[]});const b=groups.get(o.material);for(let i=0;i<a.position.count;i++){b.p.push(a.position.getX(i),a.position.getY(i),a.position.getZ(i));b.n.push(a.normal.getX(i),a.normal.getY(i),a.normal.getZ(i));b.uv.push(a.uv?a.uv.getX(i):0,a.uv?a.uv.getY(i):0);}g.dispose();o.geometry.dispose();}for(const [m,b] of groups){const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(b.p,3));g.setAttribute('normal',new T.Float32BufferAttribute(b.n,3));g.setAttribute('uv',new T.Float32BufferAttribute(b.uv,2));g.setAttribute('color',new T.Float32BufferAttribute(new Float32Array(b.p.length).fill(1),3));g.computeBoundingBox();g.computeBoundingSphere();const o=new T.Mesh(g,m);o.name=name;o.castShadow=true;parent.add(o);}}
+           box(W*.88,H*.11,L*.030,trim,0,H*.27,L*.482);box(W*.88,H*.11,L*.030,trim,0,H*.27,-L*.482);
+           box(W*.55,H*.18,L*.004,trim,0,H*.45,L*.496);for(let i=0;i<7;i++)box(W*.012,H*.145,L*.004,steel,(i-3)*W*.065,H*.45,L*.497);
+           for(const side of [-1,1]){
+            for(let i=0;i<3;i++){box(W*.052,H*.035,L*.004,front,side*(W*.32+i*W*.052),H*.54,L*.497);box(W*.052,H*.035,L*.004,rear,side*(W*.32+i*W*.052),H*.52,-L*.497);}
+            box(W*.028,H*.04,L*.005,amber,side*W*.455,H*.48,L*.496);
+            box(W*.06,H*.045,L*.54,trim,side*W*.46,H*.18,-L*.01);
+            box(W*.018,H*.025,L*.46,steel,side*W*.30,H*1.035,-L*.06);
+            for(const z of [-L*.18,L*.07])box(W*.022,H*.035,L*.022,trim,side*W*.30,H*1.012,z);
+            box(W*.06,H*.07,L*.08,paint,side*W*.46,H*.69,L*.16);box(W*.005,H*.045,L*.055,steel,side*W*.493,H*.69,L*.16);
+            for(const z of [-L*.10,L*.11])box(W*.060,H*.018,L*.035,steel,side*W*.474,H*.50,z);
+            for(const z of [-L*.26,-L*.055])box(W*.015,H*.25,L*.018,trim,side*W*.402,H*.80,z);
+            box(W*.015,H*.015,L*.48,trim,side*W*.404,H*.665,-L*.055);
+            for(const z of [-t.wb/2,t.wb/2])part(new T.TorusGeometry(t.wr+.045,W*.016,6,24,Math.PI),trim,side*W*.480,t.wr,z,0,Math.PI/2,0);
+           }
+           for(const z of [-L*.17,L*.08])box(W*.64,H*.020,L*.015,trim,0,H*1.050,z);
+           box(W*.22,H*.013,L*.009,trim,0,H*.79,-L*.350);
+           let map;if(typeof document!=='undefined'){const c=document.createElement('canvas');c.width=256;c.height=128;const x=c.getContext('2d');x.fillStyle='#eee9da';x.fillRect(0,0,256,128);x.fillStyle='#254a60';x.textAlign='center';x.font='bold 22px Arial';x.fillText('LEONIDA',128,30);x.font='bold 43px Arial';x.fillText('VC '+String((Number(color)>>>0)%900+100),128,90);map=new T.CanvasTexture(c);map.encoding=T.sRGBEncoding;}else{map=new T.DataTexture(new Uint8Array([238,233,218,255]),1,1,T.RGBAFormat);map.needsUpdate=true;}
+           const plate=new T.MeshBasicMaterial({map,toneMapped:false});part(new T.PlaneGeometry(W*.32,H*.08),plate,0,H*.31,L*.499);part(new T.PlaneGeometry(W*.32,H*.08),plate,0,H*.34,-L*.499,0,Math.PI,0);
+           const group=new T.Group();group.name='suv-exterior-details';v.ch.add(group);batch(parts,group,'suv-batched-exterior-detail');
+           for(const wheel of v.wheels){if(!wheel.w||!wheel.piv)continue;const spokes=[],side=Math.sign(wheel.piv.position.x)||1;for(let i=0;i<5;i++)box(.020,t.wr*1.35,.028,steel,side*.100,0,0,i*Math.PI/5,0,0,spokes);part(new T.CylinderGeometry(t.wr*.18,t.wr*.18,.022,12),steel,side*.105,0,0,0,0,Math.PI/2,spokes);batch(spokes,wheel.w,'suv-wheel-rim-detail');}
+           v.suvDetailed=true;return v;
+          }
+          `;
+          const integration=String.raw`
+          const originalDetailedSUVFactory=makeCarVisual;
+          makeCarVisual=function(tk,color){const v=originalDetailedSUVFactory.apply(this,arguments);if(tk!=='suv')return v;try{return addDetailedSUV(T,v,CAR_TYPES[tk],color);}catch(error){G.suvDetailError=String(error.message||error);console.warn('SUV details unavailable; keeping original SUV',error);return v;}};
+          `;
+          fs.writeFileSync('/tmp/suv-detail-core.js',core);fs.writeFileSync('/tmp/suv-detail-integration.js',integration);fs.writeFileSync('/tmp/suv-detail-index.html',s.replace('boot();',core+'\n'+integration+'\nboot();'));
+          JS
+      - name: Test visual contract paint wheels footprint and geometry budget
+        run: |
+          node <<'JS'
+          const fs=require('fs'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/suv-detail/node_modules/three'),dims=JSON.parse(fs.readFileSync('/tmp/suv-detail-dims.json','utf8')),core=fs.readFileSync('/tmp/suv-detail-core.js','utf8'),integration=fs.readFileSync('/tmp/suv-detail-integration.js','utf8');
+          function original(tk,color){const t=dims,H=t.H||1.8,g=new T.Group(),ch=new T.Group();g.add(ch);const pm=new T.MeshStandardMaterial({color}),body=new T.Mesh(new T.BoxGeometry(t.W*.92,H*.60,t.L),pm);body.position.y=H*.30;ch.add(body);const cabin=new T.Mesh(new T.BoxGeometry(t.W*.80,H*.40,t.L*.58),pm);cabin.position.set(0,H*.80,-t.L*.04);ch.add(cabin);const wheels=[];for(const side of [-1,1])for(const z of [-t.wb/2,t.wb/2]){const piv=new T.Group(),w=new T.Group();piv.position.set(side*(t.W/2-.13),t.wr,z);piv.add(w);ch.add(piv);const geo=new T.CylinderGeometry(t.wr,t.wr,.18,12);geo.rotateZ(Math.PI/2);w.add(new T.Mesh(geo,new T.MeshStandardMaterial({color:0x151515})));wheels.push({piv,w,front:z>0});}return{g,ch,body,pm,wheels,head:{material:new T.MeshStandardMaterial({color:0xffffff})},tail:{material:new T.MeshStandardMaterial({color:0xb02028})},bar:null,beam:{visible:false}};}
+          const factory=new Function('makeCarVisual','CAR_TYPES','T','G',core+integration+';return makeCarVisual;')(original,{suv:dims},T,{}),base=original('suv',0x356c87);function metrics(v){let meshes=0,triangles=0;v.g.traverse(o=>{if(o.isMesh){meshes++;triangles+=(o.geometry.index?o.geometry.index.count:o.geometry.attributes.position.count)/3;}});return{meshes,triangles};}
+          const before=metrics(base),refs={g:base.g,ch:base.ch,body:base.body,pm:base.pm,wheels:base.wheels},enhance=new Function('T',core+';return addDetailedSUV;')(T),v=enhance(T,base,dims,0x356c87);assert(v===base&&v.suvDetailed);for(const k of Object.keys(refs))assert(v[k]===refs[k]);assert(v.g.getObjectByName('suv-exterior-details'));v.wheels[0].w.rotation.x=.8;v.wheels[0].piv.rotation.y=.2;assert(v.wheels[0].w.getObjectByName('suv-wheel-rim-detail'));v.g.updateMatrixWorld(true);const b=new T.Box3().setFromObject(v.g);assert(b.max.x<=dims.W/2+.04&&b.min.x>=-dims.W/2-.04);assert(b.max.z<=dims.L/2+.04&&b.min.z>=-dims.L/2-.04);assert(b.min.y>=-.02);const after=metrics(v);assert(after.triangles-before.triangles<=3500);assert(after.meshes-before.meshes<=14);
+          v.g.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});assert(factory('suv',0x123456).suvDetailed);assert(!factory('sedan',0x123456).suvDetailed);
+          const cp=require('child_process'),html=fs.readFileSync('/tmp/suv-detail-index.html','utf8');for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;fs.writeFileSync('/tmp/suv-inline-check.js',m[1]);cp.execFileSync('node',['--check','/tmp/suv-inline-check.js']);}fs.copyFileSync('/tmp/suv-detail-index.html','index.html');
+          JS
+      - name: Commit SUV visuals only after checks
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Add SUV grille bumpers roof rails window trim plates wheel arches and detailed rims'
+          git push origin HEAD:main

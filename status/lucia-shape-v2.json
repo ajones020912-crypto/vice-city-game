@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "stronger_shaping": true,
+  "tank_and_shorts_preserved": true,
+  "clothing_refitted": true,
+  "face_and_hair_unchanged": true,
+  "animation_joints_unchanged": true,
+  "other_characters_unchanged": true,
+  "merged_model_valid": true,
+  "finite_geometry": true,
+  "ratios_vs_previous": {
+    "hips": 1.1712903588138661,
+    "waist": 0.9490119302492747,
+    "thighs": 1.1250000525055583,
+    "bust": 1.0929398868880567,
+    "hip_depth": 1.10834157266959
+  },
+  "scope": "Stronger Lucia-only silhouette shaping; same shaping applied to clothing; no gameplay changes"
+}

@@ -1,0 +1,26 @@
+{
+  "ok": true,
+  "rounder_denser_contour": true,
+  "bust_width_increased": true,
+  "forward_projection_retained": true,
+  "warmer_tan_skin": true,
+  "tank_refitted": true,
+  "lower_body_preserved": true,
+  "face_and_hair_geometry_preserved": true,
+  "animation_joints_preserved": true,
+  "other_characters_unchanged": true,
+  "merged_model_valid": true,
+  "finite_geometry": true,
+  "chest_measurements": {
+    "previous": {
+      "width": 0.3493696451187134,
+      "front": 0.17188122868537903
+    },
+    "revised": {
+      "width": 0.38587984442710876,
+      "front": 0.1720354771614075
+    }
+  },
+  "checked_scripts": 1,
+  "scope": "Lucia-only rounder, wider covered bust contour and warmer tan; lower-body shape and gameplay unchanged"
+}

@@ -1,0 +1,10 @@
+function bakeTerrain(){
+ for(let iz=0;iz<=TN;iz++)for(let ix=0;ix<=TN;ix++)hg[iz*(TN+1)+ix]=rawH(-WS+ix*TS,-WS+iz*TS);
+ // carve roads flat (causeways, swamp boardwalks) with soft shoulders
+ for(const r of roads){if(r.type==='bridge')continue;const hw=r.w/2+4,m=22;
+  const x0=r.o==='h'?r.a-m:r.c-hw-m,x1=r.o==='h'?r.b+m:r.c+hw+m,z0=r.o==='h'?r.c-hw-m:r.a-m,z1=r.o==='h'?r.c+hw+m:r.b+m;
+  for(let iz=Math.max(0,Math.floor((z0+WS)/TS));iz<=Math.min(TN,Math.ceil((z1+WS)/TS));iz++)for(let ix=Math.max(0,Math.floor((x0+WS)/TS));ix<=Math.min(TN,Math.ceil((x1+WS)/TS));ix++){
+   const x=-WS+ix*TS,z=-WS+iz*TS;let d;
+   if(r.o==='h'){const dx=x<r.a?r.a-x:x>r.b?x-r.b:0;d=Math.hypot(dx,Math.abs(z-r.c))}else{const dz=z<r.a?r.a-z:z>r.b?z-r.b:0;d=Math.hypot(dz,Math.abs(x-r.c))}
+   const w=1-sstep(hw,hw+m,d);if(w>0){const i=iz*(TN+1)+ix;hg[i]=lerp(hg[i],0,w)}}}
+}
