@@ -1,0 +1,53 @@
+name: Define Lucia left and right chest contours without splitting the torso mesh
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-center-contour.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-photo-reference
+  cancel-in-progress: false
+jobs:
+  contour:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-center-contour" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Prepare a bounded continuous center contour
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-center-contour/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_CENTER_CONTOUR_V1'))process.exit(0);if(!s.includes('// LUCIA_PELVIS_SEAM_BLEND_V1'))throw Error('Reviewed smoothed model required');fs.writeFileSync('/tmp/lucia-contour-before.js',s);function walk(n,fn){fn(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,fn);}else if(v&&typeof v.type==='string')walk(v,fn);}}const found=[];walk(acorn.parse(s,{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='lucia')found.push(n);});if(found.length!==1)throw Error('Lucia builder changed');const node=found[0];
+          const helper=String.raw`
+           function defineLuciaCenterContour(T,h){
+            const u=h.userData;h.updateMatrixWorld(true);const inverse=new T.Matrix4().copy(u.spine.matrixWorld).invert(),candidates=[];for(const o of u.spine.children){if(!o.isMesh||o.material!==u.m.skin)continue;const M=inverse.clone().multiply(o.matrixWorld),box=new T.Box3().setFromBufferAttribute(o.geometry.attributes.position).applyMatrix4(M),size=box.getSize(new T.Vector3());if(box.min.y<.10&&box.max.y>.50&&size.y>.45&&size.x>.25)candidates.push({o,M});}if(candidates.length!==1)throw Error('Cannot safely identify the main torso');const {o,M}=candidates[0],g=o.geometry.clone(),p=g.attributes.position,originalNormal=g.attributes.normal.clone(),back=M.clone().invert(),edited=new Set(),affected=new Set(),v=new T.Vector3(),smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};let maxDepression=0;
+            for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(M);if(Math.abs(v.x)>=.065||v.y<=.265||v.y>=.505||v.z<=.025)continue;const lateral=1-smooth(Math.abs(v.x)/.065),vertical=smooth((v.y-.265)/.060)*smooth((.505-v.y)/.060),front=smooth((v.z-.025)/.060),depth=.018*lateral*vertical*front;if(depth<=1e-8)continue;v.z-=depth;v.applyMatrix4(back);p.setXYZ(i,v.x,v.y,v.z);edited.add(i);affected.add(i);maxDepression=Math.max(maxDepression,depth);}if(edited.size<10)throw Error('Insufficient center contour coverage');
+            const count=g.index?g.index.count:p.count;for(let i=0;i<count;i+=3){const tri=[0,1,2].map(j=>g.index?g.index.getX(i+j):i+j);if(tri.some(j=>edited.has(j)))for(const j of tri)affected.add(j);}p.needsUpdate=true;g.computeVertexNormals();const groups=new Map(),normal=g.attributes.normal;for(const i of affected){const k=[p.getX(i),p.getY(i),p.getZ(i)].map(x=>Math.round(x*1e5)).join(',');if(!groups.has(k))groups.set(k,[]);groups.get(k).push(i);}for(const indices of groups.values()){const sum=new T.Vector3();for(const i of indices)sum.add(new T.Vector3().fromBufferAttribute(normal,i));sum.normalize();for(const i of indices)normal.setXYZ(i,sum.x,sum.y,sum.z);}for(let i=0;i<normal.count;i++)if(!affected.has(i))normal.setXYZ(i,originalNormal.getX(i),originalNormal.getY(i),originalNormal.getZ(i));normal.needsUpdate=true;g.computeBoundingBox();g.computeBoundingSphere();o.geometry=g;u.luciaCenterContour={spineChildIndex:u.spine.children.indexOf(o),editedVertices:edited.size,normalVertices:affected.size,maxDepression};
+           }
+          `;s=s.slice(0,node.body.end-1)+'\n defineLuciaCenterContour(T,h);\n'+s.slice(node.body.end-1);s=s.slice(0,node.start)+helper+s.slice(node.start);s='// LUCIA_CENTER_CONTOUR_V1\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-contour-after.js',s);
+          JS
+      - name: Verify localized contour unchanged topology and preserved rig
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-center-contour/node_modules/three');if(!fs.existsSync('/tmp/lucia-contour-after.js')){if(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_CENTER_CONTOUR_V1'))process.exit(0);throw Error('Candidate missing');}function load(file){const c={window:{},console,Math};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}const old=load('/tmp/lucia-contour-before.js'),cur=load('/tmp/lucia-contour-after.js');function signature(h,skip){const out=[];h.traverse(o=>{const row=[o.type,o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()];if(o.isMesh)row.push(Object.keys(o.geometry.attributes).filter(k=>o!==skip||(k!=='position'&&k!=='normal')).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.metalness,m.flatShading,m.skinning]));out.push(row);});return JSON.stringify(out);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)),'Other character changed');
+          const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC'),info=b.userData.luciaCenterContour,ta=a.userData.spine.children[info.spineChildIndex],tb=b.userData.spine.children[info.spineChildIndex];assert(signature(a,ta)===signature(b,tb),'Changes outside torso position and normals');assert(JSON.stringify(a.userData.luciaPelvisSeamBlend)===JSON.stringify(b.userData.luciaPelvisSeamBlend));assert(JSON.stringify(a.userData.luciaArmSeamBlend)===JSON.stringify(b.userData.luciaArmSeamBlend));a.updateMatrixWorld(true);b.updateMatrixWorld(true);const M=new T.Matrix4().copy(a.userData.spine.matrixWorld).invert().multiply(ta.matrixWorld),pa=ta.geometry.attributes.position,pb=tb.geometry.attributes.position;assert(pa.count===pb.count);let changed=0,centerDepth=0;const sideCounts=[0,0],edited=new Set(),affected=new Set();for(let i=0;i<pa.count;i++){const x=new T.Vector3().fromBufferAttribute(pa,i).applyMatrix4(M),y=new T.Vector3().fromBufferAttribute(pb,i).applyMatrix4(M);if(x.distanceTo(y)>1e-7){assert(Math.abs(x.x)<.065001&&x.y>.264999&&x.y<.505001&&x.z>.024999);assert(Math.abs(x.x-y.x)<1e-6&&Math.abs(x.y-y.y)<1e-6);assert(x.z-y.z>0&&x.z-y.z<=.018001);edited.add(i);affected.add(i);changed++;sideCounts[x.x<0?0:1]++;if(Math.abs(x.x)<.005&&x.y>.34&&x.y<.43)centerDepth=Math.max(centerDepth,x.z-y.z);}}assert(changed>=10&&sideCounts.every(n=>n>=3)&&centerDepth>.010,'Center contour not defined');const index=ta.geometry.index,count=index?index.count:pa.count;for(let i=0;i<count;i+=3){const tri=[0,1,2].map(j=>index?index.getX(i+j):i+j);if(tri.some(j=>edited.has(j)))for(const j of tri)affected.add(j);}const na=ta.geometry.attributes.normal,nb=tb.geometry.attributes.normal;for(let i=0;i<na.count;i++)if(!affected.has(i))assert(na.getX(i)===nb.getX(i)&&na.getY(i)===nb.getY(i)&&na.getZ(i)===nb.getZ(i),'Normals outside contour neighborhood changed');
+          let poses=0;for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),u=h.userData,bridge=h.getObjectByName('lucia-pelvis-skin-bridge');assert(bridge&&u.luciaPelvisGapBridge&&u.guns.pistol&&u.guns.rifle&&u.luciaCenterContour);for(const angle of [-.7,0,.7]){u.spine.rotation.y=angle*.20;u.A[0].sh.rotation.x=angle;u.A[1].sh.rotation.x=-angle;u.Lg[0].hp.rotation.x=angle;u.Lg[1].hp.rotation.x=-angle;h.updateMatrixWorld(true);bridge.onBeforeRender();h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh)for(const k of ['position','normal'])if(o.geometry.attributes[k])assert(Array.from(o.geometry.attributes[k].array).every(Number.isFinite));});poses++;}}
+          fs.copyFileSync('/tmp/lucia-contour-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-center-contour-check.json',JSON.stringify({passed:true,editedVertices:changed,centerDepth,maximumAllowedDepression:.018,poseChecks:poses,torsoIndicesAndVertexCountUnchanged:true,outerChestVerticesUnchanged:true,noNewPartsOrOpenings:true,unrelatedGeometryMaterialsAndRigTransformsUnchanged:true,existingBlendPassesPreserved:true,scope:'Shallow center-front contour only; no halving, mesh splitting or added anatomical detail. Rendered appearance and live deployment not verified.'},null,2)+'\n');
+          JS
+      - name: Publish only validated contour adjustment
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-center-contour-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Define Lucia left and right chest contours with a continuous shallow center'
+          git push origin HEAD:main
