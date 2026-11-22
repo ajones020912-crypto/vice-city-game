@@ -615,7 +615,8 @@ const coastJ=(t,k)=>{const j=72*Math.sin(t*.0041+k)+44*Math.sin(t*.0107+k*2.3)+2
 // north shore: headlands and coves only push land out to sea, never into the beachfront
 const shoreZ=x=>-372+10*Math.sin(x*.012)+6*Math.sin(x*.031+1)-Math.max(0,55*Math.sin(x*.0047+1.3)+38*Math.sin(x*.0121+.4)+16*Math.sin(x*.029+2));
 // HARBOR_ISLAND_V1: irregular island in the Calusa bay (negative = land)
-function hhIsle(x,z){const dx=(x+1090)/480,dz=(z-1960)/440,a=Math.atan2(dz,dx);
+const HH_CX=2150,HH_CZ=-1050; // Key Biscayne position: offshore, south-east of downtown
+function hhIsle(x,z){const dx=(x-HH_CX)/480,dz=(z-HH_CZ)/440,a=Math.atan2(dz,dx);
  const wob=.07*Math.sin(a*3+.8)+.05*Math.sin(a*5+2.1)+.035*Math.sin(a*9+.3);return (Math.hypot(dx,dz)-1-wob)*440}
 // FLORIDA_SHAPE_V1: a (slightly squashed) southern-Florida outline. East coast runs down then curves in, the land
 // narrows to a broad tip at the bottom, the Gulf side steps in below Port Calusa, mangrove islets dot the bay and a
@@ -623,25 +624,32 @@ function hhIsle(x,z){const dx=(x+1090)/480,dz=(z-1960)/440,a=Math.atan2(dz,dx);
 const flLerp=(pts,t)=>{if(t<=pts[0][0])return pts[0][1];for(let i=1;i<pts.length;i++)if(t<=pts[i][0]){const [a,A]=pts[i-1],[b,B]=pts[i],k=(t-a)/(b-a),e=k*k*(3-2*k);return A+(B-A)*e}return pts[pts.length-1][1]};
 // BIG_MAP_V1: same cities, ~2.5x the land. West coast ~x-3600, east ~x+3500, the peninsula runs south to a tip near
 // z 5000, the Port Calusa bay is an inlet that opens to the Gulf through Calusa Pass, and the keys curl off the new tip.
-const flWest=z=>flLerp([[-372,-3600],[1000,-3450],[2500,-3000],[3600,-2300],[4500,-1300],[5000,-600]],z);
-const flEast=z=>flLerp([[600,3500],[1500,3350],[2800,2950],[3800,2350],[4500,1700],[5000,1000]],z);
-const flSouth=x=>5000-Math.pow((x-200)/1500,2)*600-Math.max(0,(x-1500)*.6);
+// MIAMI_LAYOUT_V1 (world axes: north=-x, south=+x, east=-z, west=+z; the map is drawn rotated to match).
+// Neon Beach sits on the Atlantic (east) coast like Miami; the Gulf coast is far to the west beyond the glades,
+// the peninsula ends in a broad south coast below the farm country, and the keys curl away south-west.
+const flGulf=x=>flLerp([[-5500,5300],[-3000,5150],[-1000,4950],[500,4850],[1800,4600],[2700,4250],[3300,3800]],x);
+const flSouthC=z=>flLerp([[-400,3600],[1000,3590],[2000,3540],[3000,3440],[3600,3280],[4300,2900]],z);
 const bigJ=(t,k)=>coastJ(t*.55,k)*1.6;
-const FL_KEYS=(()=>{const k=[];for(let i=0;i<18;i++){const t=i/17,x=150-2400*t+300*t*t,z=5060+480*t-200*t*t+25*Math.sin(i*2.3);k.push([x,z,70-26*t+12*Math.sin(i*1.7),28+8*Math.cos(i*2.1),-.35-.45*t])}
+const FL_KEYS=(()=>{const k=[];
+ // the Florida Keys: from the south-east corner, curving south then west
+ for(let i=0;i<20;i++){const t=i/19,x=3700+1050*Math.sin(t*1.45),z=60+2900*Math.pow(t,1.15)+30*Math.sin(i*2.3);k.push([x,z,75-28*t+12*Math.sin(i*1.7),30+8*Math.cos(i*2.1),1.2-.9*t])}
+ // Ten Thousand Islands off the Gulf coast
+ for(let i=0;i<16;i++){const t=i/15,x=-2200+2600*t,z=5250+60*Math.sin(i*1.9);k.push([x,z,45+12*Math.sin(i*1.7),26+8*Math.cos(i*2.1),.3*Math.sin(i)])}
  const isle=[[-1480,1180],[-1360,1290],[-1560,1360],[-1250,1150],[-640,1200],[-560,1330],[-1690,1600],[-1660,1880],[-1700,2150],[-1580,2420],[-1340,2520],[-620,2440],[-560,2250],[-1180,1300],[-1650,1080],[-2600,2050],[-2900,2080],[-3200,2010]];
- for(const [x,z] of isle)k.push([x,z,26+((x*7+z*3)%17+17)%17,18+((x+z)%9+9)%9,(x*z)%3]);return k})();
+ for(const [x,z] of isle)if(x>-2000)k.push([x,z,26+((x*7+z*3)%17+17)%17,18+((x+z)%9+9)%9,(x*z)%3]);return k})();
 function flKeysD(x,z){let d=1e9;for(const [cx,cz,rx,rz,a] of FL_KEYS){const c=Math.cos(a),s=Math.sin(a),dx=x-cx,dz=z-cz,u=(dx*c+dz*s)/rx,v=(-dx*s+dz*c)/rz;
  const e=Math.hypot(u,v);if(e<3)d=Math.min(d,(e-1)*Math.min(rx,rz))}return d}
 function seaD(x,z){ // signed metres into the sea (>0 sea, <0 land)
  const n=shoreZ(x)-z;let isl=1e9;
  for(const [cx,cz,rx,rz] of ISL){const d=Math.hypot((x-cx)/rx,(z-cz)/rz);isl=Math.min(isl,(d-.62)*Math.min(rx,rz))}
- const edge=Math.max(flWest(z)-x+bigJ(z,1.7),x-flEast(z)+bigJ(z,4.2)*.8,z-flSouth(x)+bigJ(x,2.9)*.8,-z-1750,
-  (-z-x)*.7071-(3972*.7071-260)+bigJ(x-z,3.3)*.6,(x-z)*.7071-(3872*.7071-260)+bigJ(x+z,5.5)*.6);
+ // Gulf-coast bays: a Tampa-Bay-like notch up north and a Charlotte-Harbor-like one further south
+ const tampa=280-Math.hypot((x+4300)/1.0,(z-5050)/1.6)*.9+40*Math.sin(x*.01),charl=200-Math.hypot((x+1900)/1.0,(z-5000)/1.4)+30*Math.sin(z*.012);
+ const edge=Math.max(-5350-x+bigJ(z,1.7)*.5,z-flGulf(x)+bigJ(x,2.9)*.8,x-flSouthC(z)+bigJ(z,4.2)*.8,tampa,charl);
  // Calusa bay (an inlet now) and Calusa Pass, the channel out to the Gulf
  // rounded, ragged bay: a superellipse whose shore only ever bites into the water (never into Port Calusa / Coral Ridge)
  const bu=Math.abs(x+1250)/800,bv=Math.abs(z-1865)/835,ba=Math.atan2(z-1865,x+1250);
  const bay=(1-Math.pow(Math.pow(bu,3.2)+Math.pow(bv,3.2),1/3.2))*800-Math.abs(70*Math.sin(ba*3+.7)+45*Math.sin(ba*7+2.2)+22*Math.sin(ba*13+.4))-25;
- const pass=x<-1900?Math.min(z-1880-40*Math.sin(x*.004),2230+30*Math.sin(x*.006+1)-z):-1e9;
+ const pass=-1e9; // lake now: no channel to the sea
  return Math.min(Math.max(edge,Math.min(Math.max(bay,pass,Math.min(n,isl)),hhIsle(x,z))),flKeysD(x,z));
 }
 const gladesMask=(x,z)=>sstep(-2300,-2000,x)*(1-sstep(1300,1700,x))*sstep(3200,3450,z)*(1-sstep(4400,4650,z))*(.75+.25*Math.sin(x*.003+z*.002));
@@ -650,7 +658,7 @@ const swampMask0=(x,z)=>sstep(440,520,x)*sstep(-300,-230,z)*sstep(520,380,z)*(1-
 // AIRPORT_FLAT_V1: 1 over the airfield (x -1080..-500, z -250..160), easing to 0 over 60 m
 const airportMask=(x,z)=>(1-sstep(290,350,Math.abs(x+790)))*(1-sstep(205,265,Math.abs(z+45)));
 const hillMask=(x,z)=>Math.max(hillMask0(x,z),sstep(-1750,-2100,x)*sstep(-350,-120,z)*(1-sstep(800,1050,z))*sstep(-3600,-3300,x));
-const hillMask0=(x,z)=>sstep(-640,-1100,x)*sstep(400,200,z)*sstep(-400,-280,z);
+const hillMask0=(x,z)=>sstep(-3700,-3300,x)*sstep(-640,-1100,x)*sstep(400,200,z)*sstep(-400,-280,z);
 function rawH(x,z){
  const S=seaD(x,z);let h=0;
  if(S>0)h=-3.5*sstep(0,28,S)-.05*Math.max(0,S-28);else h=.15*sstep(-30,-4,S)*(fbm(x*.05,z*.05)-.3);
@@ -685,7 +693,7 @@ function groundCol(x,z,h,o){
  // urban concrete / asphalt blocks
  if((x>-345&&x<425&&z>-345&&z<445)||(x>-1110&&x<-515&&z>395&&z<1045)){r=.42;g=.41;b=.40}
  else if(x>-345&&x<425&&z>445&&z<1115){r=.32+(n-.5)*.12;g=.58+(n-.5)*.16;b=.26} // greener suburbs
- else if(hhIsle(x,z)<-30&&x<-450){r=.42;g=.41;b=.40} // Harbor Heights island
+ else if(hhIsle(x,z)<-30){r=.42;g=.41;b=.40} // Harbor Heights island
  else if(x>1650&&x<3300&&z>650&&z<3100){const cx=Math.floor((x+37*Math.sin(z*.01))/130),cz=Math.floor(z/95),hh=((cx*73856093)^(cz*19349663))>>>0,f=hh%5;
   const rows=.04*Math.sin((f<2?x:z)*.9); // crop rows
   if(f===0){r=.55+rows;g=.5+rows;b=.24}else if(f===1){r=.36;g=.5+rows;b=.2}else if(f===2){r=.48+rows;g=.38;b=.24}else if(f===3){r=.4;g=.62+rows;b=.28}else{r=.3+rows;g=.45;b=.22}} // farm fields
@@ -1185,9 +1193,8 @@ function defineRoads(){
  // SOUTH_EXPANSION_V1 (bottom of the map): Harbor Heights below Port Calusa, Coral Ridge below Palmetto Grove
  for(const [o,c,a,b,w] of HH.roads)addRoad(o,c,a,b,w,'city');
  // causeways: Port Calusa down to the island's north shore, and across the channel to Coral Ridge
- {const v=HH.roads.filter(q=>q[0]==='v').sort((a,b)=>Math.abs(a[1]+930)-Math.abs(b[1]+930))[0],h=HH.roads.filter(q=>q[0]==='h').sort((a,b)=>Math.abs(a[1]-CR_Z[3])-Math.abs(b[1]-CR_Z[3]))[0];
-  const vx=v?v[1]:-910,top=v?v[2]:1560;if(Math.abs(vx+910)>2)addRoad('h',1010,Math.min(vx,-910),Math.max(vx,-910),16,'city');addRoad('v',vx,1010,top,18,'city');
-  const hz=h?h[1]:CR_Z[3],east=h?h[3]:-700;addRoad('h',hz,east,-420,18,'city')}
+ {const v=HH.roads.filter(q=>q[0]==='v').sort((a,b)=>Math.abs(a[1]-1900)-Math.abs(b[1]-1900))[0];
+  const vx=v?v[1]:1900,shore=v?v[3]:-700;addRoad('v',vx,shore,-200,18,'city');addRoad('h',-200,1400,vx,16,'city')} // causeway to the mainland
  for(const x of CR_X)if(x!==380)addRoad('v',x,1640,2400,14,'city',true);
  for(const z of CR_Z)addRoad('h',z,-420,880,14,'city',true);
  addRoad('v',380,1400,2480,30,'hwy');          // Interstate 1 continues south through Coral Ridge
@@ -1195,7 +1202,7 @@ function defineRoads(){
  addRoad('v',900,1300,1520,16,'city');
  // BIG_MAP_V1 countryside roads
  addRoad('h',420,-3300,-1400,28,'hwy');addRoad('h',420,1500,3200,28,'hwy');   // Gulf Expressway coast to coast
- addRoad('v',380,2480,4750,30,'hwy');                                         // Interstate 1 to Cape Palmera
+ addRoad('v',380,2480,4550,30,'hwy');                                         // Interstate across the glades to the Gulf coast
  addRoad('v',-2700,420,1750,18,'hwy');                                        // west highway through Orrin Wilds
  addRoad('h',3200,-2300,2700,18,'hwy');                                       // Glades Trail across the south
  addRoad('v',2600,-200,3200,18,'hwy');                                        // east coast highway
@@ -1212,7 +1219,7 @@ const HH=(()=>{let seed=91731;const r=()=>(seed=(seed*16807)%2147483647)/2147483
   const vert=w>h*1.25?true:h>w*1.25?false:r()<.5,f=.3+r()*.4,W=d<2?16:d<4?13:11;
   if(vert){const x=Math.round(x0+w*f);for(const [a,b] of clipSeg('v',x,z0,z1))roads.push(['v',x,a,b,W]);split(x0,z0,x,z1,d+1);split(x,z0,x1,z1,d+1)}
   else{const z=Math.round(z0+h*f);for(const [a,b] of clipSeg('h',z,x0,x1))roads.push(['h',z,a,b,W]);split(x0,z0,x1,z,d+1);split(x0,z,x1,z1,d+1)}};
- split(-1600,1500,-580,2420,0);return{roads,blocks}})();
+ split(HH_CX-510,HH_CZ-460,HH_CX+510,HH_CZ+460,0);return{roads,blocks}})();
 for(let k=-8;k<=5;k++)CR_X.push(380+100*k);for(let j=0;j<=8;j++)CR_Z.push(1640+95*j);
 function buildNodes(){
  const hs=roads.filter(r=>r.o==='h'),vs=roads.filter(r=>r.o==='v');
@@ -1461,7 +1468,7 @@ function bigMapProps(){
  const inCity=(x,z)=>(x>-360&&x<440&&z>-360&&z<1130)||(x>-1120&&x<-505&&z>385&&z<1055)||(x>-440&&x<900&&z>1620&&z<2420)||hhIsle(x,z)<20||airportMask(x,z)>.05;
  const land=(x,z,m)=>seaD(x,z)<-m&&heightAt(x,z)>-.1;
  // open countryside: oak copses and the odd palm
- for(let i=0;i<3400;i++){let x=rr(-3500,3400),z=rr(-300,4900);if(!land(x,z,25)||inCity(x,z)||swampMask(x,z)>.3||hillMask(x,z)>.15||nearRoad(x,z,9))continue;
+ for(let i=0;i<4600;i++){let x=rr(-5300,3500),z=rr(-300,5200);if(!land(x,z,25)||inCity(x,z)||swampMask(x,z)>.3||hillMask(x,z)>.15||nearRoad(x,z,9))continue;
   if(x>1650&&x<3300&&z>650&&z<3100&&rnd()<.85)continue; // keep the fields mostly open
   if(fbm(x*.004,z*.004)<.47&&rnd()<.7)continue;          // clump trees into copses
   grounded(rnd()<.78?oak:palm,x,z,rr(.8,1.35))}
@@ -1570,7 +1577,7 @@ function buildBaseMap(){
   if(r.o==='h'){x.moveTo((r.a+WS)/MAPPX,(r.c+WS)/MAPPX);x.lineTo((r.b+WS)/MAPPX,(r.c+WS)/MAPPX)}else{x.moveTo((r.c+WS)/MAPPX,(r.a+WS)/MAPPX);x.lineTo((r.c+WS)/MAPPX,(r.b+WS)/MAPPX)}x.stroke()}
  baseMap=c;
 }
-const REGIONS=[['NEON BEACH',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['NORTH OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',-1520,1460,-470,2480,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['CALUSA PASS',-3700,1850,-2000,2300,0,0],['SUNRISE FARMS',1600,600,3600,3150,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['CAPE PALMERA',-2600,4650,1900,5700,0,0],['EAST HIGHWAY',900,-200,1700,600,0,0]];
+const REGIONS=[['NEON BEACH',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['SUNRISE FARMS',1600,600,3600,3150,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
 function zoneName(x,z){for(const r of REGIONS)if(x>r[1]&&x<r[3]&&z>r[2]&&z<r[4])return r[0];if(z<shoreZ(x))return'PALMERA GULF';return'PALMERA COUNTRYSIDE'}
 
 function clearStructureFootprint(x0,z0,x1,z1,margin=1.2){
@@ -2406,13 +2413,13 @@ function randomHumanOpts(x=pl.x,z=pl.z){
   'NEON BEACH':{shirts:[0xff6b8a,0x20b6a4,0xf0c44d,0xf2f2f2,0x2e9cda,0xff8a3d],pants:[0xd9d2c3,0x8a7a62,0x26344f,0x3b3b44],role:'beachgoer'},
   'KESTREL KEYS':{shirts:[0xf2f2f2,0x20b6a4,0x2e9cda,0xff8a3d,0xf0c44d],pants:[0xd9d2c3,0x8a7a62,0x26344f],role:'island local'},
   'PORT CALUSA':{shirts:[0x202936,0x6a2fb3,0xe94e68,0x2e9cda,0x20b6a4,0x3b4654],pants:[0x20242c,0x26344f,0x3b3b44,0x5a3b3b],role:'city local'},
-  'EAST HIGHWAY':{shirts:[0x26344f,0xf2f2f2,0x52677c,0x8b9aa6,0x2a2f3a],pants:[0x20242c,0x3b3b44,0x26344f],role:'commuter'},
+  'SOUTH HIGHWAY':{shirts:[0x26344f,0xf2f2f2,0x52677c,0x8b9aa6,0x2a2f3a],pants:[0x20242c,0x3b3b44,0x26344f],role:'commuter'},
   'PALMETTO GROVE':{shirts:[0x5dc28a,0xf0c44d,0x2e9cda,0xf2f2f2,0x2a2f3a],pants:[0x26344f,0x8a7a62,0x3b3b44],role:'suburban'},
   'GRASSRUN BAYOU':{shirts:[0x5dc28a,0x8a7a62,0x2a2f3a,0xf0c44d,0x3b654b],pants:[0x3b3b44,0x8a7a62,0x26344f],role:'outdoors local'},
   'MOUNT ORRIN':{shirts:[0x52677c,0x5dc28a,0xf2f2f2,0x2a2f3a,0x8a7a62],pants:[0x26344f,0x3b3b44,0x8a7a62],role:'mountain local'},
   'HARBOR HEIGHTS':{shirts:[0x202936,0x3b4654,0xe94e68,0x2e9cda,0x8a7a62],pants:[0x20242c,0x26344f,0x3b3b44],role:'harbor local'},
   'CORAL RIDGE':{shirts:[0x5dc28a,0xff6b8a,0x2e9cda,0xf2f2f2,0xf0c44d],pants:[0x26344f,0x8a7a62,0xd9d2c3],role:'suburban'},
-  'NORTH OUTSKIRTS':{shirts:[0x5dc28a,0xf0c44d,0x2e9cda,0x8a7a62,0xf2f2f2],pants:[0x26344f,0x3b3b44,0x8a7a62],role:'local'}
+  'WEST OUTSKIRTS':{shirts:[0x5dc28a,0xf0c44d,0x2e9cda,0x8a7a62,0xf2f2f2],pants:[0x26344f,0x3b3b44,0x8a7a62],role:'local'}
  };
  const p=palettes[district]||{shirts:SHIRTS,pants:PANTS,role:'resident'};
  const skin=pick2(SKIN),hair=pick2(HAIR),shoe=pick2([0x202020,0xf2f2f2,0x5a3b25,0x343b48]);
@@ -3939,14 +3946,14 @@ function drawMini(){
  const top=29,bottom=190,cx=W/2,cy=(top+bottom)/2,anchor=pl.inside&&pl.inside.door?pl.inside.door.ret:pl;
  const speed=pl.car?pl.car.speed:0,targetRange=pl.car?185+Math.min(100,speed*2):125;
  const last=drawMini._range||targetRange,dt=Math.min(.05,G.rdt||1/60),range=last+(targetRange-last)*(1-Math.exp(-dt*4));drawMini._range=range;
- const scale=W/(range*2),project=(x,z)=>[cx+(x-anchor.x)*scale,cy+(z-anchor.z)*scale];
+ const scale=W/(range*2),project=(x,z)=>[cx-(z-anchor.z)*scale,cy+(x-anchor.x)*scale]; // north (world -x) up
  ctx.fillStyle='#0c1824';ctx.fillRect(0,0,W,H);ctx.fillStyle='#a6bac7';ctx.font='bold 10px Arial';ctx.textAlign='left';ctx.fillText(pl.wanted>0?'WANTED '+String(pl.wanted):'LOCAL MAP',12,19);
  ctx.textAlign='right';ctx.fillStyle='#e7f3f4';ctx.fillText('N ↑',W-12,19);
  ctx.save();ctx.beginPath();ctx.rect(0,top,W,bottom-top);ctx.clip();ctx.fillStyle='#183a4f';ctx.fillRect(0,top,W,bottom-top);
- const map=prepareRadarMap(),mk=map.width/(WS*2);ctx.save();ctx.translate(cx,cy);ctx.scale(scale/mk,scale/mk);ctx.translate(-(anchor.x+WS)*mk,-(anchor.z+WS)*mk);ctx.imageSmoothingEnabled=true;ctx.drawImage(map,0,0);ctx.restore();
+ const map=prepareRadarMap(),mk=map.width/(WS*2);ctx.save();ctx.translate(cx,cy);ctx.rotate(Math.PI/2);ctx.scale(scale/mk,scale/mk);ctx.translate(-(anchor.x+WS)*mk,-(anchor.z+WS)*mk);ctx.imageSmoothingEnabled=true;ctx.drawImage(map,0,0);ctx.restore();
 
- const wx0=anchor.x-range-30,wx1=anchor.x+range+30,wz0=anchor.z-(bottom-top)/2/scale-30,wz1=anchor.z+(bottom-top)/2/scale+30;
- if(typeof BLD!=='undefined'){ctx.fillStyle='#52606c';ctx.strokeStyle='#33404b';ctx.lineWidth=.8;for(const b of BLD){if(b.x1<wx0||b.x0>wx1||b.z1<wz0||b.z0>wz1)continue;const q=project(b.x0,b.z0),w=(b.x1-b.x0)*scale,h=(b.z1-b.z0)*scale;ctx.fillRect(q[0],q[1],w,h);ctx.strokeRect(q[0],q[1],w,h)}}
+ const wx0=anchor.x-range-30,wx1=anchor.x+range+30,wz0=anchor.z-range-30,wz1=anchor.z+range+30;
+ if(typeof BLD!=='undefined'){ctx.fillStyle='#52606c';ctx.strokeStyle='#33404b';ctx.lineWidth=.8;for(const b of BLD){if(b.x1<wx0||b.x0>wx1||b.z1<wz0||b.z0>wz1)continue;const q=project(b.x0,b.z1),w=(b.z1-b.z0)*scale,h=(b.x1-b.x0)*scale;ctx.fillRect(q[0],q[1],w,h);ctx.strokeRect(q[0],q[1],w,h)}}
  ctx.lineCap='round';ctx.lineJoin='round';
  for(const r of roads){const ax=r.o==='h'?r.a:r.c,az=r.o==='h'?r.c:r.a,bx=r.o==='h'?r.b:r.c,bz=r.o==='h'?r.c:r.b;if(Math.max(ax,bx)+r.w<wx0||Math.min(ax,bx)-r.w>wx1||Math.max(az,bz)+r.w<wz0||Math.min(az,bz)-r.w>wz1)continue;const a=project(ax,az),b=project(bx,bz),path=()=>{ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()};ctx.strokeStyle='#14212b';ctx.lineWidth=r.w*scale+1.5;path();ctx.strokeStyle=r.type==='dirt'?'#8c8170':r.type==='hwy'?'#d4dde1':'#b5c2cc';ctx.lineWidth=Math.max(1,r.w*scale*.8);path();if(r.type==='hwy'){ctx.strokeStyle='#bda76d';ctx.lineWidth=Math.max(.7,scale*.65);path()}}
 
@@ -3969,7 +3976,7 @@ function drawMini(){
   else if(p.priority===3){ctx.fillStyle=p.b.c||'#ffdc86';ctx.strokeStyle='#182536';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(6,0);ctx.lineTo(0,7);ctx.lineTo(-6,0);ctx.closePath();ctx.fill();ctx.stroke()}
   else{ctx.fillStyle=p.b.c||'#fff';ctx.strokeStyle='#152433';ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(0,0,p.b.small?2.5:3.5,0,TAU);ctx.fill();ctx.stroke()}ctx.restore();
  }
- ctx.save();ctx.translate(cx,cy);ctx.rotate(Math.PI-(pl.car?pl.car.h:pl.h));ctx.shadowColor='#000b';ctx.shadowBlur=5;ctx.beginPath();ctx.moveTo(0,-11);ctx.lineTo(7,8);ctx.lineTo(0,4);ctx.lineTo(-7,8);ctx.closePath();ctx.strokeStyle='#0a1c2b';ctx.lineWidth=4;ctx.stroke();ctx.fillStyle='#e4fffb';ctx.fill();ctx.strokeStyle='#55ddca';ctx.lineWidth=1;ctx.stroke();ctx.restore();ctx.restore();
+ ctx.save();ctx.translate(cx,cy);ctx.rotate(-(pl.car?pl.car.h:pl.h)-Math.PI/2);ctx.shadowColor='#000b';ctx.shadowBlur=5;ctx.beginPath();ctx.moveTo(0,-11);ctx.lineTo(7,8);ctx.lineTo(0,4);ctx.lineTo(-7,8);ctx.closePath();ctx.strokeStyle='#0a1c2b';ctx.lineWidth=4;ctx.stroke();ctx.fillStyle='#e4fffb';ctx.fill();ctx.strokeStyle='#55ddca';ctx.lineWidth=1;ctx.stroke();ctx.restore();ctx.restore();
  ctx.fillStyle='#0c1824';ctx.fillRect(0,bottom,W,H-bottom);ctx.fillStyle='#e7f1f6';ctx.font='bold 10px Arial';ctx.textAlign='left';const zone=pl.inside?'INSIDE '+(pl.inside.door.name||'STORE'):zoneName(pl.x,pl.z);ctx.fillText(zone,12,210,166);
  ctx.textAlign='right';ctx.font='10px Arial';ctx.fillStyle=target?'#ffe29e':'#9db3c1';ctx.fillText(target?Math.round(Math.hypot(target.x-anchor.x,target.z-anchor.z))+' m':'M: full map',W-12,210);
  ctx.strokeStyle='#d9edf61a';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,top-.5);ctx.lineTo(W,top-.5);ctx.moveTo(0,bottom+.5);ctx.lineTo(W,bottom+.5);ctx.stroke();ctx.setTransform(1,0,0,1,0,0);
@@ -3980,12 +3987,13 @@ const MapView={zoom:1,cx:0,cz:0,drag:false,lx:0,ly:0,dirty:true};
 function focusMapOnPlayer(){MapView.cx=pl.x;MapView.cz=pl.z;MapView.zoom=1.2;MapView.dirty=true}
 function drawMap(){
  const S=900,k=(S/(WS*2))*MapView.zoom;
- const worldToScreen=(wx,wz)=>[S/2+(wx-MapView.cx)*k,S/2+(wz-MapView.cz)*k];
+ // MAP_ROTATED_V1: north is world -x, east is world -z (Neon Beach faces the Atlantic like Miami Beach)
+ const worldToScreen=(wx,wz)=>[S/2-(wz-MapView.cz)*k,S/2+(wx-MapView.cx)*k];
  mapx.fillStyle='#0a2030';mapx.fillRect(0,0,S,S);
  const half=WS/MapView.zoom;
  const x0=MapView.cx-half,z0=MapView.cz-half;
  const sx=(x0+WS)/MAPPX,sy=(z0+WS)/MAPPX,sw=(half*2)/MAPPX,sh=(half*2)/MAPPX;
- try{mapx.drawImage(baseMap,sx,sy,sw,sh,0,0,S,S)}catch(e){mapx.drawImage(baseMap,0,0,S,S)}
+ mapx.save();mapx.translate(S/2,S/2);mapx.rotate(Math.PI/2);try{mapx.drawImage(baseMap,sx,sy,sw,sh,-S/2,-S/2,S,S)}catch(e){mapx.drawImage(baseMap,-S/2,-S/2,S,S)}mapx.restore();
  mapx.textAlign='center';mapx.textBaseline='middle';
  mapx.font='bold 13px Arial';mapx.fillStyle='#ffffffcc';mapx.shadowColor='#000';mapx.shadowBlur=4;
  for(const r of REGIONS){
@@ -4000,7 +4008,7 @@ function drawMap(){
  }
  const ang=pl.car?pl.car.h:pl.h;
  const [px,py]=worldToScreen(pl.x,pl.z);
- mapx.save();mapx.translate(px,py);mapx.rotate(Math.PI-ang);mapx.fillStyle='#fff';mapx.strokeStyle='#000';mapx.lineWidth=2;
+ mapx.save();mapx.translate(px,py);mapx.rotate(-ang-Math.PI/2);mapx.fillStyle='#fff';mapx.strokeStyle='#000';mapx.lineWidth=2;
  mapx.beginPath();mapx.moveTo(0,-10);mapx.lineTo(7,8);mapx.lineTo(0,4);mapx.lineTo(-7,8);mapx.closePath();mapx.fill();mapx.stroke();mapx.restore();
  mapx.fillStyle='#ffffff88';mapx.font='12px Arial';mapx.textAlign='left';mapx.fillText((MapView.zoom*100|0)+'% · drag / scroll · double-click to mark · right-click to remove',12,S-14);
  MapView.dirty=false;
@@ -4014,12 +4022,12 @@ function bindMapControls(){
   const S=900,k=(S/(WS*2))*MapView.zoom;
   const dx=e.clientX-MapView.lx,dy=e.clientY-MapView.ly;
   MapView.lx=e.clientX;MapView.ly=e.clientY;
-  MapView.cx-=dx/k;MapView.cz-=dy/k;
+  MapView.cx-=dy/k;MapView.cz+=dx/k;
   MapView.cx=clamp(MapView.cx,-WS,WS);MapView.cz=clamp(MapView.cz,-WS,WS);
   drawMap();
  });
- cv.addEventListener('dblclick',e=>{if(!G.mapOpen)return;const rect=cv.getBoundingClientRect(),sx=(e.clientX-rect.left)/rect.width*900,sy=(e.clientY-rect.top)/rect.height*900,k=(900/(WS*2))*MapView.zoom,x=clamp(MapView.cx+(sx-450)/k,-WS,WS),z=clamp(MapView.cz+(sy-450)/k,-WS,WS);const name=window.prompt('Name this map marker:','Waypoint');if(name===null)return;G.mapMarks=G.mapMarks||[];G.mapMarks.push({x,z,name:name.trim().slice(0,28)||'Waypoint'});if(G.mapMarks.length>30)G.mapMarks.shift();drawMap();saveGame(false);toast('📍 Map marker added',1400)});
- cv.addEventListener('contextmenu',e=>{if(!G.mapOpen)return;e.preventDefault();const rect=cv.getBoundingClientRect(),sx=(e.clientX-rect.left)/rect.width*900,sy=(e.clientY-rect.top)/rect.height*900,k=(900/(WS*2))*MapView.zoom,x=MapView.cx+(sx-450)/k,z=MapView.cz+(sy-450)/k;let bi=-1,bd=28;for(let i=0;i<(G.mapMarks||[]).length;i++){const m=G.mapMarks[i],d=Math.hypot(m.x-x,m.z-z);if(d<bd){bd=d;bi=i}}if(bi>=0){const m=G.mapMarks.splice(bi,1)[0];drawMap();saveGame(false);toast('Removed '+m.name,1400)}});
+ cv.addEventListener('dblclick',e=>{if(!G.mapOpen)return;const rect=cv.getBoundingClientRect(),sx=(e.clientX-rect.left)/rect.width*900,sy=(e.clientY-rect.top)/rect.height*900,k=(900/(WS*2))*MapView.zoom,x=clamp(MapView.cx+(sy-450)/k,-WS,WS),z=clamp(MapView.cz-(sx-450)/k,-WS,WS);const name=window.prompt('Name this map marker:','Waypoint');if(name===null)return;G.mapMarks=G.mapMarks||[];G.mapMarks.push({x,z,name:name.trim().slice(0,28)||'Waypoint'});if(G.mapMarks.length>30)G.mapMarks.shift();drawMap();saveGame(false);toast('📍 Map marker added',1400)});
+ cv.addEventListener('contextmenu',e=>{if(!G.mapOpen)return;e.preventDefault();const rect=cv.getBoundingClientRect(),sx=(e.clientX-rect.left)/rect.width*900,sy=(e.clientY-rect.top)/rect.height*900,k=(900/(WS*2))*MapView.zoom,x=MapView.cx+(sy-450)/k,z=MapView.cz-(sx-450)/k;let bi=-1,bd=28;for(let i=0;i<(G.mapMarks||[]).length;i++){const m=G.mapMarks[i],d=Math.hypot(m.x-x,m.z-z);if(d<bd){bd=d;bi=i}}if(bi>=0){const m=G.mapMarks.splice(bi,1)[0];drawMap();saveGame(false);toast('Removed '+m.name,1400)}});
  cv.addEventListener('wheel',e=>{
   if(!G.mapOpen)return;e.preventDefault();
   const old=MapView.zoom;
@@ -4027,8 +4035,8 @@ function bindMapControls(){
   // zoom toward cursor
   const rect=cv.getBoundingClientRect(),mx=(e.clientX-rect.left)/rect.width*900,my=(e.clientY-rect.top)/rect.height*900;
   const k0=(900/(WS*2))*old,k1=(900/(WS*2))*MapView.zoom;
-  const wx=MapView.cx+(mx-450)/k0,wz=MapView.cz+(my-450)/k0;
-  MapView.cx=wx-(mx-450)/k1;MapView.cz=wz-(my-450)/k1;
+  const wx=MapView.cx+(my-450)/k0,wz=MapView.cz-(mx-450)/k0;
+  MapView.cx=wx-(my-450)/k1;MapView.cz=wz+(mx-450)/k1;
   MapView.cx=clamp(MapView.cx,-WS,WS);MapView.cz=clamp(MapView.cz,-WS,WS);
   drawMap();
  },{passive:false});
