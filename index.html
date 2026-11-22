@@ -2654,11 +2654,12 @@ function resolveFoot(o,r){
  o.x=_fp[0];o.z=_fp[1]}
 // ================= CAMERA =================
 const camPos=new T.Vector3(),camTgt=new T.Vector3();let camInit=false;G.shake=0;
+const camOff=new T.Vector3(),camOffT=new T.Vector3();let camDistS=0;
 function updateCamera(dt){
  let tx,ty,tz,dist,height,fov=70;
  if(pl.inside){tx=pl.x;ty=pl.y+1.45;tz=pl.z;dist=2.8;height=.25}
  else if(pl.car){const c=pl.car;tx=c.x;ty=c.y+1.2;tz=c.z;const sp=c.speed;
-  mouseIdle+=dt;if(mouseIdle>1.4||!mouseLocked){const target=c.h+Math.PI;const k=(sp>2?(c.vf>=-1?3.2:1.2):.0)*dt;camYaw+=wrapA(target-camYaw)*Math.min(1,k)}
+  mouseIdle+=dt;if(mouseIdle>1.4||!mouseLocked){const target=c.h+Math.PI;const rate=sp>2?(c.vf>=-1?3.2:1.2):0;camYaw+=wrapA(target-camYaw)*(1-Math.exp(-rate*dt))}
   dist=(camMode===1?6.2:9.6)+sp*.05;height=camMode===1?2.4:3.6;fov=70+Math.min(22,sp*.7);camPitch=lerp(camPitch,.2,dt*.8*(mouseIdle>1.4?1:0));
   if(camMode===2){const sn=Math.sin(c.h),cs=Math.cos(c.h);camPos.set(c.x+sn*.3,c.y+1.2,c.z+cs*.3);camera.position.lerp(camPos,1);camera.lookAt(c.x+sn*20,c.y+1.2,c.z+cs*20);camera.fov=lerp(camera.fov,fov,.1);camera.updateProjectionMatrix();return}}
  else{tx=pl.x;ty=pl.y+1.65;tz=pl.z;dist=pl.weapon!=='fists'&&pl.aim>0?2.6:4.4;height=.2;
@@ -2670,10 +2671,16 @@ function updateCamera(dt){
  const dd=dist;let ok=dd;
  if(!pl.inside)for(let s=.5;s<=dd;s+=.5){const px=tx+dx*s,pz=tz+dz*s,py=ty+dy*s+height*(s/dd);for(const col of queryCols(px,pz,.4)){if((col.x1-col.x0>1.5||col.z1-col.z0>1.5)&&col.x0-.35<px&&col.x1+.35>px&&col.z0-.35<pz&&col.z1+.35>pz&&col.h>py-heightAt(px,pz)){ok=Math.max(1,s-.6);s=1e9;break}}}
  else ok=Math.min(dd,2.4);
- const k=Math.min(1,dt*(pl.car?9:14));
+ // CAM_FOLLOW_V2: pull in fast when something blocks the view, ease back out (no frame-to-frame snapping)
+ camDistS=!camInit||ok<camDistS?ok:camDistS+(ok-camDistS)*(1-Math.exp(-dt*4));ok=camDistS;
  camPos.set(tx+dx*ok,ty+dy*ok+height*(ok/dd),tz+dz*ok);
  const gh=heightAt(camPos.x,camPos.z)+.6;if(!pl.inside&&camPos.y<gh)camPos.y=gh;
- if(!camInit){camera.position.copy(camPos);camInit=true}else camera.position.lerp(camPos,k);
+ // smooth only the camera's offset from what it follows: it moves with the car exactly (no trailing at speed),
+ // while angle/zoom changes still ease in
+ camOffT.set(camPos.x-tx,camPos.y-ty,camPos.z-tz);
+ if(!camInit){camOff.copy(camOffT);camInit=true}else camOff.lerp(camOffT,1-Math.exp(-dt*(pl.car?10:14)));
+ camera.position.set(tx+camOff.x,ty+camOff.y,tz+camOff.z);
+ const gh2=heightAt(camera.position.x,camera.position.z)+.6;if(!pl.inside&&camera.position.y<gh2)camera.position.y=gh2;
  if(G.shake>0){camera.position.x+=(Math.random()-.5)*G.shake*.4;camera.position.y+=(Math.random()-.5)*G.shake*.4;G.shake=Math.max(0,G.shake-dt*2.5)}
  camera.lookAt(tx,ty+(pl.car?.4:0)-(camPitch-.2)*.0,tz);
  camera.fov=lerp(camera.fov,fov,Math.min(1,dt*3));camera.updateProjectionMatrix();
@@ -4825,20 +4832,23 @@ mountDevFlightMenu();
 
 // DEV_TOOLS_V1: everything below unlocks with the same developer code as flight (single-player only).
 // Buttons live in the pause menu's Dev Mode panel; window.__vcDev exposes the same tools for scripted testing.
-const DEV={god:false,noWanted:false,perf:false,perfEl:null,frames:[],cpu:[]};
+const DEV={hold:null,god:false,noWanted:false,perf:false,perfEl:null,frames:[],cpu:[]};
 const devOK=()=>devFlightState.unlocked&&!G.multiplayer;
 const devHurtOriginal=hurtPlayer;hurtPlayer=function(){if(devOK()&&DEV.god)return;return devHurtOriginal.apply(this,arguments)};
-const devSimOriginal=simulate;simulate=function(){const r=devSimOriginal.apply(this,arguments);if(devOK()){if(DEV.god){pl.hp=Math.max(pl.hp,100);pl.armor=Math.max(pl.armor||0,100)}if(DEV.noWanted&&(pl.wanted||pl.crime))clearWanted()}return r};
+const devCarDmgOriginal=damageCar;damageCar=function(c){if(devOK()&&DEV.god&&c&&c===pl.car)return;return devCarDmgOriginal.apply(this,arguments)}; // god mode covers the car you're driving
+const devExplodeOriginal=explodeCar;explodeCar=function(c){if(devOK()&&DEV.god&&c&&c===pl.car){c.hp=Math.max(c.hp||0,1);return}return devExplodeOriginal.apply(this,arguments)};
+const devSimOriginal=simulate;simulate=function(){const r=devSimOriginal.apply(this,arguments);if(devOK()){if(DEV.god){pl.hp=Math.max(pl.hp,100);pl.armor=Math.max(pl.armor||0,100);if(pl.car&&!pl.car.dead)pl.car.hp=Math.max(pl.car.hp,maxHp(pl.car))}if(DEV.hold){const now=performance.now();for(const k in DEV.hold)if(now>=DEV.hold[k]){keys[k]=false;delete DEV.hold[k]}}if(DEV.noWanted&&(pl.wanted||pl.crime))clearWanted()}return r};
 // flying into a car: land first instead of refusing
 const devEnterOriginal=enterCar;enterCar=function(){if(devFlightState.active)devFlightStop(false);return devEnterOriginal.apply(this,arguments)};
 const devRenderOriginal=renderFrame;renderFrame=function(){const t0=performance.now();const r=devRenderOriginal.apply(this,arguments);
+ if(DEV.run){const t1=performance.now();DEV.run.t.push(t1);DEV.run.cpu.push(t1-t0)}
  if(DEV.perf){const t1=performance.now();DEV.frames.push(t1);DEV.cpu.push(t1-t0);while(DEV.frames.length&&t1-DEV.frames[0]>2000){DEV.frames.shift();DEV.cpu.shift()}}return r};
 function devPerfTick(){requestAnimationFrame(devPerfTick);if(!DEV.perf||!DEV.perfEl)return;const f=DEV.frames,n=f.length;if(n<2)return;
  let worst=0;for(let i=1;i<n;i++)worst=Math.max(worst,f[i]-f[i-1]);const fps=(n-1)/((f[n-1]-f[0])/1000),cpu=DEV.cpu.reduce((a,b)=>a+b,0)/DEV.cpu.length;
  DEV.perfEl.textContent=`${fps.toFixed(1)} FPS | worst ${worst.toFixed(0)} ms | render ${cpu.toFixed(1)} ms | ${['Low','Medium','High','Ultra'][G.quality]}${G.quality>=3?' @ '+ultraRes.cur.toFixed(2)+'x':''}`}
 requestAnimationFrame(devPerfTick);
 function devPerfStats(){const f=DEV.frames,n=f.length;if(n<2)return null;let worst=0;for(let i=1;i<n;i++)worst=Math.max(worst,f[i]-f[i-1]);
- return{fps:+((n-1)/((f[n-1]-f[0])/1000)).toFixed(1),worstMs:+worst.toFixed(1),renderMs:+(DEV.cpu.reduce((a,b)=>a+b,0)/n).toFixed(2),quality:G.quality,ultraScale:ultraRes.cur}}
+ return{fps:+((n-1)/((f[n-1]-f[0])/1000)).toFixed(1),fpsCap:FPS_CAP,worstMs:+worst.toFixed(1),renderMs:+(DEV.cpu.reduce((a,b)=>a+b,0)/n).toFixed(2),quality:['Low','Medium','High','Ultra'][G.quality],ultraScale:G.quality>=3?ultraRes.cur:null,vehicle:pl.car?pl.car.tk:'on foot',speedMph:pl.car?Math.round(pl.car.speed*2.237):0}}
 const devForward=d=>({x:pl.x-Math.sin(camYaw)*d,z:pl.z-Math.cos(camYaw)*d});
 const DEVAPI={
  god(on=!DEV.god){DEV.god=!!on;return DEV.god},
@@ -4858,6 +4868,29 @@ const DEVAPI={
  perf(on=!DEV.perf){DEV.perf=!!on;DEV.frames=[];DEV.cpu=[];if(DEV.perfEl)DEV.perfEl.hidden=!DEV.perf;return DEV.perf},
  stats:devPerfStats,
  fly(on=!devFlightState.active){if(!on){devFlightStop(true);return false}const was=G.state;if(was==='paused')return devFlightEnable();G.state='paused';const ok=devFlightEnable();G.state=was;return ok},
+ // hold keys without real keyboard input (automation): hold('w',5000) or hold(['w','a'],1500)
+ hold(k,ms=1000){DEV.hold=DEV.hold||{};const until=performance.now()+ms;for(const x of[].concat(k)){const key=String(x).toLowerCase();keys[key]=true;DEV.hold[key]=until}return Object.keys(DEV.hold)},
+ release(){for(const k in keys)keys[k]=false;DEV.hold={}},
+ // point the camera without mouse lock (degrees; 0 looks behind a car's default view)
+ look(yawDeg=0,pitchDeg){camYaw=yawDeg*Math.PI/180;if(pitchDeg!=null)camPitch=pitchDeg*Math.PI/180;mouseIdle=0},
+ // autodrive(20): gets in a sports car if needed, drives with alternating turns for N seconds, resolves with frame stats
+ autodrive(seconds=20,tk='sports'){
+  if(DEV.run)return Promise.resolve('autodrive already running');
+  if(G.state==='paused'&&typeof pauseGame==='function')pauseGame(false);
+  if(G.state!=='play')return Promise.resolve('start single player first (state: '+G.state+')');
+  if(!pl.car||pl.car.t.aircraft||pl.car.t.boat){const c=DEVAPI.drive(tk);if(typeof c==='string')return Promise.resolve(c)}
+  const god=DEV.god;DEV.god=true;DEV.run={t:[],cpu:[]};const start=performance.now(),ms=Math.max(2,+seconds||20)*1000,q=G.quality;
+  return new Promise(done=>{const iv=setInterval(()=>{const e=performance.now()-start,c=pl.car;
+   keys.w=true;const ph=(e/2500|0)%4;keys.a=ph===1;keys.d=ph===3;keys.s=false;
+   if(c&&c.speed>30&&(ph===1||ph===3))keys.w=false; // ease off in the turns
+   if(e<ms&&G.state==='play'&&pl.car)return;
+   clearInterval(iv);keys.w=keys.a=keys.d=keys.s=false;DEV.god=god;const r=DEV.run;DEV.run=null;
+   const gaps=[];for(let i=1;i<r.t.length;i++)gaps.push(r.t[i]-r.t[i-1]);const sorted=gaps.slice().sort((a,b)=>a-b),pct=p=>sorted.length?+sorted[Math.min(sorted.length-1,Math.floor(p*sorted.length))].toFixed(1):null;
+   done({seconds:+(e/1000).toFixed(1),stillInCar:!!pl.car,quality:['Low','Medium','High','Ultra'][q],ultraScale:G.quality>=3?ultraRes.cur:null,fpsCap:FPS_CAP,
+    fps:r.t.length>1?+((r.t.length-1)/((r.t[r.t.length-1]-r.t[0])/1000)).toFixed(1):0,frameMsMedian:pct(.5),frameMsP95:pct(.95),frameMsWorst:sorted.length?+sorted[sorted.length-1].toFixed(1):null,
+    framesOver40ms:gaps.filter(g=>g>40).length,renderMsAvg:r.cpu.length?+(r.cpu.reduce((a,b)=>a+b,0)/r.cpu.length).toFixed(2):null,
+    ended:pl.car?'time':'left vehicle'})},100)})
+ },
  state:()=>({god:DEV.god,noWanted:DEV.noWanted,flying:devFlightState.active,perf:DEV.perf,cash:pl.cash,hp:pl.hp,wanted:pl.wanted,quality:G.quality})
 };
 Object.defineProperty(window,'__vcDev',{get(){return devOK()?DEVAPI:undefined},configurable:true});
