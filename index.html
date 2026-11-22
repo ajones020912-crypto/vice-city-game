@@ -2566,7 +2566,7 @@ function carImpact(c,imp){
  if(imp>4){const sn=Math.sin(c.h),cs=Math.cos(c.h);for(let i=0;i<6;i++)emit(c.x+sn*2,c.y+.6,c.z+cs*2,(Math.random()-.5)*6,Math.random()*3,(Math.random()-.5)*6,.4,.2,.05,SPK,FIRE2,9,1);audio.thud(Math.min(1,imp/12))}
  if(c.occ==='player')G.shake=Math.max(G.shake||0,Math.min(1,imp/14));
  if(c.mode==='cop'&&c.ai)c.ai.hitT=.6}
-function damageCar(c,d,src){if(c.dead)return;c.hp-=d;if(c.occ==='player')G.hudDirty=true;
+function damageCar(c,d,src){if(c.dead)return;if(!c.occ&&c.mode==='parked'&&(src==='crash'||src==='shot')&&d>1.5&&carHasAlarm(c))startAlarm(c);c.hp-=d;if(c.occ==='player')G.hudDirty=true;
  if(c.hp<20&&!c.fire&&c.hp>0)c.fire=0;if(c.hp<=0)explodeCar(c,src)}
 function explodeCar(c,src){if(c.dead)return;c.dead=true;c.hp=0;c.fire=22;c.mode=c.mode==='player'?'player':'wreck';explosion(c.x,c.y,c.z,1);audio.boom();G.shake=1;
  c.v.body.material=wreckMat;c.v.bar&&(c.v.bar[0].visible=c.v.bar[1].visible=false);
@@ -2607,6 +2607,23 @@ function carEnterPrompt(c){
  if(c.occ&&c.occ!=='player')return c.speed>4?'Car is moving: get in front of it to stop it':'[E] Carjack '+c.t.name;
  return carLocked(c)?'[E] Break into '+c.t.name+' (locked)':'[E] Enter '+c.t.name;
 }
+// CAR_ALARMS_V1: alarms sound for ~14 s with flashing lights. Triggered by a break-in that trips the alarm,
+// or by hitting/shooting a parked car that has one. Volume falls off with distance and pans left/right.
+const ALARMS=[];
+function carHasAlarm(c){if(c.owned||c.keep||c.t.aircraft||c.t.boat)return false;if(c.alarmRoll===undefined)c.alarmRoll=Math.random();return c.alarmRoll<lockInfo(c)[2]}
+function alarmFlash(c){return c.alarmUntil>performance.now()&&!c.dead&&((performance.now()/350)|0)%2===0}
+function startAlarm(c){if(!c||c.dead||c.alarmUntil>performance.now())return;
+ c.alarmUntil=performance.now()+14000;const h=audio.alarm?audio.alarm(14):null;ALARMS.push({c,h});
+ while(ALARMS.length>3){const a=ALARMS.shift();a.h&&a.h.stop();a.c.alarmUntil=0}}
+function updateAlarms(){if(G.state!=='play'){muteAlarms();return}const now=performance.now(),play=G.state==='play';
+ for(let i=ALARMS.length-1;i>=0;i--){const a=ALARMS[i],c=a.c;
+  if(now>c.alarmUntil||c.dead||!cars.includes(c)){a.h&&a.h.stop();c.alarmUntil=0;ALARMS.splice(i,1);continue}
+  if(!a.h)continue;const dx=c.x-camera.position.x,dz=c.z-camera.position.z,d=Math.hypot(dx,dz);
+  const fall=Math.pow(clamp(1-d/140,0,1),1.6),inside=pl.inside?.15:1;
+  const rx=Math.cos(camYaw),rz=-Math.sin(camYaw),side=d>.5?clamp((dx*rx+dz*rz)/d,-1,1)*.75:0;
+  a.h.set(play?.34*fall*inside:0,side)}}
+function muteAlarms(){for(const a of ALARMS)a.h&&a.h.set(0,0)}
+{const pauseBeforeAlarms=pauseGame;pauseGame=function(){const r=pauseBeforeAlarms.apply(this,arguments);if(G.state!=='play')muteAlarms();return r}}
 function tryEnterCar(c){
  if(!c||c.dead||pl.car)return;
  if(G.breakin){if(G.breakin.c===c)return;G.breakin=null}
@@ -2624,7 +2641,7 @@ function updateBreakin(dt){const b=G.breakin;if(!b)return;const c=b.c;
  if(pl.car||!pl.alive||c.dead||d>4.8||(b.jack?c.speed>4:!!c.occ)){G.breakin=null;G.hudDirty=true;if(!pl.car&&pl.alive&&!c.dead)toast(b.jack?'Carjack failed':'Break-in cancelled',1200);return}
  if(b.jack&&c.inp){c.inp.thr=0;c.inp.hb=1;c.vx*=.85;c.vz*=.85} // driver holds still while you grab the door
  b.t+=dt;
- if(b.alarm&&!b.rang&&b.t>b.need*.4){b.rang=true;addWanted(1,'alarm');toast('🚨 Car alarm!',1600);}
+ if(b.alarm&&!b.rang&&b.t>b.need*.4){b.rang=true;startAlarm(c);addWanted(1,'alarm');toast('🚨 Car alarm!',1600);}
  if(b.t>=b.need){G.breakin=null;c.lockRoll=1;enterCar(c)}
 }
 function enterCar(c){
@@ -2743,7 +2760,21 @@ const audio=(()=>{let ctx=null,eng=null,engG=null,sir=null,sirG=null,master=null
   tick(spd,thr,inCar,sirenLvl){if(!ctx)return;const t=ctx.currentTime;engG.gain.setTargetAtTime(inCar?.06+Math.min(.1,Math.abs(thr)*.05)+Math.min(.06,spd*.002):0,t,.08);eng.frequency.setTargetAtTime(38+spd*3.6+Math.abs(thr)*14,t,.1);
    sirG.gain.setTargetAtTime(sirenLvl*.05,t,.1);sir.frequency.setTargetAtTime(sirenLvl>0?(Math.floor(t*2)%2?760:960):0,t,.02)},
   noise(dur,vol,freq,type='lowpass',q=1){if(!ctx)return;const s=ctx.createBufferSource();s.buffer=noiseBuf;const f=ctx.createBiquadFilter();f.type=type;f.frequency.value=freq;f.Q.value=q;const g=ctx.createGain();g.gain.setValueAtTime(vol,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+dur);s.connect(f);f.connect(g);g.connect(master);s.start(0,Math.random()*.5,dur+.05)},
-  shot(k){A.noise(k==='shot'?.35:.14,k==='shot'?.6:.35,k==='shot'?1800:3200)},thud(v=1){A.noise(.25,.5*v,300)},boom(){A.noise(1.3,.9,500)},door(){A.noise(.12,.25,900)},punch(){A.noise(.1,.4,700)},cash(){if(!ctx)return;const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=1200;g.gain.setValueAtTime(.12,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.18);o.connect(g);g.connect(master);o.start();o.stop(ctx.currentTime+.2)},
+  shot(k){A.noise(k==='shot'?.35:.14,k==='shot'?.6:.35,k==='shot'?1800:3200)},thud(v=1){A.noise(.25,.5*v,300)},
+  // CAR_ALARM_SOUND_V1: wail -> fast chirps -> two-tone, repeated for `dur` seconds
+  alarm(dur=14){if(!ctx)return null;const t0=ctx.currentTime+.02,o=ctx.createOscillator(),o2=ctx.createOscillator(),f=ctx.createBiquadFilter(),gate=ctx.createGain(),vol=ctx.createGain(),pan=ctx.createStereoPanner?ctx.createStereoPanner():null;
+   o.type='square';o2.type='sawtooth';f.type='lowpass';f.frequency.value=2600;f.Q.value=.7;gate.gain.value=0;vol.gain.value=0;
+   const mix=ctx.createGain();mix.gain.value=.5;o.connect(f);o2.connect(mix);mix.connect(f);f.connect(gate);gate.connect(vol);if(pan){vol.connect(pan);pan.connect(master)}else vol.connect(master);
+   const F=o.frequency,F2=o2.frequency,Gt=gate.gain;let t=t0;const end=t0+dur;
+   const setF=(v,at)=>{F.setValueAtTime(v,at);F2.setValueAtTime(v*1.005,at)},rampF=(v,at)=>{F.linearRampToValueAtTime(v,at);F2.linearRampToValueAtTime(v*1.005,at)};
+   while(t<end){
+    setF(650,t);Gt.setValueAtTime(.5,t);for(let i=0;i<2;i++){rampF(1550,t+.5);rampF(650,t+1);t+=1}           // wail
+    setF(1450,t);for(let i=0;i<9;i++){Gt.setValueAtTime(.5,t);Gt.setValueAtTime(0,t+.07);t+=.15}               // chirps
+    for(let i=0;i<8;i++){setF(i%2?1250:850,t);Gt.setValueAtTime(.5,t);t+=.25}                                     // hi-lo
+    Gt.setValueAtTime(0,t);t+=.2}
+   Gt.setValueAtTime(0,end);o.start(t0);o2.start(t0);o.stop(end+.05);o2.stop(end+.05);
+   return{vol,pan,end:performance.now()+dur*1000,stop(){try{const n=ctx.currentTime;vol.gain.cancelScheduledValues(n);vol.gain.setValueAtTime(0,n);o.stop(n+.05);o2.stop(n+.05)}catch(e){}},
+    set(v,p){const n=ctx.currentTime;vol.gain.setTargetAtTime(v,n,.05);if(pan)pan.pan.setTargetAtTime(p,n,.05)}}},boom(){A.noise(1.3,.9,500)},door(){A.noise(.12,.25,900)},punch(){A.noise(.1,.4,700)},cash(){if(!ctx)return;const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=1200;g.gain.setValueAtTime(.12,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.18);o.connect(g);g.connect(master);o.start();o.stop(ctx.currentTime+.2)},
   beep(f=880){if(!ctx)return;const o=ctx.createOscillator(),g=ctx.createGain();o.type='square';o.frequency.value=f;g.gain.setValueAtTime(.07,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.15);o.connect(g);g.connect(master);o.start();o.stop(ctx.currentTime+.17)},
   jingle(good){if(!ctx)return;const notes=good?[72,76,79,84]:[64,61,57];notes.forEach((n,i)=>{const t=ctx.currentTime+i*(good?.12:.2);const o=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter();o.type=good?'triangle':'sawtooth';o.frequency.value=mt(n);f.type='lowpass';f.frequency.value=good?4000:1200;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(good?.12:.07,t+.02);g.gain.exponentialRampToValueAtTime(.001,t+(good?.5:.45));o.connect(f);f.connect(g);g.connect(master);o.start(t);o.stop(t+.6)})},
   thunder(){A.noise(3,.9,140);A.noise(.5,.5,900)},
@@ -3780,7 +3811,7 @@ function updateGators(dt){
   for(const c of cars){if(c.speed<4)continue;if(Math.hypot(c.x-a.x,c.z-a.z)<2.3){hurtGator(a,c.speed*8,c.occ==='player');break}}
  }}
 function showPrompt(t){if(t!==lastPrompt){lastPrompt=t;promptEl.textContent=t;promptEl.style.display=t?'block':'none'}}
-function simulate(dt){updateBreakin(dt);updateRedLights();
+function simulate(dt){updateBreakin(dt);updateAlarms();updateRedLights();
  G.time+=dt;updateEconomy(dt);G.clock=(G.clock+dt*.06)%24;
  const play=G.state==='play'&&pl.alive;
  if(!pl.inside){
@@ -3796,9 +3827,9 @@ function simulate(dt){updateBreakin(dt);updateRedLights();
   collideNearbyCars();
   for(const c of cars)c.place();
   for(const c of cars){const v=c.v;if(c.dead&&c.mode==='wreck')continue;for(const w of v.wheels){if(w.w)w.w.rotation.x=c.wheelRot;if(w.front&&w.piv)w.piv.rotation.y=c.steer}
-   if(!c.t.aircraft){const eng=!!c.occ&&!c.dead,lo=carLightsOn(c),vf=c.vx*Math.sin(c.h)+c.vz*Math.cos(c.h);
+   if(!c.t.aircraft){const eng=!!c.occ&&!c.dead,af=alarmFlash(c),lo=carLightsOn(c)||af,vf=c.vx*Math.sin(c.h)+c.vz*Math.cos(c.h);
     c.lightsOn=lo;c.reversing=eng&&c.inp.thr<0&&vf<-.3;
-    const tm=eng&&c.braking?tailOn:lo?tailOff:tailDark;if(v.tail.material!==tm)v.tail.material=tm;
+    const tm=(eng&&c.braking)||af?tailOn:lo?tailOff:tailDark;if(v.tail.material!==tm)v.tail.material=tm;
     const hm=lo?headOn:headMat;if(v.head.material!==hm)v.head.material=hm;
     if(v.rev)for(const r of v.rev){const rm=c.reversing?revOn:revOff;if(r.material!==rm)r.material=rm}
     v.beam.visible=lo}
