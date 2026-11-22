@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "branch": "lucia-outfits",
+  "defaultOuterLayer": "dark-grey-tank",
+  "color": "#3b3d40",
+  "poseChecks": 6,
+  "swimsuitInstalled": false,
+  "existingOutfitSelectionPreserved": true,
+  "bodySkinToneBaseGarmentsAndRigUnchanged": true,
+  "otherCharactersUnchanged": true,
+  "scope": "Opaque removable outer tank restored from fitted template with extra chest clearance. Does not install or repair the separate swimsuit. Structural tests do not verify rendered layering, animation clipping, wardrobe UI or live deployment."
+}
