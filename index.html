@@ -873,106 +873,106 @@ function intersectionAsphaltTexture(){
  const t=mkTex(canvas);t.anisotropy=16;return t;
 }
 function facadeTex(style){
+ // FACADES_V2: original procedural facades. Light, mostly neutral bases so each building's palette colour tints them.
+ // 4x4 grid of 128px cells (one floor x one bay); a second canvas holds lit windows for night.
  const S=512,[c,x]=cv(S,S),[e,ex]=cv(S,S);ex.fillStyle='#000';ex.fillRect(0,0,S,S);
- const warm=()=>['#ffd89a','#ffe9bf','#ffc27a','#bfe3ff','#ffd0e8','#ff9ed2','#a8f0ff'][Math.random()*7|0];
- const cell=128;
- for(let j=0;j<4;j++)for(let i=0;i<4;i++){
-  const px=i*cell,py=j*cell,lit=Math.random()<.38,lit2=Math.random()<.3;
+ const cell=128,R=Math.random;
+ const warm=()=>['#ffd89a','#ffe9bf','#ffc27a','#bfe3ff','#ffd0e8','#ffb3d9','#a8f0ff'][R()*7|0];
+ const grain=(px,py,w,h,n,a,rgb)=>{for(let k=0;k<n;k++){x.fillStyle=`rgba(${rgb},${a*(.5+R())})`;x.fillRect(px+R()*w,py+R()*h,1+R()*2,1+R()*2)}};
+ const shade=(px,py,w,h,a)=>{const g=x.createLinearGradient(0,py,0,py+h);g.addColorStop(0,`rgba(20,16,12,${a})`);g.addColorStop(1,'rgba(20,16,12,0)');x.fillStyle=g;x.fillRect(px,py,w,h)};
+ const glass=(wx,wy,ww,wh,top,bot)=>{const g=x.createLinearGradient(wx,wy,wx+ww*.4,wy+wh);g.addColorStop(0,top);g.addColorStop(1,bot);x.fillStyle=g;x.fillRect(wx,wy,ww,wh);
+  x.save();x.beginPath();x.rect(wx,wy,ww,wh);x.clip();x.fillStyle='rgba(235,245,255,.16)';x.beginPath();x.moveTo(wx+ww*.15,wy);x.lineTo(wx+ww*.42,wy);x.lineTo(wx+ww*.12,wy+wh);x.lineTo(wx-ww*.15,wy+wh);x.fill();x.restore()};
+ const lit=(wx,wy,ww,wh,p,a)=>{if(R()<p){ex.fillStyle=warm();ex.globalAlpha=a;ex.fillRect(wx+2,wy+2,ww-4,wh-4);ex.globalAlpha=1}};
+ for(let j=0;j<4;j++)for(let i=0;i<4;i++){const px=i*cell,py=j*cell;
   if(style==='glass'){
-   // modern reflective glass tower
-   x.fillStyle='#6a8496';x.fillRect(px,py,cell,cell);
-   const g=x.createLinearGradient(px,py,px+cell,py+cell);
-   g.addColorStop(0,'#5a7a92');g.addColorStop(.45,'#2a4558');g.addColorStop(1,'#152a38');
-   x.fillStyle=g;x.fillRect(px+3,py+3,cell-6,cell-6);
-   // mullions
-   x.fillStyle='#c5d0d8';
-   x.fillRect(px,py,3,cell);x.fillRect(px+cell-3,py,3,cell);
-   x.fillRect(px,py+cell-4,cell,4);x.fillRect(px,py,cell,3);
-   x.fillRect(px+cell/2-1.5,py,3,cell);
-   // subtle reflection bands
-   x.fillStyle='rgba(200,220,240,.12)';x.fillRect(px+8,py+10,cell-16,14);
-   x.fillStyle='rgba(180,200,220,.08)';x.fillRect(px+8,py+cell*.55,cell-16,10);
-   if(lit){ex.fillStyle=warm();ex.globalAlpha=.85;ex.fillRect(px+5,py+5,cell-10,cell-10);ex.globalAlpha=1}
-   if(lit2){ex.fillStyle=warm();ex.globalAlpha=.5;ex.fillRect(px+cell/2+4,py+5,cell/2-8,cell-10);ex.globalAlpha=1}
+   // curtain wall: two tall panes per bay, a solid spandrel band per floor, slightly different tints
+   x.fillStyle='#24323c';x.fillRect(px,py,cell,cell);
+   const tints=[['#7fa6bf','#1f3a4f'],['#86b3b8','#1d4246'],['#9aaebf','#2a3a4c'],['#7d9fb6','#223649']];
+   for(let k=0;k<2;k++){const t=tints[(R()*tints.length)|0],wx=px+4+k*62,ww=56,wy=py+4,wh=cell-30;glass(wx,wy,ww,wh,t[0],t[1]);lit(wx,wy,ww,wh,.32,.8)}
+   x.fillStyle='#8c9ca8';x.fillRect(px,py+cell-24,cell,20);x.fillStyle='#7a8a96';for(let k=0;k<cell;k+=8)x.fillRect(px+k,py+cell-24,1,20);
+   x.fillStyle='#c9d3da';x.fillRect(px,py,3,cell);x.fillRect(px+cell/2-1,py,3,cell);x.fillRect(px,py+cell-4,cell,4);
   }else if(style==='ware'){
-   // corrugated warehouse / industrial
-   x.fillStyle='#d4d4d0';x.fillRect(px,py,cell,cell);
-   // vertical corrugation
-   for(let k=0;k<cell;k+=5){
-    x.fillStyle=k%10===0?'#b8b8b4':'#c8c8c4';
-    x.fillRect(px+k,py,3,cell);
-   }
-   // weathered streaks
-   for(let k=0;k<6;k++){x.fillStyle=`rgba(80,90,100,${.08+Math.random()*.1})`;x.fillRect(px+Math.random()*cell,py,2+Math.random()*4,cell)}
-   // loading door / window on lower floors
-   if(j===0||j===1){
-    const dw=cell*.55,dh=cell*.38,dx=px+(cell-dw)/2,dy=py+cell*.35;
-    x.fillStyle='#1e2a34';x.fillRect(dx,dy,dw,dh);
-    x.fillStyle='#2a3846';x.fillRect(dx+4,dy+4,dw-8,dh-8);
-    // door frame highlight
-    x.strokeStyle='#8a9aaa';x.lineWidth=2;x.strokeRect(dx,dy,dw,dh);
-    if(lit){ex.fillStyle=warm();ex.globalAlpha=.7;ex.fillRect(dx+6,dy+6,dw-12,dh-12);ex.globalAlpha=1}
-   }
-   // rivets
-   x.fillStyle='#9a9a96';
-   for(let ry=8;ry<cell;ry+=22)for(let rx=8;rx<cell;rx+=18){x.beginPath();x.arc(px+rx,py+ry,1.6,0,Math.PI*2);x.fill()}
+   // clean corrugated metal, high clerestory windows on top floors, roll-up doors low down
+   x.fillStyle='#dedcd6';x.fillRect(px,py,cell,cell);
+   for(let k=0;k<cell;k+=6){x.fillStyle='#cfcdc7';x.fillRect(px+k,py,2,cell);x.fillStyle='#eceae4';x.fillRect(px+k+3,py,1,cell)}
+   grain(px,py,cell,cell,40,.05,'70,70,70');
+   if(j<2){const wy=py+18;x.fillStyle='#b9b7b1';x.fillRect(px+8,wy-3,cell-16,32);glass(px+10,wy,cell-20,26,'#6e8a9c','#2a3c48');for(let k=1;k<4;k++){x.fillStyle='#b9b7b1';x.fillRect(px+10+k*(cell-20)/4,wy,2,26)}lit(px+10,wy,cell-20,26,.25,.6)}
+   else{const dw=cell*.62,dh=cell*.62,dx=px+(cell-dw)/2,dy=py+cell-dh-6;x.fillStyle='#8f969c';x.fillRect(dx-3,dy-3,dw+6,dh+3);x.fillStyle='#a9b0b6';x.fillRect(dx,dy,dw,dh);
+    for(let k=6;k<dh;k+=7){x.fillStyle='#959ca2';x.fillRect(dx,dy+k,dw,2)}shade(dx,dy,dw,10,.25)}
   }else if(style==='deco'){
-   // art-deco / pastel Miami-style
-   x.fillStyle='#f2ebe0';x.fillRect(px,py,cell,cell);
-   // subtle plaster noise
-   for(let k=0;k<180;k++){x.fillStyle=`rgba(180,160,140,${.04+Math.random()*.06})`;x.fillRect(px+Math.random()*cell,py+Math.random()*cell,2,2)}
-   // decorative cornice band
-   x.fillStyle='#e0d6c4';x.fillRect(px,py+cell-14,cell,14);
-   x.fillStyle='#c8bca8';x.fillRect(px,py+cell-4,cell,4);
-   // main window with deco frame
-   const wx=px+14,wy=py+12,ww=cell-28,wh=cell-36;
-   x.fillStyle='#d4c8b0';x.fillRect(wx-3,wy-3,ww+6,wh+6);
-   const g=x.createLinearGradient(wx,wy,wx,wy+wh);
-   g.addColorStop(0,'#3a5a72');g.addColorStop(1,'#1a2e40');
-   x.fillStyle=g;x.fillRect(wx,wy,ww,wh);
-   // vertical mullion + horizontal
-   x.fillStyle='#d4c8b0';x.fillRect(wx+ww/2-2,wy,4,wh);
-   x.fillRect(wx,wy+wh*.45,ww,3);
-   // small decorative keystone
-   x.fillStyle='#c8b8a0';x.beginPath();x.moveTo(wx+ww/2,wy-6);x.lineTo(wx+ww/2+8,wy);x.lineTo(wx+ww/2-8,wy);x.fill();
-   if(lit){ex.fillStyle=warm();ex.globalAlpha=.9;ex.fillRect(wx+2,wy+2,ww-4,wh-4);ex.globalAlpha=1}
+   // beachfront art deco: smooth stucco, fluted pilasters, sun-shade ledges, porthole windows, pin-stripe bands
+   x.fillStyle='#f6f1e8';x.fillRect(px,py,cell,cell);grain(px,py,cell,cell,140,.05,'150,130,110');
+   for(const ex0 of[px,px+cell-12]){x.fillStyle='#ece5d8';x.fillRect(ex0,py,12,cell);for(let k=2;k<12;k+=4){x.fillStyle='#dcd3c3';x.fillRect(ex0+k,py,1.5,cell)}}
+   const port=((i*3+j*2)%5)===0;
+   if(port){const cx=px+cell/2,cy=py+52,r=22;x.fillStyle='#e2d9c8';x.beginPath();x.arc(cx,cy,r+5,0,7);x.fill();
+    const g=x.createRadialGradient(cx-6,cy-8,2,cx,cy,r);g.addColorStop(0,'#7aa3b8');g.addColorStop(1,'#1d3547');x.fillStyle=g;x.beginPath();x.arc(cx,cy,r,0,7);x.fill();
+    x.fillStyle='#e2d9c8';x.fillRect(cx-1.5,cy-r,3,r*2);x.fillRect(cx-r,cy-1.5,r*2,3);if(R()<.35){ex.fillStyle=warm();ex.globalAlpha=.85;ex.beginPath();ex.arc(cx,cy,r-2,0,7);ex.fill();ex.globalAlpha=1}}
+   else{const wx=px+20,wy=py+30,ww=cell-40,wh=48;x.fillStyle='#e6ddcc';x.fillRect(wx-3,wy-3,ww+6,wh+6);glass(wx,wy,ww,wh,'#83a9bd','#1e3648');
+    for(let k=1;k<4;k++){x.fillStyle='#e6ddcc';x.fillRect(wx+k*ww/4-1,wy,2,wh)}lit(wx,wy,ww,wh,.4,.88);
+    x.fillStyle='#fbf8f2';x.fillRect(px+12,wy-12,cell-24,6);shade(px+12,wy-6,cell-24,12,.22)}
+   for(let k=0;k<3;k++){x.fillStyle=k===1?'#d8cfbf':'#e8e0d2';x.fillRect(px,py+cell-20+k*5,cell,3)}
+  }else if(style==='brick'){
+   // red brick with varied bricks, stone lintels and sills, white double-hung windows (keeps its natural colour)
+   x.fillStyle='#c8b9a8';x.fillRect(px,py,cell,cell);
+   const bc=['#a8573f','#9b4c36','#b5634a','#8f4733','#a35a45'];
+   for(let r=0;r<cell;r+=8){const off=((r/8)%2)*12;for(let k=-12;k<cell;k+=24){x.fillStyle=bc[(R()*bc.length)|0];x.fillRect(px+k+off+1,py+r+1,22,6)}}
+   for(const wx of[px+16,px+cell/2+8]){const wy=py+24,ww=cell/2-24,wh=60;x.fillStyle='#d9d1c3';x.fillRect(wx-5,wy-9,ww+10,7);x.fillRect(wx-4,wy+wh+1,ww+8,6);shade(wx-4,wy+wh+7,ww+8,5,.25);
+    x.fillStyle='#f3f1ec';x.fillRect(wx-2,wy-2,ww+4,wh+4);glass(wx,wy,ww,wh/2-2,'#8aa9b9','#283c4a');glass(wx,wy+wh/2+1,ww,wh/2-1,'#8aa9b9','#283c4a');x.fillStyle='#f3f1ec';x.fillRect(wx,wy+wh/2-2,ww,3);lit(wx,wy,ww,wh,.4,.85)}
+  }else if(style==='stone'){
+   // limestone: rusticated courses, tall recessed windows, carved band
+   x.fillStyle='#efe9de';x.fillRect(px,py,cell,cell);grain(px,py,cell,cell,120,.05,'150,140,120');
+   for(let r=16;r<cell;r+=16){x.fillStyle='#dcd4c5';x.fillRect(px,py+r,cell,1.5)}
+   const wx=px+cell/2-18,wy=py+16,ww=36,wh=86;x.fillStyle='#d6cdbd';x.fillRect(wx-6,wy-6,ww+12,wh+10);glass(wx,wy,ww,wh,'#7f9fb2','#1f3343');
+   x.fillStyle='rgba(0,0,0,.25)';x.fillRect(wx,wy,ww,4);x.fillRect(wx,wy,4,wh);x.fillStyle='#d6cdbd';x.fillRect(wx,wy+wh*.62,ww,3);lit(wx,wy,ww,wh,.38,.85);
+   x.fillStyle='#e2dacb';x.fillRect(px,py+cell-14,cell,10);x.fillStyle='#d2c9b8';for(let k=4;k<cell;k+=10)x.fillRect(px+k,py+cell-12,4,6);
+  }else if(style==='concrete'){
+   // raw concrete: deep-set square windows with strong inner shadow, form-tie holes (keeps its natural colour)
+   x.fillStyle='#cfcdc8';x.fillRect(px,py,cell,cell);grain(px,py,cell,cell,160,.06,'90,90,90');
+   x.fillStyle='rgba(80,80,80,.35)';for(let ty=10;ty<cell;ty+=30)for(let tx=10;tx<cell;tx+=30){x.beginPath();x.arc(px+tx,py+ty,1.6,0,7);x.fill()}
+   x.fillStyle='#bdbbb5';x.fillRect(px,py,cell,2);x.fillRect(px,py,2,cell);
+   const wx=px+24,wy=py+22,ww=80,wh=72;x.fillStyle='#e0ded9';x.fillRect(wx-6,wy-6,ww+12,wh+12);glass(wx,wy,ww,wh,'#7b98a8','#1a2b36');
+   x.fillStyle='rgba(0,0,0,.42)';x.fillRect(wx,wy,ww,10);x.fillRect(wx,wy,10,wh);x.fillStyle='#e0ded9';x.fillRect(wx+ww/2-1,wy,2,wh);lit(wx+10,wy+10,ww-10,wh-10,.36,.8);
+  }else if(style==='mission'){
+   // Mediterranean: stucco, arched windows, terracotta sills, little wrought-iron balconies
+   x.fillStyle='#f6eddf';x.fillRect(px,py,cell,cell);grain(px,py,cell,cell,140,.05,'160,130,100');
+   const wx=px+cell/2-22,wy=py+34,ww=44,wh=60,r=ww/2;
+   x.fillStyle='#e7dac4';x.beginPath();x.rect(wx-4,wy,ww+8,wh+2);x.arc(wx+r,wy,r+4,Math.PI,0);x.fill();
+   x.save();x.beginPath();x.rect(wx,wy,ww,wh);x.arc(wx+r,wy,r,Math.PI,0);x.clip();glass(wx,wy-r,ww,wh+r,'#86a8ba','#213847');x.restore();
+   x.fillStyle='#e7dac4';x.fillRect(wx+r-1.5,wy-r,3,wh+r);if(R()<.42){ex.fillStyle=warm();ex.globalAlpha=.85;ex.beginPath();ex.rect(wx+2,wy,ww-4,wh-2);ex.arc(wx+r,wy,r-2,Math.PI,0);ex.fill();ex.globalAlpha=1}
+   x.fillStyle='#c8714e';x.fillRect(wx-8,wy+wh+2,ww+16,6);shade(wx-8,wy+wh+8,ww+16,6,.2);
+   if((i+j)%2===0){x.fillStyle='#2e2a28';x.fillRect(wx-10,wy+wh-16,ww+20,2.5);for(let k=wx-8;k<wx+ww+10;k+=5)x.fillRect(k,wy+wh-16,1.5,18)}
+  }else if(style==='hotel'){
+   // beach hotel: a full-width balcony every floor with glass railings and sliding doors
+   x.fillStyle='#f8f4ec';x.fillRect(px,py,cell,cell);
+   const dy=py+16,dh=cell-48;x.fillStyle='#e3dccf';x.fillRect(px+6,dy-3,cell-12,dh+3);
+   for(let k=0;k<2;k++){const wx=px+9+k*(cell/2-6),ww=cell/2-12;glass(wx,dy,ww,dh,'#8cb5c6','#244050');lit(wx,dy,ww,dh,.42,.85)}
+   const by=py+cell-30;x.fillStyle='#fdfbf7';x.fillRect(px,by,cell,7);shade(px,by+7,cell,12,.24);
+   x.fillStyle='rgba(170,225,235,.45)';x.fillRect(px,by-20,cell,20);x.fillStyle='#e9eef0';x.fillRect(px,by-21,cell,2);for(let k=0;k<cell;k+=32)x.fillRect(px+k,by-20,2,20);
+  }else if(style==='office'){
+   // office: a ribbon of windows across each floor between white bands
+   x.fillStyle='#eef0ef';x.fillRect(px,py,cell,cell);
+   const wy=py+22,wh=64;glass(px,wy,cell,wh,'#7fa2b4','#1c3242');lit(px,wy,cell/2,wh,.3,.75);lit(px+cell/2,wy,cell/2,wh,.3,.75);
+   x.fillStyle='#d7dcdc';for(let k=0;k<cell;k+=32)x.fillRect(px+k,wy,2.5,wh);x.fillStyle='#ffffff';x.fillRect(px,wy-3,cell,3);shade(px,wy+wh,cell,8,.18);
+   x.fillStyle='#e2e6e5';x.fillRect(px,py+cell-18,cell,2);
   }else{
-   // apartment / residential
-   x.fillStyle='#f5f0e6';x.fillRect(px,py,cell,cell);
-   for(let k=0;k<120;k++){x.fillStyle=`rgba(160,150,140,${.03+Math.random()*.05})`;x.fillRect(px+Math.random()*cell,py+Math.random()*cell,2,2)}
-   // sill band
-   x.fillStyle='#e4dcd0';x.fillRect(px,py+cell-12,cell,12);
-   x.fillStyle='#4a5560';x.fillRect(px+2,py+cell-6,cell-4,3);
-   // two windows
-   const g=x.createLinearGradient(0,py+14,0,py+cell-22);
-   g.addColorStop(0,'#3d5a70');g.addColorStop(1,'#1c2f3f');
-   const w1x=px+10,w2x=px+cell/2+6,ww=cell/2-18,wh=cell-40;
-   for(const wx of[w1x,w2x]){
-    x.fillStyle='#e8e0d4';x.fillRect(wx-2,py+12,ww+4,wh+6);
-    x.fillStyle=g;x.fillRect(wx,py+14,ww,wh);
-    // cross muntins
-    x.fillStyle='#d0c8bc';x.fillRect(wx+ww/2-1,py+14,2,wh);
-    x.fillRect(wx,py+14+wh/2-1,ww,2);
-    // sill
-    x.fillStyle='#f0e8dc';x.fillRect(wx-3,py+14+wh,ww+6,4);
-   }
-   if(lit){ex.fillStyle=warm();ex.globalAlpha=.88;ex.fillRect(w1x+1,py+15,ww-2,wh-2);ex.globalAlpha=1}
-   if(lit2||Math.random()<.45){ex.fillStyle=warm();ex.globalAlpha=.75;ex.fillRect(w2x+1,py+15,ww-2,wh-2);ex.globalAlpha=1}
+   // apartments: balconies with railings and sliding doors on alternate bays, shuttered windows and AC units on the rest
+   x.fillStyle='#f4efe7';x.fillRect(px,py,cell,cell);grain(px,py,cell,cell,110,.045,'140,130,120');
+   if((i+j)%2===0){const dx=px+18,dy=py+22,dw=cell-36,dh=cell-48;x.fillStyle='#dad3c7';x.fillRect(dx-3,dy-3,dw+6,dh+3);glass(dx,dy,dw,dh,'#8bb0c2','#22394a');
+    x.fillStyle='#dad3c7';x.fillRect(dx+dw/2-1.5,dy,3,dh);lit(dx,dy,dw,dh,.42,.85);
+    const by=py+cell-26;x.fillStyle='#fbf8f3';x.fillRect(px+8,by,cell-16,6);shade(px+8,by+6,cell-16,12,.24);
+    x.fillStyle='#5b636b';x.fillRect(px+8,by-22,cell-16,2.5);for(let k=px+10;k<px+cell-8;k+=6)x.fillRect(k,by-22,1.5,22)}
+   else{const shutter=['#9fb9c4','#c9a98f','#a8c2a3','#c4b2cf','#d7c49a'][(i*7+j*3)%5];
+    for(const wx of[px+16,px+cell/2+8]){const wy=py+22,ww=cell/2-24,wh=58;x.fillStyle='#e4ddd1';x.fillRect(wx-2,wy-2,ww+4,wh+4);glass(wx,wy,ww,wh,'#88adc0','#213848');
+     x.fillStyle='#e4ddd1';x.fillRect(wx,wy+wh/2-1,ww,2);x.fillStyle=shutter;x.fillRect(wx-9,wy,7,wh);x.fillRect(wx+ww+2,wy,7,wh);
+     x.fillStyle='rgba(0,0,0,.12)';for(let k=4;k<wh;k+=5){x.fillRect(wx-9,wy+k,7,1);x.fillRect(wx+ww+2,wy+k,7,1)}
+     x.fillStyle='#f6f1e9';x.fillRect(wx-4,wy+wh+2,ww+8,4);shade(wx-4,wy+wh+6,ww+8,6,.18);lit(wx,wy,ww,wh,.4,.85)}
+    if(R()<.4){const ax=px+cell/2+12,ay=py+92;x.fillStyle='#d8d8d4';x.fillRect(ax,ay,30,18);x.fillStyle='#a9aaa6';for(let k=3;k<18;k+=3)x.fillRect(ax+3,ay+k,24,1);shade(ax,ay+18,30,6,.2)}}
+   x.fillStyle='#e6dfd4';x.fillRect(px,py+cell-6,cell,6);
   }
  }
- // ambient occlusion at tile edges + dirt streaks for realism
- x.fillStyle='rgba(0,0,0,.05)';x.fillRect(0,0,S,4);x.fillRect(0,S-4,S,4);x.fillRect(0,0,4,S);x.fillRect(S-4,0,4,S);
- for(let i=0;i<60;i++){
-  x.fillStyle=`rgba(40,35,30,${.03+Math.random()*.06})`;
-  const ox=Math.random()*S;x.fillRect(ox,0,1+Math.random()*3,S*.3+Math.random()*S*.5);
- }
- // grime near base of each row
- for(let j=0;j<4;j++){
-  const gy=(j+1)*cell-8;
-  const g=x.createLinearGradient(0,gy-10,0,gy+4);
-  g.addColorStop(0,'rgba(30,28,24,0)');g.addColorStop(1,'rgba(30,28,24,.12)');
-  x.fillStyle=g;x.fillRect(0,gy-10,S,14);
- }
+ // soft edges and a little weathering under each floor
+ x.fillStyle='rgba(0,0,0,.04)';x.fillRect(0,0,S,3);x.fillRect(0,S-3,S,3);
+ if(style!=='glass')for(let j=0;j<4;j++){const gy=(j+1)*cell-6,g=x.createLinearGradient(0,gy-8,0,gy+2);g.addColorStop(0,'rgba(30,28,24,0)');g.addColorStop(1,'rgba(30,28,24,.08)');x.fillStyle=g;x.fillRect(0,gy-8,S,10)}
  const mt=mkTex(c);mt.anisotropy=16;
  const et=mkTex(e);et.anisotropy=8;
  return[mt,et];
@@ -1057,14 +1057,14 @@ function initMaterials(){
  // concrete sidewalk with joints
  defMat('walk',PLAIN({map:conc,roughness:.88,envMapIntensity:.25}),false,true);
  // building facades
- for(const st of['deco','glass','apt','ware']){
+ for(const st of['deco','glass','apt','ware','brick','stone','concrete','mission','hotel','office']){
   const[m,e]=facadeTex(st);
   const mt=new T.MeshStandardMaterial({
    map:m,emissiveMap:e,emissive:0xffffff,emissiveIntensity:.07,
    vertexColors:true,
-   roughness:st==='glass'?.14:st==='ware'?.72:.68,
-   metalness:st==='glass'?.6:st==='ware'?.1:.05,
-   envMapIntensity:st==='glass'?1.5:.38
+   roughness:st==='glass'?.14:st==='office'?.34:st==='ware'?.72:st==='brick'||st==='concrete'?.86:.68,
+   metalness:st==='glass'?.6:st==='office'?.25:st==='ware'?.1:.05,
+   envMapIntensity:st==='glass'?1.5:st==='office'?.9:.38
   });
   emis.push(mt);defMat('f_'+st,mt);
  }
@@ -1251,10 +1251,11 @@ function makeParcels(){
   const nx=pick(mode==='low'?[1,2,2,3]:[1,2]),nz=pick(mode==='low'?[1,2,2]:[1,2]);const w=(x1-x0)/nx,d=(z1-z0)/nz;
   for(let i=0;i<nx;i++)for(let j=0;j<nz;j++){const a=x0+i*w+.5,b=z0+j*d+.5,c=x0+(i+1)*w-.5,e=z0+(j+1)*d-.5,cx=(a+c)/2,cz=(b+e)/2;
    let H,style;
-   if(mode==='core'){const dd=Math.hypot(cx/230,(cz+10)/250),core=clamp(1.05-dd,0,1);H=9+rnd()*16+Math.pow(core,1.6)*(40+rnd()*100);style=H>38&&rnd()<.75?'glass':pick(['deco','deco','apt']);if(cz<-250){H=8+rnd()*14;style=pick(['deco','apt'])}}
-   else if(mode==='port'){H=7+rnd()*10;style=rnd()<.6?'ware':pick(['apt','deco'])}
-   else{H=7+rnd()*14;style=pick(['deco','apt'])}
-   parcels.push({x0:a,z0:b,x1:c,z1:e,cx,cz,H,style,mode,edgeS:j===nz-1,cityId:mode==='port'?'port':'dt'})}};
+   if(mode==='core'){const dd=Math.hypot(cx/230,(cz+10)/250),core=clamp(1.05-dd,0,1);H=9+rnd()*16+Math.pow(core,1.6)*(40+rnd()*100);style=H>38&&rnd()<.75?pick(['glass','glass','glass','office','stone','concrete']):pick(['deco','deco','apt','mission','hotel','brick','stone']);if(cz<-250){H=8+rnd()*14;style=pick(['deco','hotel','mission','apt'])}}
+   else if(mode==='port'){H=7+rnd()*10;style=rnd()<.55?'ware':pick(['brick','brick','concrete','apt','deco'])}
+   else{H=7+rnd()*14;style=pick(['deco','apt','mission','brick'])}
+   const natural=style==='brick'||style==='concrete';
+   parcels.push({x0:a,z0:b,x1:c,z1:e,cx,cz,H,style,col:natural?[1-rnd()*.06,1-rnd()*.07,1-rnd()*.08]:undefined,mode,edgeS:j===nz-1,cityId:mode==='port'?'port':'dt'})}};
  const xr=G.xr,zr=G.zr.concat([420]);
  const used=new Set(),K=(x,z)=>x+','+z;G.plazas=[];
  for(const [cx,cz] of CITY_SUPER){for(const x of[cx-60,cx])for(const z of[cz-60,cz])used.add(K(x,z));
@@ -4616,7 +4617,7 @@ function cityDataTexture(c){const t=new T.CanvasTexture(c);t.wrapS=t.wrapT=T.Rep
 function citySurface(kind){if(citySurfaceKits.has(kind))return citySurfaceKits.get(kind);const S=512,[nc,nx]=cv(S,S),[rc,rx]=cv(S,S),ni=nx.createImageData(S,S),ri=rx.createImageData(S,S),heights=new Float32Array(S*S);for(let y=0;y<S;y++)for(let x=0;x<S;x++)heights[y*S+x]=cityHeight(kind,x/S,y/S);for(let y=0;y<S;y++)for(let x=0;x<S;x++){const i=y*S+x,p=i*4,dx=(heights[y*S+(x+1)%S]-heights[y*S+(x+S-1)%S])*3,dy=(heights[((y+1)%S)*S+x]-heights[((y+S-1)%S)*S+x])*3,inv=1/Math.hypot(dx,dy,1);ni.data[p]=(-dx*inv*.5+.5)*255;ni.data[p+1]=(dy*inv*.5+.5)*255;ni.data[p+2]=(inv*.5+.5)*255;ni.data[p+3]=255;ri.data[p]=ri.data[p+1]=ri.data[p+2]=(kind==='glass'?.76:.9+(heights[i]-.5)*.16)*255;ri.data[p+3]=255}nx.putImageData(ni,0,0);rx.putImageData(ri,0,0);const kit={normal:cityDataTexture(nc),roughness:cityDataTexture(rc)};citySurfaceKits.set(kind,kit);return kit}
 function applyCitySurface(m,kind,amount=.4){if(!m||!m.isMeshStandardMaterial||m.userData.citySurface)return;const k=citySurface(kind);m.normalMap=k.normal;m.normalScale=new T.Vector2(amount,amount);m.roughnessMap=k.roughness;m.userData.citySurface=kind;m.userData.cityDetailMaps={normal:m.normalMap,roughness:m.roughnessMap};m.needsUpdate=true}
 function terrainCityTexture(kind){const S=512,[c,x]=cv(S,S),id=x.createImageData(S,S);for(let y=0;y<S;y++)for(let i=0;i<S;i++){const v=200+(cityHeight(kind,i/S,y/S)-.5)*130+(cityHash(i,y,319)-.5)*10,p=(y*S+i)*4;id.data[p]=id.data[p+1]=id.data[p+2]=v;id.data[p+3]=255}x.putImageData(id,0,0);return mkTex(c)}
-const baseCityMaterials=initMaterials;initMaterials=function(){baseCityMaterials();for(const key of['roadC_h','roadC_v','roadH_h','roadH_v','asph'])applyCitySurface(MATS[key].mat,'asphalt',.7);for(const key of['roadD_h','roadD_v'])applyCitySurface(MATS[key].mat,'sand',.65);applyCitySurface(MATS.walk.mat,'concrete',.6);applyCitySurface(MATS.roof.mat,'rock',.5);for(const key of['f_deco','f_apt'])applyCitySurface(MATS[key].mat,'plaster',.3);applyCitySurface(MATS.f_ware.mat,'metal',.4);applyCitySurface(MATS.f_glass.mat,'glass',.08)};
+const baseCityMaterials=initMaterials;initMaterials=function(){baseCityMaterials();for(const key of['roadC_h','roadC_v','roadH_h','roadH_v','asph'])applyCitySurface(MATS[key].mat,'asphalt',.7);for(const key of['roadD_h','roadD_v'])applyCitySurface(MATS[key].mat,'sand',.65);applyCitySurface(MATS.walk.mat,'concrete',.6);applyCitySurface(MATS.roof.mat,'rock',.5);for(const key of['f_deco','f_apt','f_stone','f_mission','f_hotel'])applyCitySurface(MATS[key].mat,'plaster',.3);applyCitySurface(MATS.f_brick.mat,'rock',.45);applyCitySurface(MATS.f_concrete.mat,'concrete',.5);applyCitySurface(MATS.f_office.mat,'plaster',.12);applyCitySurface(MATS.f_ware.mat,'metal',.4);applyCitySurface(MATS.f_glass.mat,'glass',.08)};
 const baseCityTerrain=buildTerrainMesh;buildTerrainMesh=function(){const before=new Set(world.children);baseCityTerrain();const o=world.children.find(o=>!before.has(o)&&o.isMesh&&o.geometry.attributes.position.count>1000);if(!o)return;const m=o.material,sand=terrainCityTexture('sand'),grass=terrainCityTexture('grass'),rock=terrainCityTexture('rock');applyCitySurface(m,'rock',.3);m.onBeforeCompile=shader=>{shader.uniforms.citySand={value:sand};shader.uniforms.cityGrass={value:grass};shader.uniforms.cityRock={value:rock};shader.uniforms.cityWater={value:WL};shader.vertexShader='varying vec3 cityWorld;varying float citySlope;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <worldpos_vertex>','#include <worldpos_vertex>\ncityWorld=(modelMatrix*vec4(transformed,1.)).xyz;citySlope=1.-abs(normal.y);');shader.fragmentShader='varying vec3 cityWorld;varying float citySlope;uniform sampler2D citySand,cityGrass,cityRock;uniform float cityWater;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
  vec3 sandD=texture2D(citySand,cityWorld.xz/5.).rgb;
  vec3 grassD=texture2D(cityGrass,cityWorld.xz/7.).rgb;
