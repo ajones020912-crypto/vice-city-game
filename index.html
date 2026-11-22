@@ -5129,14 +5129,17 @@ function speedingRoadAt(car,list){
  for(const r of list){if((r.o!=='h'&&r.o!=='v')||r.type==='dirt'||![r.a,r.b,r.c,r.w].every(Number.isFinite)||r.w<=0)continue;const along=r.o==='h'?car.x:car.z,lateral=Math.abs((r.o==='h'?car.z:car.x)-r.c),hw=Number.isFinite(r.hw)?r.hw:r.w/2;if(along<Math.min(r.a,r.b)||along>Math.max(r.a,r.b)||lateral>hw)continue;const alignment=r.o==='h'?Math.abs(Math.sin(h)):Math.abs(Math.cos(h)),rank=(1-alignment)*100+lateral/Math.max(1,hw);if(rank<score){best=r;score=rank;}}return best;
 }
 const speedingEnforcement={car:null,seconds:0,issued:false,warned:false};
-function resetSpeedingEnforcement(){speedingEnforcement.car=null;speedingEnforcement.seconds=0;speedingEnforcement.issued=false;speedingEnforcement.warned=false;}
+function resetSpeedingEnforcement(){speedingEnforcement.car=null;speedingEnforcement.seconds=0;speedingEnforcement.issued=false;speedingEnforcement.warned=false;speedingEnforcement.star=null;}
+// SPEEDING_ESCALATION_V2
+function speedingSecondsForStars(stars){return stars>=5?60:stars>=3?30:15;}
+function speedingCrimeThreshold(star){for(let crime=0;crime<=1000;crime++)if(starsFor(crime)>=star)return crime;return null;}
 function updateSpeedingEnforcement(dt){
  const state=speedingEnforcement,car=pl.car;if(!pl.alive||!car||car.dead||!car.t||car.t.boat||car.t.aircraft||pl.inside){resetSpeedingEnforcement();return;}if(G.state!=='play')return;
- const road=speedingRoadAt(car,roads);if(!road||!Number.isFinite(car.speed)){resetSpeedingEnforcement();return;}const limit=roadPostedSpeedLimit(road),mph=Math.abs(car.speed)*2.2369362920544;
- if(mph<=limit+1e-6){resetSpeedingEnforcement();return;}if(state.car!==car){resetSpeedingEnforcement();state.car=car;}
- if(!Number.isFinite(dt)||dt<=0||dt>.25)return;state.seconds+=dt;
- if(!state.warned&&state.seconds>=10){state.warned=true;toast('Slow down: '+limit+' mph limit. Speeding for over 15 seconds is a crime.',2600);}
- if(!state.issued&&state.seconds>15+1e-7){state.issued=true;addCrime(Math.max(1,1-(Number(pl.crime)||0)));toast('Speeding reported: '+limit+' mph limit.',2600);}
+ const road=speedingRoadAt(car,roads);if(!road||!Number.isFinite(car.speed)){resetSpeedingEnforcement();return;}const limit=roadPostedSpeedLimit(road),mph=Math.abs(car.speed)*2.2369362920544;if(mph<=limit+1e-6){resetSpeedingEnforcement();return;}
+ const stars=Math.max(0,Math.min(6,Math.floor(Number(pl.wanted)||0)));if(state.car!==car){resetSpeedingEnforcement();state.car=car;}if(state.star!==stars){state.seconds=0;state.warned=false;state.star=stars;}
+ if(!Number.isFinite(dt)||dt<=0||dt>.25)return;if(stars>0)pl.sightT=0;if(stars>=6){state.seconds=0;state.warned=false;return;}
+ const required=speedingSecondsForStars(stars);state.seconds+=dt;if(!state.warned&&state.seconds>=required-5){state.warned=true;toast('Slow down: '+limit+' mph limit. Another wanted star after '+required+' seconds of speeding.',2600);}
+ if(state.seconds>required+1e-7){const target=stars+1,threshold=speedingCrimeThreshold(target);if(threshold===null)return;const crime=Number(pl.crime)||0,points=Math.max(0,threshold-crime);addCrime(points);state.seconds=0;state.warned=false;state.star=Math.max(0,Math.min(6,Math.floor(Number(pl.wanted)||0)));toast('Speeding reported: '+limit+' mph limit.',2600);}
 }
 const speedingNativeSimulate=simulate;simulate=function(dt){const result=speedingNativeSimulate.apply(this,arguments);updateSpeedingEnforcement(Number.isFinite(G.rdt)?G.rdt:dt);return result;};
 const speedingNativeClearWanted=clearWanted;clearWanted=function(){resetSpeedingEnforcement();return speedingNativeClearWanted.apply(this,arguments);};
