@@ -10,7 +10,7 @@
  const originalBuild=api.build;let printTexture=null;
  const looks={
   jasonC:{referenceLead:'jason',name:'Jason',realistic:true,skin:0xc98e68,hair:0x2d211b,hairStyle:'short',beard:false,jacket:null,top:{kind:'tee',color:0x626a68},legs:{kind:'trousers',color:0x6a593f},shoes:{kind:'boots',color:0x594735,sole:0x29231e},extras:['watch']},
-  luciaC:{referenceLead:'lucia',name:'Lucia',realistic:true,female:true,luciaSummer:true,build:'slim',skin:0xa06c4d,hair:0x24150f,hairStyle:'referencePonytail',jacket:null,top:{kind:'tank',color:0x762b3d},legs:{kind:'shorts',color:0x466f98,highWaist:true},shoes:{color:0xf8f4ee,sole:0xe2e2e2,accent:0x9b5961},extras:['hoops','bracelets','ring','necklace']}
+  luciaC:{referenceLead:'lucia',name:'Lucia',realistic:true,female:true,luciaSummer:true,build:'slim',skin:0x8f5e40,hair:0x24150f,hairStyle:'referencePonytail',jacket:null,top:{kind:'tank',color:0x762b3d},legs:{kind:'shorts',color:0x466f98,highWaist:true},shoes:{color:0xf8f4ee,sole:0xe2e2e2,accent:0x9b5961},extras:['hoops','bracelets','ring','necklace']}
  };
  for(const id of Object.keys(looks))api.DESIGNS[id]=Object.assign({},api.DESIGNS[id],looks[id]);
  function add(T,parent,geometry,material,name,x=0,y=0,z=0){const mesh=new T.Mesh(geometry,material);mesh.name=name;mesh.position.set(x,y,z);mesh.castShadow=true;parent.add(mesh);return mesh}
