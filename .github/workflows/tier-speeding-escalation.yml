@@ -1,0 +1,65 @@
+name: Tiered continuous speeding wanted escalation
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/tier-speeding-escalation.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: speeding-enforcement
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/tier-speeding" --no-package-lock --ignore-scripts acorn@8
+      - name: Prepare and test tiered escalation using the native crime function
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/tier-speeding/node_modules/acorn');let html=fs.readFileSync('index.html','utf8');if(html.includes('// SPEEDING_ESCALATION_V2'))process.exit(0);if(!html.includes('// SPEEDING_ENFORCEMENT_V1'))throw Error('Base speeding enforcement must be installed first');
+          function walk(n,fn){fn(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,fn);}else if(v&&typeof v.type==='string')walk(v,fn);}}
+          const found=[];for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;const ast=acorn.parse(m[1],{ecmaVersion:'latest'}),functions={},variables={};walk(ast,n=>{if(n.type==='FunctionDeclaration'&&n.id)functions[n.id.name]=n;if(n.type==='VariableDeclarator'&&n.id.type==='Identifier')variables[n.id.name]=n;});if(functions.updateSpeedingEnforcement)found.push({m,functions,variables});}
+          if(found.length!==1)throw Error('Expected exactly one speeding updater');const c=found[0],src=c.m[1];for(const name of ['updateSpeedingEnforcement','resetSpeedingEnforcement','speedingRoadAt','roadPostedSpeedLimit','addCrime'])if(!c.functions[name])throw Error('Missing required hook: '+name);for(const name of ['starsFor','speedingEnforcement'])if(!c.variables[name]||!c.variables[name].init)throw Error('Missing required state: '+name);
+          const reset=String.raw`function resetSpeedingEnforcement(){speedingEnforcement.car=null;speedingEnforcement.seconds=0;speedingEnforcement.issued=false;speedingEnforcement.warned=false;speedingEnforcement.star=null;}`;
+          const update=String.raw`// SPEEDING_ESCALATION_V2
+          function speedingSecondsForStars(stars){return stars>=5?60:stars>=3?30:15;}
+          function speedingCrimeThreshold(star){for(let crime=0;crime<=1000;crime++)if(starsFor(crime)>=star)return crime;return null;}
+          function updateSpeedingEnforcement(dt){
+           const state=speedingEnforcement,car=pl.car;if(!pl.alive||!car||car.dead||!car.t||car.t.boat||car.t.aircraft||pl.inside){resetSpeedingEnforcement();return;}if(G.state!=='play')return;
+           const road=speedingRoadAt(car,roads);if(!road||!Number.isFinite(car.speed)){resetSpeedingEnforcement();return;}const limit=roadPostedSpeedLimit(road),mph=Math.abs(car.speed)*2.2369362920544;if(mph<=limit+1e-6){resetSpeedingEnforcement();return;}
+           const stars=Math.max(0,Math.min(6,Math.floor(Number(pl.wanted)||0)));if(state.car!==car){resetSpeedingEnforcement();state.car=car;}if(state.star!==stars){state.seconds=0;state.warned=false;state.star=stars;}
+           if(!Number.isFinite(dt)||dt<=0||dt>.25)return;if(stars>0)pl.sightT=0;if(stars>=6){state.seconds=0;state.warned=false;return;}
+           const required=speedingSecondsForStars(stars);state.seconds+=dt;if(!state.warned&&state.seconds>=required-5){state.warned=true;toast('Slow down: '+limit+' mph limit. Another wanted star after '+required+' seconds of speeding.',2600);}
+           if(state.seconds>required+1e-7){const target=stars+1,threshold=speedingCrimeThreshold(target);if(threshold===null)return;const crime=Number(pl.crime)||0,points=Math.max(0,threshold-crime);addCrime(points);state.seconds=0;state.warned=false;state.star=Math.max(0,Math.min(6,Math.floor(Number(pl.wanted)||0)));toast('Speeding reported: '+limit+' mph limit.',2600);}
+          }`;
+          const functionSource=name=>{const n=c.functions[name];return src.slice(n.start,n.end);},variableSource=name=>{const n=c.variables[name];return 'const '+name+'='+src.slice(n.init.start,n.init.end)+';';};
+          const testCode=variableSource('starsFor')+'\n'+variableSource('speedingEnforcement')+'\n'+['roadPostedSpeedLimit','speedingRoadAt','addCrime'].map(functionSource).join('\n')+'\n'+reset+'\n'+update;acorn.parse(testCode,{ecmaVersion:'latest'});
+          function setup(stars=0,fps=60){const player={alive:true,inside:null,car:{x:100,z:0,h:Math.PI/2,speed:80/2.2369362920544,t:{}},wanted:stars,crime:0,sightT:0,heat:{},weapon:'fists',profScore:0},g={state:'play'},ctx={pl:player,G:g,roads:[{o:'h',a:-1000,b:1000,c:0,w:12}],toast(){},updateProfile(){}};vm.createContext(ctx);vm.runInContext(testCode,ctx);player.crime=ctx.speedingCrimeThreshold(stars);assert(player.crime!==null);return {ctx,player,g,step:()=>ctx.updateSpeedingEnforcement(1/fps),tick:n=>{for(let i=0;i<n;i++)ctx.updateSpeedingEnforcement(1/fps);},seconds:()=>vm.runInContext('speedingEnforcement.seconds',ctx)};}
+          let cases=0;for(const fps of [30,60,120])for(let stars=0;stars<6;stars++){const s=setup(stars,fps),required=s.ctx.speedingSecondsForStars(stars);s.tick(required*fps);assert(s.player.wanted===stars,'Escalated before the complete interval');s.step();assert(s.player.wanted===stars+1,'Did not add exactly one star');assert(s.seconds()===0,'Timer did not restart');cases++;}
+          for(const fps of [30,60,120]){const s=setup(0,fps);for(let stars=0;stars<6;stars++){s.tick(s.ctx.speedingSecondsForStars(stars)*fps+1);assert(s.player.wanted===stars+1,'Continuous escalation failed');}const crime=s.player.crime;s.tick(120*fps);assert(s.player.wanted===6&&s.player.crime===crime,'Exceeded six-star cap');cases++;}
+          for(const stars of [0,3,5]){const s=setup(stars),required=s.ctx.speedingSecondsForStars(stars);s.tick((required-1)*60);s.player.car.speed=55/2.2369362920544;s.step();assert(s.seconds()===0);s.player.car.speed=80/2.2369362920544;s.tick((required-1)*60);assert(s.player.wanted===stars);s.g.state='paused';const before=s.seconds();s.tick(120*60);assert(s.seconds()===before&&s.player.wanted===stars);s.g.state='play';s.tick(2*60);assert(s.player.wanted===stars+1);cases++;}
+          {const s=setup(0);s.tick(14*60);s.player.wanted=3;s.player.crime=s.ctx.speedingCrimeThreshold(3);s.tick(29*60);assert(s.player.wanted===3);s.tick(2*60);assert(s.player.wanted===4);cases++;}
+          for(const flag of ['boat','aircraft']){const s=setup();s.player.car.t[flag]=true;s.tick(120*60);assert(s.player.wanted===0&&s.seconds()===0);cases++;}
+          {const s=setup(3);s.player.sightT=12;s.step();assert(s.player.sightT===0);s.player.car.speed=0;s.player.sightT=3;s.step();assert(s.player.sightT===3,'Normal search timing modified while not speeding');s.player.car.speed=80/2.2369362920544;s.player.car.z=100;s.tick(120*60);assert(s.player.wanted===3&&s.seconds()===0);s.player.car.z=0;s.ctx.updateSpeedingEnforcement(60);assert(s.seconds()===0);s.ctx.resetSpeedingEnforcement();assert(s.seconds()===0);cases++;}
+          for(const limit of [55,65,75]){const s=setup();s.ctx.roads[0].type=limit===75?'hwy':'street';s.ctx.roads[0].w=limit===65?24:12;s.player.car.speed=limit/2.2369362920544;s.tick(120*60);assert(s.player.wanted===0);s.player.car.speed=(limit+1)/2.2369362920544;s.tick(16*60);assert(s.player.wanted===1);cases++;}
+          const edits=[{node:c.functions.resetSpeedingEnforcement,text:reset},{node:c.functions.updateSpeedingEnforcement,text:update}];let code=src;for(const e of edits.sort((a,b)=>b.node.start-a.node.start))code=code.slice(0,e.node.start)+e.text+code.slice(e.node.end);acorn.parse(code,{ecmaVersion:'latest'});const offset=c.m.index+c.m[0].indexOf(src);html=html.slice(0,offset)+code+html.slice(offset+src.length);for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(m[1].trim())acorn.parse(m[1],{ecmaVersion:'latest'});
+          fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/speeding-enforcement-check.json',JSON.stringify({passed:true,version:2,cases,limitsMph:[55,65,75],intervalSeconds:{stars0to2:15,stars3to4:30,stars5:60},continuousEscalation:true,oneStarPerInterval:true,maximumStars:6,timerRestartsOnStarChange:true,legalSpeedResetsTimer:true,pauseExcluded:true,boatsAndAircraftExcluded:true,nativeCrimeFunctionTested:true,holdsSearchTimerOnlyWhileActivelySpeeding:true,scope:'Deterministic timing and native crime-function tests; browser gameplay and live deployment not yet verified.'},null,2)+'\n');fs.writeFileSync('index.html',html);
+          JS
+      - name: Publish only checked integration against unchanged main
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html status/speeding-enforcement-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Escalate continuous speeding by one star using 15, 30, and 60 second tiers'
+          git push origin HEAD:main
