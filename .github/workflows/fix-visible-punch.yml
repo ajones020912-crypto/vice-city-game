@@ -1,8 +1,8 @@
-name: Fix damage without visible punch swing
+name: One handed wind-up punch and confirmed-hit blood
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/fix-visible-punch.yml', 'js/punch-visual-fix.js']
+    paths: ['.github/workflows/fix-visible-punch.yml', 'js/one-hand-hit.js']
   workflow_dispatch:
 permissions:
   contents: write
@@ -18,62 +18,42 @@ jobs:
         with:
           node-version: '20'
       - run: npm install --prefix "$RUNNER_TEMP/punch-fix" --no-package-lock --ignore-scripts acorn@8 three@0.128.0
-      - name: Link visual playback without editing damage or attack functions
+      - name: Integrate one-arm animation and confirmed-damage particles
         run: |
           node <<'JS'
-          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/punch-fix/node_modules/acorn');
-          let html=fs.readFileSync('index.html','utf8');const candidates=[];
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/punch-fix/node_modules/acorn');let html=fs.readFileSync('index.html','utf8');const found=[];
           function walk(n,p,visit){visit(n,p);for(const v of Object.values(n)){if(Array.isArray(v)){for(const q of v)if(q&&typeof q.type==='string')walk(q,n,visit);}else if(v&&typeof v.type==='string')walk(v,n,visit);}}
-          for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;const ast=acorn.parse(m[1],{ecmaVersion:'latest'}),boots=[],flow=[];let native='';walk(ast,null,(n,p)=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='animHuman')native=m[1].slice(n.start,n.end);if(n.type==='CallExpression'&&n.callee.type==='Identifier'&&n.callee.name==='boot'&&p.type==='ExpressionStatement')boots.push(p.start);if(n.type==='CallExpression'&&n.callee.type==='Identifier'&&n.callee.name==='animHuman'&&n.arguments[2]&&n.arguments[2].type==='ObjectExpression'){const arg=n.arguments[2],prop=arg.properties.find(q=>q.key&&(q.key.name||q.key.value)==='punch');if(prop)flow.push({punch:m[1].slice(prop.value.start,prop.value.end),state:m[1].slice(arg.start,arg.end)});}});if(native)candidates.push({m,boots,flow,native});}
-          if(candidates.length!==1)throw Error('Expected one native animHuman; no patch written');
-          const c=candidates[0];fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/punch-animation-source.js',c.native);fs.writeFileSync('status/punch-state-flow.json',JSON.stringify(c.flow,null,2));fs.writeFileSync('/tmp/punch-native.js',c.native);
-          if(!c.flow.some(f=>/\bpl\b/.test(f.state)))throw Error('Player punch-state input needs investigation; source diagnostics saved, no game patch written');
-          if(html.includes('// VISIBLE_PUNCH_FIX_V1'))process.exit(0);
-          if(c.boots.length!==1)throw Error('Cannot identify one actual boot statement');
-          const hook="// VISIBLE_PUNCH_FIX_V1\nif(!window.VCVisiblePunch)throw Error('Punch animation module missing');\nanimHuman=window.VCVisiblePunch.wrap(animHuman);\n";
-          const code=c.m[1].slice(0,c.boots[0])+hook+c.m[1].slice(c.boots[0]);acorn.parse(code,{ecmaVersion:'latest'});
-          const offset=c.m.index+c.m[0].indexOf(c.m[1]);html=html.slice(0,offset)+code+html.slice(offset+c.m[1].length);html=html.slice(0,c.m.index)+'<script src="js/punch-visual-fix.js?v=1"></script>\n'+html.slice(c.m.index);
-          for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(m[1].trim())acorn.parse(m[1],{ecmaVersion:'latest'});
-          fs.writeFileSync('index.html',html);
+          for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;const ast=acorn.parse(m[1],{ecmaVersion:'latest'}),functions={},boots=[];walk(ast,null,(n,p)=>{if(n.type==='FunctionDeclaration'&&n.id)functions[n.id.name]=m[1].slice(n.start,n.end);if(n.type==='CallExpression'&&n.callee.type==='Identifier'&&n.callee.name==='boot'&&p.type==='ExpressionStatement')boots.push(p.start);});if(functions.animHuman)found.push({m,functions,boots});}
+          if(found.length!==1)throw Error('Expected one native animator');const c=found[0];fs.mkdirSync('status',{recursive:true});for(const name of ['animHuman','hurtPed','simulate','newGame']){if(!c.functions[name])throw Error('Missing native hook: '+name);fs.writeFileSync('status/one-hand-'+name+'.js',c.functions[name]);}fs.writeFileSync('/tmp/punch-native.js',c.functions.animHuman);
+          if(html.includes('// ONE_HAND_HIT_V1'))process.exit(0);if(c.boots.length!==1)throw Error('Expected one boot statement');
+          const hook="// ONE_HAND_HIT_V1\nif(!window.VCOneHandHit)throw Error('One-hand punch module missing');\nanimHuman=window.VCOneHandHit.wrap(animHuman);\nconst oneHandBlood=window.VCOneHandHit.createBlood(T,world,intGroup);\nhurtPed=window.VCOneHandHit.wrapDamage(hurtPed,{player:()=>pl,position:p=>({x:p.x,y:(Number.isFinite(p.y)?p.y:pl.inside?pl.y:heightAt(p.x,p.z))+1.25,z:p.z}),emit:(p,d,inside)=>oneHandBlood.emit(p,d,inside)});\nconst originalOneHandSimulate=simulate;simulate=function(dt){const r=originalOneHandSimulate.apply(this,arguments);oneHandBlood.update(dt);return r;};\nconst originalOneHandNewGame=newGame;newGame=function(){oneHandBlood.clear();return originalOneHandNewGame.apply(this,arguments);};\n";
+          const code=c.m[1].slice(0,c.boots[0])+hook+c.m[1].slice(c.boots[0]);acorn.parse(code,{ecmaVersion:'latest'});const offset=c.m.index+c.m[0].indexOf(c.m[1]);html=html.slice(0,offset)+code+html.slice(offset+c.m[1].length);html=html.slice(0,c.m.index)+'<script src="js/one-hand-hit.js?v=1"></script>\n'+html.slice(c.m.index);for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(m[1].trim())acorn.parse(m[1],{ecmaVersion:'latest'});fs.writeFileSync('index.html',html);
           JS
-      - name: Test actual rigs and animator across timer directions and frame rates
+      - name: Test actual character rigs and hit-particle behavior
         run: |
           node <<'JS'
-          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/punch-fix/node_modules/three');
-          const c={window:{},console,Math,T,clamp:(x,a,b)=>Math.max(a,Math.min(b,x))};vm.createContext(c);for(const p of ['js/characters.js','js/reference-characters.js','/tmp/punch-native.js','js/punch-visual-fix.js'])vm.runInContext(fs.readFileSync(p,'utf8'),c);
-          const animate=c.window.VCVisiblePunch.wrap(c.animHuman);let cases=0;
-          for(const id of ['jasonC','luciaC'])for(const merge of [false,true])for(const fps of [30,60,120])for(const mode of ['rising','falling','held','seconds']){
-           const h=c.window.VCCharacters.build(T,id,{merge}),u=h.userData,refs=u.A.map(a=>({sh:a.sh,el:a.el}));let extension=0,zmin=Infinity,zmax=-Infinity;
-           for(let attack=0;attack<2;attack++){
-            animate(h,1/fps,{speed:0,punch:0,weapon:null});
-            for(let i=0;i<Math.ceil(.55*fps);i++){const elapsed=i/fps,on=elapsed<.30,p=on?(mode==='rising'?Math.max(.001,elapsed/.30):mode==='falling'?1-elapsed/.30:mode==='seconds'?.30-elapsed:1):0;animate(h,1/fps,{speed:0,punch:p,weapon:'fists',aim:true});h.updateMatrixWorld(true);extension=Math.min(extension,...u.A.map(a=>a.sh.rotation.x));const hand=new T.Vector3(0,-.30,0).applyMatrix4(u.A[attack===0?1:0].el.matrixWorld);zmin=Math.min(zmin,hand.z);zmax=Math.max(zmax,hand.z);}
-           }
-           assert(extension<-1.15,'No visible arm extension: '+id+' '+mode);assert(zmax-zmin>.15,'Fist did not travel');assert(animate.getPunchState(h).serial===2,'Punch retriggered or was lost');assert(!animate.getPunchState(h).active,'Punch did not recover');
-           for(let i=0;i<2;i++)assert(u.A[i].sh===refs[i].sh&&u.A[i].el===refs[i].el);
-           animate(h,1/fps,{speed:0,punch:0,weapon:'pistol',aim:true});assert(Math.abs(u.A[1].sh.rotation.x+1.5)<1e-5,'Gun aim changed');
-           animate(h,1/fps,{speed:0,punch:1,weapon:null});animate(h,1/fps,{speed:0,punch:0,dead:true});assert(!animate.getPunchState(h).active,'Death did not cancel swing');
-           for(const a of u.A)for(const j of [a.sh,a.el])assert(j.rotation.toArray().slice(0,3).every(Number.isFinite));cases++;
-          }
-          fs.writeFileSync('status/punch-fix-check.json',JSON.stringify({passed:true,cases,rigs:['jasonC','luciaC'],timerModes:['rising','falling','held','seconds'],fps:[30,60,120],scope:'Actual character rigs and native animator; visual layer only. Live input and Render deployment not verified.'},null,2)+'\n');
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/punch-fix/node_modules/three');const c={window:{},console,Math,T,clamp:(x,a,b)=>Math.max(a,Math.min(b,x))};vm.createContext(c);for(const p of ['js/characters.js','js/reference-characters.js','/tmp/punch-native.js','js/punch-visual-fix.js','js/one-hand-hit.js'])vm.runInContext(fs.readFileSync(p,'utf8'),c);const api=c.window.VCOneHandHit,animate=api.wrap(c.window.VCVisiblePunch.wrap(c.animHuman));let cases=0;
+          for(const id of ['jasonC','luciaC'])for(const merge of [false,true])for(const fps of [30,60,120])for(const mode of ['rising','falling','held','seconds']){const h=c.window.VCCharacters.build(T,id,{merge}),u=h.userData;let wind=0,strike=0,guard=0;for(let attack=0;attack<2;attack++){animate(h,1/fps,{speed:0,punch:0,weapon:null});for(let i=0;i<Math.ceil(.55*fps);i++){const e=i/fps,p=e<.3?(mode==='rising'?Math.max(.001,e/.3):mode==='falling'?1-e/.3:mode==='seconds'?.3-e:1):0;animate(h,1/fps,{speed:0,punch:p,weapon:null});if(animate.getPunchState(h).active){wind=Math.max(wind,u.A[1].sh.rotation.x);strike=Math.min(strike,u.A[1].sh.rotation.x);guard=Math.max(guard,Math.abs(u.A[0].sh.rotation.x));}h.updateMatrixWorld(true);}}assert(wind>.15&&strike<-1.3&&guard<1,'Wind-up, one-hand strike or guard failed');assert(animate.getPunchState(h).serial===2&&!animate.getPunchState(h).active);animate(h,1/fps,{speed:0,punch:0,weapon:'pistol',aim:true});assert(Math.abs(u.A[1].sh.rotation.x+1.5)<1e-5);animate(h,1/fps,{speed:0,punch:1,weapon:null});animate(h,1/fps,{speed:0,punch:0,dead:true});assert(!animate.getPunchState(h).active);cases++;}
+          const world=new T.Group(),interior=new T.Group(),fx=api.createBlood(T,world,interior),player={x:0,z:0,inside:null},target={x:1,y:0,z:1,hp:100,dead:false};let calls=0;const original=function(p,d){calls++;assert(this===target);p.hp-=d;return 'native-return';},hurt=api.wrapDamage(original,{player:()=>player,position:p=>({x:p.x,y:1.25,z:p.z}),emit:(p,d,i)=>fx.emit(p,d,i)});assert(hurt.call(target,target,10,0,0,'punch',true)==='native-return');assert(target.hp===90&&fx.count()===8&&calls===1);hurt.call(target,target,0,0,0,'punch',true);hurt.call(target,target,10,0,0,'gun',true);hurt.call(target,target,10,0,0,'punch',false);assert(fx.count()===8);player.inside={};hurt.call(target,target,10,0,0,'punch',true);assert(fx.count()===16&&world.children.length===1&&interior.children.length===1);for(let i=0;i<100;i++)fx.emit({x:0,y:1,z:0},{x:1,z:0},false);assert(fx.count()<=160);for(const group of [world,interior])group.traverse(o=>{if(o.isPoints)assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));});for(let i=0;i<60;i++)fx.update(1/60);assert(fx.count()===0);fx.emit({x:0,y:1,z:0},{x:1,z:0},false);fx.clear();assert(fx.count()===0);fs.writeFileSync('status/one-hand-hit-check.json',JSON.stringify({passed:true,animationCases:cases,rightHandOnly:true,windup:true,guard:true,bloodOnConfirmedPlayerPunchOnly:true,damageAndReturnsPreserved:true,particlePoolingAndCleanup:true,scope:'Actual rigs and native animator plus hit-wrapper/particle tests. Live deployment not verified.'},null,2)+'\n');
           JS
-      - name: Publish only a tested game integration
+      - name: Publish only a tested integration
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git rm -f --ignore-unmatch status/punch-install-failed.txt
-          git add -- index.html status/punch-animation-source.js status/punch-state-flow.json status/punch-fix-check.json
+          git rm -f --ignore-unmatch status/one-hand-install-failed.txt
+          git add -- index.html status/one-hand-animHuman.js status/one-hand-hurtPed.js status/one-hand-simulate.js status/one-hand-newGame.js status/one-hand-hit-check.json
           git diff --cached --quiet && exit 0
-          git commit -m 'Restore visible alternating punch swings without changing damage or cooldowns'
+          git commit -m 'Add visible right-hand wind-up punches and brief blood particles on confirmed melee hits'
           git push origin HEAD:main
-      - name: Save diagnostics if source or rig checks fail
+      - name: Preserve diagnostics without publishing a failed integration
         if: ${{ failure() }}
         run: |
           git restore --source=HEAD -- index.html
-          test -f status/punch-animation-source.js || exit 0
-          printf 'Punch integration checks failed in Actions run %s; this step does not publish index.html.\n' "$GITHUB_RUN_ID" > status/punch-install-failed.txt
+          test -f status/one-hand-newGame.js || exit 0
+          printf 'One-hand hit checks failed in Actions run %s; this step does not publish index.html.\n' "$GITHUB_RUN_ID" > status/one-hand-install-failed.txt
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add -- status/punch-animation-source.js status/punch-state-flow.json status/punch-install-failed.txt
+          git add -- status/one-hand-animHuman.js status/one-hand-hurtPed.js status/one-hand-simulate.js status/one-hand-newGame.js status/one-hand-install-failed.txt
           git diff --cached --quiet && exit 0
-          git commit -m 'Save punch animation and state-flow diagnostics for failed integration'
+          git commit -m 'Save native melee and animation diagnostics after failed one-hand hit checks'
           git push origin HEAD:main
