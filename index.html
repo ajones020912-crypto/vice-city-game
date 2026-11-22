@@ -2174,14 +2174,18 @@ setHumanLook=function(h,o){
  if(d!=='fisherman'&&o.hair!=null)m.hair.color.setHex(o.hair);
 };
 // animate: s={speed,aim,punch,dead,weapon}
-function applyLuciaPunchV4(u,p){
+function applyLeadLeanPunch(u,p){
  if(!u._luciaPunchActive||p>(u._luciaPunchLast||0)+.05){u._luciaPunchActive=true;u._luciaPunchStart=Math.max(.001,p);u._luciaPunchSerial=(u._luciaPunchSerial||0)+1;u._luciaPunchArm=(u._luciaPunchSerial-1)%2;}
- u._luciaPunchLast=p;const t=Math.max(0,Math.min(1,1-p/u._luciaPunchStart)),frames=[[0,-.65,-1.45,.05,.02,.02],[.18,-.42,-1.55,.18,.08,.02],[.40,-1.60,-.12,-.28,-.12,.13],[.52,-1.55,-.17,-.30,-.12,.12],[.78,-.80,-1.4,.01,0,.03],[1,0,-.15,0,0,0]];
- let k=0;while(k<frames.length-2&&t>frames[k+1][0])k++;const a=frames[k],b=frames[k+1],r=Math.max(0,Math.min(1,(t-a[0])/(b[0]-a[0]))),ease=r*r*(3-2*r),q=a.map((v,i)=>v+(b[i]-v)*ease),w=Math.min(1,t/.12)*Math.min(1,(1-t)/.15),arm=u._luciaPunchArm,sign=arm===1?1:-1,hit=u.A[arm],guard=u.A[1-arm];
+ u._luciaPunchLast=p;
+ const t=Math.max(0,Math.min(1,1-p/u._luciaPunchStart));
+ const frames=[[0,-.60,-1.30,.02,.01,0],[.20,-.40,-1.55,.22,.08,-.24],[.30,-.65,-1.10,.15,.04,-.12],[.46,-1.62,-.08,-.32,-.12,.20],[.55,-1.58,-.12,-.30,-.11,.17],[.78,-.85,-1.30,.04,.02,-.04],[1,0,-.15,0,0,0]];
+ let k=0;while(k<frames.length-2&&t>frames[k+1][0])k++;
+ const a=frames[k],b=frames[k+1],r=Math.max(0,Math.min(1,(t-a[0])/(b[0]-a[0]))),ease=r*r*(3-2*r),q=a.map((v,i)=>v+(b[i]-v)*ease),w=Math.min(1,t/.10)*Math.min(1,(1-t)/.15),arm=u._luciaPunchArm,sign=arm===1?1:-1,hit=u.A[arm],guard=u.A[1-arm];
  const blend=(x,y)=>x+(y-x)*w;
  hit.sh.rotation.x=blend(hit.sh.rotation.x,q[1]);hit.sh.rotation.y=blend(hit.sh.rotation.y,0);hit.sh.rotation.z=blend(hit.sh.rotation.z,-sign*.10);hit.el.rotation.x=blend(hit.el.rotation.x,q[2]);
- guard.sh.rotation.x=blend(guard.sh.rotation.x,-.78);guard.sh.rotation.z=blend(guard.sh.rotation.z,sign*.13);guard.el.rotation.x=blend(guard.el.rotation.x,-1.35);
+ guard.sh.rotation.x=blend(guard.sh.rotation.x,-.85);guard.sh.rotation.z=blend(guard.sh.rotation.z,sign*.13);guard.el.rotation.x=blend(guard.el.rotation.x,-1.40);
  u.spine.rotation.y+=sign*q[3]*w;u.hips.rotation.y+=sign*q[4]*w;u.spine.rotation.x+=q[5]*w;
+ if(u.headP)u.headP.rotation.x-=q[5]*w*.35;
 }
 function animHuman(h,dt,s){
  const u=h.userData,{hips,spine,A,Lg}=u;
@@ -2263,7 +2267,7 @@ function animHuman(h,dt,s){
   A[0].sh.rotation.set(-1.25-(long?.1:0),0,long?.35:.5);A[0].el.rotation.x=-.4;
   spine.rotation.x=.04;
  }else if(s.punch>0){
-  if(u.referenceLead==='luciaC'){applyLuciaPunchV4(u,s.punch);}else{
+  if(u.referenceLead==='luciaC'||u.referenceLead==='jasonC'){applyLeadLeanPunch(u,s.punch);}else{
   const p=Math.sin(Math.min(s.punch,1)*Math.PI);
   A[1].sh.rotation.set(-1.45*p,0,-.1);A[1].el.rotation.x=-.2-.1*p;
   A[0].sh.rotation.x=.4*p;spine.rotation.y=-.5*p;
