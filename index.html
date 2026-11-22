@@ -479,7 +479,7 @@ function resizePost(){
 }
 // ---------- Ultra: live reflection probe at the player for car paint and glass ----------
 const ultraCubeRT=new T.WebGLCubeRenderTarget(128,{format:T.RGBFormat,generateMipmaps:true,minFilter:T.LinearMipmapLinearFilter,encoding:T.sRGBEncoding});
-const ultraCube=new T.CubeCamera(.5,450,ultraCubeRT);
+const ultraCube=new T.CubeCamera(.5,140,ultraCubeRT); // near objects only: far ones are fog in the paint anyway, and culling them keeps probe frames cheap
 let ultraNext=0,ultraOn=false;
 function ultraMats(){return Object.values(paintCache).concat([glassMat])}
 function setUltraReflections(on){ultraOn=on;for(const m of ultraMats()){m.envMap=on?ultraCubeRT.texture:null;m.needsUpdate=true}ultraNext=0}
@@ -3620,7 +3620,18 @@ function updateHUD(dt){hudT-=dt;
 // ================= INPUT HANDLING =================
 function pauseGame(on){if(G.state==='play'&&on){G.state='paused';mouseDown=false;for(const k in keys)keys[k]=false;$('#pause').style.display='grid';$('#pQual').textContent='Quality: '+['Low','Medium','High','Ultra'][G.quality];if(mouseLocked)document.exitPointerLock?.()}else if(G.state==='paused'&&!on){G.state='play';$('#pause').style.display='none';requestGameMouseLock()}refreshMousePrompt()}
 
-function setQuality(q){G.quality=q;const pr=[.75,1,Math.min(devicePixelRatio,1.5),Math.min(devicePixelRatio,1.5)][q];renderer.setPixelRatio(pr);renderer.setSize(innerWidth,innerHeight);pU.vh.value=innerHeight*pr;
+// ULTRA_DYNRES_V1: Ultra drops render resolution when the GPU can't hold the frame cap, so the camera stays responsive
+const ultraRes={max:1,cur:1,avg:33,t:0};
+function ultraAdapt(ms){
+ if(G.quality<3||G.state!=='play'){ultraRes.avg=33;ultraRes.t=0;return}
+ ultraRes.avg+=(Math.min(ms,120)-ultraRes.avg)*.08;ultraRes.t+=ms;
+ if(ultraRes.t<1500)return;
+ let n=ultraRes.cur;
+ if(ultraRes.avg>FRAME_MS*1.2&&n>.6)n=Math.max(.6,n-.15);
+ else if(ultraRes.avg<FRAME_MS*1.05&&n<ultraRes.max)n=Math.min(ultraRes.max,n+.1);
+ if(n!==ultraRes.cur){ultraRes.cur=n;renderer.setPixelRatio(n);renderer.setSize(innerWidth,innerHeight);pU.vh.value=innerHeight*n;resizePost();ultraRes.t=-1000}else ultraRes.t=0;
+}
+function setQuality(q){G.quality=q;let pr=[.75,1,Math.min(devicePixelRatio,1.5),Math.min(devicePixelRatio,1.5)][q];if(q===3){ultraRes.max=ultraRes.cur=pr;ultraRes.avg=33;ultraRes.t=0}renderer.setPixelRatio(pr);renderer.setSize(innerWidth,innerHeight);pU.vh.value=innerHeight*pr;
  sun.castShadow=q>0;sun.shadow.mapSize.set([512,1024,2048,2048][q],[512,1024,2048,2048][q]);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null}renderer.shadowMap.needsUpdate=true;scene.fog.far=[900,1200,1600,2000][q];resizePost();setUltraReflections(q>=3);setUltraCarLights(q>=3)}
 function nearestDoor(){if(pl.inside||pl.car)return null;let b=null,bd=3.6;for(const d of doors){const q=Math.hypot(d.x-pl.x,d.z-pl.z);if(q<bd){bd=q;b=d}}return b}
 function onKey(k,e){
@@ -3800,7 +3811,7 @@ function updateSpeedo(c){const t=c.t,km=Math.max(0,Math.round(c.speed*3.6)),mph=
  if(L.hp!==hp){L.hp=hp;const e=$('#spHp');e.style.width=hp+'%';e.classList.toggle('low',hp<30)}}
 // Frame cap: the game updates and draws at most 30 times a second, on a fixed schedule so 60/120/144 Hz screens all get a steady 30.
 const FPS_CAP=30,FRAME_MS=1000/FPS_CAP;let nextFrameAt=0;
-function frame(now){requestAnimationFrame(frame);if(now<nextFrameAt-1.5)return;nextFrameAt=Math.max(nextFrameAt+FRAME_MS,now);const rdt=Math.min((now-last)/1000,.05);last=now;G.rdt=rdt;
+function frame(now){requestAnimationFrame(frame);if(now<nextFrameAt-1.5)return;nextFrameAt=Math.max(nextFrameAt+FRAME_MS,now);const rdt=Math.min((now-last)/1000,.05);ultraAdapt(now-last);last=now;G.rdt=rdt;
  const dt=rdt*((pl.focusT>0&&G.state==='play')?.45:G.state==='dead'?.35:1);updateFx(rdt);
  try{
  if(G.state==='play'||G.state==='dead'){simulate(dt);updateParticles(dt);updateTracers(dt);updateCamera(dt);updateHUD(dt);if(!pl.inside)updateSignals(G.time);drawMini();
