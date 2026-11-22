@@ -5490,6 +5490,57 @@ function updateSpeedingEnforcement(dt){
  if(state.seconds>required+1e-7){const target=stars+1,threshold=speedingCrimeThreshold(target);if(threshold===null)return;const crime=Number(pl.crime)||0,points=Math.max(0,threshold-crime);addCrime(points);state.seconds=0;state.warned=false;state.star=Math.max(0,Math.min(6,Math.floor(Number(pl.wanted)||0)));toast('Speeding reported: '+limit+' mph limit.',2600);}
 }
 const speedingNativeSimulate=simulate;simulate=function(dt){const result=speedingNativeSimulate.apply(this,arguments);updateSpeedingEnforcement(Number.isFinite(G.rdt)?G.rdt:dt);return result;};
+// RACE_TRACK_V1: while a race runs, side streets onto the route get black-and-yellow barricades (solid), traffic and
+// pedestrians are kept off the track, and speeding / red-light rules are suspended.
+const RT={race:null,rects:[],cols:[],meshes:[],clearT:0};
+const raceOn=()=>!!(SJ&&SJ.kind==='race'&&SJ.race);
+function rtTex(){if(rtTex.t)return rtTex.t;const c=document.createElement('canvas');c.width=128;c.height=32;const x=c.getContext('2d');x.fillStyle='#f5c400';x.fillRect(0,0,128,32);x.fillStyle='#111';
+ for(let i=-32;i<160;i+=32){x.beginPath();x.moveTo(i,0);x.lineTo(i+16,0);x.lineTo(i+48,32);x.lineTo(i+32,32);x.closePath();x.fill()}
+ const t=new T.CanvasTexture(c);t.wrapS=T.RepeatWrapping;t.encoding=T.sRGBEncoding;rtTex.t=t;return t}
+function rtRoadHw(x,z,horizontal){let best=9;for(const r of roads){if((r.o==='h')!==horizontal)continue;if(r.o==='h'?(Math.abs(z-r.c)<r.hw+3&&x>r.a-3&&x<r.b+3):(Math.abs(x-r.c)<r.hw+3&&z>r.a-3&&z<r.b+3))return r.hw}return best}
+function rtInside(x,z,m=0){for(const r of RT.rects)if(x>r.x0-m&&x<r.x1+m&&z>r.z0-m&&z<r.z1+m)return r;return null}
+function rtRemoveCol(c){const CGs=24;for(let gx=Math.floor(c.x0/CGs);gx<=Math.floor(c.x1/CGs);gx++)for(let gz=Math.floor(c.z0/CGs);gz<=Math.floor(c.z1/CGs);gz++){const a=colGrid.get(gx*4096+gz);if(a){const i=a.indexOf(c);if(i>=0)a.splice(i,1)}}const i=colAll.indexOf(c);if(i>=0)colAll.splice(i,1)}
+function buildRaceTrack(race){
+ teardownRaceTrack();RT.race=race;const pts=[race.start].concat(race.cps);
+ for(let i=1;i<pts.length;i++){const [ax,az]=pts[i-1],[bx,bz]=pts[i];const horiz=Math.abs(bx-ax)>=Math.abs(bz-az);const hw=rtRoadHw((ax+bx)/2,(az+bz)/2,horiz)+1.5;
+  RT.rects.push({x0:Math.min(ax,bx)-hw,x1:Math.max(ax,bx)+hw,z0:Math.min(az,bz)-hw,z1:Math.max(az,bz)+hw,horiz})}
+ // barricades wherever a street leaves the track at a junction
+ const legs=new Batch(),bars=new Batch(),lamps=new Batch(),m=new T.Matrix4(),q=new T.Quaternion(),up=new T.Vector3(0,1,0),v=new T.Vector3(),sc=new T.Vector3();
+ const put=(b,g,x,y,z,ry,sx,sy,sz,col)=>{q.setFromAxisAngle(up,ry);m.compose(v.set(x,y,z),q,sc.set(sx,sy,sz));b.geo(g,m,col)};
+ const beam=new T.BoxGeometry(1,1,1);
+ for(const nd of nodes){if(!rtInside(nd.x,nd.z,-2))continue;
+  for(const e of nd.edges){const dx=Math.sign(e.to.x-nd.x),dz=Math.sign(e.to.z-nd.z);if(!dx&&!dz)continue;
+   const cross=dx?nd.v.hw:nd.h.hw;if(rtInside(nd.x+dx*(cross+8),nd.z+dz*(cross+8)))continue; // the track continues this way
+   const road=e.road,d=cross+3,cx=nd.x+dx*d,cz=nd.z+dz*d,ry=dx?Math.PI/2:0,w=road.w,ax=dx?0:1,az=dx?1:0,n=Math.max(2,Math.round(w/3.2)),sw=w/n,y0=heightAt(cx,cz);
+   for(let k=0;k<n;k++){const o=-w/2+sw*(k+.5),px=cx+ax*o,pz=cz+az*o;
+    for(const s of[-1,1]){const lx=px+ax*s*(sw/2-.25),lz=pz+az*s*(sw/2-.25);put(legs,GEO.box,lx,y0,lz,ry,.08,1.15,.5,[.12,.12,.13])}
+    put(bars,beam,px,y0+1.0,pz,ry,sw-.15,.26,.06,[1,1,1]);put(bars,beam,px,y0+.62,pz,ry,sw-.15,.2,.06,[1,1,1]);
+    if(k===0||k===n-1)put(lamps,GEO.sph,px,y0+1.25,pz,0,.11,.11,.11,[1,.6,.1])}
+   const c=addCol(cx-(dz?w/2:.35),cz-(dx?w/2:.35),cx+(dz?w/2:.35),cz+(dx?w/2:.35),1.3,'raceBarrier');RT.cols.push(c)}}
+ const tex=rtTex();tex.repeat.set(1,1);
+ const mk=(b,mat)=>{if(!b.v)return;const mesh=new T.Mesh(b.toGeometry(),mat);mesh.castShadow=true;mesh.receiveShadow=true;world.add(mesh);RT.meshes.push(mesh)};
+ mk(legs,new T.MeshStandardMaterial({vertexColors:true,roughness:.7,metalness:.3}));
+ mk(bars,new T.MeshStandardMaterial({map:tex,roughness:.5,metalness:.05}));
+ const lampMat=new T.MeshStandardMaterial({color:0xffa020,emissive:0xff8a00,emissiveIntensity:1.6});RT.lampMat=lampMat;mk(lamps,lampMat);
+ // clear parked cars and traffic off the route right away
+ for(const c of cars.slice())if(c!==pl.car&&!c.keep&&!c.owned&&(c.mode==='traffic'||c.mode==='parked')&&c.occ!=='player'&&rtInside(c.x,c.z))removeCar(c);
+}
+function teardownRaceTrack(){for(const m of RT.meshes){world.remove(m);m.geometry.dispose();if(m.material!==RT.lampMat)m.material.dispose()}RT.meshes=[];for(const c of RT.cols)rtRemoveCol(c);RT.cols=[];RT.rects=[];RT.race=null}
+function updateRaceTrack(dt){
+ if(raceOn()){if(RT.race!==SJ.race)buildRaceTrack(SJ.race)}else if(RT.race){teardownRaceTrack();return}else return;
+ if(RT.lampMat)RT.lampMat.emissiveIntensity=((G.time*2.2)|0)%2?1.8:.2; // flashing amber lamps
+ // keep the track clear: traffic that wanders on is removed when nobody is looking closely
+ RT.clearT-=dt;if(RT.clearT<=0){RT.clearT=.5;for(const c of cars.slice()){if(c===pl.car||c.keep||c.owned||c.occ==='player'||c.mode==='racer'||c.mode==='cop')continue;
+  if((c.mode==='traffic'||c.mode==='parked')&&rtInside(c.x,c.z)&&Math.hypot(c.x-camera.position.x,c.z-camera.position.z)>45)removeCar(c)}}
+}
+// pedestrians (and foot cops) never step onto the track: pushed back to the curb and sent somewhere else
+{const pedUpdate=Ped.prototype.update;Ped.prototype.update=function(dt){const r=pedUpdate.apply(this,arguments);
+ if(RT.race&&!this.dead){const box=rtInside(this.x,this.z);if(box){if(box.horiz){const a=box.z0-.8,b=box.z1+.8;this.z=Math.abs(this.z-a)<Math.abs(this.z-b)?a:b}else{const a=box.x0-.8,b=box.x1+.8;this.x=Math.abs(this.x-a)<Math.abs(this.x-b)?a:b}
+  this.vx=this.vz=0;if(this.state==='walk'&&this.pick)this.pick();if(this.h)this.h.position.set(this.x,this.y,this.z)}}return r}}
+// no speeding tickets or red-light stars during a race
+{const speedOrig=updateSpeedingEnforcement;updateSpeedingEnforcement=function(){if(raceOn()){resetSpeedingEnforcement();return}return speedOrig.apply(this,arguments)}}
+{const redOrig=updateRedLights;updateRedLights=function(){if(raceOn()){RL.node=null;RL.runs=[];return}return redOrig.apply(this,arguments)}}
+{const simRT=simulate;simulate=function(dt){const r=simRT.apply(this,arguments);try{updateRaceTrack(Number.isFinite(dt)?dt:0)}catch(e){console.error('race track',e)}return r}}
 const speedingNativeClearWanted=clearWanted;clearWanted=function(){resetSpeedingEnforcement();return speedingNativeClearWanted.apply(this,arguments);};
 const speedingNativeNewGame=newGame;newGame=function(){resetSpeedingEnforcement();return speedingNativeNewGame.apply(this,arguments);};
 
