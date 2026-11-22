@@ -1855,78 +1855,141 @@ function carGeos(tk){
  // light beam cone (additive) pointing forward
  const bg=new T.ConeGeometry(2.6,16,10,1,true);bg.rotateX(-Math.PI/2);bg.translate(0,0,8.4);o.beam=bg;
  return carGeoCache[tk]=o}
+// AIRCRAFT_V2: smooth lofted fuselages, airfoil-section wings, proper engines/tails/gear for the prop plane and the jet.
+// +z is forward, +y up; returns the same shape of object as the old visuals (g, ch, body, wheels, pm ...).
+const AC={};
+AC.mat=(color,o={})=>new T.MeshStandardMaterial(Object.assign({color,roughness:.42,metalness:.25},o));
+// make closed surfaces face outward (signed volume test), so winding mistakes can't make faces vanish
+AC.orient=(pos,idx)=>{let v=0;for(let i=0;i<idx.length;i+=3){const a=idx[i]*3,b=idx[i+1]*3,c=idx[i+2]*3;
+ v+=pos[a]*(pos[b+1]*pos[c+2]-pos[b+2]*pos[c+1])-pos[a+1]*(pos[b]*pos[c+2]-pos[b+2]*pos[c])+pos[a+2]*(pos[b]*pos[c+1]-pos[b+1]*pos[c])}
+ if(v<0)for(let i=0;i<idx.length;i+=3){const t=idx[i+1];idx[i+1]=idx[i+2];idx[i+2]=t}};
+AC.geo=(pos,idx)=>{const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();return g};
+// fuselage loft: sections [z, yCenter, halfWidth, top, bottom]; a0..a1 limits the arc for glass/stripe bands (radius scale s)
+AC.loft=(secs,n=24,a0=0,a1=Math.PI*2,s=1,closed=true)=>{const pos=[],idx=[],full=closed,cnt=full?n:n+1;
+ for(const [z,yc,hw,top,bot] of secs)for(let k=0;k<cnt;k++){const a=a0+(a1-a0)*k/n,c=Math.cos(a),sn=Math.sin(a);
+  // superellipse-ish cross-section: boxier than a circle, like a real cabin
+  const e=.82,cx=Math.sign(c)*Math.pow(Math.abs(c),e),sy=Math.sign(sn)*Math.pow(Math.abs(sn),e);
+  pos.push(cx*hw*s,yc+sy*(sn>0?top:bot)*s,z)}
+ for(let j=0;j<secs.length-1;j++)for(let k=0;k<(full?n:n);k++){const k2=full?(k+1)%n:k+1,a=j*cnt+k,b=j*cnt+k2,c=a+cnt,d=b+cnt;idx.push(a,c,b,b,c,d)}
+ if(full){for(const end of[0,secs.length-1]){const ci=pos.length/3,[z,yc]=secs[end];pos.push(0,yc,z);for(let k=0;k<n;k++){const a=end*cnt+k,b=end*cnt+(k+1)%n;if(end===0)idx.push(ci,a,b);else idx.push(ci,b,a)}}AC.orient(pos,idx)}
+ return AC.geo(pos,idx)};
+// airfoil-section lifting surface. stations: [span, lift(y or x), zLE, chord, thickness ratio]; vertical => span along +y
+AC.wing=(st,vertical=false,mirror=false,m=14)=>{const pos=[],idx=[],ring=[];
+ for(let i=0;i<=m;i++){const x=(1-Math.cos(Math.PI*i/m))/2;ring.push(x)}
+ const prof=[];for(let i=m;i>=0;i--)prof.push([ring[i],1]);for(let i=1;i<m;i++)prof.push([ring[i],-1]);const P=prof.length;
+ for(const [sp,lift,zLE,ch,tk] of st)for(const [x,side] of prof){
+  const t=5*tk*(.2969*Math.sqrt(x)-.126*x-.3516*x*x+.2843*x**3-.1036*x**4),camber=vertical?0:.018*Math.sin(Math.PI*x);
+  const off=(side*t+camber)*ch,z=zLE-x*ch;
+  if(vertical)pos.push(off,lift+sp,z);else pos.push(mirror?-sp:sp,lift+off,z)}
+ for(let j=0;j<st.length-1;j++)for(let k=0;k<P;k++){const a=j*P+k,b=j*P+(k+1)%P,c=a+P,d=b+P;idx.push(a,c,b,b,c,d)}
+ for(const end of[0,st.length-1]){const ci=pos.length/3;let cx=0,cy=0,cz=0;for(let k=0;k<P;k++){cx+=pos[(end*P+k)*3];cy+=pos[(end*P+k)*3+1];cz+=pos[(end*P+k)*3+2]}pos.push(cx/P,cy/P,cz/P);
+  for(let k=0;k<P;k++){if(end===0)idx.push(ci,end*P+(k+1)%P,end*P+k);else idx.push(ci,end*P+k,end*P+(k+1)%P)}}
+ AC.orient(pos,idx);return AC.geo(pos,idx)};
+AC.lathe=(pts,seg=24)=>{const g=new T.LatheGeometry(pts.map(([r,y])=>new T.Vector2(r,y)),seg);g.rotateX(Math.PI/2);return g};
+// merge static meshes by material (keeps smooth normals) so a plane is a handful of draw calls
+AC.merge=(ch,keep)=>{const by=new Map();
+ for(const m of ch.children.slice()){if(!m.isMesh||keep.has(m))continue;m.updateMatrix();const g=(m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone());g.applyMatrix4(m.matrix);
+  if(!g.attributes.normal)g.computeVertexNormals();if(!by.has(m.material))by.set(m.material,[]);by.get(m.material).push(g);m.geometry.dispose();ch.remove(m)}
+ const out=new Map();
+ for(const [mat,list] of by){let n=0;for(const g of list)n+=g.attributes.position.count;const P=new Float32Array(n*3),N=new Float32Array(n*3);let o=0;
+  for(const g of list){P.set(g.attributes.position.array,o*3);N.set(g.attributes.normal.array,o*3);o+=g.attributes.position.count;g.dispose()}
+  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(P,3));geo.setAttribute('normal',new T.BufferAttribute(N,3));geo.computeBoundingSphere();
+  const mesh=new T.Mesh(geo,mat);mesh.castShadow=mesh.receiveShadow=true;ch.add(mesh);out.set(mat,mesh)}
+ return out};
+AC.accentFor=color=>{const c=new T.Color(color),l=.3*c.r+.59*c.g+.11*c.b;return l<.25?0xd9b25a:l>.75?0x22344a:0xf2f2f0};
+AC.navLights=(ch,add,x,y,z)=>{for(const [side,col] of[[1,0xff3030],[-1,0x30ff70]]){const m=new T.MeshStandardMaterial({color:col,emissive:col,emissiveIntensity:1.4,roughness:.3});const l=add(new T.SphereGeometry(.07,8,6),m,side*x,y,z);l.name='navlight'}};
+AC.wheel=(ch,add,rubber,rim,x,y,z,r,w,front)=>{const piv=new T.Group();piv.position.set(x,y,z);ch.add(piv);const wg=new T.Group();piv.add(wg);
+ const tire=new T.CylinderGeometry(r,r,w,18);tire.rotateZ(Math.PI/2);const tm=new T.Mesh(tire,rubber);tm.castShadow=true;wg.add(tm);
+ const hub=new T.CylinderGeometry(r*.55,r*.55,w+.02,14);hub.rotateZ(Math.PI/2);wg.add(new T.Mesh(hub,rim));return{w:wg,piv,front}};
+AC.strut=(add,mat,a,b,r=.04)=>{const A=new T.Vector3(...a),B=new T.Vector3(...b),d=B.clone().sub(A),m=add(new T.CylinderGeometry(r,r,d.length(),8),mat);m.position.copy(A.add(B).multiplyScalar(.5));m.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),d.normalize());return m};
+
 function makeLowPolyPropPlaneVisual(color){
- const t=CAR_TYPES.propPlane,L=t.L,W=t.W,g=new T.Group(),ch=new T.Group();g.add(ch);
- const mat=(color,roughness=.65,metalness=.08)=>new T.MeshStandardMaterial({color,roughness,metalness,flatShading:true});
- const paint=mat(color),cream=mat(0xf0ebdc),teal=mat(0x167f86),glass=mat(0x193e52,.24,.28),dark=mat(0x17232c),rubber=mat(0x111419,.95),metal=mat(0x9ba7ad,.38,.55),yellow=mat(0xf5ce5b);
- const add=(geo,material,x=0,y=0,z=0,parent=ch)=>{const m=new T.Mesh(geo,material);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;parent.add(m);return m};
- const loft=rings=>{const p=[],idx=[],n=8;for(const [z,y,rx,ry]of rings)for(let k=0;k<n;k++){const a=k*Math.PI*2/n;p.push(Math.cos(a)*rx,y+Math.sin(a)*ry,z)}for(let j=0;j<rings.length-1;j++)for(let k=0;k<n;k++){const a=j*n+k,b=j*n+(k+1)%n,c=a+n,d=b+n;idx.push(a,b,c,b,d,c)}for(const end of[0,rings.length-1]){const center=p.length/3,[z,y]=rings[end];p.push(0,y,z);for(let k=0;k<n;k++){const a=end*n+k,b=end*n+(k+1)%n;if(end===0)idx.push(center,b,a);else idx.push(center,a,b)}}const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(p,3));geo.setIndex(idx);geo.computeVertexNormals();return geo};
- const prism=(points,depth,vertical=false)=>{const sh=new T.Shape();points.forEach((p,i)=>i?sh.lineTo(...p):sh.moveTo(...p));sh.closePath();const geo=new T.ExtrudeGeometry(sh,{depth,steps:1,bevelEnabled:false,curveSegments:1});if(vertical){geo.rotateY(-Math.PI/2);geo.translate(depth/2,0,0)}else{geo.rotateX(Math.PI/2);geo.translate(0,depth/2,0)}return geo};
- const beam=(a,b,r=.035,material=cream)=>{a=new T.Vector3(...a);b=new T.Vector3(...b);const d=b.clone().sub(a),m=add(new T.CylinderGeometry(r,r,d.length(),6),material);m.position.copy(a.add(b).multiplyScalar(.5));m.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),d.normalize());return m};
- const body=add(loft([[-.47*L,.12,.055,.07],[-.34*L,.12,.20,.22],[-.16*L,.02,.42,.36],[.03*L,0,.55,.46],[.20*L,0,.52,.43],[.34*L,.06,.37,.33],[.43*L,.12,.27,.25]]),paint);
- add(loft([[-1.15,.45,.37,.17],[-.5,.53,.48,.25],[.85,.5,.45,.25],[1.55,.27,.28,.12]]),glass);
- for(const side of[-1,1]){
-  add(prism([[side*.42,1.12],[side*W*.42,.72],[side*W*.5,.38],[side*W*.5,-.34],[side*W*.42,-.58],[side*.42,-.9]],.11),cream,0,.86,0);
-  add(new T.BoxGeometry(.4,.018,.55),teal,side*(W*.5-.45),.925,.03);
-  beam([side*.45,.08,.45],[side*W*.29,.8,.06],.038,metal);
-  beam([side*.43,.33,1.3],[side*.43,.7,.91],.035);
-  beam([side*.4,.38,-1.02],[side*.43,.7,-.84],.035);
-  beam([side*.43,.73,-.84],[side*.43,.73,.91],.035);
-  add(new T.BoxGeometry(.018,.075,2.1),teal,side*.49,.12,.05);
-  const lamp=mat(side===1?0xe84949:0x5acb8c);lamp.emissive.copy(lamp.color);lamp.emissiveIntensity=.5;
-  add(new T.BoxGeometry(.09,.08,.13),lamp,side*(W*.5-.03),.9,.31);
+ const t=CAR_TYPES.propPlane,W=t.W,g=new T.Group(),ch=new T.Group();g.add(ch);
+ const paint=AC.mat(color,{roughness:.38,metalness:.18}),accent=AC.mat(AC.accentFor(color),{roughness:.4,metalness:.2}),white=AC.mat(0xf3f1ea,{roughness:.45,metalness:.1}),
+  glass=AC.mat(0x0d2233,{roughness:.08,metalness:.6}),dark=AC.mat(0x1b1f24,{roughness:.7,metalness:.2}),metal=AC.mat(0xb8c0c6,{roughness:.3,metalness:.8}),rubber=AC.mat(0x0c0d0f,{roughness:.95,metalness:0});
+ const add=(geo,mat,x=0,y=0,z=0)=>{const m=new T.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;ch.add(m);return m};
+ const fus=[[4.42,.12,.26,.26,.26],[4.25,.12,.43,.40,.40],[3.7,.13,.53,.48,.47],[2.7,.2,.6,.6,.55],[1.8,.24,.63,.74,.58],[.3,.24,.61,.74,.58],[-.8,.27,.5,.63,.5],[-2.2,.34,.32,.43,.32],[-3.6,.44,.18,.27,.18],[-4.55,.52,.07,.13,.08]];
+ const body=add(AC.loft(fus,28),paint);
+ add(AC.loft([[4.43,.12,.27,.27,.27],[4.26,.12,.44,.41,.41],[3.55,.13,.545,.49,.48]],28,0,Math.PI*2,1.006),accent); // painted cowling
+ // windshield + side windows (glass bands just proud of the skin)
+ add(AC.loft([[2.75,.2,.6,.6,.55],[2.2,.22,.62,.68,.57],[1.8,.24,.63,.74,.58]],14,Math.PI*.17,Math.PI*.83,1.012,false),glass);
+ for(const [z0,z1] of[[1.72,.98],[.88,.18]]){add(AC.loft([[z0,.24,.63,.74,.58],[z1,.24,.62,.74,.58]],5,Math.PI*.04,Math.PI*.36,1.012,false),glass);add(AC.loft([[z0,.24,.63,.74,.58],[z1,.24,.62,.74,.58]],5,Math.PI*.64,Math.PI*.96,1.012,false),glass)}
+ // cheat line down both sides
+ for(const [b0,b1] of[[-.16,-.06],[Math.PI+.06,Math.PI+.16]])add(AC.loft(fus.slice(1,9),3,b0,b1,1.008,false),accent);
+ // high wing (thick airfoil), mirrored, with a white tip band
+ for(const mir of[false,true]){
+  add(AC.wing([[0,1.0,1.95,1.62,.15],[3.6,1.07,1.95,1.62,.14],[W/2-.35,1.13,1.83,1.3,.12]],false,mir),white);
+  add(AC.wing([[W/2-.36,1.13,1.83,1.3,.12],[W/2,1.14,1.8,1.2,.11]],false,mir),accent);
+  const s=mir?-1:1;AC.strut(add,metal,[s*.5,-.08,1.15],[s*3.1,1.0,1.15],.045);AC.strut(add,metal,[s*.5,-.08,.75],[s*3.1,1.0,.6],.035);
  }
- beam([0,.36,1.53],[0,.73,.94],.035);
- add(prism([[-W*.17,-L*.37],[-.23,-L*.33],[.23,-L*.33],[W*.17,-L*.37],[W*.17,-L*.44],[0,-L*.42],[-W*.17,-L*.44]],.08),cream,0,.2,0);
- add(prism([[-L*.45,.14],[-L*.45,1.45],[-L*.39,1.62],[-L*.30,.18]],.10,true),teal);
- const prop=new T.Group();prop.name='propeller';prop.position.set(0,.12,L*.448);prop.scale.setScalar(.7);ch.add(prop);
- for(let i=0;i<3;i++){const sh=new T.Shape();sh.moveTo(.06,.14);sh.lineTo(.17,.9);sh.lineTo(.02,1.2);sh.lineTo(-.1,1.12);sh.lineTo(-.11,.22);sh.closePath();const geo=new T.ExtrudeGeometry(sh,{depth:.06,bevelEnabled:false,steps:1});geo.translate(0,0,-.03);const blade=add(geo,dark,0,0,0,prop);blade.name='prop-blade-'+i;blade.rotation.z=i*Math.PI*2/3;const tip=add(new T.BoxGeometry(.13,.16,.065),yellow,0,0,0,blade);tip.position.set(.015,1.07,0)}
- const spinner=add(new T.ConeGeometry(.25,.36,8),teal,0,.12,L*.465);spinner.rotation.x=Math.PI/2;
+ // tail: fin with dorsal fillet, stabiliser, accent fin tip
+ add(AC.wing([[0,.5,-2.55,2.3,.1],[1.0,.5,-3.35,1.5,.1],[1.45,.5,-3.8,1.1,.1]],true),paint);
+ add(AC.wing([[1.44,.5,-3.79,1.1,.1],[1.7,.5,-4.0,.9,.1]],true),accent);
+ for(const mir of[false,true])add(AC.wing([[0,.5,-3.3,1.25,.09],[2.1,.52,-3.55,.8,.08]],false,mir),white);
+ // propeller: spinner + two twisted blades
+ const prop=new T.Group();prop.name='propeller';prop.position.set(0,.12,4.5);ch.add(prop);
+ const spin=new T.Mesh(AC.lathe([[0,.42],[.08,.38],[.16,.26],[.21,.1],[.22,0]],20),accent);prop.add(spin);
+ for(let i=0;i<2;i++){const bl=new T.Group();bl.rotation.z=i*Math.PI;prop.add(bl);
+  const sh=new T.Shape();sh.moveTo(-.06,.12);sh.quadraticCurveTo(-.13,.6,-.07,1.02);sh.quadraticCurveTo(0,1.08,.06,1.0);sh.quadraticCurveTo(.1,.55,.07,.12);sh.closePath();
+  const bg=new T.ExtrudeGeometry(sh,{depth:.035,bevelEnabled:true,bevelSize:.012,bevelThickness:.01,bevelSegments:1,curveSegments:6});bg.translate(0,0,-.02);
+  const b=new T.Mesh(bg,dark);b.rotation.y=.35;bl.add(b);const tip=new T.Mesh(new T.BoxGeometry(.13,.09,.05),AC.mat(0xf5ce5b));tip.position.y=1.0;tip.rotation.y=.35;bl.add(tip)}
+ // gear: spring legs, wheel pants, nose leg
  const wheels=[];
- for(const [x,z,r,front]of[[-.94,.85,.2,false],[.94,.85,.2,false],[0,L*.32,.18,true]]){
-  const y=-.88+r;beam([x*.48,-.25,z-.15],[x,y,z],.045,metal);
-  const piv=new T.Group();piv.position.set(x,y,z);ch.add(piv);const w=new T.Group();piv.add(w);
-  const tire=new T.CylinderGeometry(r,r,.17,8);tire.rotateZ(Math.PI/2);add(tire,rubber,0,0,0,w);
-  const rim=new T.CylinderGeometry(r*.48,r*.48,.18,8);rim.rotateZ(Math.PI/2);add(rim,metal,0,0,0,w);wheels.push({w,piv,front});
- }
- const batches=new Map();
- for(const m of ch.children.slice())if(m.isMesh&&m!==body){m.updateMatrix();const geo=m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone();geo.applyMatrix4(m.matrix);const a=geo.getAttribute('position').array;if(!batches.has(m.material))batches.set(m.material,[]);const dest=batches.get(m.material);for(const x of a)dest.push(x);geo.dispose();m.geometry.dispose();ch.remove(m)}
- for(const [material,p]of batches){const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(p,3));geo.computeVertexNormals();add(geo,material)}
- return{g,ch,body,wheels,beam:{visible:false},tail:{material:dark},head:{material:cream},bar:null,pm:paint};
+ for(const s of[-1,1]){AC.strut(add,metal,[s*.45,-.3,.55],[s*1.08,-.66,.55],.05);wheels.push(AC.wheel(ch,add,rubber,metal,s*1.12,-.68,.55,.2,.13,false));
+  const pant=add(new T.SphereGeometry(1,16,10),paint,s*1.12,-.6,.58);pant.scale.set(.13,.2,.42)}
+ AC.strut(add,metal,[0,-.25,3.55],[0,-.68,3.62],.045);wheels.push(AC.wheel(ch,add,rubber,metal,0,-.7,3.62,.18,.11,true));
+ const npant=add(new T.SphereGeometry(1,14,8),paint,0,-.62,3.64);npant.scale.set(.11,.17,.34);
+ // exhaust stub, antenna, beacon, nav lights
+ AC.strut(add,metal,[.32,-.22,3.2],[.38,-.36,2.9],.04);AC.strut(add,dark,[0,1.0,.1],[0,1.32,-.25],.012);
+ add(new T.SphereGeometry(.06,8,6),new T.MeshStandardMaterial({color:0xff2020,emissive:0xff2020,emissiveIntensity:1.2}),0,2.22,-4.15);
+ AC.navLights(ch,add,W/2+.02,1.14,1.2);
+ const keep=new Set([body]);AC.merge(ch,keep);
+ return{g,ch,body,wheels,beam:{visible:false},tail:{material:dark},head:{material:white},bar:null,pm:paint};
 }
 function makeAircraftVisual(tk,color){
  if(tk==='propPlane')return makeLowPolyPropPlaneVisual(color);
- const t=CAR_TYPES[tk],g=new T.Group(),ch=new T.Group();g.add(ch);
- const paint=new T.MeshStandardMaterial({color,metalness:.38,roughness:.38}),white=new T.MeshStandardMaterial({color:0xe9f1f5,metalness:.25,roughness:.38}),glass=new T.MeshStandardMaterial({color:0x15384f,metalness:.55,roughness:.16}),dark=new T.MeshStandardMaterial({color:0x18212a,roughness:.78}),rubber=new T.MeshStandardMaterial({color:0x090b0d,roughness:.95});
- const fus=new T.Mesh(new T.CylinderGeometry(tk==='smallJet'?.7:.46,tk==='smallJet'?.76:.5,t.L*.78,16),paint);fus.rotation.x=Math.PI/2;ch.add(fus);
- const nose=new T.Mesh(new T.ConeGeometry(tk==='smallJet'?.7:.46,tk==='smallJet'?3.4:2.25,16),white);nose.rotation.x=Math.PI/2;nose.position.z=t.L*.43;ch.add(nose);
- const tailCone=new T.Mesh(new T.ConeGeometry(.48,.9,12),paint);tailCone.rotation.x=-Math.PI/2;tailCone.position.z=-t.L*.47;ch.add(tailCone);
- const wingShape=new T.Shape();wingShape.moveTo(-.8,1.35);wingShape.lineTo(-t.W/2,.55);wingShape.lineTo(-t.W/2,-.85);wingShape.lineTo(-t.W*.28,-1.18);wingShape.lineTo(t.W*.28,-1.18);wingShape.lineTo(t.W/2,-.85);wingShape.lineTo(t.W/2,.55);wingShape.lineTo(.8,1.35);wingShape.closePath();
- const wingGeo=new T.ShapeGeometry(wingShape);wingGeo.rotateX(Math.PI/2);const wing=new T.Mesh(wingGeo,paint);wing.position.y=.08;ch.add(wing);
- const flap=new T.Mesh(new T.BoxGeometry(t.W*.7,.055,.28),white);flap.position.set(0,.11,-.82);ch.add(flap);
- const tailWing=new T.Mesh(new T.BoxGeometry(t.W*.34,.12,1.25),white);tailWing.position.set(0,.23,-t.L*.39);ch.add(tailWing);
- const finShape=new T.Shape();finShape.moveTo(-.65,0);finShape.lineTo(.55,0);finShape.lineTo(.35,1.65);finShape.lineTo(-.2,1.25);finShape.closePath();
- const finGeo=new T.ShapeGeometry(finShape);const fin=new T.Mesh(finGeo,paint);fin.position.set(0,-.05,-t.L*.4);ch.add(fin);
- const cockpit=new T.Mesh(new T.SphereGeometry(tk==='smallJet'?.82:.62,18,12,0,Math.PI*2,0,Math.PI/2),glass);cockpit.scale.set(1,.72,tk==='smallJet'?1.5:1.3);cockpit.position.set(0,.52,t.L*.19);ch.add(cockpit);
- if(tk==='smallJet'){
-  for(const side of[-1,1]){
-   const eng=new T.Mesh(new T.CylinderGeometry(.48,.57,2.6,16),dark);eng.rotation.x=Math.PI/2;eng.position.set(side*2.65,-.28,-t.L*.17);ch.add(eng);
-   const intake=new T.Mesh(new T.TorusGeometry(.47,.075,8,18),white);intake.position.set(side*2.65,-.28,-t.L*.17+1.31);ch.add(intake);
-   for(let i=0;i<4;i++){const win=new T.Mesh(new T.BoxGeometry(.055,.19,.34),glass);win.position.set(side*.69,.46,t.L*.12-i*.8);ch.add(win)}
-  }
- }else{
-  const hub=new T.Mesh(new T.CylinderGeometry(.18,.18,.42,12),dark);hub.rotation.x=Math.PI/2;hub.position.z=t.L*.5+.2;ch.add(hub);
-  const prop=new T.Group();prop.name='propeller';for(let i=0;i<2;i++){const blade=new T.Mesh(new T.BoxGeometry(.16,2.55,.12),dark);blade.rotation.z=i*Math.PI/2;prop.add(blade)}prop.position.z=t.L*.5+.43;ch.add(prop);
-  for(const side of[-1,1]){const strut=new T.Mesh(new T.BoxGeometry(.07,.65,.07),dark);strut.position.set(side*1.1,-.27,-.05);ch.add(strut)}
+ const t=CAR_TYPES[tk],W=t.W,g=new T.Group(),ch=new T.Group();g.add(ch);
+ const paint=AC.mat(color,{roughness:.3,metalness:.3}),accentHex=AC.accentFor(color),accent=AC.mat(accentHex,{roughness:.32,metalness:.35}),gray=AC.mat(0xd9dee3,{roughness:.35,metalness:.45}),
+  glass=AC.mat(0x0a1824,{roughness:.05,metalness:.75}),dark=AC.mat(0x15191e,{roughness:.6,metalness:.4}),metal=AC.mat(0xb9c2c9,{roughness:.25,metalness:.85}),rubber=AC.mat(0x0b0c0e,{roughness:.95,metalness:0});
+ const add=(geo,mat,x=0,y=0,z=0)=>{const m=new T.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;ch.add(m);return m};
+ const fus=[[7.0,-.1,.02,.02,.02],[6.75,-.07,.3,.26,.27],[6.3,-.02,.56,.52,.5],[5.6,.04,.76,.74,.68],[4.7,.07,.86,.86,.78],[3.2,.08,.9,.9,.8],[-1.2,.08,.9,.9,.8],[-3.2,.18,.8,.8,.62],[-4.7,.36,.58,.58,.4],[-6.1,.55,.32,.3,.2],[-7.0,.66,.07,.07,.05]];
+ const body=add(AC.loft(fus,32),paint);
+ // wrap-around windshield and cockpit side windows
+ add(AC.loft([[6.05,0,.65,.62,.6],[5.6,.04,.76,.74,.68],[5.05,.06,.83,.82,.75]],16,Math.PI*.2,Math.PI*.8,1.012,false),glass);
+ for(const [a0,a1] of[[Math.PI*.08,Math.PI*.2],[Math.PI*.8,Math.PI*.92]])add(AC.loft([[5.55,.04,.76,.74,.68],[4.9,.06,.84,.84,.77]],4,a0,a1,1.012,false),glass);
+ // cabin windows: oval, slightly proud of the skin
+ const wg=new T.CircleGeometry(.15,14);for(const s of[-1,1])for(let i=0;i<6;i++){const a=.32,z=3.5-i*.85,m=add(wg,glass,s*Math.cos(a)*.92,.08+Math.sin(a)*.92*.97,z);m.scale.y=1.35;m.lookAt(m.position.x*3,m.position.y+Math.sin(a)*1.4,z)}
+ // cheat line + belly
+ for(const [b0,b1] of[[-.2,-.05],[Math.PI+.05,Math.PI+.2]])add(AC.loft(fus.slice(2,10),3,b0,b1,1.008,false),accent);
+ add(AC.loft(fus.slice(3,9),10,Math.PI*1.25,Math.PI*1.75,1.006,false),gray);
+ // swept low wing with winglets, plus wing-root fairing
+ for(const mir of[false,true]){const s=mir?-1:1;
+  add(AC.wing([[0,-.42,1.7,3.0,.13],[.9,-.4,1.55,2.75,.13],[W/2-.5,-.42+(W/2-.5)*.07,-.85,1.0,.1]],false,mir),paint);
+  const wl=AC.wing([[0,0,0,1.0,.1],[1.05,0,-.65,.55,.09]],true);const wlm=add(wl,accent,s*(W/2-.5),-.42+(W/2-.5)*.07,-.85);wlm.rotation.z=-s*.12;
+
  }
+ AC.navLights(ch,add,W/2-.44,-.42+(W/2-.5)*.07+.03,-1.0);
+ const fair=add(new T.SphereGeometry(1,20,12),paint,0,-.45,.6);fair.scale.set(1.05,.42,2.4);
+ // T-tail
+ add(AC.wing([[0,.7,-3.9,2.7,.11],[1.15,.7,-5.2,1.75,.1],[2.1,.7,-6.25,1.25,.09]],true),accent);
+ for(const mir of[false,true])add(AC.wing([[0,2.75,-6.05,1.5,.09],[2.5,2.86,-6.95,.75,.08]],false,mir),accent);
+ // rear-mounted engines on pylons
+ for(const s of[-1,1]){const x=s*1.62,y=.62,z=-3.35;
+  add(AC.lathe([[.40,1.25],[.47,1.18],[.52,1.0],[.54,.4],[.52,-.4],[.46,-.95],[.38,-1.2]],28),gray,x,y,z);
+  add(AC.lathe([[.41,1.26],[.47,1.19],[.50,1.1],[.43,1.12]],28),accent,x,y,z);
+  const fan=add(new T.CircleGeometry(.4,24),dark,x,y,z+1.12);fan.rotation.y=0;
+  const cone=add(new T.ConeGeometry(.13,.3,14),metal,x,y,z+1.2);cone.rotation.x=Math.PI/2;
+  const ex=add(new T.CylinderGeometry(.33,.3,.25,20,1,true),dark,x,y,z-1.25);ex.rotation.x=Math.PI/2;
+  const exc=add(new T.ConeGeometry(.2,.4,14),metal,x,y,z-1.3);exc.rotation.x=-Math.PI/2;
+  add(AC.wing([[0,.62,-2.75,1.5,.14],[1.05,.62,-2.85,1.25,.14]],false,s<0),paint,s*.0,0,0)}
+ // landing gear
  const wheels=[];
- for(const x of[-.9,.9]){
-  const strut=new T.Mesh(new T.CylinderGeometry(.055,.07,.62,8),white);strut.position.set(x,-.42,t.L*.13);ch.add(strut);
-  const wh=new T.Mesh(new T.CylinderGeometry(.24,.24,.18,14),rubber);wh.rotation.z=Math.PI/2;wh.position.set(x,-.77,t.L*.13);ch.add(wh);wheels.push({w:wh,front:false});
- }
- const noseStrut=new T.Mesh(new T.CylinderGeometry(.05,.06,.5,8),white);noseStrut.position.set(0,-.38,t.L*.39);ch.add(noseStrut);
- const noseWheel=new T.Mesh(new T.CylinderGeometry(.16,.16,.14,12),rubber);noseWheel.rotation.z=Math.PI/2;noseWheel.position.set(0,-.65,t.L*.39);ch.add(noseWheel);wheels.push({w:noseWheel,front:true});
- return{g,ch,body:fus,wheels,beam:{visible:false},tail:{material:dark},head:{material:white},bar:null,pm:paint};
+ AC.strut(add,metal,[0,-.55,5.2],[0,-.82,5.25],.06);wheels.push(AC.wheel(ch,add,rubber,metal,0,-.82,5.25,.18,.14,true));
+ for(const s of[-1,1]){AC.strut(add,metal,[s*1.5,-.38,-.2],[s*1.5,-.73,-.2],.07);wheels.push(AC.wheel(ch,add,rubber,metal,s*1.5,-.73,-.2,.27,.2,false))}
+ // beacon + tail logo light
+ add(new T.SphereGeometry(.07,8,6),new T.MeshStandardMaterial({color:0xff2020,emissive:0xff2020,emissiveIntensity:1.2}),0,.98,1.0);
+ const keep=new Set([body]);AC.merge(ch,keep);
+ return{g,ch,body,wheels,beam:{visible:false},tail:{material:dark},head:{material:gray},bar:null,pm:paint};
 }
 function makeCarVisual(tk,color){
  if(tk==='rareCoupe')tk='sports'; // the old low-poly supercar is replaced by the new supercar body
