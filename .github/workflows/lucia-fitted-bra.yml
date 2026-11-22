@@ -1,0 +1,51 @@
+name: Add fitted opaque black strapless bra without changing Lucia body
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-fitted-bra.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-photo-reference
+  cancel-in-progress: false
+jobs:
+  garment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-bra" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Prepare fitted garment after existing body refinements
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-bra/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_FITTED_BRA_V1'))process.exit(0);if(!s.includes('// LUCIA_CENTER_CONTOUR_V2'))throw Error('Reviewed current torso contour required');fs.writeFileSync('/tmp/lucia-bra-before.js',s);function walk(n,fn){fn(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,fn);}else if(v&&typeof v.type==='string')walk(v,fn);}}const matches=[];walk(acorn.parse(s,{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='lucia')matches.push(n);});if(matches.length!==1)throw Error('Lucia builder changed');const node=matches[0];
+          const helper=String.raw`
+           function addLuciaFittedBra(T,h){
+            const u=h.userData;if(u.luciaFittedBra)return;const info=u.luciaCenterContour,torso=info&&u.spine.children[info.spineChildIndex];if(!torso||!torso.isMesh||torso.material!==u.m.skin)throw Error('Reviewed torso mesh missing');h.updateMatrixWorld(true);const M=new T.Matrix4().copy(u.spine.matrixWorld).invert().multiply(torso.matrixWorld),N=new T.Matrix3().getNormalMatrix(M),source=torso.geometry,p=source.attributes.position,n=source.attributes.normal,positions=[],normals=[],low=.290,high=.495;
+            function vertex(i){return {p:new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(M),n:new T.Vector3().fromBufferAttribute(n,i).applyMatrix3(N).normalize()};}function clip(poly,height,above){const out=[];if(!poly.length)return out;for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length],insideA=above?a.p.y>=height:a.p.y<=height,insideB=above?b.p.y>=height:b.p.y<=height;if(insideA)out.push(a);if(insideA!==insideB){const t=(height-a.p.y)/(b.p.y-a.p.y);out.push({p:a.p.clone().lerp(b.p,t),n:a.n.clone().lerp(b.n,t).normalize()});}}return out;}function emit(v){const q=v.p.clone(),r=Math.hypot(q.x,q.z);if(r<.025)throw Error('Invalid garment fitting radius');q.x+=q.x/r*.003;q.z+=q.z/r*.003;positions.push(q.x,q.y,q.z);normals.push(v.n.x,v.n.y,v.n.z);}
+            const count=source.index?source.index.count:p.count;for(let i=0;i<count;i+=3){let poly=[0,1,2].map(j=>vertex(source.index?source.index.getX(i+j):i+j));poly=clip(clip(poly,low,true),high,false);for(let j=1;j+1<poly.length;j++){const a=poly[0].p,b=poly[j].p,c=poly[j+1].p;if(new T.Vector3().subVectors(b,a).cross(new T.Vector3().subVectors(c,a)).lengthSq()<1e-16)continue;emit(poly[0]);emit(poly[j]);emit(poly[j+1]);}}if(positions.length<300)throw Error('Garment coverage missing');const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3));geometry.setAttribute('normal',new T.Float32BufferAttribute(normals,3));geometry.computeBoundingBox();geometry.computeBoundingSphere();const material=new T.MeshStandardMaterial({color:0x191a1e,roughness:.88,metalness:0,side:T.DoubleSide,transparent:false,opacity:1}),mesh=new T.Mesh(geometry,material);mesh.name='lucia-fitted-black-bra';mesh.castShadow=true;mesh.receiveShadow=true;u.spine.add(mesh);u.luciaFittedBra=true;u.luciaFittedBraMaterial=material;
+           }
+          `;s=s.slice(0,node.body.end-1)+'\n addLuciaFittedBra(T,h);\n'+s.slice(node.body.end-1);s=s.slice(0,node.start)+helper+s.slice(node.start);s='// LUCIA_FITTED_BRA_V1\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-bra-after.js',s);
+          JS
+      - name: Check opaque coverage preserved body and garment movement
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-bra/node_modules/three');if(!fs.existsSync('/tmp/lucia-bra-after.js')){if(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_FITTED_BRA_V1'))process.exit(0);throw Error('Candidate missing');}function load(file){const c={window:{},console,Math};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}const old=load('/tmp/lucia-bra-before.js'),cur=load('/tmp/lucia-bra-after.js');function signature(h){const out=[];h.traverse(o=>{if(o.name==='lucia-fitted-black-bra')return;const row=[o.type,o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()];if(o.isMesh)row.push(Object.keys(o.geometry.attributes).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.metalness,m.flatShading,m.skinning]));out.push(row);});return JSON.stringify(out);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)),'Other character changed');const a=old.build(T,'luciaC',{merge:false}),b=cur.build(T,'luciaC',{merge:false}),bra=b.getObjectByName('lucia-fitted-black-bra');assert(signature(a)===signature(b),'Existing body geometry materials or rig changed');assert(bra&&bra.parent===b.userData.spine&&bra.material.color.getHex()===0x191a1e&&!bra.material.transparent&&bra.material.opacity===1);const p=bra.geometry.attributes.position;for(let i=0;i<p.count;i++)assert(p.getY(i)>=.289999&&p.getY(i)<=.495001);b.updateMatrixWorld(true);let rays=0;for(const x of [-.08,0,.08])for(const y of [.355,.40,.45]){const origin=new T.Vector3(x,y,1).applyMatrix4(b.userData.spine.matrixWorld),direction=new T.Vector3(0,0,-1).transformDirection(b.userData.spine.matrixWorld);assert(new T.Raycaster(origin,direction,0,2).intersectObject(bra,false).length>0,'Front coverage missing');rays++;}
+          let poses=0;for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),u=h.userData;assert(u.luciaFittedBra&&u.guns.pistol&&u.guns.rifle&&u.luciaPelvisGapBridge);let materialPresent=false;h.traverse(o=>{if(o.isMesh&&(Array.isArray(o.material)?o.material:[o.material]).includes(u.luciaFittedBraMaterial))materialPresent=true;});assert(materialPresent,'Garment lost during merge');for(const angle of [-.7,0,.7]){u.spine.rotation.y=angle*.2;u.spine.rotation.x=angle*.1;u.A[0].sh.rotation.x=angle;u.A[1].sh.rotation.x=-angle;h.updateMatrixWorld(true);h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh)for(const k of ['position','normal'])if(o.geometry.attributes[k])assert(Array.from(o.geometry.attributes[k].array).every(Number.isFinite));});poses++;}}fs.copyFileSync('/tmp/lucia-bra-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-fitted-bra-check.json',JSON.stringify({passed:true,style:'plain opaque black strapless fitted bra',frontCoverageRays:rays,poseChecks:poses,existingBodyGeometryAndMaterialsUnchanged:true,existingRigTransformsUnchanged:true,otherCharactersUnchanged:true,garmentMaterialPresentInBothMergeModes:true,scope:'Torso-fitted garment shell with 0.003 model-unit radial clearance and spine attachment. No other clothing restored. Rendered fit, edge quality, clipping during gameplay and live deployment not verified.'},null,2)+'\n');
+          JS
+      - name: Publish only validated garment addition
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-fitted-bra-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Add fitted opaque black strapless bra over Lucia current torso without body changes'
+          git push origin HEAD:main
