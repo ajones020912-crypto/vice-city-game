@@ -1,0 +1,97 @@
+name: Polish Lucia face curls materials and idle stance
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-visual-polish-v5.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  polish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-polish" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Prepare scoped appearance and idle-pose polish
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess
+          src=Path('js/reference-characters.js');s=src.read_text();Path('/tmp/lucia-polish-before.js').write_text(s)
+          def once(text,a,b):
+           if text.count(a)!=1: raise SystemExit('Unexpected anchor: '+a[:90])
+           return text.replace(a,b,1)
+          if 'function polishLuciaV5(' in s: raise SystemExit('Visual polish already installed.')
+          s=once(s,'makeLuciaCurlyPonytail(T,h);','makeLuciaCurlyPonytail(T,h);polishLuciaV5(T,h);')
+          helper='''
+           function polishLuciaV5(T,h){
+            const u=h.userData,m=u.m;
+            m.skin.flatShading=false;m.skin.roughness=.76;m.skin.needsUpdate=true;
+            m.lip.roughness=.38;m.lip.metalness=0;m.iris.color.setHex(0x4e2d1b);m.iris.roughness=.28;m.eyeW.roughness=.35;
+            m.hair.roughness=.60;m.brow.roughness=.86;m.shirt.roughness=.93;
+            function smooth(mesh){const g=mesh.geometry;g.computeVertexNormals();const p=g.attributes.position,n=g.attributes.normal,groups=new Map();for(let i=0;i<p.count;i++){const key=[p.getX(i),p.getY(i),p.getZ(i)].map(v=>Math.round(v*1e6)).join(',');if(!groups.has(key))groups.set(key,[]);groups.get(key).push(i);}for(const ids of groups.values()){if(ids.length<2)continue;const v=new T.Vector3();for(const i of ids)v.add(new T.Vector3(n.getX(i),n.getY(i),n.getZ(i)));if(v.lengthSq()>1e-12){v.normalize();for(const i of ids)n.setXYZ(i,v.x,v.y,v.z);}}n.needsUpdate=true;}
+            const eyes=[],irises=[];
+            for(const o of u.headP.children.slice()){
+             if(!o.isMesh)continue;
+             if(o.material===m.skin||o.material===m.lip||o.name==='lucia-reference-hair-cap')smooth(o);
+             if(o.material===m.eyeW)eyes.push(o);if(o.material===m.iris)irises.push(o);
+             if(o.name==='lucia-curly-ponytail-ringlet'){o.scale.x*=1.05;o.scale.z*=1.025;}
+            }
+            const liner=cloth(T,0x30221b),shine=new T.MeshStandardMaterial({color:0xf8eddf,roughness:.25});
+            for(const eye of eyes){eye.updateMatrix();eye.geometry.computeBoundingBox();const b=eye.geometry.boundingBox.clone().applyMatrix4(eye.matrix),c=b.getCenter(new T.Vector3()),size=b.getSize(new T.Vector3()),points=[];for(let i=0;i<=12;i++){const t=i/12*Math.PI;points.push([c.x+Math.cos(t)*size.x*.47,c.y+Math.sin(t)*size.y*.43,b.max.z-.001]);}add(T,u.headP,tube(T,points,.0011,28),liner,'lucia-subtle-upper-eyeliner');}
+            for(const iris of irises){iris.updateMatrix();iris.geometry.computeBoundingBox();const b=iris.geometry.boundingBox.clone().applyMatrix4(iris.matrix),c=b.getCenter(new T.Vector3());add(T,u.headP,new T.SphereGeometry(.0014,8,6),shine,'lucia-eye-catchlight',c.x+.0018,c.y+.002,b.max.z+.0005);}
+            for(const side of [-1,1]){const p=[];for(let i=0;i<=48;i++){const t=i/48;p.push([side*(.098+.006*Math.sin(t*Math.PI*4)),.24-.15*t,.050+.008*Math.cos(t*Math.PI*4)]);}add(T,u.headP,tube(T,p,.0044,72),m.hair,'lucia-soft-face-framing-curl');}
+            const tank=u.spine.children.find(o=>o.name==='lucia-dark-tank-top');if(tank)smooth(tank);
+            const denim=h.getObjectByName('lucia-seamless-denim');if(denim){denim.material.roughness=.94;denim.material.flatShading=false;denim.material.needsUpdate=true;}
+            u.luciaVisualPolish=true;
+           }
+          '''
+          s=once(s,' function finishLuciaV4(',helper+' function finishLuciaV4(')
+          Path('/tmp/lucia-polish-after.js').write_text(s)
+          game=Path('index.html').read_text()
+          if 'luciaPolishBaseAnimV5' in game: raise SystemExit('Idle wrapper already installed.')
+          wrapper='''
+          const luciaPolishBaseAnimV5=animHuman;
+          animHuman=function(h,dt,s){
+           const result=luciaPolishBaseAnimV5(h,dt,s),u=h.userData;
+           if(u.referenceLead!=='luciaC'||s.dead||s.aim||s.weapon||s.punch>0)return result;
+           const w=1-Math.min(1,Math.max(0,s.speed||0)/.8);
+           u.hips.rotation.z+=.035*w;u.spine.rotation.z-=.025*w;
+           u.A[0].sh.rotation.z+=.025*w;u.A[1].sh.rotation.z-=.025*w;
+           if(u.headP)u.headP.rotation.z-=.012*w;
+           return result;
+          };
+          '''
+          marker='// ================= INPUT ================='
+          game=once(game,marker,wrapper+'\n'+marker)
+          Path('/tmp/lucia-polish-index.html').write_text(game);Path('/tmp/lucia-polish-idle.js').write_text(wrapper)
+          subprocess.run(['node','--check','/tmp/lucia-polish-after.js'],check=True)
+          for code in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',game,re.I):
+           if code.strip():
+            Path('/tmp/lucia-polish-syntax.js').write_text(code);subprocess.run(['node','--check','/tmp/lucia-polish-syntax.js'],check=True)
+          PY
+      - name: Check preserved proportions rigs curls and idle gating
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-polish/node_modules/three');
+          function load(path){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(path,'utf8'),c);return c;}
+          const old=load('/tmp/lucia-polish-before.js'),c=load('/tmp/lucia-polish-after.js');assert(JSON.stringify(old.window.VCCharacters.DESIGNS)===JSON.stringify(c.window.VCCharacters.DESIGNS));const a=old.window.VCCharacters.build(T,'luciaC'),b=c.window.VCCharacters.build(T,'luciaC');
+          function body(h){const out=[];function visit(o){if(o===h.userData.headP)return;if(o.isMesh)out.push([o.name,o.position.toArray(),o.scale.toArray(),Array.from(o.geometry.attributes.position.array)]);for(const n of o.children)visit(n);}visit(h);return JSON.stringify(out);}
+          assert(body(a)===body(b));assert(b.userData.m.skin.color.getHex()===a.userData.m.skin.color.getHex());assert(b.userData.m.hair.color.getHex()===a.userData.m.hair.color.getHex());assert(b.getObjectByName('lucia-soft-face-framing-curl'));assert(b.getObjectByName('lucia-subtle-upper-eyeliner'));assert(b.getObjectByName('lucia-eye-catchlight'));assert(b.userData.luciaCurlyPonytail&&b.userData.luciaContinuousShoulders&&b.userData.luciaSeamlessDenim);
+          c.animHuman=function(h){const u=h.userData;for(const j of [u.hips,u.spine,u.headP,...u.A.map(a=>a.sh)])j.rotation.set(0,0,0);return 'base-animation';};vm.runInContext(fs.readFileSync('/tmp/lucia-polish-idle.js','utf8'),c);
+          assert(c.animHuman(b,1/60,{speed:0,punch:0})==='base-animation');assert(b.userData.hips.rotation.z>0);
+          for(const state of [{speed:2},{speed:0,punch:.5},{speed:0,aim:true},{speed:0,weapon:'pistol'},{speed:0,dead:true}]){c.animHuman(b,1/60,state);assert(b.userData.hips.rotation.z===0);}
+          for(const merge of [false,true]){const h=c.window.VCCharacters.build(T,'luciaC',{merge});assert(h.userData.luciaVisualPolish);h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});}
+          fs.copyFileSync('/tmp/lucia-polish-after.js','js/reference-characters.js');fs.copyFileSync('/tmp/lucia-polish-index.html','index.html');
+          JS
+      - name: Commit visual polish only after checks
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Polish Lucia eyes lips curls facial shading outfit materials and relaxed idle stance'
+          git push origin HEAD:main
