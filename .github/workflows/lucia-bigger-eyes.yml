@@ -1,0 +1,74 @@
+name: Enlarge Lucia eyes with aligned details
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-bigger-eyes.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  eyes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-eyes" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Prepare proportional eye enlargement
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('js/reference-characters.js');s=p.read_text();Path('/tmp/lucia-eyes-before.js').write_text(s)
+          if 'function enlargeLuciaEyes(' in s: raise SystemExit('Eye enlargement already installed.')
+          anchor='polishLuciaV5(T,h);'
+          if s.count(anchor)!=1: raise SystemExit('Visual-polish update must be installed first.')
+          s=s.replace(anchor,anchor+'enlargeLuciaEyes(T,h);',1)
+          helper='''
+           function enlargeLuciaEyes(T,h){
+            const u=h.userData,meshes=u.headP.children.filter(o=>o.isMesh);
+            function bounds(o){o.updateMatrix();const p=o.geometry.attributes.position,b=new T.Box3(),v=new T.Vector3();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrix);b.expandByPoint(v);}return b;}
+            const eyes=meshes.filter(o=>o.material===u.m.eyeW).map(o=>{const b=bounds(o);return {mesh:o,center:b.getCenter(new T.Vector3()),size:b.getSize(new T.Vector3())};});
+            if(eyes.length!==2)throw new Error('Expected two separate eye whites');
+            const changes=[];
+            for(const o of meshes){
+             if(o.material===u.m.brow||/brow/i.test(o.name))continue;
+             const b=bounds(o),c=b.getCenter(new T.Vector3());let eye=eyes[0];if(c.distanceToSquared(eyes[1].center)<c.distanceToSquared(eye.center))eye=eyes[1];
+             const d=c.clone().sub(eye.center),near=Math.abs(d.x)<eye.size.x*.7&&Math.abs(d.y)<eye.size.y*1.5&&Math.abs(d.z)<eye.size.z+.015;
+             if(!near)continue;
+             changes.push([o,eye.center]);
+            }
+            for(const [o,center] of changes){const old=o.geometry,g=old.clone(),a=g.attributes.position,to=o.matrix.clone(),from=to.clone().invert(),v=new T.Vector3();for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(to);v.x=center.x+(v.x-center.x)*1.15;v.y=center.y+(v.y-center.y)*1.20;v.applyMatrix4(from);a.setXYZ(i,v.x,v.y,v.z);}a.needsUpdate=true;g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();o.geometry=g;old.dispose();}
+            u.luciaLargerEyes=true;
+           }
+          '''
+          marker=' function finishLuciaV4('
+          if s.count(marker)!=1: raise SystemExit('Appearance helper boundary changed.')
+          s=s.replace(marker,helper+marker,1)
+          Path('/tmp/lucia-eyes-after.js').write_text(s)
+          subprocess.run(['node','--check','/tmp/lucia-eyes-after.js'],check=True)
+          PY
+      - name: Verify eye dimensions and preserved body and eyebrows
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-eyes/node_modules/three');
+          function load(p){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}
+          const old=load('/tmp/lucia-eyes-before.js'),cur=load('/tmp/lucia-eyes-after.js');assert(JSON.stringify(old.DESIGNS)===JSON.stringify(cur.DESIGNS));const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');
+          function box(o){o.updateMatrix();const p=o.geometry.attributes.position,b=new T.Box3(),v=new T.Vector3();for(let i=0;i<p.count;i++)b.expandByPoint(v.fromBufferAttribute(p,i).applyMatrix4(o.matrix));return b;}
+          const ae=a.userData.headP.children.filter(o=>o.isMesh&&o.material===a.userData.m.eyeW),be=b.userData.headP.children.filter(o=>o.isMesh&&o.material===b.userData.m.eyeW);assert(ae.length===2&&be.length===2);
+          for(let i=0;i<2;i++){const x=box(ae[i]),y=box(be[i]),s=x.getSize(new T.Vector3()),t=y.getSize(new T.Vector3());assert(Math.abs(t.x/s.x-1.15)<.001);assert(Math.abs(t.y/s.y-1.20)<.001);assert(x.getCenter(new T.Vector3()).distanceTo(y.getCenter(new T.Vector3()))<1e-5);}
+          function body(h){const out=[];function visit(o){if(o===h.userData.headP)return;if(o.isMesh)out.push([o.name,o.position.toArray(),Array.from(o.geometry.attributes.position.array)]);for(const n of o.children)visit(n);}visit(h);return JSON.stringify(out);}
+          assert(body(a)===body(b));const brows=h=>JSON.stringify(h.userData.headP.children.filter(o=>o.isMesh&&(o.material===h.userData.m.brow||/brow/i.test(o.name))).map(o=>Array.from(o.geometry.attributes.position.array)));assert(brows(a)===brows(b));
+          for(const name of ['lucia-v4-nose-tip','lucia-v4-nose-bridge','lucia-v4-lower-lip']){const x=a.getObjectByName(name),y=b.getObjectByName(name);assert(x&&y);assert(JSON.stringify(Array.from(x.geometry.attributes.position.array))===JSON.stringify(Array.from(y.geometry.attributes.position.array)));}
+          for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge});assert(h.userData.luciaLargerEyes);h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});}
+          fs.copyFileSync('/tmp/lucia-eyes-after.js','js/reference-characters.js');
+          JS
+      - name: Commit larger eyes after checks
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Make Lucia eyes larger with aligned irises pupils eyeliner and highlights'
+          git push origin HEAD:main
