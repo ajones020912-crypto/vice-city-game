@@ -347,7 +347,7 @@ const G={quality:2}; // global game state container (also exposed for debugging)
 window.__vc=G;
 
 // ---------- renderer / scene ----------
-const WS=3000,TS=10,TN=WS*2/TS,WL=-.35;
+const WS=5700,TS=12,TN=WS*2/TS,WL=-.35;
 const scene=new T.Scene();
 const camera=new T.PerspectiveCamera(70,innerWidth/innerHeight,.25,2600);
 const renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
@@ -621,25 +621,36 @@ function hhIsle(x,z){const dx=(x+1090)/480,dz=(z-1960)/440,a=Math.atan2(dz,dx);
 // narrows to a broad tip at the bottom, the Gulf side steps in below Port Calusa, mangrove islets dot the bay and a
 // chain of keys curls away south-west from the tip.
 const flLerp=(pts,t)=>{if(t<=pts[0][0])return pts[0][1];for(let i=1;i<pts.length;i++)if(t<=pts[i][0]){const [a,A]=pts[i-1],[b,B]=pts[i],k=(t-a)/(b-a),e=k*k*(3-2*k);return A+(B-A)*e}return pts[pts.length-1][1]};
-const flEast=z=>flLerp([[500,1750],[900,1640],[1300,1430],[1700,1250],[2100,1110],[2450,1010],[2700,880]],z);
-const flSouth=x=>2600-Math.pow((x-330)/820,2)*120-Math.max(0,(x-900)*.55);
-const FL_KEYS=(()=>{const k=[];for(let i=0;i<14;i++){const t=i/13,x=430-1250*t+120*t*t,z=2640+300*t-110*t*t+18*Math.sin(i*2.3);k.push([x,z,52-22*t+10*Math.sin(i*1.7),22+6*Math.cos(i*2.1),-.25-.55*t])} // curls away south-west
- // mangrove islets (Ten Thousand Islands style) in the bay west of the mainland, clear of the causeway
- const isle=[[-1480,1180],[-1360,1290],[-1560,1360],[-1250,1150],[-640,1200],[-560,1330],[-1690,1600],[-1660,1880],[-1700,2150],[-1580,2420],[-1340,2520],[-620,2440],[-560,2250],[-1180,1300],[-1650,1080]];
+// BIG_MAP_V1: same cities, ~2.5x the land. West coast ~x-3600, east ~x+3500, the peninsula runs south to a tip near
+// z 5000, the Port Calusa bay is an inlet that opens to the Gulf through Calusa Pass, and the keys curl off the new tip.
+const flWest=z=>flLerp([[-372,-3600],[1000,-3450],[2500,-3000],[3600,-2300],[4500,-1300],[5000,-600]],z);
+const flEast=z=>flLerp([[600,3500],[1500,3350],[2800,2950],[3800,2350],[4500,1700],[5000,1000]],z);
+const flSouth=x=>5000-Math.pow((x-200)/1500,2)*600-Math.max(0,(x-1500)*.6);
+const bigJ=(t,k)=>coastJ(t*.55,k)*1.6;
+const FL_KEYS=(()=>{const k=[];for(let i=0;i<18;i++){const t=i/17,x=150-2400*t+300*t*t,z=5060+480*t-200*t*t+25*Math.sin(i*2.3);k.push([x,z,70-26*t+12*Math.sin(i*1.7),28+8*Math.cos(i*2.1),-.35-.45*t])}
+ const isle=[[-1480,1180],[-1360,1290],[-1560,1360],[-1250,1150],[-640,1200],[-560,1330],[-1690,1600],[-1660,1880],[-1700,2150],[-1580,2420],[-1340,2520],[-620,2440],[-560,2250],[-1180,1300],[-1650,1080],[-2600,2050],[-2900,2080],[-3200,2010]];
  for(const [x,z] of isle)k.push([x,z,26+((x*7+z*3)%17+17)%17,18+((x+z)%9+9)%9,(x*z)%3]);return k})();
 function flKeysD(x,z){let d=1e9;for(const [cx,cz,rx,rz,a] of FL_KEYS){const c=Math.cos(a),s=Math.sin(a),dx=x-cx,dz=z-cz,u=(dx*c+dz*s)/rx,v=(-dx*s+dz*c)/rz;
  const e=Math.hypot(u,v);if(e<3)d=Math.min(d,(e-1)*Math.min(rx,rz))}return d}
 function seaD(x,z){ // signed metres into the sea (>0 sea, <0 land)
  const n=shoreZ(x)-z;let isl=1e9;
  for(const [cx,cz,rx,rz] of ISL){const d=Math.hypot((x-cx)/rx,(z-cz)/rz);isl=Math.min(isl,(d-.62)*Math.min(rx,rz))}
- const edge=Math.max(-x-1750+coastJ(z,1.7),x-flEast(z)+coastJ(z,4.2)*.75,-z-1750,z-flSouth(Math.max(x,-460))+Math.max(-70,coastJ(x,2.9)*.7),
-  (-z-x)*.7071-(3500*.7071-180)+coastJ(x-z,3.3)*.6,(x-z)*.7071-(3500*.7071-200)+coastJ(x+z,5.5)*.6),bay=x<-450?(z-1030)*(x<-470?1:(x+450)/-20+0):-1e9;
- return Math.min(Math.max(edge,Math.min(Math.max(bay,Math.min(n,isl)),hhIsle(x,z))),flKeysD(x,z));
+ const edge=Math.max(flWest(z)-x+bigJ(z,1.7),x-flEast(z)+bigJ(z,4.2)*.8,z-flSouth(x)+bigJ(x,2.9)*.8,-z-1750,
+  (-z-x)*.7071-(3972*.7071-260)+bigJ(x-z,3.3)*.6,(x-z)*.7071-(3872*.7071-260)+bigJ(x+z,5.5)*.6);
+ // Calusa bay (an inlet now) and Calusa Pass, the channel out to the Gulf
+ // rounded, ragged bay: a superellipse whose shore only ever bites into the water (never into Port Calusa / Coral Ridge)
+ const bu=Math.abs(x+1250)/800,bv=Math.abs(z-1865)/835,ba=Math.atan2(z-1865,x+1250);
+ const bay=(1-Math.pow(Math.pow(bu,3.2)+Math.pow(bv,3.2),1/3.2))*800-Math.abs(70*Math.sin(ba*3+.7)+45*Math.sin(ba*7+2.2)+22*Math.sin(ba*13+.4))-25;
+ const pass=x<-1900?Math.min(z-1880-40*Math.sin(x*.004),2230+30*Math.sin(x*.006+1)-z):-1e9;
+ return Math.min(Math.max(edge,Math.min(Math.max(bay,pass,Math.min(n,isl)),hhIsle(x,z))),flKeysD(x,z));
 }
-const swampMask=(x,z)=>sstep(440,520,x)*sstep(-300,-230,z)*sstep(520,380,z)*(1-sstep(1400,1600,x));
+const gladesMask=(x,z)=>sstep(-2300,-2000,x)*(1-sstep(1300,1700,x))*sstep(3200,3450,z)*(1-sstep(4400,4650,z))*(.75+.25*Math.sin(x*.003+z*.002));
+const swampMask=(x,z)=>Math.max(gladesMask(x,z),swampMask0(x,z));
+const swampMask0=(x,z)=>sstep(440,520,x)*sstep(-300,-230,z)*sstep(520,380,z)*(1-sstep(1400,1600,x));
 // AIRPORT_FLAT_V1: 1 over the airfield (x -1080..-500, z -250..160), easing to 0 over 60 m
 const airportMask=(x,z)=>(1-sstep(290,350,Math.abs(x+790)))*(1-sstep(205,265,Math.abs(z+45)));
-const hillMask=(x,z)=>sstep(-640,-1100,x)*sstep(400,200,z)*sstep(-400,-280,z);
+const hillMask=(x,z)=>Math.max(hillMask0(x,z),sstep(-1750,-2100,x)*sstep(-350,-120,z)*(1-sstep(800,1050,z))*sstep(-3600,-3300,x));
+const hillMask0=(x,z)=>sstep(-640,-1100,x)*sstep(400,200,z)*sstep(-400,-280,z);
 function rawH(x,z){
  const S=seaD(x,z);let h=0;
  if(S>0)h=-3.5*sstep(0,28,S)-.05*Math.max(0,S-28);else h=.15*sstep(-30,-4,S)*(fbm(x*.05,z*.05)-.3);
@@ -675,6 +686,9 @@ function groundCol(x,z,h,o){
  if((x>-345&&x<425&&z>-345&&z<445)||(x>-1110&&x<-515&&z>395&&z<1045)){r=.42;g=.41;b=.40}
  else if(x>-345&&x<425&&z>445&&z<1115){r=.32+(n-.5)*.12;g=.58+(n-.5)*.16;b=.26} // greener suburbs
  else if(hhIsle(x,z)<-30&&x<-450){r=.42;g=.41;b=.40} // Harbor Heights island
+ else if(x>1650&&x<3300&&z>650&&z<3100){const cx=Math.floor((x+37*Math.sin(z*.01))/130),cz=Math.floor(z/95),hh=((cx*73856093)^(cz*19349663))>>>0,f=hh%5;
+  const rows=.04*Math.sin((f<2?x:z)*.9); // crop rows
+  if(f===0){r=.55+rows;g=.5+rows;b=.24}else if(f===1){r=.36;g=.5+rows;b=.2}else if(f===2){r=.48+rows;g=.38;b=.24}else if(f===3){r=.4;g=.62+rows;b=.28}else{r=.3+rows;g=.45;b=.22}} // farm fields
  else if(x>-435&&x<895&&z>1625&&z<2415){r=.33+(n-.5)*.12;g=.57+(n-.5)*.16;b=.27} // Coral Ridge lawns
  if(sw>.05){const m=sw*.9;r=lerp(r,.26+n*.12,m);g=lerp(g,.40+n*.08,m);b=lerp(b,.19,m);if(h<-.1){r=lerp(r,.18,.55);g=lerp(g,.26,.55);b=lerp(b,.14,.55)}}
  if(hm>.05){const rock=sstep(14,34,h);r=lerp(lerp(r,.22,hm*.6),.48,rock);g=lerp(lerp(g,.38,hm*.6),.44,rock);b=lerp(lerp(b,.20,hm*.6),.38,rock)}
@@ -739,12 +753,19 @@ function roofTex(){
  const t=mkTex(c);t.anisotropy=8;return t;
 }
 function buildTerrainMesh(){
- const geo=new T.PlaneGeometry(WS*2,WS*2,TN,TN);geo.rotateX(-Math.PI/2);
- const pos=geo.attributes.position,col=new Float32Array(pos.count*3),uv=geo.attributes.uv,o=[0,0,0];
- for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i),h=hg[i];pos.setY(i,h);groundCol(x,z,h,o);col[i*3]=o[0];col[i*3+1]=o[1];col[i*3+2]=o[2];uv.setXY(i,x/14,z/14)}
- geo.setAttribute('color',new T.BufferAttribute(col,3));geo.computeVertexNormals();
- const m=new T.Mesh(geo,new T.MeshStandardMaterial({vertexColors:true,map:makeNoiseTex(512,220,85,[1,.97,.9]),roughness:.9,metalness:0,envMapIntensity:.22}));
- m.receiveShadow=true;m.matrixAutoUpdate=false;world.add(m);
+ // TERRAIN_TILES_V1: the ground is split into tiles so only what's in view is drawn; open-sea tiles are skipped entirely
+ const mat=new T.MeshStandardMaterial({vertexColors:true,map:makeNoiseTex(512,220,85,[1,.97,.9]),roughness:.9,metalness:0,envMapIntensity:.22}),o=[0,0,0],TILE=48;
+ const H=(ix,iz)=>hg[clamp(iz,0,TN)*(TN+1)+clamp(ix,0,TN)];
+ for(let tz=0;tz<TN;tz+=TILE)for(let tx=0;tx<TN;tx+=TILE){const nx=Math.min(TILE,TN-tx),nz=Math.min(TILE,TN-tz);
+  let any=false;for(let iz=tz;iz<=tz+nz&&!any;iz++)for(let ix=tx;ix<=tx+nx;ix++)if(hg[iz*(TN+1)+ix]>-3.4){any=true;break}
+  if(!any)continue;
+  const n=(nx+1)*(nz+1),P=new Float32Array(n*3),N=new Float32Array(n*3),C=new Float32Array(n*3),U=new Float32Array(n*2),I=[];let k=0;
+  for(let iz=tz;iz<=tz+nz;iz++)for(let ix=tx;ix<=tx+nx;ix++,k++){const x=-WS+ix*TS,z=-WS+iz*TS,h=hg[iz*(TN+1)+ix];
+   P[k*3]=x;P[k*3+1]=h;P[k*3+2]=z;const dx=(H(ix+1,iz)-H(ix-1,iz))/(2*TS),dz=(H(ix,iz+1)-H(ix,iz-1))/(2*TS),l=Math.hypot(dx,1,dz);
+   N[k*3]=-dx/l;N[k*3+1]=1/l;N[k*3+2]=-dz/l;groundCol(x,z,h,o);C[k*3]=o[0];C[k*3+1]=o[1];C[k*3+2]=o[2];U[k*2]=x/14;U[k*2+1]=z/14}
+  for(let iz=0;iz<nz;iz++)for(let ix=0;ix<nx;ix++){const a=iz*(nx+1)+ix,b=a+1,c=a+nx+1,d=c+1;I.push(a,c,b,b,c,d)}
+  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(P,3));geo.setAttribute('normal',new T.BufferAttribute(N,3));geo.setAttribute('color',new T.BufferAttribute(C,3));geo.setAttribute('uv',new T.BufferAttribute(U,2));geo.setIndex(I);geo.computeBoundingSphere();
+  const m=new T.Mesh(geo,mat);m.receiveShadow=true;m.matrixAutoUpdate=false;world.add(m)}
  // depth texture for water shader
  const d=new Uint8Array((TN+1)*(TN+1)*4);
  for(let iz=0;iz<=TN;iz++)for(let ix=0;ix<=TN;ix++){const i=iz*(TN+1)+ix,h=hg[i],x=-WS+ix*TS,z=-WS+iz*TS;
@@ -775,7 +796,9 @@ const MATS={},chunkMap=new Map();
 function defMat(key,mat,shadow=true,recv=true){MATS[key]={mat,shadow,recv}}
 function B(key,x,z){const k=key+'|'+Math.floor((x+WS)/CH)+','+Math.floor((z+WS)/CH);let b=chunkMap.get(k);if(!b){b=new Batch();b.key=key;chunkMap.set(k,b)}return b}
 const _m=new T.Matrix4(),_q=new T.Quaternion(),_e=new T.Euler(),_p=new T.Vector3(),_sc=new T.Vector3();
-function bakeG(key,g,x,y,z,ry,sx,sy,sz,col,rx=0,rz=0){_e.set(rx,ry,rz);_q.setFromEuler(_e);_m.compose(_p.set(x,y,z),_q,_sc.set(sx,sy,sz));B(key,x,z).geo(g,_m,col)}
+let _yOff=0; // set while baking props that should sit on the terrain (see grounded())
+const grounded=(fn,x,z,s)=>{_yOff=heightAt(x,z);try{fn(x,z,s)}finally{_yOff=0}};
+function bakeG(key,g,x,y,z,ry,sx,sy,sz,col,rx=0,rz=0){_e.set(rx,ry,rz);_q.setFromEuler(_e);_m.compose(_p.set(x,y+_yOff,z),_q,_sc.set(sx,sy,sz));B(key,x,z).geo(g,_m,col)}
 function finalizeBatches(){
  for(const [k,b] of chunkMap){const d=MATS[b.key];if(!d||!b.v)continue;const m=new T.Mesh(b.toGeometry(),d.mat);m.castShadow=d.shadow;m.receiveShadow=d.recv;m.matrixAutoUpdate=false;world.add(m)}
  chunkMap.clear();
@@ -1170,6 +1193,15 @@ function defineRoads(){
  addRoad('v',380,1400,2480,30,'hwy');          // Interstate 1 continues south through Coral Ridge
  addRoad('h',1520,-420,900,22,'hwy');          // Calusa Parkway along the top of Coral Ridge
  addRoad('v',900,1300,1520,16,'city');
+ // BIG_MAP_V1 countryside roads
+ addRoad('h',420,-3300,-1400,28,'hwy');addRoad('h',420,1500,3200,28,'hwy');   // Gulf Expressway coast to coast
+ addRoad('v',380,2480,4750,30,'hwy');                                         // Interstate 1 to Cape Palmera
+ addRoad('v',-2700,420,1750,18,'hwy');                                        // west highway through Orrin Wilds
+ addRoad('h',3200,-2300,2700,18,'hwy');                                       // Glades Trail across the south
+ addRoad('v',2600,-200,3200,18,'hwy');                                        // east coast highway
+ addRoad('h',1520,900,2600,16,'city');                                        // parkway out to the coast
+ addRoad('h',2600,1000,2600,9,'dirt');addRoad('h',1900,1000,2600,9,'dirt');addRoad('v',1800,700,3200,9,'dirt');addRoad('v',2200,1520,3200,9,'dirt');
+ addRoad('h',4200,-1400,1600,9,'dirt');addRoad('v',-2300,2350,3200,9,'dirt');addRoad('h',1100,-3300,-2700,9,'dirt');addRoad('h',-150,-3300,-2700,9,'dirt');
 }
 const CR_X=[],CR_Z=[];
 // Harbor Heights street plan: recursive random splits of the island, so every street ends in a T or at the shore
@@ -1418,10 +1450,33 @@ function swampProps(){
  decks.push({x0:880,x1:890,z0:50,z1:75,y:.4});bakeG('plain',GEO.box,885,.15,62,0,10,.4,25,[.55,.42,.28]);
 }
 function hillProps(){
- for(let i=0;i<520;i++){const x=rr(-1550,-650),z=rr(-400,350);if(hillMask(x,z)<.15)continue;const h=heightAt(x,z);if(h<-.3||nearRoad(x,z,10))continue;(rnd()<.8?pine:rock)(x,z,rr(.8,1.5))}
+ for(let i=0;i<520;i++){const x=rr(-1550,-650),z=rr(-400,350);if(hillMask(x,z)<.15)continue;const h=heightAt(x,z);if(h<-.3||nearRoad(x,z,10))continue;grounded(rnd()<.8?pine:rock,x,z,rr(.8,1.5))}
  // cabin + radio tower on the ridge
  const cabin=findClearStructureSite(-800,-20,7,6,160);if(cabin){const bx=cabin.x,bz=cabin.z,bh=heightAt(bx,bz);box3('f_apt',bx-6,bz-5,bx+6,bz+5,bh,bh+3.6,[.7,.5,.35],[.3,.22,.18],8);bakeG('plain',GEO.cone4,bx,bh+3.6,bz,0,8.5,2.5,7,[.35,.27,.22]);addCol(bx-6,bz-5,bx+6,bz+5,6,'building');G.cabinPosition={x:bx,z:bz}}
  let tx=-905,tz=-120,th=heightAt(tx,tz);bakeG('plain',GEO.cone,tx,th,tz,0,2.5,44,2.5,[.7,.7,.72]);bakeG('glow',GEO.sph,tx,th+44,tz,0,.6,.6,.6,[1,.1,.1]);addCol(tx-1.5,tz-1.5,tx+1.5,tz+1.5,40);
+}
+// BIG_MAP_V1 scenery: countryside trees, pine forest on the western hills, cypress and reeds in the glades,
+// a few farmsteads, palms on the new keys. No new towns.
+function bigMapProps(){
+ const inCity=(x,z)=>(x>-360&&x<440&&z>-360&&z<1130)||(x>-1120&&x<-505&&z>385&&z<1055)||(x>-440&&x<900&&z>1620&&z<2420)||hhIsle(x,z)<20||airportMask(x,z)>.05;
+ const land=(x,z,m)=>seaD(x,z)<-m&&heightAt(x,z)>-.1;
+ // open countryside: oak copses and the odd palm
+ for(let i=0;i<3400;i++){let x=rr(-3500,3400),z=rr(-300,4900);if(!land(x,z,25)||inCity(x,z)||swampMask(x,z)>.3||hillMask(x,z)>.15||nearRoad(x,z,9))continue;
+  if(x>1650&&x<3300&&z>650&&z<3100&&rnd()<.85)continue; // keep the fields mostly open
+  if(fbm(x*.004,z*.004)<.47&&rnd()<.7)continue;          // clump trees into copses
+  grounded(rnd()<.78?oak:palm,x,z,rr(.8,1.35))}
+ // pine forest on Orrin Wilds
+ for(let i=0;i<1500;i++){const x=rr(-3500,-1600),z=rr(-380,1000);if(hillMask(x,z)<.2||!land(x,z,15)||nearRoad(x,z,10)||airportMask(x,z)>.05)continue;grounded(rnd()<.88?pine:rock,x,z,rr(.8,1.6))}
+ // Okee Glades: cypress domes and sawgrass
+ for(let i=0;i<1100;i++){const x=rr(-2300,1700),z=rr(3200,4650);if(gladesMask(x,z)<.5||heightAt(x,z)<-.6||nearRoad(x,z,9))continue;grounded(cypress,x,z,rr(.8,1.4))}
+ for(let i=0;i<2400;i++){const x=rr(-2300,1700),z=rr(3200,4650);if(gladesMask(x,z)<.4||nearRoad(x,z,6))continue;bakeG('palm',GEO.cone,x,heightAt(x,z),z,0,.25,rr(1,2.2),.25,[.55,.56,.27])}
+ // farmsteads: red barn, white house, silo
+ for(const [fx,fz] of[[1950,1050],[2450,1300],[2050,2250],[2700,2450],[2400,2900],[1900,2800],[2900,1700],[2350,800]]){const x=fx+rr(-40,40),z=fz+rr(-40,40);if(!land(x,z,30)||nearRoad(x,z,14))continue;const y=heightAt(x,z);
+  box3('f_brick',x-8,z-6,x+8,z+6,y,y+6.5,[.72,.2,.16],[.3,.12,.1],9);bakeG('plain',GEO.cone4,x,y+6.5,z,0,11.5,4,9,[.32,.3,.3]);
+  box3('f_apt',x+14,z-5,x+22,z+3,y,y+4.2,[.95,.95,.92],[.4,.4,.4],7);bakeG('plain',GEO.cone4,x+18,y+4.2,z-1,0,6.5,2,6,[.35,.25,.22]);
+  bakeG('plain',GEO.cyl,x-14,y,z+2,0,2.6,13,2.6,[.82,.84,.86]);bakeG('plain',GEO.sph,x-14,y+13,z+2,0,2.6,1.6,2.6,[.7,.72,.75]);addCol(x-16.6,z-.6,x-11.4,z+4.6,14)}
+ // palms on the new keys and islets
+ for(let i=0;i<700;i++){const [cx,cz,rx,rz]=pick(FL_KEYS),a=rnd()*TAU,r=Math.sqrt(rnd())*.55,x=cx+Math.cos(a)*r*rx,z=cz+Math.sin(a)*r*rz;if(!land(x,z,4)||nearRoad(x,z,8))continue;grounded(palm,x,z,rr(.8,1.2))}
 }
 function keysProps(){
  for(let i=0;i<380;i++){const[cx,cz,rx,rz]=pick(ISL),a=rnd()*TAU,r=Math.sqrt(rnd())*.58,x=cx+Math.cos(a)*r*rx,z=cz+Math.sin(a)*r*rz;if(nearRoad(x,z,10))continue;palm(x,z,rr(.8,1.2))}
@@ -1502,7 +1557,7 @@ function updateSignals(t){
 }
 
 // --- base map canvas (used by minimap + full map)
-const MAPPX=2;let baseMap=null;
+const MAPPX=4;let baseMap=null;
 function buildBaseMap(){
  const S=WS*2/MAPPX,[c,x]=cv(S,S),id=x.createImageData(S,S),o=[0,0,0],d=id.data;
  for(let j=0;j<S;j+=2)for(let i=0;i<S;i+=2){const wx=-WS+i*MAPPX,wz=-WS+j*MAPPX,h=heightAt(wx,wz);groundCol(wx,wz,h,o);let r=o[0],g=o[1],b=o[2];
@@ -1515,7 +1570,7 @@ function buildBaseMap(){
   if(r.o==='h'){x.moveTo((r.a+WS)/MAPPX,(r.c+WS)/MAPPX);x.lineTo((r.b+WS)/MAPPX,(r.c+WS)/MAPPX)}else{x.moveTo((r.c+WS)/MAPPX,(r.a+WS)/MAPPX);x.lineTo((r.c+WS)/MAPPX,(r.b+WS)/MAPPX)}x.stroke()}
  baseMap=c;
 }
-const REGIONS=[['NEON BEACH',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['NORTH OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',-1520,1460,-470,2480,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['EAST HIGHWAY',900,-200,1700,600,0,0]];
+const REGIONS=[['NEON BEACH',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['NORTH OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',-1520,1460,-470,2480,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['CALUSA PASS',-3700,1850,-2000,2300,0,0],['SUNRISE FARMS',1600,600,3600,3150,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['CAPE PALMERA',-2600,4650,1900,5700,0,0],['EAST HIGHWAY',900,-200,1700,600,0,0]];
 function zoneName(x,z){for(const r of REGIONS)if(x>r[1]&&x<r[3]&&z>r[2]&&z<r[4])return r[0];if(z<shoreZ(x))return'PALMERA GULF';return'PALMERA COUNTRYSIDE'}
 
 function clearStructureFootprint(x0,z0,x1,z1,margin=1.2){
@@ -1759,7 +1814,7 @@ function buildWorld(){
  buildDowntownPark();
  buildPlazasAndPromenade();
  forceShopDoors();
- portExtras();streetProps();addOuterStreetlights();beachProps();swampProps();hillProps();keysProps();buildSignals();buildAirport();
+ portExtras();streetProps();addOuterStreetlights();beachProps();swampProps();hillProps();keysProps();bigMapProps();buildSignals();buildAirport();
  buildPalmettoGrove();finalizeBatches();buildBaseMap();
 }
 
@@ -2837,7 +2892,7 @@ function stepCar(c,dt){
     const nl=ct.nx*cs-ct.nz*sn,off=(k-1)*-(t.L/2-.95);c.yr+=off*nl*imp*.035;}}}
  if(hit>1)crumpleCrash(c,hit,crumpleContact);if(hit>2.5){carImpact(c,hit)}
  // world bounds
- c.x=clamp(c.x,-1850,1850);c.z=clamp(c.z,-1850,2950);
+ c.x=clamp(c.x,-WS+150,WS-150);c.z=clamp(c.z,-WS+150,WS-150);
  // tire smoke / drift
  if(!c.dead&&Math.abs(vl)>3.2&&Math.abs(vf)>4&&Math.random()<dt*28&&water<=.1){emit(c.x-sn*1.4,c.y+.2,c.z-cs*1.4,(Math.random()-.5)*1.5,.6,(Math.random()-.5)*1.5,1.1,.5,2,DUST,DUST,-.2,.5)}
  if(c.hp<40&&!c.dead&&Math.random()<dt*10*(1-c.hp/40)){emit(c.x+sn*1.8,c.y+1,c.z+cs*1.8,0,1.5,0,1.6,.4,1.8,SMK,SMK2,-.6,.6)}
@@ -2966,7 +3021,7 @@ function playerOnFoot(dt){
   pl.swim=gy<WL-1.05;if(pl.swim){pl.y=WL-.75;pl.vy=0}
   pl.x+=pl.vx*dt;pl.z+=pl.vz*dt;
   resolveFoot(pl,.38);
-  pl.x=clamp(pl.x,-1850,1850);pl.z=clamp(pl.z,-1850,2950);
+  pl.x=clamp(pl.x,-WS+150,WS-150);pl.z=clamp(pl.z,-WS+150,WS-150);
  }
  const spd=Math.hypot(pl.vx,pl.vz);pl.walkSpd=spd;
  if(aiming||pl.fireT>0&&pl.weapon!=='fists'){const ty=Math.atan2(-Math.sin(camYaw),-Math.cos(camYaw));pl.h+=wrapA(ty-pl.h)*Math.min(1,dt*14)}
@@ -4244,7 +4299,7 @@ function updateFx(rdt){audio.setPaused(G.state==='paused');const f=G.fx;
 // ---------- geometry helpers ----------
 function isWater(x,z,d=1.4){return WL-heightAt(x,z)>d}
 function findWater(x,z,maxR=320,d=1.4){
- const ok=(px,pz)=>Math.abs(px)<1800&&pz>-1800&&pz<2550&&isWater(px,pz,d)&&isWater(px+3,pz,d*.7)&&isWater(px-3,pz,d*.7)&&isWater(px,pz+3,d*.7)&&isWater(px,pz-3,d*.7);
+ const ok=(px,pz)=>Math.abs(px)<WS-300&&Math.abs(pz)<WS-300&&isWater(px,pz,d)&&isWater(px+3,pz,d*.7)&&isWater(px-3,pz,d*.7)&&isWater(px,pz+3,d*.7)&&isWater(px,pz-3,d*.7);
  if(ok(x,z))return[x,z];
  for(let r=6;r<=maxR;r+=6){const n=Math.max(8,Math.round(r/3));for(let i=0;i<n;i++){const a=i/n*TAU,px=x+Math.cos(a)*r,pz=z+Math.sin(a)*r;if(ok(px,pz))return[px,pz]}}
  return null}
@@ -4678,7 +4733,7 @@ function stepBoat(c,dt){const t=c.t,inp=c.inp;c.age+=dt;if(c.dead){inp.thr=0;inp
  for(let k=0;k<3;k++){const p=_cc[k];for(const col of queryCols(p[0],p[1],r+1)){const ct=circleBox(p,r,col);if(!ct)continue;
   c.x+=ct.nx*ct.pen;c.z+=ct.nz*ct.pen;p[0]+=ct.nx*ct.pen;p[1]+=ct.nz*ct.pen;const vn=c.vx*ct.nx+c.vz*ct.nz;if(vn<0){c.vx-=1.3*vn*ct.nx;c.vz-=1.3*vn*ct.nz;hit=Math.max(hit,-vn)}}}
  if(hit>2.5)carImpact(c,hit);
- c.x=clamp(c.x,-1850,1850);c.z=clamp(c.z,-1850,2950);
+ c.x=clamp(c.x,-WS+150,WS-150);c.z=clamp(c.z,-WS+150,WS-150);
  if(onW&&sp>3&&Math.random()<dt*30)emit(c.x-sn*t.L*.5+(Math.random()-.5)*1.4,WL+.1,c.z-cs*t.L*.5,(Math.random()-.5)*2-sn*2,1+Math.random()*1.5,(Math.random()-.5)*2-cs*2,.7,.4,1.6,[.95,.97,1],[.8,.88,.95],3,.7);
  if(onW&&sp>8&&Math.random()<dt*20)for(const s of[-1,1])emit(c.x+sn*t.L*.3+cs*s*1.2,WL+.2,c.z+cs*t.L*.3-sn*s*1.2,cs*s*3,1.5,-sn*s*3,.5,.3,.9,[1,1,1],[.85,.9,.95],5,.6);
  if(swampLand&&!onW&&sp>3&&Math.random()<dt*20)emit(c.x-sn*2,c.y+.2,c.z-cs*2,0,.6,0,1,.5,2,DUST,DUST,-.2,.4);
@@ -5230,7 +5285,7 @@ playerOnFoot=function(dt){
  if(G.state!=='play'||G.mapOpen||G.phoneOpen){pl.vx=pl.vy=pl.vz=0;return}
  dt=clamp(Number(dt)||0,0,.05);const f=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0),r=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),u=(keys[' ']?1:0)-(keys.x?1:0),length=Math.max(1,Math.hypot(f,r,u)),speed=keys.shift?48:18;
  pl.vx=(-Math.sin(camYaw)*f+Math.cos(camYaw)*r)/length*speed;pl.vz=(-Math.cos(camYaw)*f-Math.sin(camYaw)*r)/length*speed;pl.vy=u/length*speed;
- pl.x=clamp(pl.x+pl.vx*dt,-1850,1850);pl.z=clamp(pl.z+pl.vz*dt,-1850,2950);pl.y=clamp(pl.y+pl.vy*dt,heightAt(pl.x,pl.z)+.75,600);resolveFoot(pl,.38);
+ pl.x=clamp(pl.x+pl.vx*dt,-WS+150,WS-150);pl.z=clamp(pl.z+pl.vz*dt,-WS+150,WS-150);pl.y=clamp(pl.y+pl.vy*dt,heightAt(pl.x,pl.z)+.75,600);resolveFoot(pl,.38);
  pl.h=wrapA(camYaw+Math.PI);pl.swim=false;pl.walkSpd=0;pl.aim=0;
 };
 const devFlightOriginalEnterCar=enterCar;enterCar=function(){if(devFlightState.active){toast('Disable Dev Mode before entering a vehicle.');return}return devFlightOriginalEnterCar.apply(this,arguments)};
