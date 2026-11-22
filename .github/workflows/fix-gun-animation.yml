@@ -1,0 +1,119 @@
+name: Fix gun grip and firing animation
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-gun-animation.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: gun-animation-fix
+  cancel-in-progress: false
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/gun-fix" --no-package-lock --ignore-scripts acorn@8 three@0.128.0
+      - name: Prepare scoped animation module and integration
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/gun-fix/node_modules/acorn');
+          const moduleSource=String.raw`/* Visual gun handling only: no damage, ammo, timing or input changes. */
+          (function(root){
+          'use strict';
+          const pending=new WeakMap(),profiles={pistol:{x:.08,y:-.10,z:.43,grip:[-.06,-.015,-.035],kick:1},smg:{x:.10,y:-.12,z:.33,grip:[-.065,-.15,-.025],kick:.4},shot:{x:.11,y:-.14,z:.26,grip:[-.065,-.22,-.025],kick:1.3},rifle:{x:.11,y:-.14,z:.26,grip:[-.065,-.22,-.025],kick:.65}};
+          const cap=(v,a,b)=>Math.max(a,Math.min(b,v));
+          function notifyShot(h,weapon){if(h&&Object.prototype.hasOwnProperty.call(profiles,weapon)){const old=pending.get(h);pending.set(h,{weapon,count:Math.min(4,(old&&old.weapon===weapon?old.count:0)+1)});}}
+          function wrap(original,T){
+           if(original.gunAnimationVersion===1)return original;
+           const states=new WeakMap(),down=new T.Vector3(0,-1,0);
+           function create(u){
+            const mount=u.guns.pistol&&u.guns.pistol.parent;
+            if(!mount||mount.parent!==u.A[1].el||u.A.some(a=>a.sh.parent!==u.spine||Math.abs(a.el.position.x)+Math.abs(a.el.position.z)>.001)||Math.abs(mount.position.x)+Math.abs(mount.position.z)>.001||mount.position.y>=-.05)return null;
+            const c={u,mount,aim:0,draw:0,kick:0,velocity:0,applied:false,hand:new T.Vector3(),offset:new T.Vector3(),goal:new T.Vector3(),target:new T.Vector3(),direction:new T.Vector3(),pole:new T.Vector3(),elbow:new T.Vector3(),local:new T.Vector3(),desired:new T.Quaternion(),inverse:new T.Quaternion(),combined:new T.Quaternion(),gunGoal:new T.Quaternion(),euler:new T.Euler(),savedGun:new T.Quaternion(),savedSpine:new T.Quaternion(),bones:[]};
+            for(const a of u.A)c.bones.push({a,U:a.el.position.length(),F:-mount.position.y,sh:new T.Quaternion(),el:new T.Quaternion(),savedSh:new T.Quaternion(),savedEl:new T.Quaternion()});
+            c.scale=(c.bones[1].U+c.bones[1].F)/.59;c.centerX=(u.A[0].sh.position.x+u.A[1].sh.position.x)/2;c.centerY=(u.A[0].sh.position.y+u.A[1].sh.position.y)/2;c.centerZ=(u.A[0].sh.position.z+u.A[1].sh.position.z)/2;
+            c.hand.set(c.centerX+.13*c.scale,c.centerY-.29*c.scale,c.centerZ+.21*c.scale);c.offset.set(-.06,-.015,-.035).multiplyScalar(c.scale);return c;
+           }
+           function restore(c){if(!c.applied)return;for(const b of c.bones){b.a.sh.quaternion.copy(b.savedSh);b.a.el.quaternion.copy(b.savedEl);}c.mount.quaternion.copy(c.savedGun);c.u.spine.quaternion.copy(c.savedSpine);c.applied=false;}
+           function solve(c,b,target,side){
+            const shoulder=b.a.sh.position,d=c.direction.copy(target).sub(shoulder),distance=cap(d.length(),Math.abs(b.U-b.F)+.0001,b.U+b.F-.0001);d.normalize();
+            const along=(b.U*b.U-b.F*b.F+distance*distance)/(2*distance),height=Math.sqrt(Math.max(0,b.U*b.U-along*along));
+            c.pole.set(side*.55*c.scale+c.centerX,c.centerY-.50*c.scale,c.centerZ+.05*c.scale).sub(shoulder);c.pole.addScaledVector(d,-c.pole.dot(d)).normalize();
+            c.elbow.copy(shoulder).addScaledVector(d,along).addScaledVector(c.pole,height);
+            c.local.copy(c.elbow).sub(shoulder).normalize();b.sh.setFromUnitVectors(down,c.local);
+            c.local.copy(shoulder).addScaledVector(d,distance).sub(c.elbow).normalize().applyQuaternion(c.inverse.copy(b.sh).invert());b.el.setFromUnitVectors(down,c.local);
+           }
+           function animate(h,dt,s){
+            const u=h&&h.userData;let c=h&&states.get(h);if(c)restore(c);
+            const armed=!!(s&&!s.dead&&u&&u.spine&&u.A&&u.A.length===2&&u.guns&&Object.prototype.hasOwnProperty.call(profiles,s.weapon)&&u.guns[s.weapon]);
+            if(!armed){if(c)c.aim=c.draw=c.kick=c.velocity=0;if(h)pending.delete(h);return original.apply(this,arguments);}
+            if(!c){c=create(u);if(!c)return original.apply(this,arguments);states.set(h,c);}
+            const args=Array.from(arguments);args[2]=Object.assign({},s,{aim:false,punch:0});const result=original.apply(this,args),step=Number.isFinite(dt)?cap(dt,0,.1):0,p=profiles[s.weapon],shot=pending.get(h);pending.delete(h);
+            if(shot&&shot.weapon===s.weapon)c.velocity=Math.min(150,c.velocity+20*Math.E*p.kick*shot.count);
+            const v=c.velocity+20*c.kick,decay=Math.exp(-20*step);c.kick=(c.kick+v*step)*decay;c.velocity=(c.velocity-20*v*step)*decay;const kick=cap(c.kick,0,1.8);
+            c.aim+=(Number(!!s.aim)-c.aim)*(1-Math.exp(-step*(s.aim?18:11)));c.draw+=(1-c.draw)*(1-Math.exp(-step*18));const aim=Math.max(c.aim,Math.min(1,kick*.8)),scale=c.scale;
+            c.goal.set(c.centerX+(.13+(p.x-.13)*aim)*scale,c.centerY+(-.29+(p.y+.29)*aim+.008*kick)*scale,c.centerZ+(.21+(p.z-.21)*aim-.028*kick)*scale);c.hand.lerp(c.goal,1-Math.exp(-step*24));
+            c.goal.set(...p.grip).multiplyScalar(scale);c.offset.lerp(c.goal,1-Math.exp(-step*24));c.desired.setFromEuler(c.euler.set(-1.04+(-Math.PI/2+1.04)*aim-.12*kick,0,0));
+            for(const b of c.bones){b.savedSh.copy(b.a.sh.quaternion);b.savedEl.copy(b.a.el.quaternion);}c.savedGun.copy(c.mount.quaternion);c.savedSpine.copy(u.spine.quaternion);
+            const speed=Math.max(0,Number(s.speed)||0),weight=c.draw*(aim+(1-aim)*(1-.65*cap((speed-4)/4,0,1)));
+            solve(c,c.bones[1],c.hand,1);c.target.copy(c.offset).applyQuaternion(c.desired).add(c.hand);solve(c,c.bones[0],c.target,-1);
+            for(const b of c.bones){b.a.sh.quaternion.slerp(b.sh,weight);b.a.el.quaternion.slerp(b.el,weight);}
+            c.combined.multiplyQuaternions(u.A[1].sh.quaternion,u.A[1].el.quaternion);c.gunGoal.copy(c.combined).invert().multiply(c.desired);c.mount.quaternion.slerp(c.gunGoal,weight);
+            u.spine.rotation.y*=1-aim*.9;u.spine.rotation.z*=1-aim*.85;u.spine.rotation.x+=(.04-u.spine.rotation.x)*aim-.018*kick;c.applied=true;return result;
+           }
+           animate.gunAnimationVersion=1;animate.inspect=h=>{const c=states.get(h);return c?{aim:c.aim,draw:c.draw,kick:c.kick,applied:c.applied}:null;};return animate;
+          }
+          const api={version:1,wrap,notifyShot};if(typeof module==='object'&&module.exports)module.exports=api;else root.VCGunAnimation=api;
+          })(typeof window!=='undefined'?window:globalThis);
+          `;
+          fs.writeFileSync('js/gun-animation.js',moduleSource);
+          let html=fs.readFileSync('index.html','utf8'),found=[];
+          function walk(n,visit,parent){visit(n,parent);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,visit,n);}else if(v&&typeof v.type==='string')walk(v,visit,n);}}
+          for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;const ast=acorn.parse(m[1],{ecmaVersion:'latest'}),functions={},boots=[];walk(ast,(n,parent)=>{if(n.type==='FunctionDeclaration'&&n.id)functions[n.id.name]=n;if(n.type==='CallExpression'&&n.callee.type==='Identifier'&&n.callee.name==='boot'&&parent.type==='ExpressionStatement')boots.push(parent.start);});if(functions.animHuman)found.push({m,functions,boots});}
+          if(found.length!==1)throw Error('Expected exactly one animator script');const c=found[0],src=c.m[1],native=c.functions.animHuman;
+          fs.writeFileSync('/tmp/gun-native.js',src.slice(native.start,native.end)+(c.functions.applyLeadLeanPunch?'\n'+src.slice(c.functions.applyLeadLeanPunch.start,c.functions.applyLeadLeanPunch.end):''));
+          if(html.includes('// GUN_ANIMATION_V1')){fs.writeFileSync('/tmp/gun-index.html',html);process.exit(0);}
+          if(c.boots.length!==1||!c.functions.fireWeapon)throw Error('Firing or boot hook changed');const fire=c.functions.fireWeapon,shots=[];
+          walk(fire,n=>{if(n.type==='CallExpression'&&n.callee.type==='MemberExpression'&&n.callee.object.type==='Identifier'&&n.callee.object.name==='audio'&&n.callee.property.name==='shot')shots.push(n);});
+          if(shots.length!==1)throw Error('Expected one confirmed firing audio call; refusing to guess');const shot=shots[0],edits=[{start:shot.start,end:shot.end,text:'(window.VCGunAnimation.notifyShot(plH,pl.weapon),'+src.slice(shot.start,shot.end)+')'},{start:c.boots[0],end:c.boots[0],text:"// GUN_ANIMATION_V1\nif(!window.VCGunAnimation)throw Error('Gun animation module missing');\nanimHuman=window.VCGunAnimation.wrap(animHuman,T);\n"}];
+          let code=src;for(const e of edits.sort((a,b)=>b.start-a.start))code=code.slice(0,e.start)+e.text+code.slice(e.end);acorn.parse(code,{ecmaVersion:'latest'});
+          const offset=c.m.index+c.m[0].indexOf(src);html=html.slice(0,offset)+code+html.slice(offset+src.length);html=html.slice(0,c.m.index)+'<script src="js/gun-animation.js?v=1"></script>\n'+html.slice(c.m.index);
+          for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(m[1].trim())acorn.parse(m[1],{ecmaVersion:'latest'});fs.writeFileSync('/tmp/gun-index.html',html);
+          JS
+      - name: Test actual character rigs before publishing
+        run: |
+          node --check js/gun-animation.js
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/gun-fix/node_modules/three'),c={window:{},console,Math,T,clamp:(x,a,b)=>Math.max(a,Math.min(b,x))};vm.createContext(c);
+          for(const p of ['js/characters.js','js/reference-characters.js','/tmp/gun-native.js','js/gun-animation.js'])vm.runInContext(fs.readFileSync(p,'utf8'),c);
+          const api=c.window.VCGunAnimation,animate=api.wrap(c.animHuman,T);let cases=0;
+          for(const id of ['jasonC','luciaC'])for(const merge of [false,true])for(const fps of [30,60,120])for(const weapon of ['pistol','smg','shot','rifle']){
+           const h=c.window.VCCharacters.build(T,id,{merge}),u=h.userData,s={speed:0,weapon,aim:true,punch:0};
+           for(let i=0;i<fps;i++)animate(h,1/fps,s);const state=animate.inspect(h);assert(state&&state.aim>.99&&state.applied,'Unsupported rig or aim transition');
+           const mount=u.guns[weapon].parent,q=new T.Quaternion(),sq=new T.Quaternion();h.updateMatrixWorld(true);mount.getWorldQuaternion(q);u.spine.getWorldQuaternion(sq);q.premultiply(sq.invert());const forward=new T.Vector3(0,-1,0).applyQuaternion(q);assert(forward.z>.98&&Math.abs(forward.x)<.02,'Barrel is not aligned forward');
+           const left=u.A[0].el.localToWorld(new T.Vector3(0,mount.position.y,0)),grips={pistol:[-.06,-.015,-.035],smg:[-.065,-.15,-.025],shot:[-.065,-.22,-.025],rifle:[-.065,-.22,-.025]},scale=(u.A[1].el.position.length()-mount.position.y)/.59,support=mount.localToWorld(new T.Vector3(...grips[weapon]).multiplyScalar(scale));assert(left.distanceTo(support)<.06,'Support hand missed the grip');
+           api.notifyShot(h,weapon);let peak=0;for(let i=0;i<fps/2;i++){animate(h,1/fps,s);peak=Math.max(peak,animate.inspect(h).kick);h.updateMatrixWorld(true);for(const a of u.A)for(const n of [a.sh,a.el])assert(n.matrixWorld.elements.every(Number.isFinite));}assert(peak>.15&&animate.inspect(h).kick<.02,'Recoil did not kick and settle');
+           for(let i=0;i<fps;i++)animate(h,1/fps,{...s,aim:false,speed:2});assert(animate.inspect(h).aim<.01,'Aim failed to lower');
+           animate(h,1/fps,{speed:0,weapon:null,punch:0});assert(!animate.inspect(h).applied,'Armed pose leaked into unarmed animation');animate(h,1/fps,{...s,dead:true,baseY:0});assert(!animate.inspect(h).applied,'Armed pose leaked into death');cases++;
+          }
+          const receiver={},args={speed:1,weapon:null,punch:0};let calls=0;const pass=api.wrap(function(h,dt,s){assert(this===receiver&&s===args);calls++;return 'native-return';},T);assert(pass.call(receiver,{},.016,args)==='native-return'&&calls===1);
+          fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/gun-animation-check.json',JSON.stringify({passed:true,rigCases:cases,weapons:['pistol','smg','shot','rifle'],characters:['jasonC','luciaC'],fps:[30,60,120],mergedAndUnmerged:true,barrelAlignment:true,supportGrip:true,recoilAndRecovery:true,unarmedAndDeathCleanup:true,scope:'Native animator and actual rig tests; visual browser review and live deployment not yet verified.'},null,2)+'\n');fs.copyFileSync('/tmp/gun-index.html','index.html');
+          JS
+      - name: Publish only the tested patch without overwriting concurrent changes
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed during checks; rerun against the latest code.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html js/gun-animation.js status/gun-animation-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Smooth gun raising, solve support-hand grip, and animate shot-driven recoil'
+          git push origin HEAD:main
