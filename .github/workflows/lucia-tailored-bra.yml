@@ -1,0 +1,55 @@
+name: Replace Lucia bandeau with fitted cups narrow band and thin straps
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-tailored-bra.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-photo-reference
+  cancel-in-progress: false
+jobs:
+  garment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-tailored-bra" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Prepare garment replacement without body or color edits
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-tailored-bra/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_TAILORED_BRA_V2'))process.exit(0);if(!s.includes('// LUCIA_FITTED_BRA_V1'))throw Error('Installed bra required');fs.writeFileSync('/tmp/lucia-tailored-before.js',s);const call='addLuciaFittedBra(T,h);';if(s.split(call).length!==2)throw Error('Garment installation call changed');s=s.replace(call,'addLuciaTailoredBra(T,h);');
+          const helper=String.raw`
+           function addLuciaTailoredBra(T,h){
+            const u=h.userData;if(u.luciaTailoredBra)return;const torso=u.luciaCenterContour&&u.spine.children[u.luciaCenterContour.spineChildIndex];if(!torso||!torso.isMesh||torso.material!==u.m.skin)throw Error('Reviewed torso missing');h.updateMatrixWorld(true);const inverse=new T.Matrix4().copy(u.spine.matrixWorld).invert(),M=inverse.clone().multiply(torso.matrixWorld),N=new T.Matrix3().getNormalMatrix(M),g=torso.geometry,p=g.attributes.position,n=g.attributes.normal,triangles=[],count=g.index?g.index.count:p.count;
+            for(let i=0;i<count;i+=3)triangles.push([0,1,2].map(j=>{const k=g.index?g.index.getX(i+j):i+j;return {p:new T.Vector3().fromBufferAttribute(p,k).applyMatrix4(M),n:new T.Vector3().fromBufferAttribute(n,k).applyMatrix3(N).normalize()};}));const material=new T.MeshStandardMaterial({color:0x191a1e,roughness:.88,metalness:0,side:T.DoubleSide,transparent:false,opacity:1}),group=new T.Group();group.name='lucia-tailored-bra';
+            function clip(poly,plane){const out=[];if(!poly.length)return out;for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length],da=plane[0]*a.p.x+plane[1]*a.p.y+plane[2]*a.p.z-plane[3],db=plane[0]*b.p.x+plane[1]*b.p.y+plane[2]*b.p.z-plane[3];if(da<=0)out.push(a);if((da<=0)!==(db<=0)){const t=da/(da-db);out.push({p:a.p.clone().lerp(b.p,t),n:a.n.clone().lerp(b.n,t).normalize()});}}return out;}
+            function mesh(name,positions,normals){if(positions.length<18)throw Error('Missing garment part '+name);const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3));geometry.setAttribute('normal',new T.Float32BufferAttribute(normals,3));geometry.computeBoundingBox();geometry.computeBoundingSphere();const o=new T.Mesh(geometry,material);o.name='lucia-bra-'+name;o.castShadow=true;o.receiveShadow=true;group.add(o);return o;}
+            function patch(name,regions){const positions=[],normals=[];for(const planes of regions)for(const tri of triangles){let poly=tri;for(const plane of planes){poly=clip(poly,plane);if(!poly.length)break;}for(let j=1;j+1<poly.length;j++){if(new T.Vector3().subVectors(poly[j].p,poly[0].p).cross(new T.Vector3().subVectors(poly[j+1].p,poly[0].p)).lengthSq()<1e-16)continue;for(const v of [poly[0],poly[j],poly[j+1]]){const q=v.p.clone(),r=Math.hypot(q.x,q.z);if(r<.025)throw Error('Invalid fit');q.x+=q.x/r*.003;q.z+=q.z/r*.003;positions.push(q.x,q.y,q.z);normals.push(v.n.x,v.n.y,v.n.z);}}}return mesh(name,positions,normals);}
+            const yRange=(lo,hi)=>[[0,-1,0,-lo],[0,1,0,hi]],front=[0,0,-1,-.015];for(const side of [-1,1]){const planes=[front],cx=side*.078,cy=.393,rx=.077,ry=.097;for(let i=0;i<32;i++){const t=2*Math.PI*i/32,a=Math.cos(t)/rx,b=Math.sin(t)/ry;planes.push([a,b,0,1+a*cx+b*cy]);}patch(side<0?'left-cup':'right-cup',[planes]);}patch('center-connector',[[...yRange(.350,.390),front,[1,0,0,.018],[-1,0,0,.018]]]);patch('underband',[yRange(.300,.325)]);patch('side-back-band',[[...yRange(.325,.360),[0,0,1,.010]],[...yRange(.325,.360),[0,0,-1,-.010],[-1,0,0,-.115]],[...yRange(.325,.360),[0,0,-1,-.010],[1,0,0,-.115]]]);
+            const targets=u.spine.children.filter(o=>o.isMesh&&o.material===u.m.skin);function hit(origin,direction){const O=origin.clone().applyMatrix4(u.spine.matrixWorld),D=direction.clone().transformDirection(u.spine.matrixWorld),hits=new T.Raycaster(O,D,0,3).intersectObjects(targets,false);if(!hits.length)throw Error('Unable to fit shoulder strap');return hits[0].point.clone().applyMatrix4(inverse);}for(const side of [-1,1]){const x=side*.115,frontPoint=hit(new T.Vector3(x,.465,1),new T.Vector3(0,0,-1)),backPoint=hit(new T.Vector3(x,.345,-1),new T.Vector3(0,0,1)),cy=.420,start=Math.atan2(frontPoint.z,frontPoint.y-cy),end=Math.atan2(backPoint.z,backPoint.y-cy),positions=[],normals=[],rows=[];for(let i=0;i<=48;i++){const angle=start+(end-start)*i/48,radial=new T.Vector3(0,Math.cos(angle),Math.sin(angle)),row=[];for(const offset of [-.0045,.0045]){const origin=new T.Vector3(x+offset,cy+radial.y,radial.z),q=hit(origin,radial.clone().negate()).addScaledVector(radial,.004);row.push({p:q,n:radial.clone()});}rows.push(row);}for(let i=0;i<48;i++)for(const v of [rows[i][0],rows[i+1][0],rows[i][1],rows[i][1],rows[i+1][0],rows[i+1][1]]){positions.push(v.p.x,v.p.y,v.p.z);normals.push(v.n.x,v.n.y,v.n.z);}mesh(side<0?'left-strap':'right-strap',positions,normals);}u.spine.add(group);u.luciaFittedBra=true;u.luciaTailoredBra=true;u.luciaFittedBraMaterial=material;
+           }
+          `;const marker='function addLuciaFittedBra(';if(s.split(marker).length!==2)throw Error('Original garment helper changed');s=s.replace(marker,helper+marker);s='// LUCIA_TAILORED_BRA_V2\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-tailored-after.js',s);
+          JS
+      - name: Validate garment parts coverage preserved body and movement
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-tailored-bra/node_modules/three');if(!fs.existsSync('/tmp/lucia-tailored-after.js')){if(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_TAILORED_BRA_V2'))process.exit(0);throw Error('Candidate missing');}function load(file){const c={window:{},console,Math};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}const old=load('/tmp/lucia-tailored-before.js'),cur=load('/tmp/lucia-tailored-after.js');function garment(o){return o.name==='lucia-fitted-black-bra'||o.name==='lucia-tailored-bra'||o.name.startsWith('lucia-bra-');}function signature(h){const out=[];h.traverse(o=>{if(garment(o))return;const row=[o.type,o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()];if(o.isMesh)row.push(Object.keys(o.geometry.attributes).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.metalness,m.flatShading,m.skinning]));out.push(row);});return JSON.stringify(out);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)),'Other character changed');const a=old.build(T,'luciaC',{merge:false}),b=cur.build(T,'luciaC',{merge:false}),u=b.userData,group=b.getObjectByName('lucia-tailored-bra');assert(signature(a)===signature(b),'Body geometry materials or rig changed');assert(group&&group.parent===u.spine&&!b.getObjectByName('lucia-fitted-black-bra'));const names=['left-cup','right-cup','center-connector','underband','side-back-band','left-strap','right-strap'];for(const name of names){const o=b.getObjectByName('lucia-bra-'+name);assert(o&&o.isMesh&&!o.material.transparent&&o.material.opacity===1&&o.material.color.getHex()===0x191a1e);}b.updateMatrixWorld(true);let rays=0;for(const side of [-1,1])for(const y of [.350,.390,.430]){const origin=new T.Vector3(side*.080,y,1).applyMatrix4(u.spine.matrixWorld),direction=new T.Vector3(0,0,-1).transformDirection(u.spine.matrixWorld),cup=b.getObjectByName('lucia-bra-'+(side<0?'left-cup':'right-cup'));assert(new T.Raycaster(origin,direction,0,2).intersectObject(cup,false).length>0,'Cup coverage missing');rays++;}for(const side of ['left','right']){const p=b.getObjectByName('lucia-bra-'+side+'-strap').geometry.attributes.position;assert(p.count===288);}
+          let poses=0;for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),u=h.userData;assert(u.luciaTailoredBra&&u.guns.pistol&&u.guns.rifle&&u.luciaPelvisGapBridge);let visibleMaterial=false;h.traverse(o=>{if(o.isMesh&&(Array.isArray(o.material)?o.material:[o.material]).includes(u.luciaFittedBraMaterial))visibleMaterial=true;});assert(visibleMaterial,'Garment lost during merge');for(const angle of [-.7,0,.7]){u.spine.rotation.y=angle*.2;u.spine.rotation.x=angle*.1;u.A[0].sh.rotation.x=angle;u.A[1].sh.rotation.x=-angle;h.updateMatrixWorld(true);h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh)for(const k of ['position','normal'])if(o.geometry.attributes[k])assert(Array.from(o.geometry.attributes[k].array).every(Number.isFinite));});poses++;}}fs.copyFileSync('/tmp/lucia-tailored-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-tailored-bra-check.json',JSON.stringify({passed:true,parts:names,cupCoverageRays:rays,poseChecks:poses,strapWidth:.009,oldBandeauReplaced:true,bodyGeometrySkinToneMaterialsAndRigUnchanged:true,otherCharactersUnchanged:true,scope:'Fitted opaque two-cup garment with connector, narrow bands and torso-fitted shoulder ribbons. No skin-tone edit. Rendered fit, strap junctions, clipping during gameplay and live deployment not verified.'},null,2)+'\n');
+          JS
+      - name: Publish only validated garment replacement
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-tailored-bra-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Replace Lucia bandeau with fitted black cups narrow band and thin shoulder straps'
+          git push origin HEAD:main
