@@ -1,0 +1,6 @@
+[
+  {
+    "punch": "pl.punchT>0?1-pl.punchT/.35:0",
+    "state": "{speed:pl.car?0:pl.walkSpd,aim:pl.aim>0.1&&pl.weapon!=='fists',punch:pl.punchT>0?1-pl.punchT/.35:0,dead:!pl.alive,weapon:pl.weapon==='fists'?null:pl.weapon,baseY:pl.y}"
+  }
+]

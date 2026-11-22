@@ -269,6 +269,7 @@ small{color:#b9cce0}
 <script src="js/reference-characters.js"></script>
 <script src="js/supercar.js"></script>
 <script src="js/suv-details-live.js?v=2"></script>
+<script src="js/punch-visual-fix.js?v=1"></script>
 <script>
 (()=>{'use strict';
 if(!window.THREE){document.querySelector('.card').innerHTML='<h2>Could not load 3D engine</h2><p>Check your internet connection and reload.</p>';return;}
@@ -4727,6 +4728,9 @@ if(new URLSearchParams(location.search).get('suv-qa')==='1')window.__runSUVLiveC
  return{passed:true,version:2,before:old,after:added,addedTriangles:added.triangles-old.triangles,addedMeshes:added.meshes-old.meshes,dimensions:{W:t.W,L:t.L},beforePNG:preview(before),afterPNG:preview(after)};
 };
 
+// VISIBLE_PUNCH_FIX_V1
+if(!window.VCVisiblePunch)throw Error('Punch animation module missing');
+animHuman=window.VCVisiblePunch.wrap(animHuman);
 boot()}catch(err){console.error('boot failed',err);const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small style="color:#ff8">Boot error — check console. You can still try Singleplayer.</small>'}
 // Expose for menu handlers
 window.G=G;window.begin=begin;window.mpActive=typeof mpActive!=='undefined'?mpActive:false;

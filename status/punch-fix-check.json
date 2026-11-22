@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "cases": 48,
+  "rigs": [
+    "jasonC",
+    "luciaC"
+  ],
+  "timerModes": [
+    "rising",
+    "falling",
+    "held",
+    "seconds"
+  ],
+  "fps": [
+    30,
+    60,
+    120
+  ],
+  "scope": "Actual character rigs and native animator; visual layer only. Live input and Render deployment not verified."
+}
