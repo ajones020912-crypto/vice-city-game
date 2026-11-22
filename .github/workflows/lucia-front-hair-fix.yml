@@ -1,0 +1,74 @@
+name: Fix Lucia front hair coverage
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-front-hair-fix.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  hair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-front-hair" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Prepare head-fitted scalp and short front curls
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('js/reference-characters.js');s=p.read_text();Path('/tmp/lucia-front-before.js').write_text(s)
+          if 'function fitLuciaFrontHair(' in s: raise SystemExit('Front-hair fix already installed.')
+          anchor='makeLuciaCurlyPonytail(T,h);'
+          if s.count(anchor)!=1: raise SystemExit('Expected installed curly-ponytail builder.')
+          s=s.replace(anchor,anchor+'fitLuciaFrontHair(T,h);',1)
+          helper='''
+           function fitLuciaFrontHair(T,h){
+            const u=h.userData;
+            const heads=u.headP.children.filter(o=>o.isMesh&&o.material===u.m.skin&&o.geometry.type==='LatheGeometry');
+            for(const o of heads){o.updateMatrix();o.geometry.computeBoundingBox();}
+            heads.sort((a,b)=>b.geometry.boundingBox.getSize(new T.Vector3()).y-a.geometry.boundingBox.getSize(new T.Vector3()).y);
+            const head=heads[0];if(!head)throw Error('Expected primary head surface for scalp fitting');
+            const box=head.geometry.boundingBox.clone().applyMatrix4(head.matrix),center=box.getCenter(new T.Vector3()),layers=new Map(),a=head.geometry.attributes.position,v=new T.Vector3(),top=box.max.y+.005;
+            for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(head.matrix);const key=Math.round(v.y*1e5);if(!layers.has(key))layers.set(key,{y:v.y,rx:0,front:0,back:0});const row=layers.get(key);row.rx=Math.max(row.rx,Math.abs(v.x-center.x));row.front=Math.max(row.front,v.z-center.z);row.back=Math.max(row.back,center.z-v.z);}
+            const rows=Array.from(layers.values()).sort((a,b)=>a.y-b.y);if(rows.length<4)throw Error('Insufficient head profile samples');
+            function profile(y){let i=0;while(i<rows.length-2&&y>rows[i+1].y)i++;const a=rows[i],b=rows[i+1],t=Math.max(0,Math.min(1,(y-a.y)/(b.y-a.y||1)));return {rx:a.rx+(b.rx-a.rx)*t,front:a.front+(b.front-a.front)*t,back:a.back+(b.back-a.back)*t};}
+            for(const o of u.headP.children.slice())if(o.name==='lucia-reference-hair-cap')remove(o);
+            const positions=[],uv=[],idx=[],count=24,cols=64,clearance=.007;
+            for(let i=0;i<=count;i++)for(let j=0;j<cols;j++){const phi=j/cols*Math.PI*2,c=Math.cos(phi),end=top-.155+.060*Math.max(0,c)-.020*Math.max(0,-c)+.0015*Math.sin(phi*5),y=top+(end-top)*i/count,r=profile(y-.003);positions.push(center.x+Math.sin(phi)*(r.rx+clearance),y,center.z+c*((c>=0?r.front:r.back)+clearance));uv.push(j/cols,i/count);}
+            for(let i=0;i<count;i++)for(let j=0;j<cols;j++){const a=i*cols+j,b=(i+1)*cols+j,c=i*cols+(j+1)%cols,d=(i+1)*cols+(j+1)%cols;idx.push(a,b,c,c,b,d);}
+            const pole=positions.length/3;positions.push(center.x,top+.002,center.z);uv.push(.5,0);for(let j=0;j<cols;j++)idx.push(pole,j,(j+1)%cols);
+            const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();add(T,u.headP,g,u.m.hair,'lucia-reference-hair-cap');
+            function surface(x,y){const r=profile(y-.003),nx=(x-center.x)/(r.rx+clearance);return [x,y,center.z+(r.front+clearance)*Math.sqrt(Math.max(0,1-nx*nx))+.002];}
+            for(const side of [-1,1])for(let k=0;k<2;k++){const points=[surface(center.x+side*(.012+k*.018),top-.025),surface(center.x+side*(.026+k*.020),top-.045),surface(center.x+side*(.047+k*.018),top-.070),surface(center.x+side*(.061+k*.015),top-.091)];add(T,u.headP,tube(T,points,.0055,32),u.m.hair,'lucia-short-front-curl');}
+            u.luciaFrontHairFit={top,frontY:top-.095,clearance};
+           }
+          '''
+          marker=' function finishLuciaV4('
+          if s.count(marker)!=1: raise SystemExit('Appearance helper boundary changed.')
+          s=s.replace(marker,helper+marker,1)
+          Path('/tmp/lucia-front-after.js').write_text(s)
+          subprocess.run(['node','--check','/tmp/lucia-front-after.js'],check=True)
+          PY
+      - name: Verify scalp front coverage and preservation of other geometry
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-front-hair/node_modules/three');
+          function load(p){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}
+          const old=load('/tmp/lucia-front-before.js'),cur=load('/tmp/lucia-front-after.js');assert(JSON.stringify(old.DESIGNS)===JSON.stringify(cur.DESIGNS));const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');
+          function unchanged(h){const out=[];h.traverse(o=>{if(!o.isMesh||o.name==='lucia-reference-hair-cap'||o.name==='lucia-short-front-curl')return;out.push([o.name,o.position.toArray(),o.scale.toArray(),Array.from(o.geometry.attributes.position.array)]);});return JSON.stringify(out);}
+          assert(unchanged(a)===unchanged(b));const cap=b.getObjectByName('lucia-reference-hair-cap'),fit=b.userData.luciaFrontHairFit;assert(cap&&fit&&fit.clearance===.007);const p=cap.geometry.attributes.position;assert(Math.abs(p.getY(24*64)-fit.frontY)<1e-5);let curls=0;b.traverse(o=>{if(o.name==='lucia-short-front-curl')curls++;});assert(curls===4);assert(b.userData.luciaCurlyPonytail);assert(b.getObjectByName('lucia-hair-tie'));
+          for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge});assert(h.userData.luciaFrontHairFit);h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});}
+          fs.copyFileSync('/tmp/lucia-front-after.js','js/reference-characters.js');
+          JS
+      - name: Commit front hair fix after checks
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Fit Lucia scalp over forehead and temples and add short front curls'
+          git push origin HEAD:main
