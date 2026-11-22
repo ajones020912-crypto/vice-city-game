@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "style": "opaque black smaller front and back panels with narrow connected side bands",
+  "boundaryLoops": 3,
+  "frontBackCoverageRays": 18,
+  "poseChecks": 6,
+  "sharesExistingPelvisSkeleton": true,
+  "bodyBraSkinToneMaterialsAndRigUnchanged": true,
+  "otherCharactersUnchanged": true,
+  "scope": "Smaller opaque panels; narrower connected side bands; side edges verified outside rest-pose body profiles; existing gusset and three openings retained. Structural checks do not establish rendered realism, all-pose clipping, or live deployment.",
+  "frontBackPanelAreaBefore": 0.174116912050856,
+  "frontBackPanelAreaAfter": 0.11587959751095468,
+  "sideBandHeightBefore": 0.08499997854232788,
+  "sideBandHeightAfter": 0.02799999713897705,
+  "minimumRestPoseSideClearance": 0.005942440561619744,
+  "sideVerticesChecked": 100
+}
