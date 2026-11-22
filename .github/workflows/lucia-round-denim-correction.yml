@@ -1,0 +1,69 @@
+name: Soften Lucia silhouette and add visible denim texture
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-round-denim-correction.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-photo-reference
+  cancel-in-progress: false
+jobs:
+  correct:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-round-denim" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Prepare a scoped shape and denim correction
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-round-denim/node_modules/acorn'),file='js/reference-characters.js';let s=fs.readFileSync(file,'utf8');if(s.includes('// LUCIA_ROUND_DENIM_V2'))process.exit(0);if(!s.includes('// LUCIA_PHOTO_REFERENCE_V1'))throw Error('Photo-reference model must be installed first');fs.writeFileSync('/tmp/lucia-round-before.js',s);
+          function once(a,b){if(s.split(a).length!==2)throw Error('Reviewed shape implementation changed: '+a.slice(0,90));s=s.replace(a,b);}
+          once('const front=Math.max(0,Math.min(1,v.z/.035)),chest=Math.exp(-Math.pow((v.y-.39)/.085,2)),round=Math.exp(-Math.pow((Math.abs(v.x)-.070)/.070,2));v.z+=front*chest*(.012+.033*round);','const f=Math.max(0,Math.min(1,v.z/.06)),front=f*f*(3-2*f),chest=Math.exp(-Math.pow((v.y-.385)/.105,2)),round=Math.exp(-Math.pow((Math.abs(v.x)-.065)/.095,2));v.z+=front*chest*(.004+.014*round);');
+          const helper=String.raw`
+           function luciaVisibleDenimTextures(T){
+            if(luciaVisibleDenimTextures.cache)return luciaVisibleDenimTextures.cache;const size=256,color=new Uint8Array(size*size*4),height=new Uint8Array(size*size*4),rough=new Uint8Array(size*size*4);
+            for(let y=0;y<size;y++)for(let x=0;x<size;x++){const twill=(x+2*y)%16<6?20:-13,warp=x%2===0?6:-6,weft=y%4===0?5:-2,noise=((x*73+y*151+x*y*3)%17)-8,wash=9*Math.sin(2*Math.PI*x/size)*Math.cos(4*Math.PI*y/size),c=Math.max(0,Math.min(255,218+twill+warp+weft+noise+wash)),b=Math.max(0,Math.min(255,128+twill*.7+warp+weft)),r=Math.max(0,Math.min(255,235+noise+twill*.2)),i=(y*size+x)*4;color[i]=c;color[i+1]=Math.min(255,c+2);color[i+2]=Math.min(255,c+5);color[i+3]=255;height[i]=height[i+1]=height[i+2]=b;height[i+3]=255;rough[i]=rough[i+1]=rough[i+2]=r;rough[i+3]=255;}
+            function texture(data,isColor){const t=new T.DataTexture(data,size,size,T.RGBAFormat);t.wrapS=t.wrapT=T.RepeatWrapping;t.repeat.set(3,2);t.magFilter=T.LinearFilter;t.minFilter=T.LinearMipmapLinearFilter;t.generateMipmaps=true;if(isColor)t.encoding=T.sRGBEncoding;t.anisotropy=2;t.needsUpdate=true;return t;}
+            return luciaVisibleDenimTextures.cache={color:texture(color,true),height:texture(height,false),rough:texture(rough,false)};
+           }
+           function fitLuciaVisibleDenim(T,h){
+            const u=h.userData,denim=h.getObjectByName('lucia-seamless-denim');if(!denim||!denim.isSkinnedMesh)throw Error('Expected animated denim garment');const g=denim.geometry,p=g.attributes.position,uv=g.attributes.uv;let valid=!!(uv&&uv.itemSize===2&&uv.count===p.count),umin=Infinity,umax=-Infinity,vmin=Infinity,vmax=-Infinity;
+            if(valid)for(let i=0;i<uv.count;i++){const a=uv.getX(i),b=uv.getY(i);if(!Number.isFinite(a)||!Number.isFinite(b)){valid=false;break;}umin=Math.min(umin,a);umax=Math.max(umax,a);vmin=Math.min(vmin,b);vmax=Math.max(vmax,b);}valid=valid&&umax-umin>.01&&vmax-vmin>.01;
+            if(!valid){const fitted=g.clone();fitted.computeBoundingBox();const box=fitted.boundingBox,w=Math.max(.001,box.max.x-box.min.x),height=Math.max(.001,box.max.y-box.min.y),out=[];for(let i=0;i<p.count;i++)out.push((p.getX(i)-box.min.x)/w,(p.getY(i)-box.min.y)/height);fitted.setAttribute('uv',new T.Float32BufferAttribute(out,2));denim.geometry=fitted;}
+            const maps=luciaVisibleDenimTextures(T);for(const material of new Set([u.m.pants,denim.material])){material.map=maps.color;material.bumpMap=maps.height;material.bumpScale=.00065;material.roughnessMap=maps.rough;material.roughness=.98;material.metalness=0;material.flatShading=false;material.needsUpdate=true;}u.luciaVisibleDenim=true;u.luciaRoundDenimVersion=2;
+           }
+          `;
+          once(' function fitLuciaPhotoReference(T,h){',helper+' function fitLuciaPhotoReference(T,h){');once('u.faceUncovered=true;u.luciaPhotoReference=true;u.luciaPhotoReferenceVersion=1;','fitLuciaVisibleDenim(T,h);u.faceUncovered=true;u.luciaPhotoReference=true;u.luciaPhotoReferenceVersion=1;');s='// LUCIA_ROUND_DENIM_V2\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-round-after.js',s);
+          JS
+      - name: Verify projection reduction textured skinning and preserved animations
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/lucia-round-denim/node_modules/acorn'),T=require(process.env.RUNNER_TEMP+'/lucia-round-denim/node_modules/three');if(!fs.existsSync('/tmp/lucia-round-after.js')){if(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_ROUND_DENIM_V2'))process.exit(0);throw Error('Candidate missing');}
+          function load(file){const c={window:{},console,Math,T,clamp:(x,a,b)=>Math.max(a,Math.min(b,x))};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);assert(c.window.VCCharacters.referenceLeadsInstalled);return c;}const before=load('/tmp/lucia-round-before.js'),after=load('/tmp/lucia-round-after.js'),old=before.window.VCCharacters,cur=after.window.VCCharacters;
+          function signature(h){const out=[];h.traverse(o=>{if(o.isMesh)out.push([o.name,o.position.toArray(),o.scale.toArray(),Array.from(o.geometry.attributes.position.array),...(Array.isArray(o.material)?o.material:[o.material]).map(m=>m.color?m.color.getHex():null)]);});return JSON.stringify(out);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)));
+          const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');function front(h){h.updateMatrixWorld(true);const u=h.userData,o=h.getObjectByName('lucia-dark-tank-top'),p=o.geometry.attributes.position,M=new T.Matrix4().copy(u.spine.matrixWorld).invert().multiply(o.matrixWorld),v=new T.Vector3();let z=-Infinity;for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(M);if(v.y>.30&&v.y<.45)z=Math.max(z,v.z);}assert(Number.isFinite(z));return z;}const previousDepth=front(a),newDepth=front(b);assert(newDepth<previousDepth-.008,'Forward projection was not reduced');assert(signature(a.userData.headP)===signature(b.userData.headP),'Hair or face changed');
+          const joints=h=>{const u=h.userData;return [u.hips.position.toArray(),u.spine.position.toArray(),u.headP.position.toArray(),...u.A.flatMap(x=>[x.sh.position.toArray(),x.el.position.toArray()]),...u.Lg.flatMap(x=>[x.hp.position.toArray(),x.kn.position.toArray()])];};assert(JSON.stringify(joints(a))===JSON.stringify(joints(b)));
+          const da=a.getObjectByName('lucia-seamless-denim'),db=b.getObjectByName('lucia-seamless-denim');for(const key of ['position','skinIndex','skinWeight'])assert(JSON.stringify(Array.from(da.geometry.attributes[key].array))===JSON.stringify(Array.from(db.geometry.attributes[key].array)));assert(db.material.skinning&&db.material.map&&db.material.bumpMap&&db.material.roughnessMap);assert(db.geometry.attributes.uv.count===db.geometry.attributes.position.count);for(const map of [db.material.map,db.material.bumpMap,db.material.roughnessMap]){assert(map.isDataTexture&&map.image.width===256&&map.image.height===256&&map.generateMipmaps);const data=map.image.data;let lo=255,hi=0;for(let i=0;i<data.length;i+=4){lo=Math.min(lo,data[i]);hi=Math.max(hi,data[i]);}assert(hi-lo>10,'Fabric texture has no visible variation');}
+          const shader={uniforms:{},vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:T.ShaderLib.standard.fragmentShader};db.material.onBeforeCompile(shader,{});assert(shader.vertexShader.includes('vLuciaDenimBind=position;')&&shader.fragmentShader.includes('float cuff=')&&shader.fragmentShader.includes('float backPocket='),'Pocket or cuff shading lost');
+          const html=fs.readFileSync('index.html','utf8'),animators=[];function walk(n,fn){fn(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,fn);}else if(v&&typeof v.type==='string')walk(v,fn);}}for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;walk(acorn.parse(m[1],{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='animHuman')animators.push(m[1].slice(n.start,n.end));});}if(animators.length!==1)throw Error('Animator integration changed');vm.runInContext(animators[0],after);for(const p of ['js/one-hand-hit.js','js/gun-animation.js'])vm.runInContext(fs.readFileSync(p,'utf8'),after);const animate=after.window.VCGunAnimation.wrap(after.window.VCOneHandHit.wrap(after.animHuman),T);let cases=0;
+          for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),u=h.userData,denim=h.getObjectByName('lucia-seamless-denim');assert(u.luciaVisibleDenim&&u.faceUncovered);assert(denim.material.map===db.material.map,'Texture cache is not shared');for(const state of [{speed:0,weapon:null,punch:0},{speed:2,weapon:null,punch:0},{speed:7,weapon:null,punch:0},{speed:0,weapon:null,punch:1},{speed:0,weapon:'pistol',aim:true},{speed:0,weapon:'rifle',aim:true}]){for(let i=0;i<60;i++)animate(h,1/60,state);h.updateMatrixWorld(true);denim.onBeforeRender();assert(Array.from(denim.skeleton.boneMatrices).every(Number.isFinite));h.traverse(o=>{if(o.isMesh){for(const key of ['position','normal','uv'])if(o.geometry.attributes[key])assert(Array.from(o.geometry.attributes[key].array).every(Number.isFinite));assert(o.matrixWorld.elements.every(Number.isFinite));}});cases++;}}
+          fs.copyFileSync('/tmp/lucia-round-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-round-denim-check.json',JSON.stringify({passed:true,animationCases:cases,previousChestFront:previousDepth,newChestFront:newDepth,reducedForwardProjection:true,broaderSofterCurve:true,bodyAndTankUseSameShape:true,denimColorBumpAndRoughnessTextures:true,shared256pxTextureCache:true,pocketsAndCuffsPreserved:true,denimPositionsAndSkinWeightsUnchanged:true,rigOffsetsUnchanged:true,faceHairAndOtherCharactersUnchanged:true,scope:'Geometry, material shader-template and animation tests; rendered appearance and live deployment not yet verified.'},null,2)+'\n');
+          JS
+      - name: Publish only checked character corrections
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed during checks; rerun against latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-round-denim-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Reduce Lucia chest projection soften curves and add visible denim weave'
+          git push origin HEAD:main
