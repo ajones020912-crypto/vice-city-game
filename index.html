@@ -3945,6 +3945,14 @@ function prepareRadarMap(){
  radarMap=c;radarMapSource=baseMap;return c;
 }
 function radarPoint(wx,wz,px,pz,rotation,scale,cx,cy){const dx=(wx-px)*scale,dz=(wz-pz)*scale,c=Math.cos(rotation),sn=Math.sin(rotation);return[cx+dx*c-dz*sn,cy+dx*sn+dz*c]}
+function drawRacePath(ctx,project,w,done){const r=SJ.race,pts=[r.start].concat(r.cps).map(p=>project(p[0],p[1]));
+ ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+ const seg=(a,b,col,lw)=>{ctx.strokeStyle=col;ctx.lineWidth=lw;ctx.beginPath();ctx.moveTo(pts[a][0],pts[a][1]);for(let i=a+1;i<=b;i++)ctx.lineTo(pts[i][0],pts[i][1]);ctx.stroke()};
+ const n=pts.length-1,cur=Math.min(n,done); // checkpoint index i is the end of segment i
+ seg(0,n,'#1a1200cc',w+3);
+ if(cur>0)seg(0,cur,'#b8941f99',w);
+ seg(cur,n,'#ffd23a',w);
+ ctx.restore()}
 function drawMini(){
  // CLEAN_RECTANGULAR_RADAR_V1: north-up, vector roads, clustered store emojis.
  const ctx=mini,canvas=ctx.canvas,W=264,H=222,dpr=Math.min(2,window.devicePixelRatio||1);
@@ -3963,6 +3971,8 @@ function drawMini(){
  ctx.lineCap='round';ctx.lineJoin='round';
  for(const r of roads){const ax=r.o==='h'?r.a:r.c,az=r.o==='h'?r.c:r.a,bx=r.o==='h'?r.b:r.c,bz=r.o==='h'?r.c:r.b;if(Math.max(ax,bx)+r.w<wx0||Math.min(ax,bx)-r.w>wx1||Math.max(az,bz)+r.w<wz0||Math.min(az,bz)-r.w>wz1)continue;const a=project(ax,az),b=project(bx,bz),path=()=>{ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()};ctx.strokeStyle='#14212b';ctx.lineWidth=r.w*scale+1.5;path();ctx.strokeStyle=r.type==='dirt'?'#8c8170':r.type==='hwy'?'#d4dde1':'#b5c2cc';ctx.lineWidth=Math.max(1,r.w*scale*.8);path();if(r.type==='hwy'){ctx.strokeStyle='#bda76d';ctx.lineWidth=Math.max(.7,scale*.65);path()}}
 
+ // RACE_PATH_MAP_V1: the race route in yellow (driven part dimmer)
+ if(G.raceOn&&G.raceOn())drawRacePath(ctx,project,Math.max(3,scale*9),SJ.i||0);
  if(pl.wanted>0&&G.lastSeen){const q=project(G.lastSeen.x,G.lastSeen.z);ctx.fillStyle='#f16e7c27';ctx.strokeStyle='#fa879477';ctx.lineWidth=1;ctx.beginPath();ctx.arc(q[0],q[1],70*scale,0,TAU);ctx.fill();ctx.stroke()}
  let target=G.work?G.work.target:null;if(!target&&MS.active){const step=MS.steps&&MS.steps[MS.i];if(step&&step.pos)target={x:step.pos[0],z:step.pos[1]};else if(MS.car)target=MS.car;else if(MS.target)target=MS.target}
  if(target){const q=project(target.x,target.z),dx=q[0]-cx,dy=q[1]-cy,k=Math.min(1,(cx-15)/Math.max(.01,Math.abs(dx)),((bottom-top)/2-14)/Math.max(.01,Math.abs(dy)));ctx.strokeStyle=G.work?'#6ee8f5aa':'#ffd978aa';ctx.lineWidth=1.5;ctx.setLineDash([3,5]);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+dx*k,cy+dy*k);ctx.stroke();ctx.setLineDash([])}
@@ -4007,6 +4017,7 @@ function drawMap(){
   if(sx1>-40&&sx1<S+40&&sy1>-20&&sy1<S+20)mapx.fillText(r[0],sx1,sy1);
  }
  mapx.shadowBlur=0;
+ if(G.raceOn&&G.raceOn())drawRacePath(mapx,worldToScreen,Math.max(3,k*10),SJ.i||0);
  for(const b of blips()){
   const [bx,by]=worldToScreen(b.x,b.z);
   if(bx<-20||bx>S+20||by<-20||by>S+20)continue;
@@ -5499,7 +5510,7 @@ const speedingNativeSimulate=simulate;simulate=function(dt){const result=speedin
 // RACE_TRACK_V1: while a race runs, side streets onto the route get black-and-yellow barricades (solid), traffic and
 // pedestrians are kept off the track, and speeding / red-light rules are suspended.
 const RT={race:null,rects:[],cols:[],meshes:[],clearT:0};
-const raceOn=()=>!!(SJ&&SJ.kind==='race'&&SJ.race);
+const raceOn=()=>!!(SJ&&SJ.kind==='race'&&SJ.race);G.raceOn=raceOn;
 function rtTex(){if(rtTex.t)return rtTex.t;const c=document.createElement('canvas');c.width=128;c.height=32;const x=c.getContext('2d');x.fillStyle='#f5c400';x.fillRect(0,0,128,32);x.fillStyle='#111';
  for(let i=-32;i<160;i+=32){x.beginPath();x.moveTo(i,0);x.lineTo(i+16,0);x.lineTo(i+48,32);x.lineTo(i+32,32);x.closePath();x.fill()}
  const t=new T.CanvasTexture(c);t.wrapS=T.RepeatWrapping;t.encoding=T.sRGBEncoding;rtTex.t=t;return t}
