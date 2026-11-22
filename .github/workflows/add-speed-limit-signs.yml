@@ -1,0 +1,81 @@
+name: Add roadside speed limit signs
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/add-speed-limit-signs.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: roadside-speed-limits
+  cancel-in-progress: false
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/speed-signs" --no-package-lock --ignore-scripts acorn@8 three@0.128.0
+      - name: Prepare and test roadside signs without changing driving rules
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/speed-signs/node_modules/acorn'),T=require(process.env.RUNNER_TEMP+'/speed-signs/node_modules/three');
+          const patch=String.raw`// ROADSIDE_SPEED_LIMIT_SIGNS_V1
+          function planRoadsideSpeedLimits(list,buildings,ground){
+           const valid=list.filter(r=>(r.o==='h'||r.o==='v')&&[r.a,r.b,r.c,r.w].every(Number.isFinite)&&r.w>0),out=[];
+           for(const r of valid){
+            if(r.type==='dirt')continue;const lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),length=hi-lo;if(length<90)continue;
+            const hw=Number.isFinite(r.hw)?r.hw:r.w/2,limit=r.type==='hwy'?75:r.w>=20?65:55,spacing=r.type==='hwy'?240:180,steps=Math.max(1,Math.ceil((length-70)/spacing));
+            for(let i=0;i<=steps;i++){const t=lo+35+(length-70)*i/steps;
+             const crossing=valid.some(q=>q!==r&&q.o!==r.o&&r.c>=Math.min(q.a,q.b)-hw-2&&r.c<=Math.max(q.a,q.b)+hw+2&&Math.abs(t-q.c)<q.w/2+16);if(crossing)continue;
+             for(const dir of [1,-1]){
+              const x=r.o==='h'?t:r.c+dir*(hw+1.5),z=r.o==='h'?r.c-dir*(hw+1.5):t;
+              if(valid.some(q=>q!==r&&(q.o==='h'?x>=Math.min(q.a,q.b)-1&&x<=Math.max(q.a,q.b)+1&&Math.abs(z-q.c)<q.w/2+1:z>=Math.min(q.a,q.b)-1&&z<=Math.max(q.a,q.b)+1&&Math.abs(x-q.c)<q.w/2+1)))continue;
+              if(buildings.some(b=>x>b.x0-.6&&x<b.x1+.6&&z>b.z0-.6&&z<b.z1+.6))continue;
+              if(out.some(p=>(p.x-x)**2+(p.z-z)**2<64))continue;
+              const y=ground(x,z),center=ground(r.o==='h'?t:r.c,r.o==='h'?r.c:t);if(!Number.isFinite(y)||!Number.isFinite(center)||y<-.2||Math.abs(y-center)>1)continue;
+              const nx=r.o==='h'?-dir:0,nz=r.o==='v'?-dir:0;out.push({x,y,z,limit,nx,nz,yaw:Math.atan2(nx,nz),axis:r.o,dir,center:r.c,hw});if(out.length>=400)return out;
+             }
+            }
+           }return out;
+          }
+          let roadsideSpeedLimitsGroup=null;
+          function buildRoadsideSpeedLimits(){
+           if(roadsideSpeedLimitsGroup){const geos=new Set(),mats=new Set(),maps=new Set();roadsideSpeedLimitsGroup.traverse(o=>{if(o.geometry)geos.add(o.geometry);if(o.material)mats.add(o.material);});for(const m of mats)if(m.map)maps.add(m.map);for(const t of maps)t.dispose();for(const m of mats)m.dispose();for(const g of geos)g.dispose();if(roadsideSpeedLimitsGroup.parent)roadsideSpeedLimitsGroup.parent.remove(roadsideSpeedLimitsGroup);}
+           const spots=planRoadsideSpeedLimits(roads,typeof BLD==='undefined'?[]:Array.from(BLD),heightAt),group=new T.Group();group.name='roadside-speed-limit-signs';group.userData.signCount=spots.length;roadsideSpeedLimitsGroup=group;if(!spots.length)return;
+           const poleMat=new T.MeshStandardMaterial({color:0x8e969b,metalness:.65,roughness:.65}),backMat=new T.MeshStandardMaterial({color:0xaab0b3,metalness:.45,roughness:.7}),poleGeo=new T.CylinderGeometry(.035,.045,1,6),boxGeo=new T.BoxGeometry(1,1,1),faceGeo=new T.PlaneGeometry(1,1),matrix=new T.Matrix4(),pos=new T.Vector3(),rot=new T.Quaternion(),scale=new T.Vector3(),up=new T.Vector3(0,1,0);
+           const poles=new T.InstancedMesh(poleGeo,poleMat,spots.length),backs=new T.InstancedMesh(boxGeo,backMat,spots.length);poles.frustumCulled=backs.frustumCulled=false;group.add(poles,backs);
+           for(let i=0;i<spots.length;i++){const p=spots[i];rot.setFromAxisAngle(up,p.yaw);matrix.compose(pos.set(p.x-p.nx*.055,p.y+1.1,p.z-p.nz*.055),rot,scale.set(1,2.2,1));poles.setMatrixAt(i,matrix);matrix.compose(pos.set(p.x,p.y+2.05,p.z),rot,scale.set(.72,.95,.045));backs.setMatrixAt(i,matrix);}poles.instanceMatrix.needsUpdate=backs.instanceMatrix.needsUpdate=true;
+           for(const limit of [55,65,75]){const points=spots.filter(p=>p.limit===limit);if(!points.length)continue;const canvas=document.createElement('canvas');canvas.width=256;canvas.height=320;const ctx=canvas.getContext('2d');if(!ctx)throw Error('Speed sign canvas unavailable');ctx.fillStyle='#fafaf6';ctx.fillRect(0,0,256,320);ctx.strokeStyle='#111111';ctx.lineWidth=7;ctx.strokeRect(10,10,236,300);ctx.fillStyle='#111111';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 42px Arial, sans-serif';ctx.fillText('SPEED',128,55);ctx.fillText('LIMIT',128,104);ctx.font='bold 134px Arial, sans-serif';ctx.fillText(String(limit),128,205);ctx.font='bold 21px Arial, sans-serif';ctx.fillText('MPH',128,283);
+            const texture=new T.CanvasTexture(canvas);texture.encoding=T.sRGBEncoding;const material=new T.MeshStandardMaterial({map:texture,color:0xffffff,roughness:.85,metalness:0,side:T.FrontSide}),faces=new T.InstancedMesh(faceGeo,material,points.length);faces.name='speed-limit-'+limit;faces.frustumCulled=false;for(let i=0;i<points.length;i++){const p=points[i];rot.setFromAxisAngle(up,p.yaw);matrix.compose(pos.set(p.x+p.nx*.026,p.y+2.05,p.z+p.nz*.026),rot,scale.set(.72,.95,1));faces.setMatrixAt(i,matrix);}faces.instanceMatrix.needsUpdate=true;group.add(faces);
+           }world.add(group);
+          }
+          const roadsideOriginalBuildSignals=buildSignals;
+          buildSignals=function(){const result=roadsideOriginalBuildSignals.apply(this,arguments);buildRoadsideSpeedLimits();return result;};
+          `;
+          acorn.parse(patch,{ecmaVersion:'latest'});
+          const sample=[{o:'h',a:-600,b:600,c:0,w:12},{o:'v',a:-600,b:600,c:0,w:26,type:'hwy'},{o:'h',a:-600,b:600,c:250,w:24}],labels=[],world=new T.Group(),context={T,roads:sample,BLD:[],heightAt:()=>0,world,buildSignals:()=> 'native-signals-return',document:{createElement:()=>({width:0,height:0,getContext:()=>({fillRect(){},strokeRect(){},fillText(text){labels.push(text);}})})}};vm.createContext(context);vm.runInContext(patch,context);
+          const planned=context.planRoadsideSpeedLimits(sample,[],()=>0);assert(planned.length>0&&planned.length<=400);assert(new Set(planned.map(p=>p.limit)).size===3);for(const p of planned){assert([p.x,p.y,p.z,p.yaw].every(Number.isFinite));assert(Math.abs((p.axis==='h'?p.z:p.x)-p.center)>p.hw);const dx=p.axis==='h'?p.dir:0,dz=p.axis==='v'?p.dir:0;assert(p.nx*dx+p.nz*dz===-1);assert(Math.abs(Math.sin(p.yaw)-p.nx)<1e-8&&Math.abs(Math.cos(p.yaw)-p.nz)<1e-8);}
+          assert(context.planRoadsideSpeedLimits(sample,[],()=>-5).length===0);assert(context.planRoadsideSpeedLimits([{o:'h',a:0,b:20,c:0,w:12}],[],()=>0).length===0);const blocked=planned[0];assert(context.planRoadsideSpeedLimits(sample,[{x0:blocked.x-1,x1:blocked.x+1,z0:blocked.z-1,z1:blocked.z+1}],()=>0).length<planned.length);
+          assert(context.buildSignals()==='native-signals-return');assert(world.children.length===1&&world.children[0].userData.signCount===planned.length);world.traverse(o=>{if(o.isInstancedMesh)assert(Array.from(o.instanceMatrix.array).every(Number.isFinite));});for(const text of ['SPEED','LIMIT','MPH','55','65','75'])assert(labels.includes(text));context.buildSignals();assert(world.children.length===1,'Rebuild duplicated signs');
+          let html=fs.readFileSync('index.html','utf8');if(html.includes('// ROADSIDE_SPEED_LIMIT_SIGNS_V1'))process.exit(0);const matches=[];
+          function walk(n,fn,parent){fn(n,parent);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,fn,n);}else if(v&&typeof v.type==='string')walk(v,fn,n);}}
+          for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;const ast=acorn.parse(m[1],{ecmaVersion:'latest'}),functions=new Set(),boots=[];walk(ast,(n,parent)=>{if(n.type==='FunctionDeclaration'&&n.id)functions.add(n.id.name);if(n.type==='CallExpression'&&n.callee.type==='Identifier'&&n.callee.name==='boot'&&parent.type==='ExpressionStatement')boots.push(parent.start);});if(functions.has('buildSignals'))matches.push({m,functions,boots});}
+          if(matches.length!==1||matches[0].boots.length!==1||!matches[0].functions.has('heightAt'))throw Error('Roadside integration points changed; refusing to guess');const c=matches[0],at=c.boots[0],code=c.m[1].slice(0,at)+patch+'\n'+c.m[1].slice(at);acorn.parse(code,{ecmaVersion:'latest'});const offset=c.m.index+c.m[0].indexOf(c.m[1]);html=html.slice(0,offset)+code+html.slice(offset+c.m[1].length);for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(m[1].trim())acorn.parse(m[1],{ecmaVersion:'latest'});
+          fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/speed-limit-signs-check.json',JSON.stringify({passed:true,limitsMph:[55,65,75],placementTests:true,rightSideAndFacingTests:true,intersectionAvoidance:true,buildingExclusion:true,terrainChecks:true,instanceMatricesFinite:true,rebuildCleanup:true,vehicleRulesUnchanged:true,scope:'Synthetic road placement and Three.js model tests; live map visual placement and deployment not verified.'},null,2)+'\n');fs.writeFileSync('index.html',html);
+          JS
+      - name: Publish only checked changes against the same main revision
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against its latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html status/speed-limit-signs-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Add instanced roadside 55, 65, and 75 mph speed limit signs'
+          git push origin HEAD:main
