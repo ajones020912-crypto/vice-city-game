@@ -1,0 +1,41 @@
+name: Inspect Lucia stomach hip and thigh topology without modifying game
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/inspect-lucia-body-connections.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-photo-reference
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-body-inspection" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Inspect current model topology without editing geometry
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-body-inspection/node_modules/three'),c={window:{},console,Math};vm.createContext(c);for(const p of ['js/characters.js','js/reference-characters.js'])vm.runInContext(fs.readFileSync(p,'utf8'),c);const h=c.window.VCCharacters.build(T,'luciaC',{merge:false}),u=h.userData;h.updateMatrixWorld(true);const inv=u.hips.matrixWorld.clone().invert(),meshes=[],round=v=>Math.round(v*1e6)/1e6;function role(o){if(o.parent===u.spine)return 'spine';if(o.parent===u.hips)return 'hips';for(let i=0;i<u.Lg.length;i++){if(o.parent===u.Lg[i].hp)return 'hip-'+i;if(o.parent===u.Lg[i].kn)return 'knee-'+i;}return null;}
+          h.traverse(o=>{const r=role(o);if(!o.isMesh||!r||o.material!==u.m.skin)return;const p=o.geometry.attributes.position,M=inv.clone().multiply(o.matrixWorld),points=[];for(let i=0;i<p.count;i++)points.push(new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(M));const box=new T.Box3().setFromPoints(points);if(box.max.y<-.60||box.min.y>.36)return;meshes.push({o,role:r,points,box});});assert(meshes.length>0);
+          function describe(entry,k){const {o,role,points,box}=entry,g=o.geometry,ids=[],lookup=new Map(),welded=[],edges=new Map(),neighbors=[];for(const v of points){const key=v.toArray().map(x=>Math.round(x*1e5)).join(',');if(!lookup.has(key)){lookup.set(key,welded.length);welded.push(v);neighbors.push(new Set());}ids.push(lookup.get(key));}const index=g.index,count=index?index.count:points.length;for(let i=0;i<count;i+=3){const tri=[0,1,2].map(j=>ids[index?index.getX(i+j):i+j]);if(new Set(tri).size<3)continue;for(let j=0;j<3;j++){const a=tri[j],b=tri[(j+1)%3],key=a<b?a+','+b:b+','+a;edges.set(key,(edges.get(key)||0)+1);neighbors[a].add(b);neighbors[b].add(a);}}let components=0;const seen=new Set();for(let i=0;i<welded.length;i++)if(!seen.has(i)){components++;const queue=[i];seen.add(i);while(queue.length)for(const j of neighbors[queue.pop()])if(!seen.has(j)){seen.add(j);queue.push(j);}}const boundaryEdges=[...edges].filter(([,n])=>n===1).map(([key])=>key.split(',').map(Number)),boundaryVertices=[...new Set(boundaryEdges.flat())],profile=[];for(let bin=0;bin<10;bin++){const lo=box.min.y+(box.max.y-box.min.y)*bin/10,hi=box.min.y+(box.max.y-box.min.y)*(bin+1)/10,part=points.filter(v=>v.y>=lo-1e-6&&v.y<=hi+1e-6);if(part.length){const b=new T.Box3().setFromPoints(part);profile.push({y:[round(lo),round(hi)],min:b.min.toArray().map(round),max:b.max.toArray().map(round)});}}return {id:k,name:o.name,role,type:g.type,vertices:points.length,triangles:count/3,position:o.position.toArray(),scale:o.scale.toArray(),bounds:{min:box.min.toArray().map(round),max:box.max.toArray().map(round)},geometricComponents:components,boundaryEdgeCount:boundaryEdges.length,boundaryVertexCount:boundaryVertices.length,boundarySamples:boundaryVertices.filter((_,i)=>i%Math.max(1,Math.ceil(boundaryVertices.length/24))===0).map(i=>welded[i].toArray().map(round)),profile};}
+          const adjacency=[];for(let i=0;i<meshes.length;i++)for(let j=i+1;j<meshes.length;j++){const a=meshes[i],b=meshes[j],keys=new Set(a.points.map(v=>v.toArray().map(x=>Math.round(x*1e4)).join(',')));let coincident=0;for(const v of b.points)if(keys.has(v.toArray().map(x=>Math.round(x*1e4)).join(',')))coincident++;if(a.box.intersectsBox(b.box)||coincident)adjacency.push({a:i,b:j,overlappingBounds:a.box.intersectsBox(b.box),coincidentBindVertices:coincident});}
+          fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-body-connections-inspection.json',JSON.stringify({inspectedRevision:process.env.GITHUB_SHA,skinColor:u.m.skin.color.getHex().toString(16),hipPosition:u.hips.position.toArray(),spinePosition:u.spine.position.toArray(),legs:u.Lg.map(l=>({hip:l.hp.position.toArray(),knee:l.kn.position.toArray()})),featureFlags:{clothingRemoved:!!u.luciaRemovedClothing,hipSmoothing:!!u.luciaHipThighSmoothed,shoulderRefinement:!!u.luciaShoulderJoinsRefined},meshes:meshes.map(describe),adjacency,scope:'Bind-pose geometry inspection only. Overlapping bounds or coincident vertices do not establish a welded or animation-continuous surface. No game or model files modified.'},null,2)+'\n');
+          JS
+      - name: Publish diagnostic report only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/lucia-body-connections-inspection.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Record Lucia stomach hip and thigh topology for connected body repair'
+          git pull --rebase origin main
+          git push origin HEAD:main
