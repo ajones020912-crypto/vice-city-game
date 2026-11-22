@@ -1,0 +1,48 @@
+name: Add dark grey tank over Lucia current outfit
+on:
+  push:
+    branches: [lucia-outfits]
+    paths: ['.github/workflows/lucia-dark-grey-tank.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-outfits-swimwear
+  cancel-in-progress: false
+jobs:
+  tank:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: lucia-outfits
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-tank" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Restore fitted tank template as a separate charcoal outer layer
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-tank/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_DARK_GREY_OUTER_TANK_V1'))process.exit(0);if(!s.includes('// LUCIA_SMALLER_CONNECTED_BRIEFS_V2'))throw Error('Current black base required');fs.writeFileSync('/tmp/lucia-tank-before.js',s);const needle='u.luciaRemovedClothing=garments.map(o=>o.name);for(const mesh of garments)mesh.parent.remove(mesh);';if(s.split(needle).length!==2)throw Error('Reviewed clothing removal hook changed');s=s.replace(needle,"h.updateMatrixWorld(true);luciaTankTemplates.set(h,garments.filter(o=>/tank|shoulder-strap/.test(o.name)).map(mesh=>({mesh,toSpine:new T.Matrix4().copy(u.spine.matrixWorld).invert().multiply(mesh.matrixWorld)})));"+needle);function walk(n,f){f(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f);}else if(v&&typeof v.type==='string')walk(v,f);}}const nodes=[];walk(acorn.parse(s,{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='lucia')nodes.push(n);});if(nodes.length!==1)throw Error('Lucia builder changed');const node=nodes[0];const helper=String.raw`
+           const luciaTankTemplates=new WeakMap();
+           function addLuciaDarkGreyOuterTank(T,h){
+            const u=h.userData;if(u.luciaDarkGreyOuterTank)return;const templates=luciaTankTemplates.get(h);if(!templates||!templates.some(o=>o.mesh.name==='lucia-dark-tank-top'))throw Error('Original fitted tank template missing');const group=new T.Group();group.name='lucia-dark-grey-tank-outfit';group.userData.luciaOuterTank=true;let meshCount=0;for(const source of templates){if(source.mesh.isSkinnedMesh)throw Error('Unexpected skinned tank template');const mesh=source.mesh.clone(true),g=source.mesh.geometry.clone(),p=g.attributes.position,n=g.attributes.normal;if(!n)throw Error('Tank normals missing');const M=source.toSpine,N=new T.Matrix3().getNormalMatrix(M),back=M.clone().invert(),v=new T.Vector3(),normal=new T.Vector3();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(M);normal.fromBufferAttribute(n,i).applyMatrix3(N).normalize();const clearance=.009+.010*Math.exp(-Math.pow((v.y-.385)/.120,2));v.addScaledVector(normal,clearance).applyMatrix4(back);p.setXYZ(i,v.x,v.y,v.z);}p.needsUpdate=true;g.computeBoundingBox();g.computeBoundingSphere();mesh.geometry=g;function grey(original){const material=original.clone();material.color.setHex(0x3b3d40);material.map=null;material.bumpMap=null;material.normalMap=null;material.roughnessMap=null;material.alphaMap=null;material.alphaTest=0;material.transparent=false;material.opacity=1;material.roughness=.94;material.metalness=0;material.side=T.DoubleSide;material.needsUpdate=true;return material;}mesh.material=Array.isArray(source.mesh.material)?source.mesh.material.map(grey):grey(source.mesh.material);mesh.matrix.copy(M);mesh.matrix.decompose(mesh.position,mesh.quaternion,mesh.scale);mesh.name=source.mesh.name==='lucia-dark-tank-top'?'lucia-dark-grey-tank-top':'lucia-dark-grey-'+source.mesh.name.replace(/^lucia-/,'');mesh.traverse(o=>{o.userData.luciaOuterTank=true;});mesh.castShadow=true;mesh.receiveShadow=true;group.add(mesh);meshCount++;}u.spine.add(group);u.setLuciaTankVisible=function(visible){if(typeof visible!=='boolean')throw Error('Tank visibility must be boolean');group.visible=visible;u.luciaTankVisible=visible;return visible;};u.luciaDarkGreyOuterTank={color:0x3b3d40,meshCount,layer:'outer',removable:true};u.setLuciaTankVisible(true);luciaTankTemplates.delete(h);
+           }
+          `;s=s.slice(0,node.body.end-1)+'\n addLuciaDarkGreyOuterTank(T,h);\n'+s.slice(node.body.end-1);s=s.slice(0,node.start)+helper+s.slice(node.start);s='// LUCIA_DARK_GREY_OUTER_TANK_V1\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-tank-after.js',s);
+          JS
+      - name: Validate outer tank preserved base and existing outfits
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-tank/node_modules/three');if(!fs.existsSync('/tmp/lucia-tank-after.js')){assert(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_DARK_GREY_OUTER_TANK_V1'));process.exit(0);}function load(file){const c={window:{},console,Math};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}const old=load('/tmp/lucia-tank-before.js'),cur=load('/tmp/lucia-tank-after.js');function signature(h){const rows=[];h.traverse(o=>{if(o.userData.luciaOuterTank)return;const row=[o.type,o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()];if(o.isMesh)row.push(Object.keys(o.geometry.attributes).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.metalness,m.skinning,m.transparent,m.opacity]));rows.push(row);});return JSON.stringify(rows);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)),'Other character changed');let poses=0,swimsuitInstalled=false;for(const merge of [false,true]){const a=old.build(T,'luciaC',{merge}),h=cur.build(T,'luciaC',{merge}),u=h.userData,group=h.getObjectByName('lucia-dark-grey-tank-outfit'),tank=h.getObjectByName('lucia-dark-grey-tank-top'),bra=h.getObjectByName('lucia-tailored-bra'),briefs=h.getObjectByName('lucia-fitted-black-briefs');assert(group&&tank&&group.parent===u.spine&&group.visible&&u.luciaTankVisible);assert(signature(a)===signature(h),'Body bra underwear swimsuit or rig changed');group.traverse(o=>{if(o.isMesh)for(const m of Array.isArray(o.material)?o.material:[o.material])assert(m.color.getHex()===0x3b3d40&&!m.transparent&&m.opacity===1&&!m.map);});const outfitBefore=u.luciaOutfit;for(const visible of [false,true]){u.setLuciaTankVisible(visible);assert(group.visible===visible&&bra.visible&&briefs.visible&&u.luciaOutfit===outfitBefore);}assert.throws(()=>u.setLuciaTankVisible('remove-base'));if(u.luciaSwimwearInstalled){swimsuitInstalled=true;assert(u.luciaOutfit==='leopard-bikini');for(const id of ['base','leopard-bikini']){cur.setLuciaOutfit(h,id);assert(group.visible&&bra.visible&&briefs.visible);}assert(h.getObjectByName('lucia-swimsuit-top').visible&&h.getObjectByName('lucia-swimsuit-bottom').visible);}for(const angle of [-.7,0,.7]){u.spine.rotation.x=angle*.1;u.spine.rotation.y=angle*.2;u.A[0].sh.rotation.x=angle;u.A[1].sh.rotation.x=-angle;h.updateMatrixWorld(true);h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh)for(const k of ['position','normal'])if(o.geometry.attributes[k])assert(Array.from(o.geometry.attributes[k].array).every(Number.isFinite));});poses++;}}fs.copyFileSync('/tmp/lucia-tank-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-dark-grey-tank-check.json',JSON.stringify({passed:true,branch:'lucia-outfits',defaultOuterLayer:'dark-grey-tank',color:'#3b3d40',poseChecks:poses,swimsuitInstalled,existingOutfitSelectionPreserved:true,bodySkinToneBaseGarmentsAndRigUnchanged:true,otherCharactersUnchanged:true,scope:'Opaque removable outer tank restored from fitted template with extra chest clearance. Does not install or repair the separate swimsuit. Structural tests do not verify rendered layering, animation clipping, wardrobe UI or live deployment.'},null,2)+'\n');
+          JS
+      - name: Publish only to outfit branch
+        run: |
+          git fetch origin lucia-outfits
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/lucia-outfits)" || { echo 'Outfit branch changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-dark-grey-tank-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Add matte dark grey tank outer layer preserving Lucia current outfit and black base'
+          git push origin HEAD:refs/heads/lucia-outfits
