@@ -1501,7 +1501,7 @@ function buildPlazasAndPromenade(){
   for(const s of[-.9,.9])bakeG('plain',GEO.box,x+Math.cos(ry)*s,.24,z-Math.sin(ry)*s,ry,.08,.48,.5,metal)};
  const lampPost=(x,z)=>{bakeG('plain',GEO.cyl6,x,2.1,z,0,.09,4.2,.09,metal);bakeG('lamp',GEO.box,x,4.3,z,0,.42,.22,.42,[1,.92,.75])};
  // ---- three plazas where the crossing streets used to be
- G.plazas.forEach((p,i)=>{const {cx,cz,X0,X1,Z0,Z1,g}=p,ax=X1-X0+18,az=Z1-Z0+18;
+ G.plazas.forEach((p,i)=>{const {cx,cz,X0,X1,Z0,Z1,g}=p,ax=X1-X0+5.6,az=Z1-Z0+5.6; // stops at the curb
   bakeG('walk',GEO.box,cx,.07,cz,0,ax,.12,2*g,pave);bakeG('walk',GEO.box,cx,.075,cz,0,2*g,.12,az,pave);
   bakeG('walk',GEO.box,cx,.08,cz,0,2*g-4,.12,2*g-4,trim);                        // centre square
   // centrepiece: fountain / reflecting pool with an obelisk / neon sculpture
@@ -1517,7 +1517,7 @@ function buildPlazasAndPromenade(){
   for(const t of[-30,30]){bench(cx+t,cz-g+5,0);bench(cx+t,cz+g-5,Math.PI);bench(cx-g+5,cz+t,Math.PI/2);bench(cx+g-5,cz+t,-Math.PI/2)}
   for(const t of[-40,-17,17,40]){lampPost(cx+t,cz);lampPost(cx,cz+t)}
   // bollards at the four arm ends keep cars out
-  for(const [ex,ez,alongX] of[[cx,Z0-8.5,true],[cx,Z1+8.5,true],[X0-8.5,cz,false],[X1+8.5,cz,false]])
+  for(const [ex,ez,alongX] of[[cx,Z0-2.2,true],[cx,Z1+2.2,true],[X0-2.2,cz,false],[X1+2.2,cz,false]])
    for(let k=-g+1;k<=g-1;k+=2.2){const bx=alongX?ex+k:ex,bz=alongX?ez:ez+k;bakeG('plain',GEO.cyl6,bx,.5,bz,0,.18,1,.18,[.85,.85,.82]);addCol(bx-.2,bz-.2,bx+.2,bz+.2,1)}
  });
  // ---- diagonal promenade through the blocks (continues the park's diagonal paths)
