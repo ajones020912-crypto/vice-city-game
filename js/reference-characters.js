@@ -31,7 +31,7 @@
   const highlight=cloth(T,0x49342a);for(const side of[-1,1]){add(T,u.headP,tube(T,[[side*.078,.245,.048],[side*.098,.19,.06],[side*.104,.075,.02],[side*.091,.025,.01]],.012,16),side===1?highlight:m.hair,'lucia-face-framing-hair');add(T,u.headP,tube(T,[[side*.019,.203,.100],[side*.037,.210,.101],[side*.058,.206,.092]],.0037,14),m.brow,'lucia-arched-brow')}
   for(const mesh of u.headP.children.slice())if(mesh.isMesh){if(mesh.material===m.brow&&mesh.geometry.type==='BoxGeometry')remove(mesh);else if(mesh.material===m.eyeW){mesh.scale.x*=.98;mesh.scale.y*=.82}else if(mesh.material===m.lip){mesh.scale.x*=1.16;mesh.scale.y*=1.12}else if(mesh.material===m.skin&&mesh.geometry.type==='LatheGeometry'){const a=mesh.geometry.attributes.position;for(let i=0;i<a.count;i++){const y=a.getY(i),x=a.getX(i);a.setX(i,x*(1+.085*Math.exp(-Math.pow((y-.145)/.04,2))-.065*Math.exp(-Math.pow((y-.075)/.025,2))))}a.needsUpdate=true;mesh.geometry.computeVertexNormals()}}
   const threads=cloth(T,0xc8c2ad);for(let k=0;k<u.Lg.length;k++){const hp=u.Lg[k].hp;for(const mesh of hp.children.slice())if(mesh.isMesh&&mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y+.26)<.002)remove(mesh);const shorts=hp.children.find(o=>o.isMesh&&o.material===m.pants&&o.geometry.type==='LatheGeometry');if(shorts){shorts.name='lucia-reference-denim-shorts-'+k;const a=shorts.geometry.attributes.position;for(let i=0;i<a.count;i++)if(Math.abs(a.getY(i)+.26)<.001){const angle=Math.atan2(a.getZ(i),a.getX(i));a.setY(i,-.26+.003*Math.sin(angle*9)+.002*Math.sin(angle*17))}a.needsUpdate=true;shorts.geometry.computeVertexNormals()}for(let j=0;j<9;j++){const phi=j/9*Math.PI*2,len=.007+(j%3)*.003;add(T,hp,new T.CylinderGeometry(.0008,.0005,len,4),threads,'lucia-denim-fray',Math.sin(phi)*.095,-.26-len*.45,Math.cos(phi)*.095)}}
-  const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);fitLuciaShortsLegs(T,h);denimLuciaShorts(T,h);joinLuciaShoulders(T,h);refineLuciaV3(T,h);installLuciaDenimV3(T,h);finishLuciaV4(T,h);makeLuciaCurlyPonytail(T,h);polishLuciaV5(T,h);
+  const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);fitLuciaShortsLegs(T,h);denimLuciaShorts(T,h);joinLuciaShoulders(T,h);refineLuciaV3(T,h);installLuciaDenimV3(T,h);finishLuciaV4(T,h);makeLuciaCurlyPonytail(T,h);polishLuciaV5(T,h);enlargeLuciaEyes(T,h);
  }
 
 
@@ -212,6 +212,23 @@
   const tank=u.spine.children.find(o=>o.name==='lucia-dark-tank-top');if(tank)smooth(tank);
   const denim=h.getObjectByName('lucia-seamless-denim');if(denim){denim.material.roughness=.94;denim.material.flatShading=false;denim.material.needsUpdate=true;}
   u.luciaVisualPolish=true;
+ }
+
+ function enlargeLuciaEyes(T,h){
+  const u=h.userData,meshes=u.headP.children.filter(o=>o.isMesh);
+  function bounds(o){o.updateMatrix();const p=o.geometry.attributes.position,b=new T.Box3(),v=new T.Vector3();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrix);b.expandByPoint(v);}return b;}
+  const eyes=meshes.filter(o=>o.material===u.m.eyeW).map(o=>{const b=bounds(o);return {mesh:o,center:b.getCenter(new T.Vector3()),size:b.getSize(new T.Vector3())};});
+  if(eyes.length!==2)throw new Error('Expected two separate eye whites');
+  const changes=[];
+  for(const o of meshes){
+   if(o.material===u.m.brow||/brow/i.test(o.name))continue;
+   const b=bounds(o),c=b.getCenter(new T.Vector3());let eye=eyes[0];if(c.distanceToSquared(eyes[1].center)<c.distanceToSquared(eye.center))eye=eyes[1];
+   const d=c.clone().sub(eye.center),near=Math.abs(d.x)<eye.size.x*.7&&Math.abs(d.y)<eye.size.y*1.5&&Math.abs(d.z)<eye.size.z+.015;
+   if(!near)continue;
+   changes.push([o,eye.center]);
+  }
+  for(const [o,center] of changes){const old=o.geometry,g=old.clone(),a=g.attributes.position,to=o.matrix.clone(),from=to.clone().invert(),v=new T.Vector3();for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(to);v.x=center.x+(v.x-center.x)*1.15;v.y=center.y+(v.y-center.y)*1.20;v.applyMatrix4(from);a.setXYZ(i,v.x,v.y,v.z);}a.needsUpdate=true;g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();o.geometry=g;old.dispose();}
+  u.luciaLargerEyes=true;
  }
  function finishLuciaV4(T,h){
   const u=h.userData,m=u.m;m.hair.color.setHex(0x2d1b12);m.brow.color.setHex(0x4b2e1e);m.lip.color.setHex(0x9f6255);m.lip.roughness=.65;
