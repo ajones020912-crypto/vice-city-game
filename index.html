@@ -347,7 +347,7 @@ const G={quality:2}; // global game state container (also exposed for debugging)
 window.__vc=G;
 
 // ---------- renderer / scene ----------
-const WS=1900,TS=8,TN=WS*2/TS,WL=-.35;
+const WS=2750,TS=10,TN=WS*2/TS,WL=-.35;
 const scene=new T.Scene();
 const camera=new T.PerspectiveCamera(70,innerWidth/innerHeight,.25,2600);
 const renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
@@ -611,18 +611,24 @@ const water=new T.Mesh(new T.PlaneGeometry(10000,10000),waterMat);water.rotation
 // ---------- terrain height field ----------
 const ISL=[[380,-820,150,95],[160,-840,100,70],[-120,-830,110,80],[600,-830,120,80],[830,-820,110,75],[1030,-830,110,90],[1280,-900,130,95],[1480,-860,110,80],[-280,-920,100,70],[720,-980,120,85]];
 const shoreZ=x=>-372+10*Math.sin(x*.012)+6*Math.sin(x*.031+1);
+// HARBOR_ISLAND_V1: irregular island in the Calusa bay (negative = land)
+function hhIsle(x,z){const dx=(x+1090)/480,dz=(z-1960)/440,a=Math.atan2(dz,dx);
+ const wob=.07*Math.sin(a*3+.8)+.05*Math.sin(a*5+2.1)+.035*Math.sin(a*9+.3);return (Math.hypot(dx,dz)-1-wob)*440}
 function seaD(x,z){ // signed metres into the sea (>0 sea, <0 land)
  const n=shoreZ(x)-z;let isl=1e9;
  for(const [cx,cz,rx,rz] of ISL){const d=Math.hypot((x-cx)/rx,(z-cz)/rz);isl=Math.min(isl,(d-.62)*Math.min(rx,rz))}
- const edge=Math.max(Math.abs(x),Math.abs(z))-1750,bay=x<-450?(z-1030)*(x<-470?1:(x+450)/-20+0):-1e9;
- return Math.max(edge,bay,Math.min(n,isl));
+ const edge=Math.max(Math.abs(x)-1750,-z-1750,z-2600),bay=x<-450?(z-1030)*(x<-470?1:(x+450)/-20+0):-1e9;
+ return Math.max(edge,Math.min(Math.max(bay,Math.min(n,isl)),hhIsle(x,z)));
 }
 const swampMask=(x,z)=>sstep(440,520,x)*sstep(-300,-230,z)*sstep(520,380,z)*(1-sstep(1400,1600,x));
+// AIRPORT_FLAT_V1: 1 over the airfield (x -1080..-500, z -250..160), easing to 0 over 60 m
+const airportMask=(x,z)=>(1-sstep(290,350,Math.abs(x+790)))*(1-sstep(205,265,Math.abs(z+45)));
 const hillMask=(x,z)=>sstep(-640,-1100,x)*sstep(400,200,z)*sstep(-400,-280,z);
 function rawH(x,z){
  const S=seaD(x,z);let h=0;
  if(S>0)h=-3.5*sstep(0,28,S)-.05*Math.max(0,S-28);else h=.15*sstep(-30,-4,S)*(fbm(x*.05,z*.05)-.3);
- const hm=hillMask(x,z);if(hm>0)h+=hm*(26+30*fbm(x*.0065+3,z*.0065)+8*vnoise(x*.03,z*.03));
+ const hm=hillMask(x,z)*(1-airportMask(x,z));if(hm>0)h+=hm*(26+30*fbm(x*.0065+3,z*.0065)+8*vnoise(x*.03,z*.03));
+ const am=airportMask(x,z);if(am>0)h=lerp(h,0,am);
  const sw=swampMask(x,z);if(sw>0){const f=fbm(x*.011+5,z*.011);h+=-1.15*sstep(.5,.37,f)*sw+.22*vnoise(x*.09,z*.09)*sw}
  return h;
 }
@@ -652,6 +658,8 @@ function groundCol(x,z,h,o){
  // urban concrete / asphalt blocks
  if((x>-345&&x<425&&z>-345&&z<445)||(x>-1110&&x<-515&&z>395&&z<1045)){r=.42;g=.41;b=.40}
  else if(x>-345&&x<425&&z>445&&z<1115){r=.32+(n-.5)*.12;g=.58+(n-.5)*.16;b=.26} // greener suburbs
+ else if(hhIsle(x,z)<-30&&x<-450){r=.42;g=.41;b=.40} // Harbor Heights island
+ else if(x>-435&&x<895&&z>1625&&z<2415){r=.33+(n-.5)*.12;g=.57+(n-.5)*.16;b=.27} // Coral Ridge lawns
  if(sw>.05){const m=sw*.9;r=lerp(r,.26+n*.12,m);g=lerp(g,.40+n*.08,m);b=lerp(b,.19,m);if(h<-.1){r=lerp(r,.18,.55);g=lerp(g,.26,.55);b=lerp(b,.14,.55)}}
  if(hm>.05){const rock=sstep(14,34,h);r=lerp(lerp(r,.22,hm*.6),.48,rock);g=lerp(lerp(g,.38,hm*.6),.44,rock);b=lerp(lerp(b,.20,hm*.6),.38,rock)}
  // warmer, more saturated beach sand
@@ -1135,7 +1143,29 @@ function defineRoads(){
  // dirt / rural
  addRoad('h',60,380,1500,9,'dirt');addRoad('v',800,-260,500,8,'dirt');addRoad('h',300,380,1200,8,'dirt');addRoad('v',1000,60,400,8,'dirt');
  addRoad('h',-100,1000,1600,8,'dirt');addRoad('v',1600,-400,400,8,'dirt');addRoad('v',-1300,-100,500,8,'dirt');
+ // SOUTH_EXPANSION_V1 (bottom of the map): Harbor Heights below Port Calusa, Coral Ridge below Palmetto Grove
+ for(const [o,c,a,b,w] of HH.roads)addRoad(o,c,a,b,w,'city');
+ // causeways: Port Calusa down to the island's north shore, and across the channel to Coral Ridge
+ {const v=HH.roads.filter(q=>q[0]==='v').sort((a,b)=>Math.abs(a[1]+930)-Math.abs(b[1]+930))[0],h=HH.roads.filter(q=>q[0]==='h').sort((a,b)=>Math.abs(a[1]-CR_Z[3])-Math.abs(b[1]-CR_Z[3]))[0];
+  const vx=v?v[1]:-910,top=v?v[2]:1560;if(Math.abs(vx+910)>2)addRoad('h',1010,Math.min(vx,-910),Math.max(vx,-910),16,'city');addRoad('v',vx,1010,top,18,'city');
+  const hz=h?h[1]:CR_Z[3],east=h?h[3]:-700;addRoad('h',hz,east,-420,18,'city')}
+ for(const x of CR_X)if(x!==380)addRoad('v',x,1640,2400,14,'city',true);
+ for(const z of CR_Z)addRoad('h',z,-420,880,14,'city',true);
+ addRoad('v',380,1400,2480,30,'hwy');          // Interstate 1 continues south through Coral Ridge
+ addRoad('h',1520,-420,900,22,'hwy');          // Calusa Parkway along the top of Coral Ridge
+ addRoad('v',900,1300,1520,16,'city');
 }
+const CR_X=[],CR_Z=[];
+// Harbor Heights street plan: recursive random splits of the island, so every street ends in a T or at the shore
+const HH=(()=>{let seed=91731;const r=()=>(seed=(seed*16807)%2147483647)/2147483647;
+ const roads=[],blocks=[],inside=(x,z,m)=>hhIsle(x,z)<-m;
+ const clipSeg=(o,c,a,b)=>{const out=[];let s0=null;for(let t=a;t<=b;t+=5){const ok=o==='h'?inside(t,c,22):inside(c,t,22);if(ok&&s0===null)s0=t;if((!ok||t+5>b)&&s0!==null){const e=ok?t:t-5;if(e-s0>25)out.push([s0,e]);s0=null}}return out};
+ const split=(x0,z0,x1,z1,d)=>{const w=x1-x0,h=z1-z0;if((w<150&&h<150)||d>6||(d>3&&r()<.25)){blocks.push([x0,z0,x1,z1]);return}
+  const vert=w>h*1.25?true:h>w*1.25?false:r()<.5,f=.3+r()*.4,W=d<2?16:d<4?13:11;
+  if(vert){const x=Math.round(x0+w*f);for(const [a,b] of clipSeg('v',x,z0,z1))roads.push(['v',x,a,b,W]);split(x0,z0,x,z1,d+1);split(x,z0,x1,z1,d+1)}
+  else{const z=Math.round(z0+h*f);for(const [a,b] of clipSeg('h',z,x0,x1))roads.push(['h',z,a,b,W]);split(x0,z0,x1,z,d+1);split(x0,z,x1,z1,d+1)}};
+ split(-1600,1500,-580,2420,0);return{roads,blocks}})();
+for(let k=-8;k<=5;k++)CR_X.push(380+100*k);for(let j=0;j<=8;j++)CR_Z.push(1640+95*j);
 function buildNodes(){
  const hs=roads.filter(r=>r.o==='h'),vs=roads.filter(r=>r.o==='v');
  for(const h of hs)for(const v of vs){if(v.c>=h.a&&v.c<=h.b&&h.c>=v.a&&h.c<=v.b){
@@ -1288,6 +1318,14 @@ function makeParcels(){
  for(let i=0;i<7;i++)for(let j=0;j<7;j++)lot(px[i]+8+2.9,pz[j]+8+2.9,px[i+1]-8-2.9,pz[j+1]-8-2.9,'port');
  // row between expressway and first port street
  for(let i=0;i<7;i++)lot(px[i]+8+2.9,420+14+3,px[i+1]-8-2.9,490-8-2.9,'port');
+ // Harbor Heights: irregular blocks; warehouses by the water, homes and shops inland; nothing hangs over the shore
+ for(const [x0,z0,x1,z1] of HH.blocks){if(x1-x0<40||z1-z0<40)continue;const n0=parcels.length,coast=hhIsle((x0+x1)/2,(z0+z1)/2)>-90;
+  lot(x0+8+2.9,z0+8+2.9,x1-8-2.9,z1-8-2.9,coast?'port':'low');
+  for(let k=parcels.length-1;k>=n0;k--){const q=parcels[k];if([[q.x0,q.z0],[q.x1,q.z0],[q.x0,q.z1],[q.x1,q.z1]].some(([a,b])=>hhIsle(a,b)>-14))parcels.splice(k,1)}}
+ // Coral Ridge: suburban blocks (wider setback along the interstate)
+ for(let i=0;i<CR_X.length-1;i++)for(let j=0;j<CR_Z.length-1;j++){if(rnd()<.08)continue;
+  const a=CR_X[i]===380?15+3:7+2.9,b=CR_X[i+1]===380?15+3:7+2.9;
+  lot(CR_X[i]+a,CR_Z[j]+7+2.9,CR_X[i+1]-b,CR_Z[j+1]-7-2.9,'low')}
 }
 const SHOPS=[
  {k:'burger',name:'BURGER SHACK',col:'#ff9a2e',spots:[[-60,-100],[-180,150],[-840,640],[-30,590]]},
@@ -1461,7 +1499,7 @@ function buildBaseMap(){
   if(r.o==='h'){x.moveTo((r.a+WS)/MAPPX,(r.c+WS)/MAPPX);x.lineTo((r.b+WS)/MAPPX,(r.c+WS)/MAPPX)}else{x.moveTo((r.c+WS)/MAPPX,(r.a+WS)/MAPPX);x.lineTo((r.c+WS)/MAPPX,(r.b+WS)/MAPPX)}x.stroke()}
  baseMap=c;
 }
-const REGIONS=[['NEON BEACH',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['NORTH OUTSKIRTS',-400,1100,1000,1600,0,0],['EAST HIGHWAY',900,-200,1700,600,0,0]];
+const REGIONS=[['NEON BEACH',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['NORTH OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',-1520,1460,-470,2480,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['EAST HIGHWAY',900,-200,1700,600,0,0]];
 function zoneName(x,z){for(const r of REGIONS)if(x>r[1]&&x<r[3]&&z>r[2]&&z<r[4])return r[0];if(z<shoreZ(x))return'PALMERA GULF';return'PALMERA COUNTRYSIDE'}
 
 function clearStructureFootprint(x0,z0,x1,z1,margin=1.2){
@@ -2301,6 +2339,8 @@ function randomHumanOpts(x=pl.x,z=pl.z){
   'PALMETTO GROVE':{shirts:[0x5dc28a,0xf0c44d,0x2e9cda,0xf2f2f2,0x2a2f3a],pants:[0x26344f,0x8a7a62,0x3b3b44],role:'suburban'},
   'GRASSRUN BAYOU':{shirts:[0x5dc28a,0x8a7a62,0x2a2f3a,0xf0c44d,0x3b654b],pants:[0x3b3b44,0x8a7a62,0x26344f],role:'outdoors local'},
   'MOUNT ORRIN':{shirts:[0x52677c,0x5dc28a,0xf2f2f2,0x2a2f3a,0x8a7a62],pants:[0x26344f,0x3b3b44,0x8a7a62],role:'mountain local'},
+  'HARBOR HEIGHTS':{shirts:[0x202936,0x3b4654,0xe94e68,0x2e9cda,0x8a7a62],pants:[0x20242c,0x26344f,0x3b3b44],role:'harbor local'},
+  'CORAL RIDGE':{shirts:[0x5dc28a,0xff6b8a,0x2e9cda,0xf2f2f2,0xf0c44d],pants:[0x26344f,0x8a7a62,0xd9d2c3],role:'suburban'},
   'NORTH OUTSKIRTS':{shirts:[0x5dc28a,0xf0c44d,0x2e9cda,0x8a7a62,0xf2f2f2],pants:[0x26344f,0x3b3b44,0x8a7a62],role:'local'}
  };
  const p=palettes[district]||{shirts:SHIRTS,pants:PANTS,role:'resident'};
@@ -2781,7 +2821,7 @@ function stepCar(c,dt){
     const nl=ct.nx*cs-ct.nz*sn,off=(k-1)*-(t.L/2-.95);c.yr+=off*nl*imp*.035;}}}
  if(hit>1)crumpleCrash(c,hit,crumpleContact);if(hit>2.5){carImpact(c,hit)}
  // world bounds
- c.x=clamp(c.x,-1850,1850);c.z=clamp(c.z,-1850,1850);
+ c.x=clamp(c.x,-1850,1850);c.z=clamp(c.z,-1850,2700);
  // tire smoke / drift
  if(!c.dead&&Math.abs(vl)>3.2&&Math.abs(vf)>4&&Math.random()<dt*28&&water<=.1){emit(c.x-sn*1.4,c.y+.2,c.z-cs*1.4,(Math.random()-.5)*1.5,.6,(Math.random()-.5)*1.5,1.1,.5,2,DUST,DUST,-.2,.5)}
  if(c.hp<40&&!c.dead&&Math.random()<dt*10*(1-c.hp/40)){emit(c.x+sn*1.8,c.y+1,c.z+cs*1.8,0,1.5,0,1.6,.4,1.8,SMK,SMK2,-.6,.6)}
@@ -2910,7 +2950,7 @@ function playerOnFoot(dt){
   pl.swim=gy<WL-1.05;if(pl.swim){pl.y=WL-.75;pl.vy=0}
   pl.x+=pl.vx*dt;pl.z+=pl.vz*dt;
   resolveFoot(pl,.38);
-  pl.x=clamp(pl.x,-1850,1850);pl.z=clamp(pl.z,-1850,1850);
+  pl.x=clamp(pl.x,-1850,1850);pl.z=clamp(pl.z,-1850,2700);
  }
  const spd=Math.hypot(pl.vx,pl.vz);pl.walkSpd=spd;
  if(aiming||pl.fireT>0&&pl.weapon!=='fists'){const ty=Math.atan2(-Math.sin(camYaw),-Math.cos(camYaw));pl.h+=wrapA(ty-pl.h)*Math.min(1,dt*14)}
@@ -4188,7 +4228,7 @@ function updateFx(rdt){audio.setPaused(G.state==='paused');const f=G.fx;
 // ---------- geometry helpers ----------
 function isWater(x,z,d=1.4){return WL-heightAt(x,z)>d}
 function findWater(x,z,maxR=320,d=1.4){
- const ok=(px,pz)=>Math.abs(px)<1800&&Math.abs(pz)<1800&&isWater(px,pz,d)&&isWater(px+3,pz,d*.7)&&isWater(px-3,pz,d*.7)&&isWater(px,pz+3,d*.7)&&isWater(px,pz-3,d*.7);
+ const ok=(px,pz)=>Math.abs(px)<1800&&pz>-1800&&pz<2550&&isWater(px,pz,d)&&isWater(px+3,pz,d*.7)&&isWater(px-3,pz,d*.7)&&isWater(px,pz+3,d*.7)&&isWater(px,pz-3,d*.7);
  if(ok(x,z))return[x,z];
  for(let r=6;r<=maxR;r+=6){const n=Math.max(8,Math.round(r/3));for(let i=0;i<n;i++){const a=i/n*TAU,px=x+Math.cos(a)*r,pz=z+Math.sin(a)*r;if(ok(px,pz))return[px,pz]}}
  return null}
@@ -4622,7 +4662,7 @@ function stepBoat(c,dt){const t=c.t,inp=c.inp;c.age+=dt;if(c.dead){inp.thr=0;inp
  for(let k=0;k<3;k++){const p=_cc[k];for(const col of queryCols(p[0],p[1],r+1)){const ct=circleBox(p,r,col);if(!ct)continue;
   c.x+=ct.nx*ct.pen;c.z+=ct.nz*ct.pen;p[0]+=ct.nx*ct.pen;p[1]+=ct.nz*ct.pen;const vn=c.vx*ct.nx+c.vz*ct.nz;if(vn<0){c.vx-=1.3*vn*ct.nx;c.vz-=1.3*vn*ct.nz;hit=Math.max(hit,-vn)}}}
  if(hit>2.5)carImpact(c,hit);
- c.x=clamp(c.x,-1850,1850);c.z=clamp(c.z,-1850,1850);
+ c.x=clamp(c.x,-1850,1850);c.z=clamp(c.z,-1850,2700);
  if(onW&&sp>3&&Math.random()<dt*30)emit(c.x-sn*t.L*.5+(Math.random()-.5)*1.4,WL+.1,c.z-cs*t.L*.5,(Math.random()-.5)*2-sn*2,1+Math.random()*1.5,(Math.random()-.5)*2-cs*2,.7,.4,1.6,[.95,.97,1],[.8,.88,.95],3,.7);
  if(onW&&sp>8&&Math.random()<dt*20)for(const s of[-1,1])emit(c.x+sn*t.L*.3+cs*s*1.2,WL+.2,c.z+cs*t.L*.3-sn*s*1.2,cs*s*3,1.5,-sn*s*3,.5,.3,.9,[1,1,1],[.85,.9,.95],5,.6);
  if(swampLand&&!onW&&sp>3&&Math.random()<dt*20)emit(c.x-sn*2,c.y+.2,c.z-cs*2,0,.6,0,1,.5,2,DUST,DUST,-.2,.4);
@@ -5174,7 +5214,7 @@ playerOnFoot=function(dt){
  if(G.state!=='play'||G.mapOpen||G.phoneOpen){pl.vx=pl.vy=pl.vz=0;return}
  dt=clamp(Number(dt)||0,0,.05);const f=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0),r=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),u=(keys[' ']?1:0)-(keys.x?1:0),length=Math.max(1,Math.hypot(f,r,u)),speed=keys.shift?48:18;
  pl.vx=(-Math.sin(camYaw)*f+Math.cos(camYaw)*r)/length*speed;pl.vz=(-Math.cos(camYaw)*f-Math.sin(camYaw)*r)/length*speed;pl.vy=u/length*speed;
- pl.x=clamp(pl.x+pl.vx*dt,-1850,1850);pl.z=clamp(pl.z+pl.vz*dt,-1850,1850);pl.y=clamp(pl.y+pl.vy*dt,heightAt(pl.x,pl.z)+.75,600);resolveFoot(pl,.38);
+ pl.x=clamp(pl.x+pl.vx*dt,-1850,1850);pl.z=clamp(pl.z+pl.vz*dt,-1850,2700);pl.y=clamp(pl.y+pl.vy*dt,heightAt(pl.x,pl.z)+.75,600);resolveFoot(pl,.38);
  pl.h=wrapA(camYaw+Math.PI);pl.swim=false;pl.walkSpd=0;pl.aim=0;
 };
 const devFlightOriginalEnterCar=enterCar;enterCar=function(){if(devFlightState.active){toast('Disable Dev Mode before entering a vehicle.');return}return devFlightOriginalEnterCar.apply(this,arguments)};
