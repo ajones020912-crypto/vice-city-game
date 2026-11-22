@@ -1,0 +1,84 @@
+name: Smooth Lucia stomach hip and thigh transition
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-smooth-hip-transition.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  blend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-hips" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Prepare fitted waistband and bounded hip smoothing
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('js/reference-characters.js');s=p.read_text();Path('/tmp/lucia-hips-before.js').write_text(s)
+          if 'function smoothLuciaHipTransition(' in s: raise SystemExit('Hip transition already installed.')
+          anchor='enlargeLuciaEyes(T,h);'
+          if s.count(anchor)!=1: raise SystemExit('The larger-eyes update must finish first.')
+          s=s.replace(anchor,anchor+'smoothLuciaHipTransition(T,h);',1)
+          helper='''
+           function smoothLuciaHipTransition(T,h){
+            const u=h.userData,mesh=h.getObjectByName('lucia-seamless-denim');
+            if(!mesh||!mesh.isSkinnedMesh||!mesh.geometry.index)throw Error('Expected indexed animated denim surface');
+            const old=mesh.geometry,g=old.clone(),p=g.attributes.position,indices=g.index.array,n=p.count;
+            g.computeBoundingBox();const top=g.boundingBox.max.y;
+            h.updateMatrixWorld(true);const inv=u.hips.matrixWorld.clone().invert(),samples=[],v=new T.Vector3();let nearest=Infinity;
+            for(const o of u.spine.children){if(!o.isMesh||o.material!==u.m.skin)continue;const a=o.geometry.attributes.position,to=inv.clone().multiply(o.matrixWorld);for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(to);const d=Math.abs(v.y-top);if(d<nearest)nearest=d;samples.push([v.x,v.y,v.z,d]);}}
+            if(nearest>.035)throw Error('Could not find lower-abdomen contour at waistband');
+            let skinX=0,skinZ=0;for(const a of samples)if(a[3]<nearest+.006){skinX=Math.max(skinX,Math.abs(a[0]));skinZ=Math.max(skinZ,Math.abs(a[2]));}
+            let waistX=0,waistZ=0;for(let i=0;i<n;i++)if(p.getY(i)>top-.004){waistX=Math.max(waistX,Math.abs(p.getX(i)));waistZ=Math.max(waistZ,Math.abs(p.getZ(i)));}
+            if(Math.min(skinX,skinZ,waistX,waistZ)<.025)throw Error('Invalid waistband contour');
+            const sx=(skinX+.002)/waistX,sz=(skinZ+.002)/waistZ;
+            if(sx<.75||sx>1.30||sz<.75||sz>1.30)throw Error('Waist fit exceeds safe adjustment bounds');
+            for(let i=0;i<n;i++){const t=Math.max(0,Math.min(1,(p.getY(i)-(top-.085))/.085)),w=t*t*(3-2*t);p.setX(i,p.getX(i)*(1+(sx-1)*w));p.setZ(i,p.getZ(i)*(1+(sz-1)*w));}
+            const start=Float32Array.from(p.array),adj=Array.from({length:n},()=>new Set());
+            for(let i=0;i<indices.length;i+=3){const a=indices[i],b=indices[i+1],c=indices[i+2];adj[a].add(b).add(c);adj[b].add(a).add(c);adj[c].add(a).add(b);}
+            function step(rate){const before=Float32Array.from(p.array);for(let i=0;i<n;i++){
+             const y=start[i*3+1],a=Math.max(0,Math.min(1,(y+.285)/.060)),b=Math.max(0,Math.min(1,(top-.015-y)/.050)),w=a*a*(3-2*a)*b*b*(3-2*b);
+             if(!w||!adj[i].size)continue;let x=0,yy=0,z=0;for(const j of adj[i]){x+=before[j*3];yy+=before[j*3+1];z+=before[j*3+2];}const count=adj[i].size;
+             let nx=before[i*3]+(x/count-before[i*3])*rate*w,ny=before[i*3+1]+(yy/count-before[i*3+1])*rate*w,nz=before[i*3+2]+(z/count-before[i*3+2])*rate*w;
+             const dx=nx-start[i*3],dy=ny-start[i*3+1],dz=nz-start[i*3+2],length=Math.hypot(dx,dy,dz),scale=length>.008?.008/length:1;
+             p.setXYZ(i,start[i*3]+dx*scale,start[i*3+1]+dy*scale,start[i*3+2]+dz*scale);
+            }}
+            for(let pass=0;pass<4;pass++){step(.28);step(-.29);}
+            const weights=g.attributes.skinWeight;if(!weights)throw Error('Missing skin weights');
+            for(let i=0;i<n;i++){const t=Math.max(0,Math.min(1,(.035-p.getY(i))/.20)),blend=t*t*(3-2*t),right=Math.max(0,Math.min(1,.5+p.getX(i)/.10));weights.setXYZW(i,1-blend,blend*(1-right),blend*right,0);}
+            p.needsUpdate=true;weights.needsUpdate=true;g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();mesh.geometry=g;old.dispose();
+            u.luciaHipTransition={targetX:skinX+.002,targetZ:skinZ+.002,top};
+           }
+          '''
+          marker=' function finishLuciaV4('
+          if s.count(marker)!=1: raise SystemExit('Appearance helper boundary changed.')
+          s=s.replace(marker,helper+marker,1)
+          Path('/tmp/lucia-hips-after.js').write_text(s)
+          subprocess.run(['node','--check','/tmp/lucia-hips-after.js'],check=True)
+          PY
+      - name: Check waist fit preserved body topology and moving leg rig
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-hips/node_modules/three');
+          function load(p){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}
+          const old=load('/tmp/lucia-hips-before.js'),cur=load('/tmp/lucia-hips-after.js');assert(JSON.stringify(old.DESIGNS)===JSON.stringify(cur.DESIGNS));const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');
+          function untouched(h){const out=[];h.traverse(o=>{if(o.isMesh&&o.name!=='lucia-seamless-denim')out.push([o.name,o.position.toArray(),o.scale.toArray(),Array.from(o.geometry.attributes.position.array)]);});return JSON.stringify(out);}
+          assert(untouched(a)===untouched(b));const am=a.getObjectByName('lucia-seamless-denim'),bm=b.getObjectByName('lucia-seamless-denim');assert(JSON.stringify(Array.from(am.geometry.index.array))===JSON.stringify(Array.from(bm.geometry.index.array)));assert(am.geometry.attributes.position.count===bm.geometry.attributes.position.count);assert(b.userData.luciaLargerEyes);
+          const p=bm.geometry.attributes.position,w=bm.geometry.attributes.skinWeight,fit=b.userData.luciaHipTransition;let x=0,z=0;for(let i=0;i<p.count;i++){assert(Math.abs(w.getX(i)+w.getY(i)+w.getZ(i)+w.getW(i)-1)<1e-5);if(p.getY(i)>fit.top-.004){x=Math.max(x,Math.abs(p.getX(i)));z=Math.max(z,Math.abs(p.getZ(i)));}}assert(Math.abs(x-fit.targetX)<.001);assert(Math.abs(z-fit.targetZ)<.001);
+          for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),m=h.getObjectByName('lucia-seamless-denim');assert(m&&m.isSkinnedMesh);for(const angle of [-.7,0,.7]){h.userData.Lg[0].hp.rotation.x=angle;h.userData.Lg[1].hp.rotation.x=-angle;h.updateMatrixWorld(true);m.onBeforeRender();assert(Array.from(m.skeleton.boneMatrices).every(Number.isFinite));}h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});}
+          fs.copyFileSync('/tmp/lucia-hips-after.js','js/reference-characters.js');
+          JS
+      - name: Commit blended hip contour after checks
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Blend Lucia lower abdomen waistband and hip thigh contour with bounded smoothing'
+          git push origin HEAD:main
