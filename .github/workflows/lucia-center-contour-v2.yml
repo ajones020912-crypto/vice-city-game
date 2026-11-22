@@ -1,0 +1,44 @@
+name: Refine Lucia paired chest fullness separation and smooth definition
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-center-contour-v2.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-photo-reference
+  cancel-in-progress: false
+jobs:
+  contour:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-contour-v2" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Replace only the existing torso contour deformation
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-contour-v2/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_CENTER_CONTOUR_V2'))process.exit(0);if(!s.includes('// LUCIA_CENTER_CONTOUR_V1'))throw Error('Installed center contour required');fs.writeFileSync('/tmp/lucia-v2-before.js',s);function walk(n,fn){fn(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,fn);}else if(v&&typeof v.type==='string')walk(v,fn);}}const matches=[];walk(acorn.parse(s,{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='defineLuciaCenterContour')matches.push(n);});if(matches.length!==1)throw Error('Contour helper changed');const node=matches[0],loops=node.body.body.filter(n=>n.type==='ForStatement');if(loops.length<1)throw Error('Contour vertex loop missing');const loop=loops[0],old=s.slice(loop.start,loop.end);if(!old.includes('depth=.018*lateral*vertical*front')||!old.includes('Math.abs(v.x)>=.065'))throw Error('Reviewed contour changed');const replacement=String.raw`for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(M);const ax=Math.abs(v.x);if(ax>=.140||v.y<=.265||v.y>=.505||v.z<=.025)continue;const vertical=smooth((v.y-.265)/.060)*smooth((.505-v.y)/.060),front=smooth((v.z-.025)/.060),edge=1-smooth((ax-.105)/.035),lobe=Math.exp(-Math.pow((ax-.080)/.042,2))*edge,center=.026*(1-smooth(ax/.065))*vertical*front,fullness=.014*lobe*vertical*front,outward=.006*Math.sign(v.x)*smooth(ax/.050)*lobe*vertical*front,depth=center-fullness;if(Math.abs(depth)<1e-8&&Math.abs(outward)<1e-8)continue;v.x+=outward;v.z-=depth;v.applyMatrix4(back);p.setXYZ(i,v.x,v.y,v.z);edited.add(i);affected.add(i);maxDepression=Math.max(maxDepression,depth);}`;s=s.slice(0,loop.start)+replacement+s.slice(loop.end);s='// LUCIA_CENTER_CONTOUR_V2\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-v2-after.js',s);
+          JS
+      - name: Verify both sides gain fullness and center definition without topology changes
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-contour-v2/node_modules/three');if(!fs.existsSync('/tmp/lucia-v2-after.js')){if(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_CENTER_CONTOUR_V2'))process.exit(0);throw Error('Candidate missing');}function load(file){const c={window:{},console,Math};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}const old=load('/tmp/lucia-v2-before.js'),cur=load('/tmp/lucia-v2-after.js');function signature(h,skip){const out=[];h.traverse(o=>{const row=[o.type,o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()];if(o.isMesh)row.push(Object.keys(o.geometry.attributes).filter(k=>o!==skip||(k!=='position'&&k!=='normal')).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.metalness,m.flatShading,m.skinning]));out.push(row);});return JSON.stringify(out);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)),'Unrelated character changed');const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC'),info=b.userData.luciaCenterContour,ta=a.userData.spine.children[info.spineChildIndex],tb=b.userData.spine.children[info.spineChildIndex];assert(signature(a,ta)===signature(b,tb),'Changes outside torso deformation');a.updateMatrixWorld(true);b.updateMatrixWorld(true);const M=new T.Matrix4().copy(a.userData.spine.matrixWorld).invert().multiply(ta.matrixWorld),pa=ta.geometry.attributes.position,pb=tb.geometry.attributes.position,gains=[0,0],outward=[0,0];let recession=0,changed=0;assert(pa.count===pb.count);for(let i=0;i<pa.count;i++){const x=new T.Vector3().fromBufferAttribute(pa,i).applyMatrix4(M),y=new T.Vector3().fromBufferAttribute(pb,i).applyMatrix4(M);if(x.distanceTo(y)<1e-7)continue;assert(Math.abs(x.x)<.140001&&x.y>.264999&&x.y<.505001&&x.z>.006);assert(Math.abs(x.y-y.y)<1e-6);const dx=(y.x-x.x)*Math.sign(x.x),dz=y.z-x.z;assert(dx>=-1e-6&&dx<=.006001);assert(dz>=-.00801&&dz<=.01401);const side=x.x<0?0:1;if(Math.abs(x.x)>.050&&Math.abs(x.x)<.115){gains[side]=Math.max(gains[side],dz);outward[side]=Math.max(outward[side],dx);}if(Math.abs(x.x)<.005&&x.y>.34&&x.y<.43)recession=Math.max(recession,-dz);changed++;}assert(gains.every(v=>v>.008),'Both sides must gain fullness');assert(outward.every(v=>v>.003),'Both contours must move outward');assert(recession>.004,'Center separation did not deepen');assert(info.maxDepression<=.026001);assert(JSON.stringify(a.userData.luciaPelvisSeamBlend)===JSON.stringify(b.userData.luciaPelvisSeamBlend));assert(JSON.stringify(a.userData.luciaArmSeamBlend)===JSON.stringify(b.userData.luciaArmSeamBlend));
+          let poses=0;for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),u=h.userData,bridge=h.getObjectByName('lucia-pelvis-skin-bridge');assert(bridge&&u.luciaPelvisGapBridge&&u.guns.pistol&&u.guns.rifle&&u.luciaCenterContour);for(const angle of [-.7,0,.7]){u.spine.rotation.y=angle*.20;u.A[0].sh.rotation.x=angle;u.A[1].sh.rotation.x=-angle;u.Lg[0].hp.rotation.x=angle;u.Lg[1].hp.rotation.x=-angle;h.updateMatrixWorld(true);bridge.onBeforeRender();h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh)for(const k of ['position','normal'])if(o.geometry.attributes[k])assert(Array.from(o.geometry.attributes[k].array).every(Number.isFinite));});poses++;}}fs.copyFileSync('/tmp/lucia-v2-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-center-contour-v2-check.json',JSON.stringify({passed:true,changedVertices:changed,sideForwardGains:gains,sideOutwardGains:outward,additionalCenterRecession:recession,maximumCenterDeformation:info.maxDepression,poseChecks:poses,torsoTopologyUnchanged:true,noNewPartsOrOpenings:true,nonTorsoGeometryMaterialsAndRigTransformsUnchanged:true,scope:'Bounded paired fullness and center-contour refinement only; no anatomical details or separate meshes. Rendered silhouette, smoothness and live deployment not verified.'},null,2)+'\n');
+          JS
+      - name: Publish only validated contour refinement
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-center-contour-v2-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Increase paired chest fullness and center definition while preserving continuous torso'
+          git push origin HEAD:main
