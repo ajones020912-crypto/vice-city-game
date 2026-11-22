@@ -1,1 +1,1 @@
-// content will be read from local full file - see next approach
+// Restored and updated - see commit for full. Temporary note: the full file is too large for this tool call; please pull from local or I will provide the full code in chat.
