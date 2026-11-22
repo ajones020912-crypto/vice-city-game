@@ -3337,6 +3337,10 @@ class Ped{
  copUpdate(dt){
   const dx=pl.x-this.x,dz=pl.z-this.z,d=Math.hypot(dx,dz);this.aimNow=false;this.dir=Math.atan2(dx,dz);
   if(pl.wanted<=0){this.state='walk';this.speed=1.3;this.pick();return 0}
+  if(pl.wanted===1){if(pl.car||pl.inside||!pl.alive||d>60){this.vx=this.vz=0;this.bust=Math.max(0,this.bust-dt);return 0}
+   let sp=0;if(d>1.4){sp=5.4;this.vx=dx/d*sp;this.vz=dz/d*sp}else{this.vx=this.vz=0}
+   if(d<4&&!(G.arrestWarn>G.time)){toast('👮 "Police! Stay where you are!"',1800);G.arrestWarn=G.time+6}
+   if(d<1.9){this.bust+=dt;if(this.bust>1.1&&!G.busted)bustPlayer()}else this.bust=Math.max(0,this.bust-dt);return sp}
   const inCar=!!pl.car,stopD=inCar?6:11;let sp=0;
   if(d>stopD){sp=6.2;this.vx=dx/d*sp;this.vz=dz/d*sp}else{this.vx=this.vz=0}
   if(d<28&&pl.alive&&!pl.inside){this.aimNow=true;this.fireT-=dt;if(this.fireT<=0){this.fireT=(pl.wanted>=3?.7:1.2)+Math.random()*.6;
@@ -3374,8 +3378,11 @@ function updatePopulation(dt){popT-=dt;if(popT>0)return;popT=.35;
   if(c.mode==='wreck'){c.wreckT-=.35;if(c.wreckT<0||d>330){removeCar(c)}continue}
   if(d>(c.mode==='cop'?420:310)&&c.mode!=='player'&&!c.keep)removeCar(c)}
  // cop population
- const wantCars=[0,1,2,3,4,5,7][Math.min(6,pl.wanted)];let cc=0;for(const c of cars)if(c.mode==='cop'&&!c.dead)cc++;
- if(cc<wantCars&&pl.wanted>0)spawnCopCar();
+ // POLICE_PATROLS_V1: a few patrol cars always roam near the player, obeying traffic lights. One star sends no
+ // chase car: patrols only move in if they see you on foot nearby, and then they arrest rather than shoot.
+ const wantCars=[0,0,2,3,4,5,7][Math.min(6,pl.wanted)];let cc=0,patrols=0;for(const c of cars)if(c.mode==='cop'&&!c.dead){cc++;if(c.ai&&c.ai.patrol)patrols++}
+ if(cc<wantCars&&pl.wanted>1)spawnCopCar();
+ const wantPatrol=[2,2,3,3][G.quality]||2;if(patrols<wantPatrol&&!pl.inside){const pcar=spawnCopCar();if(pcar){pcar.ai.patrol=true;pcar.ai.offduty=pl.wanted<2;pcar.vx*=.6;pcar.vz*=.6}}
  if(pl.wanted===0){for(const c of cars)if(c.mode==='cop'&&!c.dead){if(c.ai)c.ai.offduty=true;if(c.parkedCop){c.mode='parked';c.parkedCop=false}}}
 }
 // ================= ROAD NETWORK AI =================
@@ -3449,7 +3456,9 @@ function controlAI(c,dt){
  // police behaviour
  if(ai.cop){
   const dp=Math.hypot(pl.x-c.x,pl.z-c.z);
-  if(ai.offduty){vmax=14;if(dp>150&&pl.wanted===0){removeCar(c);return}}
+  if(pl.wanted>=2)ai.offduty=false;
+  else if(pl.wanted===1&&!c.parkedCop){const sees=!pl.car&&pl.alive&&!pl.inside&&dp<70;ai.offduty=!sees;if(!sees)ai.direct=false}
+  if(ai.offduty){vmax=14;if(dp>(ai.patrol?320:150)&&pl.wanted===0){removeCar(c);return}}
   else{vmax=(pl.car?pl.car.speed+6:20)+8;vmax=clamp(vmax,16,36);
    ai.tPlan-=dt;if(ai.tPlan<=0&&dp>38){ai.tPlan=2.2;let k=ai.route.findIndex(q=>q.rs);if(k>=0){ai.route.length=k+1;ai.rs=Object.assign({},ai.route[k].rs)}
     const nx=nextCross(ai.rs.road,ai.rs.dir,ai.rs.s),b=nodeNear(pl.x,pl.z);const path=nx?astar(nx.node,b):null;if(path)ai.path=path}
@@ -3458,7 +3467,7 @@ function controlAI(c,dt){
  if(c.parkedCop){inp.thr=0;inp.hb=1;inp.steer=0;return}
  if(!direct){if(ai.route.length<5)extendRoute(c);let rt=ai.route[0];
   while(rt&&!rt.node&&Math.hypot(rt.x-c.x,rt.z-c.z)<5+c.speed*.18){ai.route.shift();rt=ai.route[0]}
-  if(rt&&rt.node){const d=Math.hypot(rt.x-c.x,rt.z-c.z);const mustStop=rt.node.sig&&!ai.cop&&sigRed(rt.node,rt.axis),passedStop=((rt.x-c.x)*sn+(rt.z-c.z)*cs)<-.5;
+  if(rt&&rt.node){const d=Math.hypot(rt.x-c.x,rt.z-c.z);const mustStop=rt.node.sig&&(!ai.cop||ai.offduty)&&sigRed(rt.node,rt.axis),passedStop=((rt.x-c.x)*sn+(rt.z-c.z)*cs)<-.5;
    if(passedStop||(d<2.2&&!mustStop)){ai.route.shift();rt=ai.route[0]}
    else if(mustStop){const brake=Math.sqrt(Math.max(0,2*4.5*(d-1.5)));vmax=Math.min(vmax,brake)}}
   if(!rt){inp.thr=0;inp.hb=1;return}
@@ -4198,7 +4207,7 @@ function simulate(dt){updateBreakin(dt);updateFlightHud();updateAlarms();updateR
     const hm=lo?headOn:headMat;if(v.head.material!==hm)v.head.material=hm;
     if(v.rev)for(const r of v.rev){const rm=c.reversing?revOn:revOff;if(r.material!==rm)r.material=rm}
     v.beam.visible=lo}
-   if(v.bar&&(c.mode==='cop'||c.mode==='parked')&&!c.dead&&c.occ){const f=Math.floor(G.time*6)%2;v.bar[0].visible=!!f;v.bar[1].visible=!f}else if(v.bar&&!c.occ){v.bar[0].visible=v.bar[1].visible=false}}
+   if(v.bar&&(c.mode==='cop'||c.mode==='parked')&&!c.dead&&c.occ&&!(c.ai&&c.ai.offduty)){const f=Math.floor(G.time*6)%2;v.bar[0].visible=!!f;v.bar[1].visible=!f}else if(v.bar&&(!c.occ||(c.ai&&c.ai.offduty))){v.bar[0].visible=v.bar[1].visible=false}}
   for(const p of peds)if(p.active)p.update(dt);for(const p of cops)if(p.active)p.update(dt);for(const p of gangs)if(p.active)p.update(dt);
   updatePopulation(dt);updatePickups(dt);updateWeather(dt);updateGators(dt);updateExtras(dt);
   if(pl.focusT>0)pl.focusT-=G.rdt||dt;
@@ -4268,7 +4277,7 @@ function frame(now){requestAnimationFrame(frame);if(now<nextFrameAt-1.5)return;n
  const dt=rdt*((pl.focusT>0&&G.state==='play')?.45:G.state==='dead'?.35:1);updateFx(rdt);
  try{
  if(G.state==='play'||G.state==='dead'){simulate(dt);updateParticles(dt);updateTracers(dt);updateCamera(dt);updateHUD(dt);if(!pl.inside)updateSignals(G.time);drawMini();
-  const sirenL=(()=>{let m=0;if(pl.wanted>0)for(const c of cars)if(c.mode==='cop'&&!c.dead&&c.occ){m=Math.max(m,1-Math.hypot(c.x-pl.x,c.z-pl.z)/90)}return Math.max(0,m)})();
+  const sirenL=(()=>{let m=0;if(pl.wanted>0)for(const c of cars)if(c.mode==='cop'&&!c.dead&&c.occ&&!(c.ai&&c.ai.offduty)){m=Math.max(m,1-Math.hypot(c.x-pl.x,c.z-pl.z)/90)}return Math.max(0,m)})();
   audio.tick(pl.car?pl.car.speed:0,pl.car?(pl.car.t.aircraft?(pl.car.thr||0):pl.car.inp.thr):0,!!pl.car,sirenL);
   if(G.flash>0){G.flash-=dt}}
  else if(G.state==='menu'){G.time+=dt;G.clock=(G.clock+dt*.02)%24;const a=G.time*.08;camera.position.set(Math.sin(a)*70,28,40+Math.cos(a)*70);camera.lookAt(0,10,0);updateParticles(dt)}
