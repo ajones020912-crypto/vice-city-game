@@ -1,0 +1,60 @@
+name: Remove remaining Lucia waist and pocket clothing details
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-clothing-details-cleanup.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-photo-reference
+  cancel-in-progress: false
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-clothing-details" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Prepare scoped residual garment cleanup
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-clothing-details/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_CLOTHING_DETAILS_V2'))process.exit(0);if(!s.includes('// LUCIA_HIP_THIGH_SMOOTH_V1'))throw Error('Reviewed hip refinement must be installed first');fs.writeFileSync('/tmp/lucia-details-before.js',s);
+          function once(a,b){if(s.split(a).length!==2)throw Error('Clothing cleanup anchor changed');s=s.replace(a,b);}const helper=String.raw`
+           function luciaClothingDetailCandidates(h){
+            const u=h.userData,m=u.m,skinMaterials=new Set(Object.entries(m).filter(([key])=>/skin/i.test(key)).map(([,value])=>value)),stop=new Set([u.spine,...u.Lg.map(l=>l.kn)]),out=[];
+            function bodyMaterial(material,node){if(skinMaterials.has(material)||/skin|body|thigh/i.test(node.name))return true;if(!material.color||!m.skin.color||!/(?:Sphere|Lathe|Cylinder|Buffer)Geometry/.test(node.geometry.type))return false;const a=material.color,b=m.skin.color,ratios=[a.r/Math.max(.001,b.r),a.g/Math.max(.001,b.g),a.b/Math.max(.001,b.b)],mean=ratios.reduce((x,y)=>x+y,0)/3;return mean>=.45&&mean<=1.35&&Math.max(...ratios)-Math.min(...ratios)<.10;}
+            function visit(node){if(stop.has(node))return;if(node.isMesh){const materials=Array.isArray(node.material)?node.material:[node.material];if(!materials.every(material=>bodyMaterial(material,node)))out.push(node);}for(const child of node.children)visit(child);}visit(u.hips);return out;
+           }
+           function removeLuciaClothingDetails(T,h){
+            const details=luciaClothingDetailCandidates(h);h.userData.luciaRemovedClothingDetails=details.map(o=>({name:o.name,type:o.geometry.type,position:o.position.toArray(),colors:(Array.isArray(o.material)?o.material:[o.material]).map(m=>m.color?m.color.getHex():null)}));for(const mesh of details)if(mesh.parent)mesh.parent.remove(mesh);h.userData.luciaClothingDetailsCleaned=true;
+           }
+          `;once(' function hideLuciaClothingOnly(T,h){',helper+' function hideLuciaClothingOnly(T,h){');once('hideLuciaClothingOnly(T,h);smoothLuciaSkinSurface(T,h,true);','hideLuciaClothingOnly(T,h);removeLuciaClothingDetails(T,h);smoothLuciaSkinSurface(T,h,true);');s='// LUCIA_CLOTHING_DETAILS_V2\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-details-after.js',s);
+          JS
+      - name: Verify residual removal and identical preserved model
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/lucia-clothing-details/node_modules/acorn'),T=require(process.env.RUNNER_TEMP+'/lucia-clothing-details/node_modules/three');if(!fs.existsSync('/tmp/lucia-details-after.js')){if(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_CLOTHING_DETAILS_V2'))process.exit(0);throw Error('Candidate missing');}
+          function load(file){const c={window:{},console,Math,T,clamp:(x,a,b)=>Math.max(a,Math.min(b,x))};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c;}function walk(n,fn){fn(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,fn);}else if(v&&typeof v.type==='string')walk(v,fn);}}
+          const source=fs.readFileSync('/tmp/lucia-details-after.js','utf8'),predicates=[];walk(acorn.parse(source,{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='luciaClothingDetailCandidates')predicates.push(source.slice(n.start,n.end));});assert(predicates.length===1);const before=load('/tmp/lucia-details-before.js'),after=load('/tmp/lucia-details-after.js');vm.runInContext(predicates[0],before);vm.runInContext(predicates[0],after);const old=before.window.VCCharacters,cur=after.window.VCCharacters;
+          function signature(h,excluded=new Set()){const out=[];h.traverse(o=>{if(!o.isMesh||excluded.has(o))return;out.push([o.name,o.visible,o.parent.name,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray(),Object.keys(o.geometry.attributes).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.metalness,m.flatShading,m.opacity])]);});return JSON.stringify(out);}
+          for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)),'Unrelated character changed');const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC'),removed=before.luciaClothingDetailCandidates(a);assert(removed.length>0,'No residual details were identified; inspect deployment before editing');assert(signature(a,new Set(removed))===signature(b),'Preserved model changed');assert(after.luciaClothingDetailCandidates(b).length===0);assert(b.userData.luciaHipThighSmoothed&&b.userData.luciaRemovedClothingDetails.length===removed.length);for(const name of ['lucia-photo-ponytail','lucia-photo-high-top-cuff','lucia-photo-white-toe'])assert(b.getObjectByName(name));
+          const joints=h=>{const u=h.userData;return [u.hips.position.toArray(),u.spine.position.toArray(),u.headP.position.toArray(),...u.A.flatMap(x=>[x.sh.position.toArray(),x.el.position.toArray()]),...u.Lg.flatMap(x=>[x.hp.position.toArray(),x.kn.position.toArray()])];};assert(JSON.stringify(joints(a))===JSON.stringify(joints(b)));
+          const animators=[];for(const m of fs.readFileSync('index.html','utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;walk(acorn.parse(m[1],{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='animHuman')animators.push(m[1].slice(n.start,n.end));});}assert(animators.length===1);vm.runInContext(animators[0],after);for(const p of ['js/one-hand-hit.js','js/gun-animation.js'])vm.runInContext(fs.readFileSync(p,'utf8'),after);const animate=after.window.VCGunAnimation.wrap(after.window.VCOneHandHit.wrap(after.animHuman),T);let cases=0;for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),u=h.userData;assert(u.luciaClothingDetailsCleaned&&u.luciaHipThighSmoothed&&u.guns.pistol&&u.guns.rifle);assert(after.luciaClothingDetailCandidates(h).length===0);for(const state of [{speed:0,weapon:null,punch:0},{speed:2,weapon:null,punch:0},{speed:7,weapon:null,punch:0},{speed:0,weapon:null,punch:1},{speed:0,weapon:'pistol',aim:true},{speed:0,weapon:'rifle',aim:true}]){for(let i=0;i<90;i++)animate(h,1/60,state);h.updateMatrixWorld(true);h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh)for(const key of ['position','normal','uv'])if(o.geometry.attributes[key])assert(Array.from(o.geometry.attributes[key].array).every(Number.isFinite));});cases++;}}
+          fs.copyFileSync('/tmp/lucia-details-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-clothing-details-check.json',JSON.stringify({passed:true,animationCases:cases,removedDetails:b.userData.luciaRemovedClothingDetails,remainingModelGeometryAndMaterialsUnchanged:true,hipSmoothingPreserved:true,rigOffsetsUnchanged:true,hairShoesAndUpperBodyAccessoriesPreserved:true,otherCharactersUnchanged:true,noInterfaceOrGameplayChanges:true,scope:'Waist and upper-thigh clothing attachment cleanup; rendered belt and pocket absence and live deployment not verified.'},null,2)+'\n');
+          JS
+      - name: Publish only checked attachment cleanup
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-clothing-details-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Remove remaining Lucia waist and pocket attachments without changing preserved body'
+          git push origin HEAD:main
