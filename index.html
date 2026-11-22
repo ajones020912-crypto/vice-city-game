@@ -226,6 +226,7 @@ small{color:#b9cce0}
 
 .mp-screen{position:fixed;inset:0;z-index:100;background:linear-gradient(135deg,#06121eee,#0c2838ee);display:grid;place-items:center}.mp-card{width:min(440px,90vw);padding:30px;background:#10263a;border:1px solid #78e7d655;border-radius:18px;box-shadow:0 20px 70px #000b;position:relative}.mp-card h2{font:900 30px Impact,'Arial Black',sans-serif;letter-spacing:2px;margin:8px 0 22px}.mp-card label{display:block;font-size:10px;letter-spacing:2px;color:#9cc8d4;margin:12px 0 6px}.mp-card input{box-sizing:border-box;width:100%;padding:13px 14px;background:#071725;border:1px solid #4c7585;border-radius:9px;color:#fff;font-size:15px;outline:none}.mp-card input:focus{border-color:#65e4d3}.mp-actions{display:grid;gap:9px;margin-top:18px}.mp-actions button{margin:0}.mp-or{text-align:center;color:#91b4c1;font-size:11px;letter-spacing:2px;margin:4px}.mp-back{position:absolute;right:22px;top:20px;background:#29475d;padding:8px 12px;font-size:11px}.mp-status{color:#a9c7d2;font-size:12px;margin-top:18px;min-height:18px}.mp-room{margin-top:12px;padding:12px;border-radius:10px;background:#071725;color:#77e7d5;font-weight:bold;letter-spacing:3px;text-align:center;font-size:23px}
 .home-btn{min-height:62px}.continue-btn{grid-column:auto}}
+#cont.continue-btn{grid-column:1/-1;width:100%;height:38px;min-height:38px;padding:8px 12px;display:block;box-sizing:border-box;border-radius:8px;font-size:13px;line-height:20px;text-align:center;}
 </style><style id="cleanMinimapStyle">
 #mini{width:264px;height:222px;right:18px;bottom:18px;border-radius:14px;border:1px solid #b7d3df55;box-shadow:0 10px 28px #0008;background:#0c1824;overflow:hidden}#mini canvas{width:100%;height:100%;border-radius:14px}#speedo{right:25px;bottom:253px}@media(max-width:800px),(max-height:650px){#mini{width:220px;height:185px;right:12px;bottom:12px}#speedo{right:18px;bottom:211px}}
 </style>
@@ -4331,7 +4332,7 @@ function boot(){
  initRain();spawnGators();buildExtras();initBoatSpots();
  G.stats={nodes:nodes.length,roads:roads.length};
  skyUpdate(8);updateEnv();setQuality(1);resizePost();bindMapControls();
- const sv=readSave();if(sv){$('#cont').style.display='inline-block'}
+ const sv=readSave();if(sv){$('#cont').style.display='block'}
  }catch(e){console.error('boot subsystem error',e);const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small>Loaded with warnings — tap Singleplayer</small>';}
  try{$('#loadmsg').innerHTML='<small>World ready — '+(typeof nodes!=='undefined'?nodes.length:'?')+' intersections · '+(typeof roads!=='undefined'?roads.length:'?')+' roads · all systems online</small>';}catch(_e){}
  
