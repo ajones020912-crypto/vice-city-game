@@ -1,0 +1,58 @@
+name: Remove only Lucia tank and shorts
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-hide-clothing.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-photo-reference
+  cancel-in-progress: false
+jobs:
+  clothing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-clothing-only" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Prepare clothing-only removal before character mesh batching
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-clothing-only/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_CLOTHING_ONLY_V1'))process.exit(0);if(!s.includes('// LUCIA_TAN_SMOOTH_V1'))throw Error('Reviewed Lucia model has changed');fs.writeFileSync('/tmp/lucia-clothing-before.js',s);
+          function once(a,b){if(s.split(a).length!==2)throw Error('Ambiguous clothing integration anchor');s=s.replace(a,b);}
+          const helper=String.raw`
+           function hideLuciaClothingOnly(T,h){
+            const u=h.userData,m=u.m,garments=[];h.traverse(o=>{if(!o.isMesh||o.material===m.skin)return;const garment=o.material===m.shirt||o.material===m.pants||/^lucia-.*(?:tank|shoulder-strap|denim|shorts)/.test(o.name),waist=o.parent===u.hips&&(o.material===m.trim||(m.belt&&o.material===m.belt));if(garment||waist)garments.push(o);});
+            if(!garments.some(o=>o.name==='lucia-dark-tank-top')||!garments.some(o=>o.name==='lucia-seamless-denim'))throw Error('Expected tank and shorts meshes missing');
+            u.luciaRemovedClothing=garments.map(o=>o.name);for(const mesh of garments)mesh.parent.remove(mesh);
+           }
+          `;once(' function lucia(T,h){',helper+' function lucia(T,h){');once('finishLuciaReferenceOutfit(T,h);fitLuciaPhotoReference(T,h);','finishLuciaReferenceOutfit(T,h);fitLuciaPhotoReference(T,h);hideLuciaClothingOnly(T,h);');s='// LUCIA_CLOTHING_ONLY_V1\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-clothing-after.js',s);
+          JS
+      - name: Require identical remaining geometry materials rigs and animation behavior
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/lucia-clothing-only/node_modules/acorn'),T=require(process.env.RUNNER_TEMP+'/lucia-clothing-only/node_modules/three');if(!fs.existsSync('/tmp/lucia-clothing-after.js')){if(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_CLOTHING_ONLY_V1'))process.exit(0);throw Error('Candidate missing');}
+          function load(file){const c={window:{},console,Math,T,clamp:(x,a,b)=>Math.max(a,Math.min(b,x))};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c;}const before=load('/tmp/lucia-clothing-before.js'),after=load('/tmp/lucia-clothing-after.js'),old=before.window.VCCharacters,cur=after.window.VCCharacters;
+          function garment(o,h){const u=h.userData,m=u.m;if(!o.isMesh||o.material===m.skin)return false;return o.material===m.shirt||o.material===m.pants||/^lucia-.*(?:tank|shoulder-strap|denim|shorts)/.test(o.name)||(o.parent===u.hips&&(o.material===m.trim||(m.belt&&o.material===m.belt)));}
+          function signature(h,filter=()=>true){const out=[];h.traverse(o=>{if(!o.isMesh||!filter(o))return;const g=o.geometry;out.push([o.name,o.visible,o.parent.name,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray(),Object.keys(g.attributes).sort().map(k=>[k,Array.from(g.attributes[k].array)]),g.index?Array.from(g.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.metalness,m.flatShading,m.transparent,m.opacity,m.map?Array.from(m.map.image.data||[]):null])]);});return JSON.stringify(out);}
+          for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)),'Unrelated character changed: '+id);const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');assert(signature(a,o=>!garment(o,a))===signature(b),'Remaining model changed');assert(!b.getObjectByName('lucia-dark-tank-top')&&!b.getObjectByName('lucia-seamless-denim'));assert(b.getObjectByName('lucia-photo-ponytail')&&b.getObjectByName('lucia-photo-high-top-cuff')&&b.getObjectByName('lucia-photo-white-toe'));assert(b.userData.m.skin.color.getHex()===a.userData.m.skin.color.getHex());
+          const joints=h=>{const u=h.userData;return [u.hips.position.toArray(),u.spine.position.toArray(),u.headP.position.toArray(),...u.A.flatMap(x=>[x.sh.position.toArray(),x.el.position.toArray()]),...u.Lg.flatMap(x=>[x.hp.position.toArray(),x.kn.position.toArray()])];};assert(JSON.stringify(joints(a))===JSON.stringify(joints(b)));
+          function walk(n,fn){fn(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,fn);}else if(v&&typeof v.type==='string')walk(v,fn);}}const animators=[];for(const m of fs.readFileSync('index.html','utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;walk(acorn.parse(m[1],{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='animHuman')animators.push(m[1].slice(n.start,n.end));});}assert(animators.length===1);vm.runInContext(animators[0],after);for(const file of ['js/one-hand-hit.js','js/gun-animation.js'])vm.runInContext(fs.readFileSync(file,'utf8'),after);const animate=after.window.VCGunAnimation.wrap(after.window.VCOneHandHit.wrap(after.animHuman),T);let cases=0;for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),u=h.userData;assert(u.luciaRemovedClothing.length>0&&u.guns.pistol&&u.guns.rifle);h.traverse(o=>assert(!garment(o,h),'Clothing reappeared during batching'));for(const state of [{speed:0,weapon:null,punch:0},{speed:2,weapon:null,punch:0},{speed:7,weapon:null,punch:0},{speed:0,weapon:null,punch:1},{speed:0,weapon:'pistol',aim:true},{speed:0,weapon:'rifle',aim:true}]){for(let i=0;i<60;i++)animate(h,1/60,state);h.updateMatrixWorld(true);h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh)for(const key of ['position','normal','uv'])if(o.geometry.attributes[key])assert(Array.from(o.geometry.attributes[key].array).every(Number.isFinite));});cases++;}}
+          fs.copyFileSync('/tmp/lucia-clothing-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-clothing-only-check.json',JSON.stringify({passed:true,animationCases:cases,removedClothing:b.userData.luciaRemovedClothing,remainingGeometryAndMaterialsUnchanged:true,bodyTanHairShoesAndAccessoriesPreserved:true,rigOffsetsUnchanged:true,otherCharactersUnchanged:true,noBodyGeometryAdded:true,noInterfaceOrGameplayEdits:true,scope:'Clothing mesh removal and structural animation checks only; missing underlying body areas are not repaired; rendered appearance and live deployment not verified.'},null,2)+'\n');
+          JS
+      - name: Publish only checked clothing removal
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-clothing-only-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Remove only Lucia tank and shorts while preserving the remaining model'
+          git push origin HEAD:main
