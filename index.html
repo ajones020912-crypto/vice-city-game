@@ -869,6 +869,49 @@ function facadeTex(style){
     for(let k=1;k<4;k++){x.fillStyle='#e6ddcc';x.fillRect(wx+k*ww/4-1,wy,2,wh)}lit(wx,wy,ww,wh,.4,.88);
     x.fillStyle='#fbf8f2';x.fillRect(px+12,wy-12,cell-24,6);shade(px+12,wy-6,cell-24,12,.22)}
    for(let k=0;k<3;k++){x.fillStyle=k===1?'#d8cfbf':'#e8e0d2';x.fillRect(px,py+cell-20+k*5,cell,3)}
+  }else if(style==='brick'){
+   // red brick with varied bricks, stone lintels and sills, white double-hung windows (keeps its natural colour)
+   x.fillStyle='#c8b9a8';x.fillRect(px,py,cell,cell);
+   const bc=['#a8573f','#9b4c36','#b5634a','#8f4733','#a35a45'];
+   for(let r=0;r<cell;r+=8){const off=((r/8)%2)*12;for(let k=-12;k<cell;k+=24){x.fillStyle=bc[(R()*bc.length)|0];x.fillRect(px+k+off+1,py+r+1,22,6)}}
+   for(const wx of[px+16,px+cell/2+8]){const wy=py+24,ww=cell/2-24,wh=60;x.fillStyle='#d9d1c3';x.fillRect(wx-5,wy-9,ww+10,7);x.fillRect(wx-4,wy+wh+1,ww+8,6);shade(wx-4,wy+wh+7,ww+8,5,.25);
+    x.fillStyle='#f3f1ec';x.fillRect(wx-2,wy-2,ww+4,wh+4);glass(wx,wy,ww,wh/2-2,'#8aa9b9','#283c4a');glass(wx,wy+wh/2+1,ww,wh/2-1,'#8aa9b9','#283c4a');x.fillStyle='#f3f1ec';x.fillRect(wx,wy+wh/2-2,ww,3);lit(wx,wy,ww,wh,.4,.85)}
+  }else if(style==='stone'){
+   // limestone: rusticated courses, tall recessed windows, carved band
+   x.fillStyle='#efe9de';x.fillRect(px,py,cell,cell);grain(px,py,cell,cell,120,.05,'150,140,120');
+   for(let r=16;r<cell;r+=16){x.fillStyle='#dcd4c5';x.fillRect(px,py+r,cell,1.5)}
+   const wx=px+cell/2-18,wy=py+16,ww=36,wh=86;x.fillStyle='#d6cdbd';x.fillRect(wx-6,wy-6,ww+12,wh+10);glass(wx,wy,ww,wh,'#7f9fb2','#1f3343');
+   x.fillStyle='rgba(0,0,0,.25)';x.fillRect(wx,wy,ww,4);x.fillRect(wx,wy,4,wh);x.fillStyle='#d6cdbd';x.fillRect(wx,wy+wh*.62,ww,3);lit(wx,wy,ww,wh,.38,.85);
+   x.fillStyle='#e2dacb';x.fillRect(px,py+cell-14,cell,10);x.fillStyle='#d2c9b8';for(let k=4;k<cell;k+=10)x.fillRect(px+k,py+cell-12,4,6);
+  }else if(style==='concrete'){
+   // raw concrete: deep-set square windows with strong inner shadow, form-tie holes (keeps its natural colour)
+   x.fillStyle='#cfcdc8';x.fillRect(px,py,cell,cell);grain(px,py,cell,cell,160,.06,'90,90,90');
+   x.fillStyle='rgba(80,80,80,.35)';for(let ty=10;ty<cell;ty+=30)for(let tx=10;tx<cell;tx+=30){x.beginPath();x.arc(px+tx,py+ty,1.6,0,7);x.fill()}
+   x.fillStyle='#bdbbb5';x.fillRect(px,py,cell,2);x.fillRect(px,py,2,cell);
+   const wx=px+24,wy=py+22,ww=80,wh=72;x.fillStyle='#e0ded9';x.fillRect(wx-6,wy-6,ww+12,wh+12);glass(wx,wy,ww,wh,'#7b98a8','#1a2b36');
+   x.fillStyle='rgba(0,0,0,.42)';x.fillRect(wx,wy,ww,10);x.fillRect(wx,wy,10,wh);x.fillStyle='#e0ded9';x.fillRect(wx+ww/2-1,wy,2,wh);lit(wx+10,wy+10,ww-10,wh-10,.36,.8);
+  }else if(style==='mission'){
+   // Mediterranean: stucco, arched windows, terracotta sills, little wrought-iron balconies
+   x.fillStyle='#f6eddf';x.fillRect(px,py,cell,cell);grain(px,py,cell,cell,140,.05,'160,130,100');
+   const wx=px+cell/2-22,wy=py+34,ww=44,wh=60,r=ww/2;
+   x.fillStyle='#e7dac4';x.beginPath();x.rect(wx-4,wy,ww+8,wh+2);x.arc(wx+r,wy,r+4,Math.PI,0);x.fill();
+   x.save();x.beginPath();x.rect(wx,wy,ww,wh);x.arc(wx+r,wy,r,Math.PI,0);x.clip();glass(wx,wy-r,ww,wh+r,'#86a8ba','#213847');x.restore();
+   x.fillStyle='#e7dac4';x.fillRect(wx+r-1.5,wy-r,3,wh+r);if(R()<.42){ex.fillStyle=warm();ex.globalAlpha=.85;ex.beginPath();ex.rect(wx+2,wy,ww-4,wh-2);ex.arc(wx+r,wy,r-2,Math.PI,0);ex.fill();ex.globalAlpha=1}
+   x.fillStyle='#c8714e';x.fillRect(wx-8,wy+wh+2,ww+16,6);shade(wx-8,wy+wh+8,ww+16,6,.2);
+   if((i+j)%2===0){x.fillStyle='#2e2a28';x.fillRect(wx-10,wy+wh-16,ww+20,2.5);for(let k=wx-8;k<wx+ww+10;k+=5)x.fillRect(k,wy+wh-16,1.5,18)}
+  }else if(style==='hotel'){
+   // beach hotel: a full-width balcony every floor with glass railings and sliding doors
+   x.fillStyle='#f8f4ec';x.fillRect(px,py,cell,cell);
+   const dy=py+16,dh=cell-48;x.fillStyle='#e3dccf';x.fillRect(px+6,dy-3,cell-12,dh+3);
+   for(let k=0;k<2;k++){const wx=px+9+k*(cell/2-6),ww=cell/2-12;glass(wx,dy,ww,dh,'#8cb5c6','#244050');lit(wx,dy,ww,dh,.42,.85)}
+   const by=py+cell-30;x.fillStyle='#fdfbf7';x.fillRect(px,by,cell,7);shade(px,by+7,cell,12,.24);
+   x.fillStyle='rgba(170,225,235,.45)';x.fillRect(px,by-20,cell,20);x.fillStyle='#e9eef0';x.fillRect(px,by-21,cell,2);for(let k=0;k<cell;k+=32)x.fillRect(px+k,by-20,2,20);
+  }else if(style==='office'){
+   // office: a ribbon of windows across each floor between white bands
+   x.fillStyle='#eef0ef';x.fillRect(px,py,cell,cell);
+   const wy=py+22,wh=64;glass(px,wy,cell,wh,'#7fa2b4','#1c3242');lit(px,wy,cell/2,wh,.3,.75);lit(px+cell/2,wy,cell/2,wh,.3,.75);
+   x.fillStyle='#d7dcdc';for(let k=0;k<cell;k+=32)x.fillRect(px+k,wy,2.5,wh);x.fillStyle='#ffffff';x.fillRect(px,wy-3,cell,3);shade(px,wy+wh,cell,8,.18);
+   x.fillStyle='#e2e6e5';x.fillRect(px,py+cell-18,cell,2);
   }else{
    // apartments: balconies with railings and sliding doors on alternate bays, shuttered windows and AC units on the rest
    x.fillStyle='#f4efe7';x.fillRect(px,py,cell,cell);grain(px,py,cell,cell,110,.045,'140,130,120');
@@ -972,14 +1015,14 @@ function initMaterials(){
  // concrete sidewalk with joints
  defMat('walk',PLAIN({map:conc,roughness:.88,envMapIntensity:.25}),false,true);
  // building facades
- for(const st of['deco','glass','apt','ware']){
+ for(const st of['deco','glass','apt','ware','brick','stone','concrete','mission','hotel','office']){
   const[m,e]=facadeTex(st);
   const mt=new T.MeshStandardMaterial({
    map:m,emissiveMap:e,emissive:0xffffff,emissiveIntensity:.07,
    vertexColors:true,
-   roughness:st==='glass'?.14:st==='ware'?.72:.68,
-   metalness:st==='glass'?.6:st==='ware'?.1:.05,
-   envMapIntensity:st==='glass'?1.5:.38
+   roughness:st==='glass'?.14:st==='office'?.34:st==='ware'?.72:st==='brick'||st==='concrete'?.86:.68,
+   metalness:st==='glass'?.6:st==='office'?.25:st==='ware'?.1:.05,
+   envMapIntensity:st==='glass'?1.5:st==='office'?.9:.38
   });
   emis.push(mt);defMat('f_'+st,mt);
  }
@@ -1166,10 +1209,11 @@ function makeParcels(){
   const nx=pick(mode==='low'?[1,2,2,3]:[1,2]),nz=pick(mode==='low'?[1,2,2]:[1,2]);const w=(x1-x0)/nx,d=(z1-z0)/nz;
   for(let i=0;i<nx;i++)for(let j=0;j<nz;j++){const a=x0+i*w+.5,b=z0+j*d+.5,c=x0+(i+1)*w-.5,e=z0+(j+1)*d-.5,cx=(a+c)/2,cz=(b+e)/2;
    let H,style;
-   if(mode==='core'){const dd=Math.hypot(cx/230,(cz+10)/250),core=clamp(1.05-dd,0,1);H=9+rnd()*16+Math.pow(core,1.6)*(40+rnd()*100);style=H>38&&rnd()<.75?'glass':pick(['deco','deco','apt']);if(cz<-250){H=8+rnd()*14;style=pick(['deco','apt'])}}
-   else if(mode==='port'){H=7+rnd()*10;style=rnd()<.6?'ware':pick(['apt','deco'])}
-   else{H=7+rnd()*14;style=pick(['deco','apt'])}
-   parcels.push({x0:a,z0:b,x1:c,z1:e,cx,cz,H,style,mode,edgeS:j===nz-1,cityId:mode==='port'?'port':'dt'})}};
+   if(mode==='core'){const dd=Math.hypot(cx/230,(cz+10)/250),core=clamp(1.05-dd,0,1);H=9+rnd()*16+Math.pow(core,1.6)*(40+rnd()*100);style=H>38&&rnd()<.75?pick(['glass','glass','glass','office','stone','concrete']):pick(['deco','deco','apt','mission','hotel','brick','stone']);if(cz<-250){H=8+rnd()*14;style=pick(['deco','hotel','mission','apt'])}}
+   else if(mode==='port'){H=7+rnd()*10;style=rnd()<.55?'ware':pick(['brick','brick','concrete','apt','deco'])}
+   else{H=7+rnd()*14;style=pick(['deco','apt','mission','brick'])}
+   const natural=style==='brick'||style==='concrete';
+   parcels.push({x0:a,z0:b,x1:c,z1:e,cx,cz,H,style,col:natural?[1-rnd()*.06,1-rnd()*.07,1-rnd()*.08]:undefined,mode,edgeS:j===nz-1,cityId:mode==='port'?'port':'dt'})}};
  const xr=G.xr,zr=G.zr.concat([420]);
  const used=new Set(),K=(x,z)=>x+','+z;G.plazas=[];
  for(const [cx,cz] of CITY_SUPER){for(const x of[cx-60,cx])for(const z of[cz-60,cz])used.add(K(x,z));
@@ -4531,7 +4575,7 @@ function cityDataTexture(c){const t=new T.CanvasTexture(c);t.wrapS=t.wrapT=T.Rep
 function citySurface(kind){if(citySurfaceKits.has(kind))return citySurfaceKits.get(kind);const S=512,[nc,nx]=cv(S,S),[rc,rx]=cv(S,S),ni=nx.createImageData(S,S),ri=rx.createImageData(S,S),heights=new Float32Array(S*S);for(let y=0;y<S;y++)for(let x=0;x<S;x++)heights[y*S+x]=cityHeight(kind,x/S,y/S);for(let y=0;y<S;y++)for(let x=0;x<S;x++){const i=y*S+x,p=i*4,dx=(heights[y*S+(x+1)%S]-heights[y*S+(x+S-1)%S])*3,dy=(heights[((y+1)%S)*S+x]-heights[((y+S-1)%S)*S+x])*3,inv=1/Math.hypot(dx,dy,1);ni.data[p]=(-dx*inv*.5+.5)*255;ni.data[p+1]=(dy*inv*.5+.5)*255;ni.data[p+2]=(inv*.5+.5)*255;ni.data[p+3]=255;ri.data[p]=ri.data[p+1]=ri.data[p+2]=(kind==='glass'?.76:.9+(heights[i]-.5)*.16)*255;ri.data[p+3]=255}nx.putImageData(ni,0,0);rx.putImageData(ri,0,0);const kit={normal:cityDataTexture(nc),roughness:cityDataTexture(rc)};citySurfaceKits.set(kind,kit);return kit}
 function applyCitySurface(m,kind,amount=.4){if(!m||!m.isMeshStandardMaterial||m.userData.citySurface)return;const k=citySurface(kind);m.normalMap=k.normal;m.normalScale=new T.Vector2(amount,amount);m.roughnessMap=k.roughness;m.userData.citySurface=kind;m.userData.cityDetailMaps={normal:m.normalMap,roughness:m.roughnessMap};m.needsUpdate=true}
 function terrainCityTexture(kind){const S=512,[c,x]=cv(S,S),id=x.createImageData(S,S);for(let y=0;y<S;y++)for(let i=0;i<S;i++){const v=200+(cityHeight(kind,i/S,y/S)-.5)*130+(cityHash(i,y,319)-.5)*10,p=(y*S+i)*4;id.data[p]=id.data[p+1]=id.data[p+2]=v;id.data[p+3]=255}x.putImageData(id,0,0);return mkTex(c)}
-const baseCityMaterials=initMaterials;initMaterials=function(){baseCityMaterials();for(const key of['roadC_h','roadC_v','roadH_h','roadH_v','asph'])applyCitySurface(MATS[key].mat,'asphalt',.7);for(const key of['roadD_h','roadD_v'])applyCitySurface(MATS[key].mat,'sand',.65);applyCitySurface(MATS.walk.mat,'concrete',.6);applyCitySurface(MATS.roof.mat,'rock',.5);for(const key of['f_deco','f_apt'])applyCitySurface(MATS[key].mat,'plaster',.3);applyCitySurface(MATS.f_ware.mat,'metal',.4);applyCitySurface(MATS.f_glass.mat,'glass',.08)};
+const baseCityMaterials=initMaterials;initMaterials=function(){baseCityMaterials();for(const key of['roadC_h','roadC_v','roadH_h','roadH_v','asph'])applyCitySurface(MATS[key].mat,'asphalt',.7);for(const key of['roadD_h','roadD_v'])applyCitySurface(MATS[key].mat,'sand',.65);applyCitySurface(MATS.walk.mat,'concrete',.6);applyCitySurface(MATS.roof.mat,'rock',.5);for(const key of['f_deco','f_apt','f_stone','f_mission','f_hotel'])applyCitySurface(MATS[key].mat,'plaster',.3);applyCitySurface(MATS.f_brick.mat,'rock',.45);applyCitySurface(MATS.f_concrete.mat,'concrete',.5);applyCitySurface(MATS.f_office.mat,'plaster',.12);applyCitySurface(MATS.f_ware.mat,'metal',.4);applyCitySurface(MATS.f_glass.mat,'glass',.08)};
 const baseCityTerrain=buildTerrainMesh;buildTerrainMesh=function(){const before=new Set(world.children);baseCityTerrain();const o=world.children.find(o=>!before.has(o)&&o.isMesh&&o.geometry.attributes.position.count>1000);if(!o)return;const m=o.material,sand=terrainCityTexture('sand'),grass=terrainCityTexture('grass'),rock=terrainCityTexture('rock');applyCitySurface(m,'rock',.3);m.onBeforeCompile=shader=>{shader.uniforms.citySand={value:sand};shader.uniforms.cityGrass={value:grass};shader.uniforms.cityRock={value:rock};shader.uniforms.cityWater={value:WL};shader.vertexShader='varying vec3 cityWorld;varying float citySlope;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <worldpos_vertex>','#include <worldpos_vertex>\ncityWorld=(modelMatrix*vec4(transformed,1.)).xyz;citySlope=1.-abs(normal.y);');shader.fragmentShader='varying vec3 cityWorld;varying float citySlope;uniform sampler2D citySand,cityGrass,cityRock;uniform float cityWater;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
  vec3 sandD=texture2D(citySand,cityWorld.xz/5.).rgb;
  vec3 grassD=texture2D(cityGrass,cityWorld.xz/7.).rgb;
