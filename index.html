@@ -2582,7 +2582,7 @@ function explodeCar(c,src){if(c.dead)return;c.dead=true;c.hp=0;c.fire=22;c.mode=
 // car-car collisions
 const _ca=[null,null,null],_cb=[null,null,null];
 function carCarCollide(a,b){
- const dx=b.x-a.x,dz=b.z-a.z;if(dx*dx+dz*dz>36)return;
+ const dx=b.x-a.x,dz=b.z-a.z;if(dx*dx+dz*dz>36)return;if(Math.abs((a.y||0)-(b.y||0))>1.8)return; // AIR_COLLIDE_V1: different heights pass over each other
  carCircles(a,_ca);carCircles(b,_cb);const r=a.t.W/2+b.t.W/2+.16;let any=false;
  for(let i=0;i<3;i++)for(let j=0;j<3;j++){let nx=_ca[i][0]-_cb[j][0],nz=_ca[i][1]-_cb[j][1];const d=Math.hypot(nx,nz);if(d>=r||d<1e-4)continue;nx/=d;nz/=d;const pen=(r-d)*.5;
   const ma=a.t.mass,mb=b.t.mass,ta=mb/(ma+mb),tb=ma/(ma+mb);a.x+=nx*pen*2*ta*.5;a.z+=nz*pen*2*ta*.5;b.x-=nx*pen*2*tb*.5;b.z-=nz*pen*2*tb*.5;
@@ -2699,7 +2699,7 @@ function resolveFoot(o,r){
  for(const col of queryCols(o.x,o.z,r+1)){if(o.y>(col.h||0)+baseY)continue;const ct=circleBox(_fp,r,col);if(ct){_fp[0]+=ct.nx*ct.pen;_fp[1]+=ct.nz*ct.pen}}
  if(!pl.inside)for(const c of cars){const dx=o.x-c.x;if(Math.abs(dx)>4||Math.abs(o.z-c.z)>4)continue;const sn=Math.sin(c.h),cs=Math.cos(c.h),dz=o.z-c.z;
   const lf=dx*sn+dz*cs,ll=dx*cs-dz*sn,hl=c.t.L/2+.1,hw=c.t.W/2+.1;
-  if(Math.abs(lf)<hl+r&&Math.abs(ll)<hw+r&&o.y<c.y+1.3){ // push out the shortest way
+  if(Math.abs(lf)<hl+r&&Math.abs(ll)<hw+r&&o.y<c.y+1.3&&o.y>c.y-1.8){ // push out the shortest way
    const pf=hl+r-Math.abs(lf),pw=hw+r-Math.abs(ll);if(pf<pw){const s=Math.sign(lf)||1;_fp[0]+=sn*s*pf;_fp[1]+=cs*s*pf}else{const s=Math.sign(ll)||1;_fp[0]+=cs*s*pw;_fp[1]-=sn*s*pw}}}
  o.x=_fp[0];o.z=_fp[1]}
 // ================= CAMERA =================
@@ -2957,7 +2957,7 @@ class Ped{
   else if(this.state==='walk'){let dx=this.tx-this.x,dz=this.tz-this.z;const l=Math.hypot(dx,dz);this.t-=dt;if(l<1.5||this.t<0){this.pick();dx=this.tx-this.x;dz=this.tz-this.z}
    const L=Math.hypot(dx,dz)||1;sp=this.speed;this.vx=dx/L*sp;this.vz=dz/L*sp;this.dir=Math.atan2(dx,dz);
    // avoid cars about to hit us
-   for(const c of cars){if(c.speed<2)continue;const rx=this.x-c.x,rz=this.z-c.z;if(rx*rx+rz*rz<64){const f=rx*c.vx+rz*c.vz;if(f>0&&Math.hypot(rx,rz)<7){this.flee(c.x,c.z,3);break}}}}
+   for(const c of cars){if(c.speed<2||Math.abs((c.y||0)-(this.y||0))>4)continue;const rx=this.x-c.x,rz=this.z-c.z;if(rx*rx+rz*rz<64){const f=rx*c.vx+rz*c.vz;if(f>0&&Math.hypot(rx,rz)<7){this.flee(c.x,c.z,3);break}}}}
   else if(this.state==='chase'){sp=this.copUpdate(dt);aim=this.aimNow}
   else if(this.state==='gang'){sp=this.gangUpdate(dt);aim=this.aimNow}
   if(!this.dead&&this.state!=='down'){const px=this.x,pz=this.z;this.x+=this.vx*dt;this.z+=this.vz*dt;
@@ -3174,11 +3174,11 @@ function updatePickups(dt){for(let i=pickups.length-1;i>=0;i--){const p=pickups[
    world.remove(p.m);pickups.splice(i,1)}}}
 function updateTracers(dt){for(const t of tracers)if(t.t>0){t.t-=dt;if(t.t<=0)t.l.visible=false}}
 function carHitPeds(c){const sp=c.speed;if(sp<1.5&&!c.dead)return;const sn=Math.sin(c.h),cs=Math.cos(c.h),hl=c.t.L/2+.2,hw=c.t.W/2+.3;
- for(const p of allPeds()){if(!p.active||p.dead||p.state==='down')continue;const dx=p.x-c.x,dz=p.z-c.z;if(dx*dx+dz*dz>30)continue;
+ const cy=c.y||0;for(const p of allPeds()){if(!p.active||p.dead||p.state==='down')continue;const dx=p.x-c.x,dz=p.z-c.z;if(dx*dx+dz*dz>30)continue;const py=p.y!=null?p.y:heightAt(p.x,p.z);if(cy-py>1.4||py-cy>1.8)continue;
   const lf=dx*sn+dz*cs,ll=dx*cs-dz*sn;if(Math.abs(lf)<hl&&Math.abs(ll)<hw&&sp>2.2){const byP=c.occ==='player';hurtPed(p,sp*7,c.x-c.vx*.1,c.z-c.vz*.1,'car',byP);if(byP){audio.thud(.4);G.shake=Math.max(G.shake,.25)}}}
  // CAR_HITS_PLAYER_V2: only the car driving INTO you hurts (closing speed along car->player); walking into a car,
  // a parked one or the side of one passing by just pushes you. One hit per contact, scaled by impact speed.
- if(!pl.car&&pl.alive&&!pl.inside&&sp>2.5&&!(pl.carHitT>G.time)){const dx=pl.x-c.x,dz=pl.z-c.z;if(dx*dx+dz*dz<30){const lf=dx*sn+dz*cs,ll=dx*cs-dz*sn;
+ if(!pl.car&&pl.alive&&!pl.inside&&sp>2.5&&!(pl.carHitT>G.time)&&cy-(pl.y||0)<1.4&&(pl.y||0)-cy<1.8){const dx=pl.x-c.x,dz=pl.z-c.z;if(dx*dx+dz*dz<30){const lf=dx*sn+dz*cs,ll=dx*cs-dz*sn;
   if(Math.abs(lf)<hl&&Math.abs(ll)<hw){const d=Math.hypot(dx,dz)||1,ux=dx/d,uz=dz/d,carToward=c.vx*ux+c.vz*uz;
    if(carToward>2.5){pl.carHitT=G.time+.8;hurtPlayer(Math.min(95,4+carToward*carToward*.22+carToward*1.2));
     pl.vx=c.vx*.9+ux*carToward*.4;pl.vz=c.vz*.9+uz*carToward*.4;pl.vy=2+Math.min(5,carToward*.25);G.shake=Math.max(G.shake||0,Math.min(.8,carToward/20));audio.thud(Math.min(1,carToward/15))}}}}}
@@ -3808,7 +3808,7 @@ function updateGators(dt){
   if(swampMask(nx,nz)<.2&&!(a.aggro>0))a.h+=Math.PI*.8;else{a.x=nx;a.z=nz}
   a.ph+=dt*(1+sp*2);a.tp.rotation.y=Math.sin(a.ph)*.35*Math.min(1,sp+.2);
   a.g.position.set(a.x,Math.max(WL-.05,heightAt(a.x,a.z)),a.z);a.g.rotation.y=a.h;
-  for(const c of cars){if(c.speed<4)continue;if(Math.hypot(c.x-a.x,c.z-a.z)<2.3){hurtGator(a,c.speed*8,c.occ==='player');break}}
+  for(const c of cars){if(c.speed<4||(c.y||0)-heightAt(a.x,a.z)>1.4)continue;if(Math.hypot(c.x-a.x,c.z-a.z)<2.3){hurtGator(a,c.speed*8,c.occ==='player');break}}
  }}
 function showPrompt(t){if(t!==lastPrompt){lastPrompt=t;promptEl.textContent=t;promptEl.style.display=t?'block':'none'}}
 function simulate(dt){updateBreakin(dt);updateAlarms();updateRedLights();
