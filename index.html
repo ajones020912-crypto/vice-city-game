@@ -1374,6 +1374,8 @@ function streetProps(){
 let sigMesh=null;const _ic=new T.Color();
 function addOuterStreetlights(){for(const r of roads){if(r.type==='dirt')continue;if(r.type!=='hwy'&&r.c<600)continue;const step=r.type==='hwy'?70:60;for(let p=r.a+25;p<r.b-20;p+=step){if(r.cross.some(c=>Math.abs(c.p-p)<c.other.hw+7))continue;for(const side of[-1,1]){const off=r.hw+2.5,x=r.o==='h'?p:r.c+side*off,z=r.o==='h'?r.c+side*off:p;lamp(x,z,r.o==='h'?[0,-side]:[-side,0])}}}}
 
+// a head at +dir faces -dir, so it only serves traffic approaching from the -dir side; skip it when no road comes from there
+function sigHeadNeeded(nd,axis,dir){const r=axis==='h'?nd.h:nd.v,c=axis==='h'?nd.x:nd.z,o=(axis==='h'?nd.v.hw:nd.h.hw)+3;return dir>0?r.a<c-o:r.b>c+o}
 function buildSignals(){
  // US_ONE_SIDED_SIGNALS_V1
  const count=G.sigNodes.length*12;
@@ -1388,6 +1390,7 @@ function buildSignals(){
    const hz=axis==='h'?nd.z+dir*nd.h.w*.25:nd.z+dir*(nd.h.hw+1.8);
    const px=axis==='h'?hx:nd.x-dir*(nd.v.hw+1.8);
    const pz=axis==='h'?nd.z+dir*(nd.h.hw+1.8):hz;
+   if(!sigHeadNeeded(nd,axis,dir)){m.makeScale(0,0,0);for(let k=0;k<3;k++)sigMesh.setMatrixAt(i++,m);continue}
    const nx=axis==='h'?-dir:0,nz=axis==='v'?-dir:0,angle=Math.atan2(nx,nz),baseY=5.7;
    const metal=[.9,.58,.035],black=[.025,.032,.038];const signalPoleGreen=[.025,.12,.065];
    bakeG('plain',GEO.cyl6,px,0,pz,0,.14,8.15,.14,signalPoleGreen);
@@ -4375,7 +4378,7 @@ function updateUltraCarLights(){
   sp.position.set(o.x+sn*(f+.2),(o.y||0)+.75,o.z+cs*(f+.2));sp.target.position.set(o.x+sn*(f+22),(o.y||0)-.6,o.z+cs*(f+22));sp.intensity=2.2;
   r.position.set(...rearOf(o,.6,.45));r.intensity=o.braking?2.6:.9}
  // signal heads: glow in the colour they show, cast just in front of each head toward the stop line
- if(!sigHeadList&&G.sigNodes){sigHeadList=[];for(const nd of G.sigNodes)for(const axis of['h','v'])for(const dir of[1,-1]){
+ if(!sigHeadList&&G.sigNodes){sigHeadList=[];for(const nd of G.sigNodes)for(const axis of['h','v'])for(const dir of[1,-1]){if(!sigHeadNeeded(nd,axis,dir))continue;
   const hx=axis==='h'?nd.x+dir*(nd.v.hw+1.8):nd.x-dir*nd.v.w*.25,hz=axis==='h'?nd.z+dir*nd.h.w*.25:nd.z+dir*(nd.h.hw+1.8);
   sigHeadList.push({nd,axis,x:hx+(axis==='h'?-dir:0)*2.4,z:hz+(axis==='v'?-dir:0)*2.4})}}
  const cx=camera.position.x,cz=camera.position.z,heads=inside||!sigHeadList?[]:sigHeadList.filter(h=>(h.x-cx)**2+(h.z-cz)**2<90*90).sort((a,b)=>((a.x-cx)**2+(a.z-cz)**2)-((b.x-cx)**2+(b.z-cz)**2)).slice(0,4);
