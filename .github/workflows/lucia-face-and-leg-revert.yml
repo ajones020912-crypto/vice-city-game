@@ -1,0 +1,61 @@
+name: Refine Lucia face and undo leg sockets
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-face-and-leg-revert.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Remove socket repair and refine facial features
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess, tempfile
+          p=Path('js/reference-characters.js')
+          s=p.read_text(encoding='utf-8')
+          if '// LUCIA_FACE_LEG_REVERT_V1' in s: raise SystemExit(0)
+          if s.count('seatLuciaLegs(T,h);')!=1 or s.count(' function seatLuciaLegs(T,h){')!=1:
+              raise SystemExit('Leg repair changed; refusing ambiguous reversal.')
+          s=s.replace('seatLuciaLegs(T,h);','',1)
+          start=s.index(' function seatLuciaLegs(T,h){')
+          end=s.index(' function roundLuciaGeometry(',start)
+          block=s[start:end]
+          if 'lucia-denim-hip-socket' not in block or 'u.luciaLegSockets=true;' not in block:
+              raise SystemExit('Unexpected socket helper; refusing reversal.')
+          s=s[:start]+s[end:]
+          replacements=[
+              ('[[side*.02,.203,.099],[side*.039,.209,.099],[side*.057,.203,.09]],.0031,10','[[side*.019,.203,.100],[side*.037,.210,.101],[side*.058,.206,.092]],.0037,14'),
+              ('mesh.scale.x*=.92;mesh.scale.y*=.9','mesh.scale.x*=.98;mesh.scale.y*=.82'),
+              ('mesh.scale.x*=1.06;mesh.scale.y*=1.1','mesh.scale.x*=1.12;mesh.scale.y*=1.14'),
+              ('1+.025*Math.exp(-Math.pow((y-.145)/.04,2))-.025*Math.exp(-Math.pow((y-.075)/.025,2))','1+.060*Math.exp(-Math.pow((y-.145)/.04,2))-.045*Math.exp(-Math.pow((y-.075)/.025,2))')
+          ]
+          for old,new in replacements:
+              if s.count(old)!=1: raise SystemExit('Face anchor changed: '+old)
+              s=s.replace(old,new,1)
+          if 'seatLuciaLegs' in s or 'lucia-denim-hip-socket' in s:
+              raise SystemExit('Socket repair was not fully removed.')
+          for anchor in ['skin:0xa26740','// LUCIA_CROPPED_TANK_V1','v.z *= 1 - 0.10 * bust;','v.z *= 1 + 0.30 * seat;']:
+              if anchor not in s: raise SystemExit('Appearance preservation check failed: '+anchor)
+          s='// LUCIA_FACE_LEG_REVERT_V1\n'+s
+          with tempfile.TemporaryDirectory() as d:
+              check=Path(d)/'check.js'
+              check.write_text(s,encoding='utf-8')
+              subprocess.run(['node','--check',str(check)],check=True)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit combined character change
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Undo Lucia leg sockets and refine brows eyes lips and face shape'
+          git push origin HEAD:main

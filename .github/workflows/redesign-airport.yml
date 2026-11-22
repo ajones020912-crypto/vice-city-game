@@ -1,0 +1,107 @@
+name: Rebuild Mount Orrin airport
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/redesign-airport.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Replace only airport construction and check scripts
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, subprocess, tempfile
+          p=Path('index.html');s=p.read_text(encoding='utf-8')
+          if '// AIRPORT_REBUILD_V2' in s: raise SystemExit(0)
+          pattern=r'function buildAirport\(\)\{[\s\S]*?\n\}\s*(?=let airport=null;)'
+          matches=list(re.finditer(pattern,s))
+          if len(matches)!=1: raise SystemExit('Airport boundary changed; refusing ambiguous replacement.')
+          old=matches[0].group()
+          if 'cx=-790,cz=-45' not in old or 'spawnAirportPlanes();' not in old: raise SystemExit('Airport location/spawn integration changed.')
+          new='''function buildAirport(){
+           // AIRPORT_REBUILD_V2
+           const cx=-790,cz=-45,ground=heightAt(cx,cz)+.65;
+           decks.push({x0:cx-290,x1:cx+290,z0:cz-205,z1:cz+205,y:ground});
+           const mat=(color,roughness=.9)=>new T.MeshStandardMaterial({color,roughness});
+           const asphalt=mat(0x454a4d),concrete=mat(0xb5b8b2),grass=mat(0x68765a),white=mat(0xe9e8dc),yellow=mat(0xe5bd42),metal=mat(0x64747a),roof=mat(0x34434a),glass=mat(0x315e70,.28);
+           asphalt.map=makeNoiseTex(256,120,30,[1,1.01,1.02],8);
+           concrete.map=makeNoiseTex(256,205,18,[1,1,.98],6);
+           const blueLight=new T.MeshBasicMaterial({color:0x668edb}),warmLight=new T.MeshBasicMaterial({color:0xffe2aa});
+           const batches=new Map();
+           const box=(w,h,d,m,x,y,z,solid=false)=>{if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,cx+x,ground+y,cz+z]);if(solid)addCol(cx+x-w/2,cz+z-d/2,cx+x+w/2,cz+z+d/2,ground+y+h/2);};
+           const paint=(w,d,m,x,z)=>box(w,.018,d,m,x,.235,z);
+           box(560,.4,390,grass,0,-.21,0);
+           box(500,.18,48,asphalt,0,.10,-45);
+           for(const z of [-67,-23])paint(492,.35,white,0,z);
+           for(let x=-210;x<=210;x+=30)paint(13,.8,white,x,-45);
+           for(const side of [-1,1]){
+            paint(1.2,44,white,side*243,-45);
+            for(const z of [-61,-56,-51,-39,-34,-29])paint(18,2,white,side*229,z);
+            for(const z of [-58,-32])paint(25,4,white,side*170,z);
+           }
+           box(440,.16,22,asphalt,0,.10,35);
+           for(const x of [-185,175]){box(22,.16,80,asphalt,x,.10,-5);paint(.35,80,yellow,x,-5);paint(19,.4,yellow,x,3);paint(19,.4,yellow,x,6);}
+           paint(430,.35,yellow,0,35);
+           box(190,.16,84,concrete,-125,.10,94);
+           box(24,.16,65,asphalt,-125,.10,63);paint(.35,65,yellow,-125,63);
+           box(120,.16,151,concrete,200,.10,112);
+           box(44,.16,55,concrete,90,.10,62);
+           for(const x of [-190,-135,-80]){paint(.35,47,yellow,x,91);paint(20,.35,yellow,x,112);}
+           for(let x=-240;x<=240;x+=24)for(const z of [-71,-19])box(.35,.18,.35,warmLight,x,.34,z);
+           for(let x=-210;x<=210;x+=30)for(const z of [21,49])box(.3,.18,.3,blueLight,x,.32,z);
+           box(112,9,32,white,-153,4.6,158,true);
+           box(106,5,.4,glass,-153,4.1,141.7);
+           box(120,.8,42,roof,-153,9.5,156);
+           box(124,.45,11,white,-153,5.9,133);
+           for(let x=-207;x<=-99;x+=12){box(.3,7,.5,metal,x,3.7,141.3);box(.4,5.7,.4,metal,x,2.9,129);}
+           box(560,.16,9,asphalt,0,.10,192);paint(540,.2,yellow,0,192);
+           box(38,.16,35,asphalt,-78,.10,176);
+           for(let x=-200;x<=-110;x+=10)paint(.16,9,white,x,182);
+           box(8,23,8,white,13,11.6,154,true);
+           box(17,5,15,glass,13,25,154,true);
+           box(20,.8,18,roof,13,28,154);
+           box(21,.6,19,white,13,22,154);
+           box(.3,5,.3,metal,13,30.7,154);
+           box(4,.4,.8,warmLight,13,33.3,154);
+           const hx=205,hz=140;
+           box(108,.16,86,concrete,hx,.10,hz);
+           box(108,17,2,metal,hx,8.7,hz+43,true);
+           for(const side of [-1,1]){box(2,17,86,metal,hx+side*54,8.7,hz,true);box(26,17,2,metal,hx+side*41,8.7,hz-43,true);}
+           box(56,3,2,metal,hx,15.7,hz-43,true);
+           box(112,1.2,90,roof,hx,17.8,hz);
+           for(let z=hz-39;z<=hz+39;z+=10)box(111,.25,.3,white,hx,18.5,z);
+           for(const side of [-1,1])for(let x=31;x<=51;x+=4)box(.35,14,.3,roof,hx+side*x,7.7,hz-44.2);
+           for(const x of [hx-34,hx+34])box(1.8,.25,.6,warmLight,x,15,hz-44.4);
+           box(35,5,20,white,82,2.6,155,true);box(29,2,.3,glass,82,3,144.7);
+           for(const x of [-230,-25,115]){box(.3,9,.3,metal,x,4.6,120);box(2,.3,1,warmLight,x,9.2,120);}
+           const geometry=new T.BoxGeometry(1,1,1),matrix=new T.Matrix4(),rotation=new T.Quaternion();
+           for(const [material,items] of batches){const mesh=new T.InstancedMesh(geometry,material,items.length);for(let i=0;i<items.length;i++){const [w,h,d,x,y,z]=items[i];matrix.compose(new T.Vector3(x,y,z),rotation,new T.Vector3(w,h,d));mesh.setMatrixAt(i,matrix);}mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;mesh.receiveShadow=true;world.add(mesh);}
+           airport={x:cx,z:cz,ground};spawnAirportPlanes();
+          }
+          '''
+          s=s[:matches[0].start()]+new+s[matches[0].end():]
+          checked=0
+          with tempfile.TemporaryDirectory() as d:
+              for code in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I):
+                  if not code.strip(): continue
+                  f=Path(d)/'check.js';f.write_text(code,encoding='utf-8')
+                  subprocess.run(['node','--check',str(f)],check=True);checked+=1
+          if not checked: raise SystemExit('No game scripts checked; no file written.')
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit airport rebuild
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Rebuild airport runway taxiways terminal hangar and control tower'
+          git push origin HEAD:main

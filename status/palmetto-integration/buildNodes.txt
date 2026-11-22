@@ -1,0 +1,7 @@
+function buildNodes(){
+ const hs=roads.filter(r=>r.o==='h'),vs=roads.filter(r=>r.o==='v');
+ for(const h of hs)for(const v of vs){if(v.c>=h.a&&v.c<=h.b&&h.c>=v.a&&h.c<=v.b){
+  const n={id:nodes.length,x:v.c,z:h.c,h,v,sig:h.sig&&v.sig,off:(hash2(v.c,h.c)*28),edges:[]};nodes.push(n);h.cross.push({p:v.c,node:n,other:v});v.cross.push({p:h.c,node:n,other:h})}}
+ for(const r of roads){r.cross.sort((a,b)=>a.p-b.p);for(let i=0;i<r.cross.length-1;i++){const A=r.cross[i],Bn=r.cross[i+1],len=Bn.p-A.p;A.node.edges.push({to:Bn.node,road:r,dir:1,len});Bn.node.edges.push({to:A.node,road:r,dir:-1,len})}}
+}
+const crossWalkZ=[];

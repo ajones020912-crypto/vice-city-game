@@ -1,0 +1,18 @@
+{
+  "source_commit": "461db5d4e158779bb9176dc268c1aebe4bfaf84e",
+  "functions": [
+    "buildNodes",
+    "buildHouse",
+    "nearRoad",
+    "bakeTerrain",
+    "footprintHitsRoad",
+    "filterRoadParcels",
+    "roadSpotNear",
+    "streetProps",
+    "buildBaseMap",
+    "addCol",
+    "B",
+    "bakeG"
+  ],
+  "gameplay_changed": false
+}

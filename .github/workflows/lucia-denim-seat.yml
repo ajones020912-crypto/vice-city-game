@@ -1,0 +1,92 @@
+name: Cover Lucia shorts seat and add denim texture
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-denim-seat.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  denim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-denim-test" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Add fitted denim coverage and procedural cloth texture
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('js/reference-characters.js')
+          s=p.read_text(encoding='utf-8')
+          Path('/tmp/lucia-denim-before.js').write_text(s,encoding='utf-8')
+          anchor='shapeLucia(T,h);fitLuciaShortsLegs(T,h);'
+          if 'function denimLuciaShorts(' in s: raise SystemExit('Denim update already installed.')
+          if s.count(anchor)!=1: raise SystemExit('Shorts builder changed; refusing ambiguous edit.')
+          helper='''
+           function denimLuciaShorts(T,h){
+            const u=h.userData,m=u.m;
+            if(!denimLuciaShorts.map){
+             const n=128,data=new Uint8Array(n*n*4);
+             for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+              const twill=((x+y)%8)<3?15:-9;
+              const thread=(x%2===0?5:-5)+(y%4===0?5:0);
+              const grain=((x*73+y*151+x*y*3)%17)-8;
+              const c=Math.max(0,Math.min(255,221+twill+thread+grain)),i=(y*n+x)*4;
+              data[i]=c;data[i+1]=c;data[i+2]=Math.min(255,c+3);data[i+3]=255;
+             }
+             const map=new T.DataTexture(data,n,n,T.RGBAFormat);
+             map.wrapS=map.wrapT=T.RepeatWrapping;map.repeat.set(4,3);
+             map.magFilter=T.LinearFilter;map.minFilter=T.LinearMipmapLinearFilter;
+             map.generateMipmaps=true;map.encoding=T.sRGBEncoding;map.needsUpdate=true;
+             denimLuciaShorts.map=map;
+            }
+            m.pants.map=denimLuciaShorts.map;
+            m.pants.bumpMap=denimLuciaShorts.map;m.pants.bumpScale=.0008;
+            m.pants.roughness=.96;m.pants.metalness=0;m.pants.needsUpdate=true;
+            for(const leg of u.Lg){
+             const body=leg.hp.children.find(o=>o.name==='lucia-skin-hip-bridge');
+             if(!body)throw new Error('Expected fitted hip body bridge');
+             const shell=new T.Mesh(body.geometry.clone(),m.pants);
+             shell.name='lucia-denim-seat-cover';
+             shell.position.copy(body.position);shell.quaternion.copy(body.quaternion);
+             shell.scale.copy(body.scale).multiplyScalar(1.045);shell.castShadow=true;
+             leg.hp.add(shell);
+            }
+            u.luciaDenimSeat=true;
+           }
+          '''
+          s=s.replace(anchor,anchor+'denimLuciaShorts(T,h);',1)
+          s=s.replace(' function roundLuciaGeometry(',helper+' function roundLuciaGeometry(',1)
+          Path('/tmp/lucia-denim-after.js').write_text(s,encoding='utf-8')
+          subprocess.run(['node','--check','/tmp/lucia-denim-after.js'],check=True)
+          PY
+      - name: Check coverage dimensions, texture, and unchanged rig
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert');
+          const T=require(process.env.RUNNER_TEMP+'/lucia-denim-test/node_modules/three');
+          function load(path){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(path,'utf8'),c);return c.window.VCCharacters;}
+          const old=load('/tmp/lucia-denim-before.js'),cur=load('/tmp/lucia-denim-after.js');
+          const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');
+          function sig(root){const out=[];root.traverse(o=>{if(o.isMesh)out.push([o.name,o.position.toArray(),o.scale.toArray(),Array.from(o.geometry.attributes.position.array)]);});return JSON.stringify(out);}
+          assert(sig(a.userData.spine)===sig(b.userData.spine));
+          assert(cur.DESIGNS.luciaC.legs.kind==='shorts');
+          const map=b.userData.m.pants.map;assert(map&&map.image.width===128);
+          assert(new Set(map.image.data).size>8);
+          for(let i=0;i<2;i++){const x=a.userData.Lg[i],y=b.userData.Lg[i];assert(JSON.stringify(x.hp.position.toArray())===JSON.stringify(y.hp.position.toArray()));assert(JSON.stringify(x.kn.position.toArray())===JSON.stringify(y.kn.position.toArray()));const body=y.hp.children.find(o=>o.name==='lucia-skin-hip-bridge'),shell=y.hp.children.find(o=>o.name==='lucia-denim-seat-cover');assert(shell&&shell.material===b.userData.m.pants);assert(shell.position.distanceTo(body.position)<1e-8);for(const k of ['x','y','z'])assert(shell.scale[k]>body.scale[k]);assert(b.getObjectByName('lucia-reference-denim-shorts-'+i));}
+          for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge});for(const angle of [-.6,0,.6]){h.userData.Lg[0].hp.rotation.x=angle;h.userData.Lg[1].hp.rotation.x=-angle;h.updateMatrixWorld(true);h.traverse(o=>{if(o.isMesh)assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));});}}
+          fs.copyFileSync('/tmp/lucia-denim-after.js','js/reference-characters.js');
+          console.log('Coverage-shell and texture data checks passed; live visual coverage still requires review.');
+          JS
+      - name: Commit denim update
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Cover Lucia hip bridges with fitted denim and add woven shorts texture'
+          git push origin HEAD:main

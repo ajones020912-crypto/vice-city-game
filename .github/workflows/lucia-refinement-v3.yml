@@ -1,0 +1,109 @@
+name: Refine Lucia model proportions denim hair face and tan
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-refinement-v3.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  refine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          npm install --prefix "$RUNNER_TEMP/lucia-v3" --no-package-lock --ignore-scripts three@0.128.0
+          python -m pip install 'numpy>=1.26,<3' 'trimesh>=4.5,<5' 'manifold3d>=3,<4' scipy
+      - name: Prepare narrower chest wider midriff darker tan and face hair refinement
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('js/reference-characters.js');s=p.read_text();Path('/tmp/lucia-v3-before.js').write_text(s)
+          def edit(a,b):
+           global s
+           if s.count(a)!=1: raise SystemExit('Unexpected source anchor: '+a[:100])
+           s=s.replace(a,b,1)
+          edit('skin:0x9c623d','skin:0x854d2c')
+          edit('xScale=1-.07*waist+.17*chest;','xScale=1+.04*waist+.08*chest;')
+          edit('rows=12,cols=28','rows=20,cols=48')
+          edit("[.005,-.14,-.17]],.052,28)","[.005,-.14,-.17]],.045,40)")
+          edit('1+.060*Math.exp(-Math.pow((y-.145)/.04,2))-.045*Math.exp(-Math.pow((y-.075)/.025,2))','1+.085*Math.exp(-Math.pow((y-.145)/.04,2))-.065*Math.exp(-Math.pow((y-.075)/.025,2))')
+          edit('mesh.scale.x*=1.12;mesh.scale.y*=1.14','mesh.scale.x*=1.16;mesh.scale.y*=1.12')
+          edit('joinLuciaShoulders(T,h);','joinLuciaShoulders(T,h);refineLuciaV3(T,h);')
+          helper='''
+           function refineLuciaV3(T,h){
+            const u=h.userData,m=u.m;m.hair.flatShading=false;m.hair.roughness=.65;m.brow.color.setHex(0x2b1c17);m.lip.color.setHex(0x8b4e42);
+            if(!refineLuciaV3.bump){const n=128,data=new Uint8Array(n*n*4);for(let y=0;y<n;y++)for(let x=0;x<n;x++){const v=Math.round(128+30*Math.sin(x*.69+.35*Math.sin(y*.08))+8*Math.sin(x*1.71+y*.05)),i=(y*n+x)*4;data[i]=data[i+1]=data[i+2]=v;data[i+3]=255;}const t=new T.DataTexture(data,n,n,T.RGBAFormat);t.wrapS=t.wrapT=T.RepeatWrapping;t.magFilter=t.minFilter=T.LinearFilter;t.needsUpdate=true;refineLuciaV3.bump=t;}
+            m.hair.bumpMap=refineLuciaV3.bump;m.hair.bumpScale=.00045;m.hair.needsUpdate=true;
+            for(const mesh of u.headP.children){if(!mesh.isMesh)continue;if(mesh.name==='lucia-face-framing-hair'){mesh.scale.x*=.8;mesh.scale.z*=.8;mesh.material.roughness=.65;}if(mesh.material===m.eyeW||mesh.material===m.iris){mesh.scale.y*=.95;}if(mesh.material===m.skin&&mesh.geometry.type==='SphereGeometry'&&Math.abs(mesh.position.x)<.005&&mesh.position.z>.1&&mesh.position.y>.12&&mesh.position.y<.19){mesh.scale.x*=.94;}}
+           }
+          '''
+          edit(' function roundLuciaGeometry(',helper+' function roundLuciaGeometry(')
+          Path('/tmp/lucia-v3-shaped.js').write_text(s)
+          subprocess.run(['node','--check','/tmp/lucia-v3-shaped.js'],check=True)
+          PY
+      - name: Export fitted denim parts in hip coordinates
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),T=require(process.env.RUNNER_TEMP+'/lucia-v3/node_modules/three'),c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync('/tmp/lucia-v3-shaped.js','utf8'),c);const h=c.window.VCCharacters.build(T,'luciaC'),u=h.userData,parts=[];h.updateMatrixWorld(true);const inv=u.hips.matrixWorld.clone().invert();for(const joint of [u.hips,...u.Lg.map(l=>l.hp)])for(const o of joint.children){if(!o.isMesh||o.material!==u.m.pants)continue;const g=o.geometry.clone();g.applyMatrix4(inv.clone().multiply(o.matrixWorld));const p=g.attributes.position,vertices=[];for(let i=0;i<p.count;i++)vertices.push([p.getX(i),p.getY(i),p.getZ(i)]);const ids=g.index?Array.from(g.index.array):Array.from({length:p.count},(_,i)=>i),faces=[];for(let i=0;i<ids.length;i+=3)faces.push(ids.slice(i,i+3));parts.push({vertices,faces});}if(parts.length<3)throw Error('Missing fitted shorts components');fs.writeFileSync('/tmp/lucia-denim-parts.json',JSON.stringify(parts));
+          JS
+      - name: Boolean join denim volumes into one surface
+        run: |
+          python - <<'PY'
+          import json,trimesh
+          from pathlib import Path
+          parts=json.loads(Path('/tmp/lucia-denim-parts.json').read_text())
+          hulls=[trimesh.Trimesh(p['vertices'],p['faces'],process=True).convex_hull for p in parts]
+          mesh=trimesh.boolean.union(hulls,engine='manifold',check_volume=True)
+          mesh.remove_unreferenced_vertices()
+          if not mesh.is_volume or len(mesh.split(only_watertight=False))!=1: raise SystemExit('Denim union must be a single closed surface; refusing disconnected garment.')
+          Path('/tmp/lucia-denim-joined.json').write_text(json.dumps({'p':mesh.vertices.tolist(),'i':mesh.faces.reshape(-1).tolist()},separators=(',',':')))
+          PY
+      - name: Install single shorts mesh with preserved leg animation
+        run: |
+          node <<'JS'
+          const fs=require('fs');let s=fs.readFileSync('/tmp/lucia-v3-shaped.js','utf8');const data=fs.readFileSync('/tmp/lucia-denim-joined.json','utf8');
+          const helper=String.raw`
+           function installLuciaDenimV3(T,h){
+            const u=h.userData,d=__DATA__,g=new T.BufferGeometry(),p=d.p.flat(),uv=[];
+            for(const v of d.p)uv.push(.5+Math.atan2(v[0],v[2])/(Math.PI*2),(v[1]+.4)*2);
+            g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(d.i);g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();
+            const ids=[],weights=[];
+            for(const v of d.p){const t=Math.max(0,Math.min(1,(.035-v[1])/.20)),blend=t*t*(3-2*t),right=Math.max(0,Math.min(1,.5+v[0]/.10));ids.push(0,1,2,0);weights.push(1-blend,blend*(1-right),blend*right,0);}
+            g.setAttribute('skinIndex',new T.Uint16BufferAttribute(ids,4));g.setAttribute('skinWeight',new T.Float32BufferAttribute(weights,4));
+            for(const joint of [u.hips,...u.Lg.map(l=>l.hp)])for(const o of joint.children.slice())if(o.isMesh&&o.material===u.m.pants)remove(o);
+            const group=new T.Group();group.name='lucia-seamless-denim-rig';u.hips.add(group);
+            const base=new T.Bone(),left=new T.Bone(),right=new T.Bone();group.add(base);base.add(left,right);const bones=[left,right];
+            for(let i=0;i<2;i++){bones[i].position.copy(u.Lg[i].hp.position);bones[i].quaternion.copy(u.Lg[i].hp.quaternion);bones[i].scale.copy(u.Lg[i].hp.scale);}
+            const material=u.m.pants.clone();material.skinning=true;material.flatShading=false;const mesh=new T.SkinnedMesh(g,material);mesh.name='lucia-seamless-denim';mesh.castShadow=true;mesh.frustumCulled=false;group.add(mesh);h.updateMatrixWorld(true);const skeleton=new T.Skeleton([base,left,right]);mesh.bind(skeleton);
+            mesh.onBeforeRender=function(){for(let i=0;i<2;i++){bones[i].position.copy(u.Lg[i].hp.position);bones[i].quaternion.copy(u.Lg[i].hp.quaternion);bones[i].scale.copy(u.Lg[i].hp.scale);}group.updateMatrixWorld(true);skeleton.update();};
+            u.luciaSeamlessDenim=true;
+           }
+          `.replace('__DATA__',data);
+          const a='joinLuciaShoulders(T,h);refineLuciaV3(T,h);';if(s.split(a).length!==2)throw Error('Ambiguous denim installation');s=s.replace(a,a+'installLuciaDenimV3(T,h);');s=s.replace(' function roundLuciaGeometry(',helper+' function roundLuciaGeometry(');fs.writeFileSync('/tmp/lucia-v3-after.js',s);
+          JS
+          node --check /tmp/lucia-v3-after.js
+      - name: Check proportions tan original rig and animated garment
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-v3/node_modules/three');function api(path){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(path,'utf8'),c);return c.window.VCCharacters;}
+          const old=api('/tmp/lucia-v3-before.js'),cur=api('/tmp/lucia-v3-after.js'),a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');assert(b.userData.m.skin.color.getHex()===0x854d2c);assert(JSON.stringify(old.DESIGNS.jasonC)===JSON.stringify(cur.DESIGNS.jasonC));
+          const rig=u=>[u.hips.position.toArray(),u.spine.position.toArray(),u.headP.position.toArray(),...u.Lg.flatMap(l=>[l.hp.position.toArray(),l.kn.position.toArray()]),...u.A.flatMap(l=>[l.sh.position.toArray(),l.el.position.toArray()])];assert(JSON.stringify(rig(a.userData))===JSON.stringify(rig(b.userData)));
+          for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),m=h.getObjectByName('lucia-seamless-denim');assert(m&&m.isSkinnedMesh);assert(h.userData.luciaContinuousShoulders);assert(h.getObjectByName('lucia-seamless-denim-rig'));for(const angle of [-.7,0,.7]){h.userData.Lg[0].hp.rotation.x=angle;h.userData.Lg[1].hp.rotation.x=-angle;h.updateMatrixWorld(true);m.onBeforeRender();assert(Array.from(m.skeleton.boneMatrices).every(Number.isFinite));}h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});}
+          const am=a.userData.spine.children.find(o=>o.name==='lucia-dark-tank-top'),bm=b.userData.spine.children.find(o=>o.name==='lucia-dark-tank-top');let narrower=false,wider=false;for(let i=0;i<am.geometry.attributes.position.count;i++){const p=am.geometry.attributes.position,q=bm.geometry.attributes.position,y=p.getY(i),x=Math.abs(p.getX(i)),xx=Math.abs(q.getX(i));if(y>.35&&y<.40&&x>.05&&xx<x)narrower=true;if(y>.22&&y<.27&&x>.05&&xx>x)wider=true;assert(Math.abs(p.getZ(i)-q.getZ(i))<1e-6);}assert(narrower&&wider);fs.copyFileSync('/tmp/lucia-v3-after.js','js/reference-characters.js');
+          JS
+      - name: Commit model refinement only after checks
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Refine Lucia silhouette tan face hair and single animated denim garment'
+          git push origin HEAD:main

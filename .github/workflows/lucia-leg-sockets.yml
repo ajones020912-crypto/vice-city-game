@@ -1,0 +1,90 @@
+name: Repair Lucia leg sockets
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-leg-sockets.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-rig-test" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Patch only Lucia hip sockets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('js/reference-characters.js')
+          s=p.read_text(encoding='utf-8')
+          Path('/tmp/lucia-before.js').write_text(s,encoding='utf-8')
+          anchor='waist.scale.z=.70;shapeLucia(T,h);'
+          if 'function seatLuciaLegs(' in s: raise SystemExit('Repair already installed.')
+          if s.count(anchor)!=1: raise SystemExit('Lucia builder changed; refusing ambiguous patch.')
+          helper='''
+           function seatLuciaLegs(T,h){
+            const u=h.userData;
+            for(const leg of u.Lg){
+             const hp=leg.hp,dy=Math.max(0,.02-hp.position.y);
+             hp.position.y+=dy;
+             for(const child of hp.children)child.position.y-=dy;
+             const shorts=hp.children.find(o=>o.isMesh&&o.name.indexOf('lucia-reference-denim-shorts-')===0);
+             if(!shorts)throw new Error('Lucia shorts mesh missing');
+             shorts.updateMatrix();
+             const bounds=new T.Box3().setFromBufferAttribute(shorts.geometry.attributes.position).applyMatrix4(shorts.matrix);
+             const size=bounds.getSize(new T.Vector3());
+             const cap=add(T,hp,new T.SphereGeometry(1,24,16),u.m.pants,'lucia-denim-hip-socket');
+             cap.position.set((bounds.min.x+bounds.max.x)/2,-.025,(bounds.min.z+bounds.max.z)/2);
+             cap.scale.set(size.x*.49,.085,size.z*.49);
+            }
+            h.updateMatrixWorld(true);
+            u.luciaLegSockets=true;
+           }
+          '''
+          s=s.replace(anchor,anchor+'seatLuciaLegs(T,h);',1)
+          s=s.replace(' function roundLuciaGeometry(',helper+' function roundLuciaGeometry(',1)
+          Path('/tmp/lucia-after.js').write_text(s,encoding='utf-8')
+          subprocess.run(['node','--check','/tmp/lucia-after.js'],check=True)
+          PY
+      - name: Test rig construction, rest positions, and animated geometry
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert');
+          const T=require(process.env.RUNNER_TEMP+'/lucia-rig-test/node_modules/three');
+          function load(path){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(path,'utf8'),c);return c.window.VCCharacters;}
+          const before=load('/tmp/lucia-before.js'),after=load('/tmp/lucia-after.js');
+          const a=before.build(T,'luciaC'),b=after.build(T,'luciaC');
+          a.updateMatrixWorld(true);b.updateMatrixWorld(true);
+          for(let i=0;i<2;i++){
+            const old=a.userData.Lg[i],cur=b.userData.Lg[i];
+            assert(cur.hp.parent===b.userData.hips);
+            assert(cur.hp.position.y>=.02-1e-8);
+            assert(old.kn.getWorldPosition(new T.Vector3()).distanceTo(cur.kn.getWorldPosition(new T.Vector3()))<1e-6);
+            assert(old.shin.getWorldPosition(new T.Vector3()).distanceTo(cur.shin.getWorldPosition(new T.Vector3()))<1e-6);
+            assert(cur.hp.children.some(o=>o.name==='lucia-denim-hip-socket'));
+          }
+          assert(a.userData.m.skin.color.getHex()===b.userData.m.skin.color.getHex());
+          for(const merge of [false,true]){
+            const h=after.build(T,'luciaC',{merge});
+            for(const angle of [-.6,0,.6]){
+              h.userData.Lg[0].hp.rotation.x=angle;h.userData.Lg[1].hp.rotation.x=-angle;
+              h.userData.Lg[0].kn.rotation.x=.7;h.updateMatrixWorld(true);
+              h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(o.matrixWorld.elements.every(Number.isFinite));}});
+            }
+          }
+          fs.copyFileSync('/tmp/lucia-after.js','js/reference-characters.js');
+          console.log('Rig checks passed; in-game visual verification still required.');
+          JS
+      - name: Commit tested socket repair
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Seat Lucia leg pivots inside pelvis and overlap denim hip sockets'
+          git push origin HEAD:main
