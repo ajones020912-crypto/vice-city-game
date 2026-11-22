@@ -10,7 +10,7 @@
  const originalBuild=api.build;let printTexture=null;
  const looks={
   jasonC:{referenceLead:'jason',name:'Jason',realistic:true,skin:0xc98e68,hair:0x2d211b,hairStyle:'short',beard:false,jacket:null,top:{kind:'tee',color:0x626a68},legs:{kind:'trousers',color:0x6a593f},shoes:{kind:'boots',color:0x594735,sole:0x29231e},extras:['watch']},
-  luciaC:{referenceLead:'lucia',name:'Lucia',realistic:true,female:true,luciaSummer:true,build:'slim',skin:0xa26740,hair:0x35251f,hairStyle:'referencePonytail',jacket:null,top:{kind:'tank',color:0x303338},legs:{kind:'shorts',color:0x7497b3,highWaist:true},shoes:{color:0xf6f6f6,sole:0xe2e2e2,accent:0x303338},extras:['hoops','bracelets','ring','necklace']}
+  luciaC:{referenceLead:'lucia',name:'Lucia',realistic:true,female:true,luciaSummer:true,build:'slim',skin:0x9c623d,hair:0x35251f,hairStyle:'referencePonytail',jacket:null,top:{kind:'tank',color:0x303338},legs:{kind:'shorts',color:0x7497b3,highWaist:true},shoes:{color:0xf6f6f6,sole:0xe2e2e2,accent:0x303338},extras:['hoops','bracelets','ring','necklace']}
  };
  for(const id of Object.keys(looks))api.DESIGNS[id]=Object.assign({},api.DESIGNS[id],looks[id]);
  function add(T,parent,geometry,material,name,x=0,y=0,z=0){const mesh=new T.Mesh(geometry,material);mesh.name=name;mesh.position.set(x,y,z);mesh.castShadow=true;parent.add(mesh);return mesh}
@@ -31,7 +31,7 @@
   const highlight=cloth(T,0x49342a);for(const side of[-1,1]){add(T,u.headP,tube(T,[[side*.078,.245,.048],[side*.098,.19,.06],[side*.104,.075,.02],[side*.091,.025,.01]],.012,16),side===1?highlight:m.hair,'lucia-face-framing-hair');add(T,u.headP,tube(T,[[side*.019,.203,.100],[side*.037,.210,.101],[side*.058,.206,.092]],.0037,14),m.brow,'lucia-arched-brow')}
   for(const mesh of u.headP.children.slice())if(mesh.isMesh){if(mesh.material===m.brow&&mesh.geometry.type==='BoxGeometry')remove(mesh);else if(mesh.material===m.eyeW){mesh.scale.x*=.98;mesh.scale.y*=.82}else if(mesh.material===m.lip){mesh.scale.x*=1.12;mesh.scale.y*=1.14}else if(mesh.material===m.skin&&mesh.geometry.type==='LatheGeometry'){const a=mesh.geometry.attributes.position;for(let i=0;i<a.count;i++){const y=a.getY(i),x=a.getX(i);a.setX(i,x*(1+.060*Math.exp(-Math.pow((y-.145)/.04,2))-.045*Math.exp(-Math.pow((y-.075)/.025,2))))}a.needsUpdate=true;mesh.geometry.computeVertexNormals()}}
   const threads=cloth(T,0xc8c2ad);for(let k=0;k<u.Lg.length;k++){const hp=u.Lg[k].hp;for(const mesh of hp.children.slice())if(mesh.isMesh&&mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y+.26)<.002)remove(mesh);const shorts=hp.children.find(o=>o.isMesh&&o.material===m.pants&&o.geometry.type==='LatheGeometry');if(shorts){shorts.name='lucia-reference-denim-shorts-'+k;const a=shorts.geometry.attributes.position;for(let i=0;i<a.count;i++)if(Math.abs(a.getY(i)+.26)<.001){const angle=Math.atan2(a.getZ(i),a.getX(i));a.setY(i,-.26+.003*Math.sin(angle*9)+.002*Math.sin(angle*17))}a.needsUpdate=true;shorts.geometry.computeVertexNormals()}for(let j=0;j<9;j++){const phi=j/9*Math.PI*2,len=.007+(j%3)*.003;add(T,hp,new T.CylinderGeometry(.0008,.0005,len,4),threads,'lucia-denim-fray',Math.sin(phi)*.095,-.26-len*.45,Math.cos(phi)*.095)}}
-  const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);fitLuciaShortsLegs(T,h);denimLuciaShorts(T,h);
+  const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);fitLuciaShortsLegs(T,h);denimLuciaShorts(T,h);joinLuciaShoulders(T,h);
  }
 
 
@@ -118,6 +118,37 @@
    n.needsUpdate=true;
   }
   u.luciaDenimSmoothed=true;
+ }
+
+ function joinLuciaShoulders(T,h){
+  const u=h.userData,shoulder=Math.max(...u.A.map(a=>Math.abs(a.sh.position.x)));
+  for(const mesh of u.spine.children.slice())if(mesh.name==='lucia-tank-strap')remove(mesh);
+  const control=[[.165,.102,.455],[shoulder*.87,.105,.485],[shoulder+.018,.092,.512],[shoulder*.72,.075,.54],[.074,.060,.57],[.052,.051,.60],[.052,.051,u.headP.position.y+.065]],rings=[];
+  for(let i=0;i<control.length-1;i++)for(let j=0;j<6;j++){const t=j/6,k=t*t*(3-2*t),a=control[i],b=control[i+1];rings.push([a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k,a[2]+(b[2]-a[2])*t]);}
+  rings.push(control[control.length-1]);
+  const positions=[],uv=[],idx=[],cols=48;
+  for(let i=0;i<rings.length;i++)for(let j=0;j<cols;j++){const a=j/cols*Math.PI*2,r=rings[i];positions.push(Math.sin(a)*r[0],r[2],Math.cos(a)*r[1]);uv.push(j/cols,i/(rings.length-1));}
+  for(let i=0;i<rings.length-1;i++)for(let j=0;j<cols;j++){const a=i*cols+j,b=i*cols+(j+1)%cols,c=a+cols,d=b+cols;idx.push(a,c,b,b,c,d);}
+  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(positions,3));geo.setAttribute('uv',new T.Float32BufferAttribute(uv,2));geo.setIndex(idx);geo.computeVertexNormals();geo.computeBoundingBox();geo.computeBoundingSphere();
+  add(T,u.spine,geo,u.m.skin,'lucia-continuous-shoulders-neck');
+  const fabric=u.m.shirt.clone();fabric.side=T.DoubleSide;fabric.flatShading=false;fabric.polygonOffset=true;fabric.polygonOffsetFactor=-1;fabric.polygonOffsetUnits=-1;
+  function section(x){
+   const front=[];
+   for(let i=0;i<rings.length;i++){const r=rings[i];if(r[0]>=Math.abs(x)){front.push(new T.Vector3(x,r[2],r[1]*Math.sqrt(Math.max(0,1-x*x/(r[0]*r[0])))));}
+    else if(front.length){const a=rings[i-1],t=(Math.abs(x)-a[0])/(r[0]-a[0]);front.push(new T.Vector3(x,a[2]+(r[2]-a[2])*t,0));break;}}
+   if(front.length<3)throw new Error('Shoulder strap surface section is too short');
+   const back=front.slice(0,-1).reverse().map(v=>new T.Vector3(v.x,v.y,-v.z));
+   return new T.CatmullRomCurve3(front.concat(back),false,'centripetal');
+  }
+  const center=Math.min(.135,Math.max(.105,shoulder*.53)),segments=64;
+  for(const side of [-1,1]){
+   const left=section(side*center-.0175),right=section(side*center+.0175),p=[],tex=[],tri=[];
+   for(let i=0;i<=segments;i++)for(const [j,curve] of [[0,left],[1,right]]){const t=i/segments,v=curve.getPoint(t),tangent=curve.getTangent(t),normal=new T.Vector3(0,-tangent.z,tangent.y).normalize();v.addScaledVector(normal,.004);p.push(v.x,v.y,v.z);tex.push(j,t);}
+   for(let i=0;i<segments;i++){const a=i*2;tri.push(a,a+2,a+1,a+1,a+2,a+3);}
+   const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setAttribute('uv',new T.Float32BufferAttribute(tex,2));g.setIndex(tri);g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();
+   add(T,u.spine,g,fabric,'lucia-continuous-shoulder-strap-'+side);
+  }
+  u.luciaContinuousShoulders=true;
  }
  function roundLuciaGeometry(T,mesh,old,region,u){
   const p=old.parameters;
