@@ -10,7 +10,7 @@
  const originalBuild=api.build;let printTexture=null;
  const looks={
   jasonC:{referenceLead:'jason',name:'Jason',realistic:true,skin:0xc98e68,hair:0x2d211b,hairStyle:'short',beard:false,jacket:null,top:{kind:'tee',color:0x626a68},legs:{kind:'trousers',color:0x6a593f},shoes:{kind:'boots',color:0x594735,sole:0x29231e},extras:['watch']},
-  luciaC:{referenceLead:'lucia',name:'Lucia',realistic:true,female:true,luciaSummer:true,build:'slim',skin:0x68391f,hair:0x2d1b12,hairStyle:'referencePonytail',jacket:null,top:{kind:'tank',color:0x303338},legs:{kind:'shorts',color:0x7497b3,highWaist:true},shoes:{color:0xf6f6f6,sole:0xe2e2e2,accent:0x303338},extras:['hoops','bracelets','ring','necklace']}
+  luciaC:{referenceLead:'lucia',name:'Lucia',realistic:true,female:true,luciaSummer:true,build:'slim',skin:0x68391f,hair:0x2d1b12,hairStyle:'referencePonytail',jacket:null,top:{kind:'tank',color:0x202124},legs:{kind:'shorts',color:0x36536d,highWaist:true},shoes:{color:0xf6f6f6,sole:0xe2e2e2,accent:0x303338},extras:['hoops','bracelets','ring','necklace']}
  };
  for(const id of Object.keys(looks))api.DESIGNS[id]=Object.assign({},api.DESIGNS[id],looks[id]);
  function add(T,parent,geometry,material,name,x=0,y=0,z=0){const mesh=new T.Mesh(geometry,material);mesh.name=name;mesh.position.set(x,y,z);mesh.castShadow=true;parent.add(mesh);return mesh}
@@ -31,7 +31,7 @@
   const highlight=cloth(T,0x49342a);for(const side of[-1,1]){add(T,u.headP,tube(T,[[side*.078,.245,.048],[side*.098,.19,.06],[side*.104,.075,.02],[side*.091,.025,.01]],.012,16),side===1?highlight:m.hair,'lucia-face-framing-hair');add(T,u.headP,tube(T,[[side*.019,.203,.100],[side*.037,.210,.101],[side*.058,.206,.092]],.0037,14),m.brow,'lucia-arched-brow')}
   for(const mesh of u.headP.children.slice())if(mesh.isMesh){if(mesh.material===m.brow&&mesh.geometry.type==='BoxGeometry')remove(mesh);else if(mesh.material===m.eyeW){mesh.scale.x*=.98;mesh.scale.y*=.82}else if(mesh.material===m.lip){mesh.scale.x*=1.16;mesh.scale.y*=1.12}else if(mesh.material===m.skin&&mesh.geometry.type==='LatheGeometry'){const a=mesh.geometry.attributes.position;for(let i=0;i<a.count;i++){const y=a.getY(i),x=a.getX(i);a.setX(i,x*(1+.085*Math.exp(-Math.pow((y-.145)/.04,2))-.065*Math.exp(-Math.pow((y-.075)/.025,2))))}a.needsUpdate=true;mesh.geometry.computeVertexNormals()}}
   const threads=cloth(T,0xc8c2ad);for(let k=0;k<u.Lg.length;k++){const hp=u.Lg[k].hp;for(const mesh of hp.children.slice())if(mesh.isMesh&&mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y+.26)<.002)remove(mesh);const shorts=hp.children.find(o=>o.isMesh&&o.material===m.pants&&o.geometry.type==='LatheGeometry');if(shorts){shorts.name='lucia-reference-denim-shorts-'+k;const a=shorts.geometry.attributes.position;for(let i=0;i<a.count;i++)if(Math.abs(a.getY(i)+.26)<.001){const angle=Math.atan2(a.getZ(i),a.getX(i));a.setY(i,-.26+.003*Math.sin(angle*9)+.002*Math.sin(angle*17))}a.needsUpdate=true;shorts.geometry.computeVertexNormals()}for(let j=0;j<9;j++){const phi=j/9*Math.PI*2,len=.007+(j%3)*.003;add(T,hp,new T.CylinderGeometry(.0008,.0005,len,4),threads,'lucia-denim-fray',Math.sin(phi)*.095,-.26-len*.45,Math.cos(phi)*.095)}}
-  const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);fitLuciaShortsLegs(T,h);denimLuciaShorts(T,h);joinLuciaShoulders(T,h);refineLuciaV3(T,h);installLuciaDenimV3(T,h);finishLuciaV4(T,h);makeLuciaCurlyPonytail(T,h);fitLuciaFrontHair(T,h);addLuciaBackCurls(T,h);polishLuciaV5(T,h);enlargeLuciaEyes(T,h);smoothLuciaHipTransition(T,h);
+  const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);fitLuciaShortsLegs(T,h);denimLuciaShorts(T,h);joinLuciaShoulders(T,h);refineLuciaV3(T,h);installLuciaDenimV3(T,h);finishLuciaV4(T,h);makeLuciaCurlyPonytail(T,h);fitLuciaFrontHair(T,h);addLuciaBackCurls(T,h);polishLuciaV5(T,h);enlargeLuciaEyes(T,h);smoothLuciaHipTransition(T,h);finishLuciaReferenceOutfit(T,h);
  }
 
 
@@ -303,6 +303,43 @@
    add(T,u.headP,tube(T,points,.0045+(k%3)*.0005,96),u.m.hair,'lucia-back-scalp-curl');
   }
   u.luciaBackScalpCurls=true;
+ }
+
+ function finishLuciaReferenceOutfit(T,h){
+  const u=h.userData,m=u.m,tank=u.spine.children.find(o=>o.name==='lucia-dark-tank-top'),denim=h.getObjectByName('lucia-seamless-denim');
+  if(!tank||!denim||!denim.isSkinnedMesh)throw Error('Expected crop tank and animated seamless shorts');
+  m.shirt.color.setHex(0x202124);m.shirt.roughness=.94;m.shirt.side=T.DoubleSide;m.shirt.needsUpdate=true;
+  if(!finishLuciaReferenceOutfit.fabric){const n=128,data=new Uint8Array(n*n*4);for(let y=0;y<n;y++)for(let x=0;x<n;x++){const v=128+((x*17+y*31+x*y)%7)-3+(x%4===0?3:0),i=(y*n+x)*4;data[i]=data[i+1]=data[i+2]=v;data[i+3]=255;}const t=new T.DataTexture(data,n,n,T.RGBAFormat);t.wrapS=t.wrapT=T.RepeatWrapping;t.magFilter=t.minFilter=T.LinearFilter;t.needsUpdate=true;finishLuciaReferenceOutfit.fabric=t;}
+  for(const o of u.spine.children)if(o.isMesh&&(o.material===m.shirt||o.name.indexOf('lucia-continuous-shoulder-strap-')===0)){o.material.color.setHex(0x202124);o.material.roughness=.94;o.material.bumpMap=finishLuciaReferenceOutfit.fabric;o.material.bumpScale=.00012;o.material.needsUpdate=true;}
+  const hem=u.spine.children.find(o=>o.name==='lucia-tank-hem');if(hem)hem.material=m.shirt;
+  const old=tank.geometry,g=old.index?old.toNonIndexed():old.clone(),p=g.attributes.position,n=g.attributes.normal,uv=g.attributes.uv,out=[],normals=[],tex=[];
+  function vertex(i){return {p:new T.Vector3(p.getX(i),p.getY(i),p.getZ(i)),n:new T.Vector3(n.getX(i),n.getY(i),n.getZ(i)),uv:new T.Vector2(uv?uv.getX(i):0,uv?uv.getY(i):0)};}
+  function distance(v){const side=Math.min(1,Math.abs(v.p.x)/.105),cut=v.p.z>=0?.452+.043*Math.pow(side,1.65):.476+.019*Math.pow(side,1.5);return cut-v.p.y;}
+  function blend(a,b,t){return {p:a.p.clone().lerp(b.p,t),n:a.n.clone().lerp(b.n,t).normalize(),uv:a.uv.clone().lerp(b.uv,t)};}
+  for(let i=0;i<p.count;i+=3){const tri=[vertex(i),vertex(i+1),vertex(i+2)],polygon=[];for(let j=0;j<3;j++){const a=tri[j],b=tri[(j+1)%3],da=distance(a),db=distance(b);if(da>=0)polygon.push(a);if((da>=0)!==(db>=0))polygon.push(blend(a,b,da/(da-db)));}for(let j=1;j<polygon.length-1;j++)for(const v of [polygon[0],polygon[j],polygon[j+1]]){out.push(v.p.x,v.p.y,v.p.z);normals.push(v.n.x,v.n.y,v.n.z);tex.push(v.uv.x,v.uv.y);}}
+  if(out.length<90)throw Error('Neckline clipping removed too much cloth');
+  const fitted=new T.BufferGeometry();fitted.setAttribute('position',new T.Float32BufferAttribute(out,3));fitted.setAttribute('normal',new T.Float32BufferAttribute(normals,3));fitted.setAttribute('uv',new T.Float32BufferAttribute(tex,2));fitted.computeBoundingBox();fitted.computeBoundingSphere();tank.geometry=fitted;g.dispose();old.dispose();
+  for(const leg of u.Lg)for(const o of leg.hp.children.slice())if(o.name==='lucia-denim-fray')remove(o);
+  const material=denim.material,previous=material.onBeforeCompile;material.color.setHex(0x36536d);material.roughness=.96;denim.geometry.computeBoundingBox();const b=denim.geometry.boundingBox,top=b.max.y,bottom=b.min.y;
+  material.onBeforeCompile=function(shader,renderer){if(previous)previous.call(this,shader,renderer);if(!shader.vertexShader.includes('#include <begin_vertex>')||!shader.fragmentShader.includes('#include <color_fragment>'))throw Error('Denim shader integration changed');shader.uniforms.uLuciaDenimEdges={value:new T.Vector2(top,bottom)};
+   shader.vertexShader='varying vec3 vLuciaDenimBind;'+String.fromCharCode(10)+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>'+String.fromCharCode(10)+'vLuciaDenimBind=position;');
+   shader.fragmentShader='varying vec3 vLuciaDenimBind; uniform vec2 uLuciaDenimEdges;'+String.fromCharCode(10)+shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
+    {
+     vec3 lp=vLuciaDenimBind;float wt=uLuciaDenimEdges.x;float hm=uLuciaDenimEdges.y;
+     float cuff=1.0-smoothstep(hm+.027,hm+.037,lp.y);diffuseColor.rgb*=mix(vec3(1.0),vec3(1.32,1.29,1.23),cuff);
+     float fold=1.0-smoothstep(.0007,.0022,abs(lp.y-(hm+.034)));diffuseColor.rgb*=1.0-.18*fold;
+     float front=step(.025,lp.z),back=step(.025,-lp.z),xx=abs(lp.x);
+     float waist=(1.0-smoothstep(.0007,.0016,min(abs(lp.y-(wt-.012)),abs(lp.y-(wt-.024)))));
+     float fly=(1.0-smoothstep(.0006,.0015,xx))*step(wt-.15,lp.y)*step(lp.y,wt-.025)*front;
+     float pocketY=wt-.040-.8*max(0.0,xx-.070);float pocket=(1.0-smoothstep(.0006,.0015,abs(lp.y-pocketY)))*step(.060,xx)*step(xx,.165)*front;
+     float bx=abs(xx-.095),low=wt-.175+.35*bx;
+     float backPocket=min(1.0,(1.0-smoothstep(.0006,.0015,abs(bx-.031)))+(1.0-smoothstep(.0006,.0015,abs(lp.y-(wt-.075))))+(1.0-smoothstep(.0006,.0015,abs(lp.y-low))))*step(bx,.033)*step(wt-.18,lp.y)*step(lp.y,wt-.073)*back;
+     float stitch=clamp(waist+fly+pocket+backPocket,0.0,1.0);diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.48,.41,.30),stitch*.35);
+     float button=(1.0-smoothstep(.002,.004,length(vec2(lp.x,lp.y-(wt-.014)))))*front;diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.60,.59,.54),button*.8);
+    }
+   `);
+  };
+  material.customProgramCacheKey=()=> 'lucia-reference-denim-v1';material.needsUpdate=true;u.luciaReferenceOutfit=true;
  }
  function finishLuciaV4(T,h){
   const u=h.userData,m=u.m;m.hair.color.setHex(0x2d1b12);m.brow.color.setHex(0x4b2e1e);m.lip.color.setHex(0x9f6255);m.lip.roughness=.65;
