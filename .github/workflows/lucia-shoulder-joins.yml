@@ -1,0 +1,56 @@
+name: Refine Lucia shoulder joins without changing animation rig
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-shoulder-joins.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-photo-reference
+  cancel-in-progress: false
+jobs:
+  shoulders:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-shoulder-joins" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Prepare shoulder-only contour and overlap refinement
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-shoulder-joins/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_SHOULDER_JOINS_V2'))process.exit(0);if(!s.includes('// LUCIA_CLOTHING_DETAILS_V2'))throw Error('Approved clothing cleanup must finish first');fs.writeFileSync('/tmp/lucia-shoulder-joins-before.js',s);function once(a,b){if(s.split(a).length!==2)throw Error('Shoulder implementation changed');s=s.replace(a,b);}
+          once('for(let i=0;i<control.length-1;i++)for(let j=0;j<6;j++){const t=j/6,k=t*t*(3-2*t),a=control[i],b=control[i+1];rings.push([a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k,a[2]+(b[2]-a[2])*t]);}\n  rings.push(control[control.length-1]);','const curve=new T.CatmullRomCurve3(control.map(r=>new T.Vector3(...r)),false,\'centripetal\');for(let i=0;i<=128;i++){const v=curve.getPoint(i/128);rings.push([Math.max(.052,Math.min(shoulder+.018,v.x)),Math.max(.051,Math.min(.105,v.y)),Math.max(control[0][2],Math.min(control[control.length-1][2],v.z))]);}');
+          const helper=String.raw`
+           function luciaShoulderCapCandidates(T,h,arm){
+            h.updateMatrixWorld(true);const toArm=new T.Matrix4().copy(arm.sh.matrixWorld).invert(),out=[];for(const parent of [arm.sh,h.userData.spine])for(const mesh of parent.children){if(!mesh.isMesh||mesh.material!==h.userData.m.skin||mesh.geometry.type!=='SphereGeometry')continue;const box=new T.Box3().setFromBufferAttribute(mesh.geometry.attributes.position).applyMatrix4(new T.Matrix4().copy(toArm).multiply(mesh.matrixWorld)),center=box.getCenter(new T.Vector3()),size=box.getSize(new T.Vector3());if(center.length()<.085&&Math.max(size.x,size.y,size.z)<.20)out.push(mesh);}return out;
+           }
+           function refineLuciaShoulderJoins(T,h){
+            const u=h.userData;u.luciaShoulderJoinAudit=[];for(let k=0;k<u.A.length;k++){const arm=u.A[k],caps=luciaShoulderCapCandidates(T,h,arm),primary=caps.filter(o=>o.parent===arm.sh).sort((a,b)=>a.position.lengthSq()-b.position.lengthSq())[0];if(!primary)throw Error('Cannot safely identify original shoulder cap');const box=new T.Box3().setFromBufferAttribute(primary.geometry.attributes.position),center=box.getCenter(new T.Vector3()),size=box.getSize(new T.Vector3()),geometry=new T.SphereGeometry(1,32,24);geometry.scale(size.x/2,size.y/2,size.z/2);geometry.translate(center.x,center.y,center.z);geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();const cap=new T.Mesh(geometry,primary.material);cap.name='lucia-rounded-shoulder-cap-'+k;cap.position.copy(primary.position);cap.quaternion.copy(primary.quaternion);cap.scale.copy(primary.scale);cap.visible=primary.visible;cap.castShadow=primary.castShadow;cap.receiveShadow=primary.receiveShadow;u.luciaShoulderJoinAudit.push({arm:k,replacedCaps:caps.map(o=>({name:o.name,parent:o.parent===arm.sh?'shoulder':'spine'}))});for(const mesh of caps)mesh.parent.remove(mesh);arm.sh.add(cap);}u.luciaShoulderJoinsRefined=true;
+           }
+          `;once(' function hideLuciaClothingOnly(T,h){',helper+' function hideLuciaClothingOnly(T,h){');once('removeLuciaClothingDetails(T,h);smoothLuciaSkinSurface(T,h,true);','removeLuciaClothingDetails(T,h);smoothLuciaSkinSurface(T,h,true);refineLuciaShoulderJoins(T,h);');s='// LUCIA_SHOULDER_JOINS_V2\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-shoulder-joins-after.js',s);
+          JS
+      - name: Validate preserved model and moving shoulders
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/lucia-shoulder-joins/node_modules/acorn'),T=require(process.env.RUNNER_TEMP+'/lucia-shoulder-joins/node_modules/three');if(!fs.existsSync('/tmp/lucia-shoulder-joins-after.js')){if(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_SHOULDER_JOINS_V2'))process.exit(0);throw Error('Candidate missing');}function load(file){const c={window:{},console,Math,T,clamp:(x,a,b)=>Math.max(a,Math.min(b,x))};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c;}function walk(n,fn){fn(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,fn);}else if(v&&typeof v.type==='string')walk(v,fn);}}
+          const source=fs.readFileSync('/tmp/lucia-shoulder-joins-after.js','utf8'),predicates=[];walk(acorn.parse(source,{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='luciaShoulderCapCandidates')predicates.push(source.slice(n.start,n.end));});assert(predicates.length===1);const before=load('/tmp/lucia-shoulder-joins-before.js'),after=load('/tmp/lucia-shoulder-joins-after.js');vm.runInContext(predicates[0],before);const old=before.window.VCCharacters,cur=after.window.VCCharacters;function signature(h,skip=new Set()){const out=[];h.traverse(o=>{if(o.isMesh&&!skip.has(o))out.push([o.name,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray(),Object.keys(o.geometry.attributes).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.color?m.color.getHex():null,m.roughness,m.metalness])]);});return JSON.stringify(out);}
+          for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)),'Unrelated character changed');const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC'),skipA=new Set([a.getObjectByName('lucia-continuous-shoulders-neck')]),skipB=new Set([b.getObjectByName('lucia-continuous-shoulders-neck')]);for(const arm of a.userData.A)for(const cap of before.luciaShoulderCapCandidates(T,a,arm))skipA.add(cap);for(let k=0;k<2;k++){const cap=b.getObjectByName('lucia-rounded-shoulder-cap-'+k);assert(cap&&cap.parent===b.userData.A[k].sh);skipB.add(cap);}assert(signature(a,skipA)===signature(b,skipB),'Geometry outside shoulders changed');const joints=h=>{const u=h.userData;return [u.hips.position.toArray(),u.spine.position.toArray(),u.headP.position.toArray(),...u.A.flatMap(x=>[x.sh.position.toArray(),x.el.position.toArray()]),...u.Lg.flatMap(x=>[x.hp.position.toArray(),x.kn.position.toArray()])];};assert(JSON.stringify(joints(a))===JSON.stringify(joints(b)));
+          const bridge=b.getObjectByName('lucia-continuous-shoulders-neck');assert(bridge.geometry.attributes.position.count===129*48);assert(b.userData.m.skin.color.getHex()===a.userData.m.skin.color.getHex());const animators=[];for(const m of fs.readFileSync('index.html','utf8').matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;walk(acorn.parse(m[1],{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='animHuman')animators.push(m[1].slice(n.start,n.end));});}assert(animators.length===1);vm.runInContext(animators[0],after);for(const p of ['js/one-hand-hit.js','js/gun-animation.js'])vm.runInContext(fs.readFileSync(p,'utf8'),after);const animate=after.window.VCGunAnimation.wrap(after.window.VCOneHandHit.wrap(after.animHuman),T);let cases=0;for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),u=h.userData;assert(u.luciaShoulderJoinsRefined&&u.luciaHipThighSmoothed&&u.guns.pistol&&u.guns.rifle);for(const state of [{speed:0,weapon:null,punch:0},{speed:2,weapon:null,punch:0},{speed:7,weapon:null,punch:0},{speed:0,weapon:null,punch:1},{speed:0,weapon:'pistol',aim:true},{speed:0,weapon:'rifle',aim:true}]){for(let i=0;i<90;i++)animate(h,1/60,state);h.updateMatrixWorld(true);h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh)for(const key of ['position','normal','uv'])if(o.geometry.attributes[key])assert(Array.from(o.geometry.attributes[key].array).every(Number.isFinite));});cases++;}}
+          fs.copyFileSync('/tmp/lucia-shoulder-joins-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-shoulder-joins-check.json',JSON.stringify({passed:true,animationCases:cases,shoulderCapAudit:b.userData.luciaShoulderJoinAudit,oneRoundedCapPerArm:true,continuousSplineShoulderContour:true,remainingModelGeometryUnchanged:true,rigOffsetsUnchanged:true,skinColorUnchanged:true,otherCharactersUnchanged:true,scope:'Shoulder-only geometry and structural animation checks; rendered overlap, gaps during poses, and live deployment not verified.'},null,2)+'\n');
+          JS
+      - name: Publish only validated shoulder changes
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-shoulder-joins-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Refine Lucia shoulder overlaps and neck contour while preserving existing rig'
+          git push origin HEAD:main
