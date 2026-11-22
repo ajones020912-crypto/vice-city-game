@@ -1,0 +1,54 @@
+name: Blend Lucia pelvis stomach and thigh shading without shape changes
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-pelvis-seam-blend.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-photo-reference
+  cancel-in-progress: false
+jobs:
+  blend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-seam-blend" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Prepare shading-only local contact blend
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-seam-blend/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_PELVIS_SEAM_BLEND_V1'))process.exit(0);if(!s.includes('// LUCIA_PELVIS_GAP_REPAIR_V1'))throw Error('Working gap repair is required');fs.writeFileSync('/tmp/lucia-seam-before.js',s);const anchor='installLuciaPelvisBridge(T,h);';if(s.split(anchor).length!==2)throw Error('Pelvis installation call changed');s=s.replace(anchor,anchor+'blendLuciaPelvisSeams(T,h);');
+          const helper=String.raw`
+           function blendLuciaPelvisSeams(T,h){
+            const u=h.userData;if(!u.luciaPelvisGapBridge)throw Error('Missing closed pelvis bridge');h.updateMatrixWorld(true);const inverse=new T.Matrix4().copy(u.hips.matrixWorld).invert(),entries=[],radius=.028,grid=new Map(),cell=v=>[Math.floor(v.x/radius),Math.floor(v.y/radius),Math.floor(v.z/radius)],key=a=>a.join(',');
+            h.traverse(o=>{const selected=o.name==='lucia-pelvis-skin-bridge'||(o.material===u.m.skin&&(o.parent===u.spine||o.parent===u.hips||u.Lg.some(l=>o.parent===l.hp)));if(!o.isMesh||!selected||!o.geometry.attributes.normal)return;const M=new T.Matrix4().copy(inverse).multiply(o.matrixWorld),N=new T.Matrix3().getNormalMatrix(M),p=o.geometry.attributes.position,n=o.geometry.attributes.normal,points=[],normals=[];for(let i=0;i<p.count;i++){points.push(new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(M));normals.push(new T.Vector3().fromBufferAttribute(n,i).applyMatrix3(N).normalize());}if(!points.some(v=>v.y>=-.25&&v.y<=.18))return;entries.push({mesh:o,points,normals,inverseNormal:new T.Matrix3().copy(N).invert()});});
+            function add(id,p,n){if(p.y<-.278||p.y>.208||n.lengthSq()<.5)return;const k=key(cell(p));if(!grid.has(k))grid.set(k,[]);grid.get(k).push({id,p,n});}for(let id=0;id<entries.length;id++){const e=entries[id],g=e.mesh.geometry;for(let i=0;i<e.points.length;i++)add(id,e.points[i],e.normals[i]);const count=g.index?g.index.count:e.points.length;for(let t=0;t<count;t+=3){const ids=[0,1,2].map(j=>g.index?g.index.getX(t+j):t+j),[a,b,c]=ids.map(i=>e.points[i]);if(Math.min(a.y,b.y,c.y)>.208||Math.max(a.y,b.y,c.y)<-.278)continue;const steps=Math.min(12,Math.ceil(Math.max(a.distanceTo(b),b.distanceTo(c),c.distanceTo(a))/.018));for(let j=1;j<steps;j++)for(let k=1;k<steps-j;k++){const x=j/steps,y=k/steps,z=1-x-y,p=a.clone().multiplyScalar(z).addScaledVector(b,x).addScaledVector(c,y),n=e.normals[ids[0]].clone().multiplyScalar(z).addScaledVector(e.normals[ids[1]],x).addScaledVector(e.normals[ids[2]],y).normalize();add(id,p,n);}}}
+            let changed=0;const affected=[];for(let id=0;id<entries.length;id++){const e=entries[id],updates=[];for(let i=0;i<e.points.length;i++){const p=e.points[i],n=e.normals[i];if(p.y<-.25||p.y>.18||n.lengthSq()<.5)continue;const bucket=cell(p),neighbors=new Map();for(let x=-1;x<=1;x++)for(let y=-1;y<=1;y++)for(let z=-1;z<=1;z++)for(const q of grid.get(key([bucket[0]+x,bucket[1]+y,bucket[2]+z]))||[]){if(q.id===id||n.dot(q.n)<.20)continue;const distance=p.distanceTo(q.p);if(distance>=radius)continue;const weight=Math.pow(1-distance/radius,2);if(!neighbors.has(q.id))neighbors.set(q.id,{n:new T.Vector3(),weight:0,peak:0});const a=neighbors.get(q.id);a.n.addScaledVector(q.n,weight);a.weight+=weight;a.peak=Math.max(a.peak,weight);}if(!neighbors.size)continue;const target=n.clone();for(const a of neighbors.values())if(a.weight>0&&a.n.lengthSq()>1e-10)target.addScaledVector(a.n.normalize(),a.peak);target.normalize();const result=n.clone().lerp(target,.80).normalize();if(result.distanceToSquared(n)>1e-10)updates.push([i,result.applyMatrix3(e.inverseNormal).normalize()]);}if(updates.length){const g=e.mesh.geometry.clone();for(const [i,n]of updates)g.attributes.normal.setXYZ(i,n.x,n.y,n.z);g.attributes.normal.needsUpdate=true;e.mesh.geometry=g;changed+=updates.length;affected.push({name:e.mesh.name,vertices:updates.length});}}u.luciaPelvisSeamBlend={changed,affected,radius};
+           }
+          `;const marker='function installLuciaPelvisBridge(';if(s.split(marker).length!==2)throw Error('Pelvis helper boundary changed');s=s.replace(marker,helper+marker);s='// LUCIA_PELVIS_SEAM_BLEND_V1\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-seam-after.js',s);
+          JS
+      - name: Check localized normals and preserve closed surface and moving rig
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-seam-blend/node_modules/three');if(!fs.existsSync('/tmp/lucia-seam-after.js')){if(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_PELVIS_SEAM_BLEND_V1'))process.exit(0);throw Error('Candidate missing');}function load(file){const c={window:{},console,Math};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}const old=load('/tmp/lucia-seam-before.js'),cur=load('/tmp/lucia-seam-after.js');function signature(h,includeNormals){const out=[];h.traverse(o=>{if(o.isMesh)out.push([o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray(),Object.keys(o.geometry.attributes).filter(k=>includeNormals||k!=='normal').sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.metalness,m.flatShading,m.skinning])]);});return JSON.stringify(out);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id),true)===signature(cur.build(T,id),true),'Unrelated character changed');
+          const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');assert(signature(a,false)===signature(b,false),'Non-normal model data changed');assert(b.userData.luciaPelvisSeamBlend.changed>=30,'Insufficient contact normals blended');a.updateMatrixWorld(true);b.updateMatrixWorld(true);const aa=[],bb=[];a.traverse(o=>{if(o.isMesh)aa.push(o);});b.traverse(o=>{if(o.isMesh)bb.push(o);});assert(aa.length===bb.length);const inv=new T.Matrix4().copy(b.userData.hips.matrixWorld).invert();let changed=0;for(let j=0;j<aa.length;j++){const x=aa[j].geometry.attributes.normal,y=bb[j].geometry.attributes.normal;if(!x&&!y)continue;assert(x&&y&&x.count===y.count);const M=inv.clone().multiply(bb[j].matrixWorld);for(let i=0;i<x.count;i++)if(x.getX(i)!==y.getX(i)||x.getY(i)!==y.getY(i)||x.getZ(i)!==y.getZ(i)){const p=new T.Vector3().fromBufferAttribute(bb[j].geometry.attributes.position,i).applyMatrix4(M),n=new T.Vector3().fromBufferAttribute(y,i);assert(p.y>=-.250001&&p.y<=.180001,'Normals outside approved area changed');assert(n.toArray().every(Number.isFinite)&&Math.abs(n.length()-1)<1e-5);changed++;}}assert(changed===b.userData.luciaPelvisSeamBlend.changed);
+          let poses=0;for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),u=h.userData,m=h.getObjectByName('lucia-pelvis-skin-bridge');assert(m&&m.isSkinnedMesh&&u.luciaPelvisGapBridge&&u.guns.pistol&&u.guns.rifle);for(const angle of [-.8,-.4,0,.4,.8,0]){u.Lg[0].hp.rotation.x=angle;u.Lg[1].hp.rotation.x=-angle;u.spine.rotation.y=angle*.12;h.updateMatrixWorld(true);m.onBeforeRender();assert(Array.from(m.skeleton.boneMatrices).every(Number.isFinite));h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});poses++;}}
+          fs.copyFileSync('/tmp/lucia-seam-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-pelvis-seam-blend-check.json',JSON.stringify({passed:true,changedNormalVertices:changed,affected:b.userData.luciaPelvisSeamBlend.affected,poseChecks:poses,contactRadius:.028,allPositionsAndIndicesUnchanged:true,gapSurfaceTopologyUnchanged:true,skinWeightsAndMaterialsUnchanged:true,otherCharactersUnchanged:true,scope:'Localized bind-pose contact-normal blending only; no reshaping, topology welding, new layers, or animation-code edits. Rendered seam appearance and live deployment not verified.'},null,2)+'\n');
+          JS
+      - name: Publish only validated shading blend
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-pelvis-seam-blend-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Blend Lucia pelvis stomach and thigh contact shading while preserving shape and rig'
+          git push origin HEAD:main
