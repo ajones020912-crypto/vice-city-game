@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "changedVertices": 288,
+  "sideForwardGains": [
+    0.01396412909030914,
+    0.013964148759841921
+  ],
+  "sideOutwardGains": [
+    0.0059846267104148865,
+    0.005984634160995483
+  ],
+  "additionalCenterRecession": 0.007628061175346368,
+  "maximumCenterDeformation": 0.025628067752181412,
+  "poseChecks": 6,
+  "torsoTopologyUnchanged": true,
+  "noNewPartsOrOpenings": true,
+  "nonTorsoGeometryMaterialsAndRigTransformsUnchanged": true,
+  "scope": "Bounded paired fullness and center-contour refinement only; no anatomical details or separate meshes. Rendered silhouette, smoothness and live deployment not verified."
+}
