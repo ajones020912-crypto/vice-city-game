@@ -1,0 +1,65 @@
+name: Add Lucia leopard bikini over preserved black base layer
+on:
+  push:
+    branches: [lucia-outfits]
+    paths: ['.github/workflows/lucia-leopard-bikini.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-outfits-swimwear
+  cancel-in-progress: false
+jobs:
+  swimsuit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: lucia-outfits
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-swimwear" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Prepare separate printed swimsuit and constrained outfit selector
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-swimwear/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_LEOPARD_BIKINI_V1'))process.exit(0);if(!s.includes('// LUCIA_SMALLER_CONNECTED_BRIEFS_V2'))throw Error('Approved base garment revision required');fs.writeFileSync('/tmp/lucia-swim-before.js',s);function walk(n,f){f(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f);}else if(v&&typeof v.type==='string')walk(v,f);}}const nodes=[];walk(acorn.parse(s,{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='lucia')nodes.push(n);});if(nodes.length!==1)throw Error('Lucia builder changed');const node=nodes[0];
+          const helper=String.raw`
+           function addLuciaLeopardBikini(T,h){
+            const u=h.userData;if(u.luciaSwimwearInstalled)return;const bra=h.getObjectByName('lucia-tailored-bra'),briefs=h.getObjectByName('lucia-fitted-black-briefs');if(!bra||!briefs||!briefs.isSkinnedMesh)throw Error('Permanent base garments missing');const braParent=bra.parent,briefsParent=briefs.parent;
+            function printedMaterial(skinning){const m=new T.MeshStandardMaterial({color:0xffffff,roughness:.82,metalness:0,side:T.DoubleSide,transparent:false,opacity:1,skinning});m.name='lucia-pink-purple-leopard-swim-fabric';m.onBeforeCompile=shader=>{if(!shader.vertexShader.includes('#include <begin_vertex>')||!shader.fragmentShader.includes('#include <color_fragment>'))throw Error('Unsupported swimsuit shader');shader.vertexShader='varying vec3 vLuciaSwimPosition;\n'+shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvLuciaSwimPosition=position;');shader.fragmentShader='varying vec3 vLuciaSwimPosition;\nfloat luciaSwimHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',String.raw\`#include <color_fragment>
+              vec2 swimUV=vec2(vLuciaSwimPosition.x*31.0+vLuciaSwimPosition.z*13.0,vLuciaSwimPosition.y*31.0);
+              vec2 swimCell=floor(swimUV);float swimRing=0.0;float swimCenter=0.0;
+              for(int sy=-1;sy<=1;sy++){for(int sx=-1;sx<=1;sx++){
+               vec2 cell=swimCell+vec2(float(sx),float(sy));float seed=luciaSwimHash(cell);
+               vec2 center=cell+vec2(0.23+0.54*seed,0.23+0.54*luciaSwimHash(cell+vec2(5.2,1.7)));
+               vec2 delta=swimUV-center;float angle=seed*6.2831853;delta=mat2(cos(angle),-sin(angle),sin(angle),cos(angle))*delta;
+               delta*=vec2(1.0+0.65*seed,1.0);float polar=atan(delta.y,delta.x);float radius=length(delta)*(1.0+0.12*sin(polar*3.0+seed*9.0));
+               float outer=1.0-smoothstep(0.265,0.300,radius);float inner=1.0-smoothstep(0.140,0.180,radius);
+               float broken=0.38+0.62*smoothstep(-0.45,0.05,sin(polar*2.0+seed*12.0));swimRing=max(swimRing,(outer-inner)*broken);swimCenter=max(swimCenter,inner);
+              }}
+              vec3 swimPink=pow(vec3(0.84,0.33,0.65),vec3(2.2));vec3 swimLight=pow(vec3(0.96,0.51,0.76),vec3(2.2));vec3 swimPurple=pow(vec3(0.23,0.07,0.25),vec3(2.2));
+              diffuseColor.rgb*=mix(mix(swimPink,swimLight,swimCenter*0.7),swimPurple,swimRing);
+             \`);};m.customProgramCacheKey=()=> 'lucia-leopard-bikini-v1';return m;}
+            function shellGeometry(source){const g=source.clone(),p=g.attributes.position,n=g.attributes.normal;if(!n)throw Error('Garment normals missing');for(let i=0;i<p.count;i++)p.setXYZ(i,p.getX(i)+n.getX(i)*.0035,p.getY(i)+n.getY(i)*.0035,p.getZ(i)+n.getZ(i)*.0035);p.needsUpdate=true;g.computeBoundingBox();g.computeBoundingSphere();return g;}
+            const top=bra.clone(true),topMaterial=printedMaterial(false),bottomMaterial=printedMaterial(true);top.name='lucia-swimsuit-top';top.traverse(o=>{o.name='lucia-swimsuit-'+o.name.replace(/^lucia-(?:swimsuit-)?/,'');o.userData.luciaSwimwearOverlay=true;if(o.isMesh){o.geometry=shellGeometry(o.geometry);o.material=topMaterial;o.castShadow=true;o.receiveShadow=true;}});top.name='lucia-swimsuit-top';braParent.add(top);const bottom=new T.SkinnedMesh(shellGeometry(briefs.geometry),bottomMaterial);bottom.name='lucia-swimsuit-bottom';bottom.userData.luciaSwimwearOverlay=true;bottom.position.copy(briefs.position);bottom.quaternion.copy(briefs.quaternion);bottom.scale.copy(briefs.scale);bottom.castShadow=true;bottom.receiveShadow=true;bottom.frustumCulled=false;briefsParent.add(bottom);bottom.bind(briefs.skeleton,briefs.bindMatrix);bottom.onBeforeRender=briefs.onBeforeRender;bottom.onBeforeRender();
+            const outfits=Object.freeze([Object.freeze({id:'base',name:'Black base layer',removable:false}),Object.freeze({id:'leopard-bikini',name:'Pink and purple leopard bikini',removable:true})]);u.luciaOutfits=outfits;u.setLuciaOutfit=function(id){if(!outfits.some(o=>o.id===id))throw Error('Unknown Lucia outfit; base garments cannot be removed');if(bra.parent!==braParent)braParent.add(bra);if(briefs.parent!==briefsParent)briefsParent.add(briefs);bra.traverse(o=>{o.visible=true;});briefs.visible=true;top.visible=bottom.visible=id==='leopard-bikini';u.luciaOutfit=id;return id;};api.setLuciaOutfit=function(character,id){if(!character||!character.userData||typeof character.userData.setLuciaOutfit!=='function')throw Error('Expected Lucia outfit-enabled character');return character.userData.setLuciaOutfit(id);};u.luciaSwimwearInstalled=true;u.setLuciaOutfit('leopard-bikini');
+           }
+          `.replace(/\\\`/g,'`');s=s.slice(0,node.body.end-1)+'\n addLuciaLeopardBikini(T,h);\n'+s.slice(node.body.end-1);s=s.slice(0,node.start)+helper+s.slice(node.start);s='// LUCIA_LEOPARD_BIKINI_V1\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-swim-after.js',s);
+          JS
+      - name: Verify preserved base garments separate swimsuit shaders outfit switching and rig
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-swimwear/node_modules/three');if(!fs.existsSync('/tmp/lucia-swim-after.js')){assert(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_LEOPARD_BIKINI_V1'));process.exit(0);}function load(file){const c={window:{},console,Math};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}const old=load('/tmp/lucia-swim-before.js'),cur=load('/tmp/lucia-swim-after.js');function signature(h){const out=[];h.traverse(o=>{if(o.userData.luciaSwimwearOverlay)return;const r=[o.type,o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()];if(o.isMesh)r.push(Object.keys(o.geometry.attributes).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.metalness,m.flatShading,m.skinning,m.transparent,m.opacity]));out.push(r);});return JSON.stringify(out);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)),'Other character changed');let poses=0,switches=0;for(const merge of [false,true]){const a=old.build(T,'luciaC',{merge}),h=cur.build(T,'luciaC',{merge}),u=h.userData,bra=h.getObjectByName('lucia-tailored-bra'),briefs=h.getObjectByName('lucia-fitted-black-briefs'),top=h.getObjectByName('lucia-swimsuit-top'),bottom=h.getObjectByName('lucia-swimsuit-bottom');assert(signature(a)===signature(h),'Existing body base garments or rig changed');assert(top&&bottom&&bottom.isSkinnedMesh&&bottom.skeleton===briefs.skeleton&&bottom.geometry!==briefs.geometry);assert(u.luciaOutfit==='leopard-bikini'&&top.visible&&bottom.visible&&bra.visible&&briefs.visible);const material=bottom.material,shader={vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:T.ShaderLib.standard.fragmentShader};material.onBeforeCompile(shader);assert(shader.vertexShader.includes('vLuciaSwimPosition=position;')&&shader.fragmentShader.includes('swimPurple')&&!material.transparent&&material.opacity===1);for(const id of ['base','leopard-bikini','base','leopard-bikini']){cur.setLuciaOutfit(h,id);assert(bra.visible&&briefs.visible&&top.visible===(id==='leopard-bikini')&&bottom.visible===(id==='leopard-bikini'));switches++;}assert.throws(()=>cur.setLuciaOutfit(h,'remove-all'));assert(u.luciaOutfit==='leopard-bikini'&&bra.visible&&briefs.visible);const bp=bra.parent,pp=briefs.parent;bp.remove(bra);pp.remove(briefs);bra.visible=false;briefs.visible=false;cur.setLuciaOutfit(h,'base');assert(bra.parent===bp&&briefs.parent===pp&&bra.visible&&briefs.visible);cur.setLuciaOutfit(h,'leopard-bikini');assert(signature(a)===signature(h),'Base restoration changed original geometry');for(const angle of [-.7,0,.7]){u.spine.rotation.y=angle*.2;u.Lg[0].hp.rotation.x=angle;u.Lg[1].hp.rotation.x=-angle;h.updateMatrixWorld(true);bottom.onBeforeRender();assert(Array.from(bottom.skeleton.boneMatrices).every(Number.isFinite));h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh)for(const k of ['position','normal'])if(o.geometry.attributes[k])assert(Array.from(o.geometry.attributes[k].array).every(Number.isFinite));});poses++;}}fs.copyFileSync('/tmp/lucia-swim-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-leopard-bikini-check.json',JSON.stringify({passed:true,branch:'lucia-outfits',availableOutfits:['base','leopard-bikini'],defaultOutfit:'leopard-bikini',outfitSwitchChecks:switches,poseChecks:poses,baseBraBriefsBodySkinToneAndRigPreserved:true,baseRestoredByOutfitSelector:true,independentOpaqueSwimsuitShells:true,proceduralPinkPurpleLeopardPrint:true,reference:'User-approved Cossky Lucia Caminos pink/purple leopard bikini replica photograph; not verified official Rockstar artwork.',scope:'Outfit API manages only the swimsuit overlay and restores retained base garment objects. No wardrobe UI or tamper-proof global lock is claimed. Shader source injection and structural checks are not GPU rendering, visual fit, animation clipping or deployment verification.'},null,2)+'\n');
+          JS
+      - name: Publish validated swimsuit only to outfit branch
+        run: |
+          git fetch origin lucia-outfits
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/lucia-outfits)" || { echo 'Outfit branch changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-leopard-bikini-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Add pink purple leopard bikini overlay and base-safe Lucia outfit switching'
+          git push origin HEAD:refs/heads/lucia-outfits
