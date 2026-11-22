@@ -230,6 +230,47 @@ small{color:#b9cce0}
 </style><style id="cleanMinimapStyle">
 #mini{width:264px;height:222px;right:18px;bottom:18px;border-radius:14px;border:1px solid #b7d3df55;box-shadow:0 10px 28px #0008;background:#0c1824;overflow:hidden}#mini canvas{width:100%;height:100%;border-radius:14px}#speedo{right:25px;bottom:253px}@media(max-width:800px),(max-height:650px){#mini{width:220px;height:185px;right:12px;bottom:12px}#speedo{right:18px;bottom:211px}}
 </style>
+
+<style id="full-screen-home-art">
+#overlay{
+  position:fixed !important; inset:0 !important;
+  width:100vw !important; height:100vh !important;
+  min-height:100dvh !important;
+  background:#17213e url('/assets/vice-city-home.jpg') center center / cover no-repeat !important;
+  overflow:hidden !important;
+}
+#overlay .home-card{
+  width:100% !important; height:100% !important; min-height:100dvh !important;
+  max-width:none !important; max-height:none !important;
+  box-sizing:border-box !important;
+  justify-content:flex-end !important;
+  padding:0 20px clamp(34px,7vh,76px) !important;
+  background:transparent !important; border:0 !important; border-radius:0 !important;
+  box-shadow:none !important;
+}
+#overlay .home-logo-wrap{display:none !important}
+#overlay .home-actions{
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  width:min(560px,92vw) !important;
+  gap:12px !important; margin:0 !important;
+}
+#overlay .home-btn{
+  min-width:0 !important; min-height:66px !important;
+  padding:13px 12px !important; box-sizing:border-box !important;
+  border-radius:12px !important; text-align:center !important;
+  backdrop-filter:blur(7px);
+}
+#overlay .continue-btn{grid-column:1 / -1 !important;width:100% !important;height:38px !important;min-height:38px !important}
+#overlay .home-status{margin:12px 0 0 !important;color:#fff !important;text-shadow:0 2px 8px #000 !important}
+#overlay .home-foot{bottom:12px !important;color:#fff !important;text-shadow:0 2px 8px #000 !important}
+@media(max-width:520px){
+  #overlay .home-card{padding-bottom:54px !important}
+  #overlay .home-actions{width:min(440px,92vw) !important;gap:8px !important}
+  #overlay .home-btn{min-height:58px !important;padding:10px 6px !important;font-size:12px !important}
+}
+</style>
+
 </head>
 <body>
 <div id="hud" class="panel"><b style="color:#ff83bd;letter-spacing:2px">VICE CITY</b> · <span id="char">JASON</span><br>Cash: $<span id="cash">500</span>　Time: <span id="time">08:00</span><br>Vehicle: <span id="vehicle">On foot</span><br>Rep: <span id="rep">0</span> · Profile: <span id="profile">Pro</span>
