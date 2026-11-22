@@ -1,0 +1,78 @@
+name: Refine Lucia reference inspired body and skin tone
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-reference-body-tone.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  body:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-body-ref" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Prepare moderate reference inspired silhouette and uniform tan
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess
+          p=Path('js/reference-characters.js');s=p.read_text();Path('/tmp/lucia-body-before.js').write_text(s)
+          if 'function fitLuciaReferenceBodyClothes(' in s: raise SystemExit('Reference body pass already installed.')
+          s,count=re.subn(r'(luciaC:\{[^\n]*?\bskin:)0x[0-9a-fA-F]+',r'\g<1>0xa06c4d',s)
+          if count!=1: raise SystemExit('Expected one Lucia skin preset.')
+          def edit(a,b):
+           global s
+           if s.count(a)!=1: raise SystemExit('Unexpected body anchor: '+a[:100])
+           s=s.replace(a,b,1)
+          edit('xScale=1+.04*waist+.08*chest;','xScale=1-.015*waist+.04*chest;')
+          edit('xScale=1+.16*hip-.025*waist;','xScale=1+.10*hip-.015*waist;')
+          edit('zScale=1+.10*hip-.015*waist','zScale=1+.06*hip-.01*waist')
+          edit('xScale=1+.18*k;zScale=1+.14*k','xScale=1+.12*k;zScale=1+.10*k')
+          edit('v.z *= 1 + 0.30 * seat;','v.z *= 1 + 0.18 * seat;')
+          edit('installLuciaDenimV3(T,h);','installLuciaDenimV3(T,h);fitLuciaReferenceBodyClothes(T,h);')
+          helper='''
+           // Artist-selected approximation, not color sampling or 3D reconstruction from screenshots.
+           function fitLuciaReferenceBodyClothes(T,h){
+            const u=h.userData,mesh=h.getObjectByName('lucia-seamless-denim');
+            if(!mesh||!mesh.isSkinnedMesh)throw Error('Expected animated seamless denim');
+            const old=mesh.geometry,g=old.clone(),p=g.attributes.position,weights=g.attributes.skinWeight;
+            if(!weights)throw Error('Missing garment skin weights');
+            for(let i=0;i<p.count;i++){
+             const y=p.getY(i),hip=Math.exp(-Math.pow((y+.075)/.12,2)),thigh=Math.exp(-Math.pow((y+.24)/.10,2));
+             p.setX(i,p.getX(i)*(1-.045*hip-.040*thigh));p.setZ(i,p.getZ(i)*(1-.065*hip-.025*thigh));
+             const t=Math.max(0,Math.min(1,(.035-y)/.20)),blend=t*t*(3-2*t),right=Math.max(0,Math.min(1,.5+p.getX(i)/.10));weights.setXYZW(i,1-blend,blend*(1-right),blend*right,0);
+            }
+            p.needsUpdate=true;weights.needsUpdate=true;g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();mesh.geometry=g;old.dispose();u.m.skin.roughness=.76;u.luciaReferenceBody=true;
+           }
+          '''
+          edit(' function finishLuciaV4(',helper+' function finishLuciaV4(')
+          Path('/tmp/lucia-body-after.js').write_text(s)
+          subprocess.run(['node','--check','/tmp/lucia-body-after.js'],check=True)
+          PY
+      - name: Verify proportions garment fit unchanged face and safe rig
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-body-ref/node_modules/three');
+          function load(p){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}
+          const old=load('/tmp/lucia-body-before.js'),cur=load('/tmp/lucia-body-after.js');assert(JSON.stringify(old.DESIGNS.jasonC)===JSON.stringify(cur.DESIGNS.jasonC));const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');assert(b.userData.m.skin.color.getHex()===0xa06c4d);
+          function signature(root){const out=[];root.traverse(o=>{if(o.isMesh)out.push([o.name,o.position.toArray(),o.scale.toArray(),Array.from(o.geometry.attributes.position.array)]);});return JSON.stringify(out);}
+          assert(signature(a.userData.headP)===signature(b.userData.headP));
+          const rig=u=>[u.hips.position.toArray(),u.spine.position.toArray(),u.headP.position.toArray(),...u.A.flatMap(a=>[a.sh.position.toArray(),a.el.position.toArray()]),...u.Lg.flatMap(l=>[l.hp.position.toArray(),l.kn.position.toArray()])];assert(JSON.stringify(rig(a.userData))===JSON.stringify(rig(b.userData)));
+          function waist(h){let width=0;const v=new T.Vector3();for(const o of h.userData.spine.children){if(!o.isMesh||o.material!==h.userData.m.skin)continue;o.updateMatrix();const p=o.geometry.attributes.position;for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrix);if(Math.abs(v.y-.10)<.035)width=Math.max(width,Math.abs(v.x));}}return width;}
+          assert(waist(a)>0&&waist(b)<waist(a));
+          const am=a.getObjectByName('lucia-seamless-denim'),bm=b.getObjectByName('lucia-seamless-denim');am.geometry.computeBoundingBox();bm.geometry.computeBoundingBox();assert(bm.geometry.boundingBox.getSize(new T.Vector3()).x<am.geometry.boundingBox.getSize(new T.Vector3()).x);assert(JSON.stringify(Array.from(am.geometry.index.array))===JSON.stringify(Array.from(bm.geometry.index.array)));
+          for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),u=h.userData,m=h.getObjectByName('lucia-seamless-denim');assert(u.luciaReferenceBody&&u.luciaContinuousShoulders&&u.luciaHipTransition);const w=m.geometry.attributes.skinWeight;for(let i=0;i<w.count;i++)assert(Math.abs(w.getX(i)+w.getY(i)+w.getZ(i)+w.getW(i)-1)<1e-5);for(const angle of [-.7,0,.7]){u.Lg[0].hp.rotation.x=angle;u.Lg[1].hp.rotation.x=-angle;u.A[0].sh.rotation.x=angle;h.updateMatrixWorld(true);m.onBeforeRender();assert(Array.from(m.skeleton.boneMatrices).every(Number.isFinite));}h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});}
+          fs.copyFileSync('/tmp/lucia-body-after.js','js/reference-characters.js');console.log('Geometry and rig checks passed. Screenshot resemblance and skin tone require in-game visual review.');
+          JS
+      - name: Commit reference inspired body pass after checks
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Refine Lucia warm tan moderate athletic proportions and coordinated denim fit'
+          git push origin HEAD:main
