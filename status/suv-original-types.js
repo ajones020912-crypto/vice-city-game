@@ -1,0 +1,16 @@
+CAR_TYPES={
+ sedan:{name:'Sedan',L:4.7,W:1.86,wb:2.75,wr:.34,mass:1400,power:8.5,top:40,grip:9,steer:.58,hp:100,
+  body:[[-2.35,.32],[2.35,.32],[2.4,.55],[2.3,.72],[1.55,.87],[.75,.93],[-1.6,.95],[-2.3,.92],[-2.4,.62]],gh:[[-1.4,.93],[.8,.93],[.4,1.43],[-.9,1.45],[-1.25,1.2]],colors:[0xb8352f,0x2e6fa8,0xdadada,0x2a2f3a,0x5d8a5e,0xc9a24a,0x7c5fa8]},
+ sports:{name:'Sports car',L:4.4,W:1.92,wb:2.6,wr:.34,mass:1250,power:12.5,top:56,grip:11,steer:.6,hp:90,
+  body:[[-2.2,.3],[2.2,.3],[2.27,.5],[2.1,.67],[1.2,.73],[.55,.83],[-1.3,.87],[-2.1,.82],[-2.27,.55]],gh:[[-1.05,.84],[.6,.84],[.15,1.2],[-.8,1.22],[-1.15,1.0]],colors:(window.VCSupercar&&window.VCSupercar.GAME_COLORS)||[0xff4f9a,0xf0c44d,0x2ec4e8,0xe94e68,0xffffff,0x20252d,0x6fd68b]},
+ rareCoupe:{name:'Sports car',L:4.5,W:1.94,wb:2.68,wr:.35,mass:1320,power:13.2,top:59,grip:11.5,steer:.61,hp:105,
+  body:[[-2.25,.27],[2.2,.27],[2.28,.43],[2.08,.58],[1.28,.66],[.42,.76],[-1.42,.78],[-2.12,.62],[-2.28,.43]],
+  gh:[[-1.12,.76],[.52,.76],[.12,1.13],[-.82,1.15],[-1.18,.91]],
+  colors:(window.VCSupercar&&window.VCSupercar.GAME_COLORS)||[0x6a2cd8]},
+ suv:{name:'SUV',L:4.8,W:1.96,wb:2.9,wr:.38,mass:2000,power:7,top:36,grip:8.5,steer:.5,hp:130,
+  body:[[-2.4,.4],[2.4,.4],[2.43,.72],[2.3,.96],[1.6,1.1],[.9,1.14],[-2.2,1.16],[-2.43,.92]],gh:[[-2.25,1.12],[1.0,1.12],[.55,1.74],[-2.2,1.78]],colors:[0x1c2430,0xcfd3d6,0x6b4a35,0x8c1d1d,0x3d5a45]},
+ van:{name:'Van',L:5.0,W:2.0,wb:3.1,wr:.36,mass:2300,power:6,top:32,grip:8,steer:.48,hp:140,
+  body:[[-2.5,.4],[2.5,.4],[2.55,.8],[2.3,1.12],[1.6,1.28],[-2.5,1.35]],gh:[[-2.5,1.3],[1.6,1.3],[1.15,2.05],[-2.5,2.18]],colors:[0xe8e8e8,0x3b6ea5,0xc2a44b,0x8b2e2e]},
+ taxi:{name:'Taxi',base:'sedan',colors:[0xf5c518]},
+ police:{name:'Police cruiser',base:'sedan',colors:[0xf2f4f7],hp:140,power:10.5,top:46},
+};

@@ -268,6 +268,7 @@ small{color:#b9cce0}
 <script src="js/characters.js"></script>
 <script src="js/reference-characters.js"></script>
 <script src="js/supercar.js"></script>
+<script src="js/suv-details-live.js?v=2"></script>
 <script>
 (()=>{'use strict';
 if(!window.THREE){document.querySelector('.card').innerHTML='<h2>Could not load 3D engine</h2><p>Check your internet connection and reload.</p>';return;}
@@ -4706,7 +4707,27 @@ function mountDevFlightMenu(){
 }
 mountDevFlightMenu();
 
-try{boot()}catch(err){console.error('boot failed',err);const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small style="color:#ff8">Boot error — check console. You can still try Singleplayer.</small>'}
+try{// SUV_DETAILS_LIVE_V2
+if(!window.VCSUVDetails||window.VCSUVDetails.version!==2)throw Error('SUV detail module failed to load');
+const originalSUVLiveFactory=makeCarVisual;
+makeCarVisual=function(tk,color){const v=originalSUVLiveFactory.apply(this,arguments);if(tk!=='suv')return v;try{return window.VCSUVDetails.enhance(T,v,CAR_TYPES[tk],color);}catch(error){G.suvDetailError=String(error.message||error);console.error('SUV enhancement failed',error);return v;}};
+G.suvDetailVersion=2;
+if(new URLSearchParams(location.search).get('suv-qa')==='1')window.__runSUVLiveCheck=function(){
+ const check=(condition,message)=>{if(!condition)throw Error(message);},t=CAR_TYPES.suv,registry=JSON.stringify(CAR_TYPES),base=originalSUVLiveFactory('suv',0x356c87),before=originalSUVLiveFactory('suv',0x356c87);
+ const refs={g:base.g,ch:base.ch,body:base.body,pm:base.pm,wheels:base.wheels},oldWheelObjects=base.wheels.map(w=>({entry:w,w:w.w,piv:w.piv}));
+ function metrics(v){let meshes=0,triangles=0;v.g.traverse(o=>{if(o.isMesh){meshes++;const a=o.geometry.attributes.position;check(a&&Array.from(a.array).every(Number.isFinite),'Non-finite SUV geometry');triangles+=(o.geometry.index?o.geometry.index.count:a.count)/3;}});return{meshes,triangles};}
+ const old=metrics(base);window.VCSUVDetails.enhance(T,base,t,0x356c87);const added=metrics(base);
+ check(base.suvDetailed,'SUV was not enhanced');for(const k of Object.keys(refs))check(base[k]===refs[k],'Original '+k+' replaced');
+ for(let i=0;i<oldWheelObjects.length;i++){const a=oldWheelObjects[i],b=base.wheels[i];check(a.entry===b&&a.w===b.w&&a.piv===b.piv,'Wheel rig replaced');}
+ check(JSON.stringify(CAR_TYPES)===registry,'Physics/type configuration changed');check(added.triangles-old.triangles<=3500,'SUV triangle budget exceeded');check(added.meshes-old.meshes<=14,'SUV draw-call budget exceeded');
+ const after=makeCarVisual('suv',0x356c87);check(after.suvDetailed&&!G.suvDetailError,'Live factory did not enhance the SUV');
+ if(CAR_TYPES.sedan)check(!makeCarVisual('sedan',0x356c87).suvDetailed,'Non-SUV was modified');
+ const detailBounds=new T.Box3().setFromObject(after.g.getObjectByName('suv-exterior-details'));check(detailBounds.min.x>=-t.W/2-.04&&detailBounds.max.x<=t.W/2+.04&&detailBounds.min.z>=-t.L/2-.04&&detailBounds.max.z<=t.L/2+.04,'Detail geometry exceeds vehicle footprint');
+ function preview(v){const scene=new T.Scene();scene.background=new T.Color(0x23303c);scene.add(v.g);scene.add(new T.AmbientLight(0xffffff,.85));const lamp=new T.DirectionalLight(0xffffff,1.1);lamp.position.set(4,8,6);scene.add(lamp);const floor=new T.Mesh(new T.PlaneGeometry(30,30),new T.MeshStandardMaterial({color:0x55616a,roughness:1}));floor.rotation.x=-Math.PI/2;floor.position.y=-.04;scene.add(floor);const cam=new T.PerspectiveCamera(35,1.5,.1,100);cam.position.set(t.L*1.05,t.L*.65,t.L*1.3);cam.lookAt(0,1,0);const renderer=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setSize(900,600);renderer.outputEncoding=T.sRGBEncoding;renderer.render(scene,cam);check(renderer.info.render.calls>0,'SUV preview did not render');const image=renderer.domElement.toDataURL('image/png');renderer.dispose();return image;}
+ return{passed:true,version:2,before:old,after:added,addedTriangles:added.triangles-old.triangles,addedMeshes:added.meshes-old.meshes,dimensions:{W:t.W,L:t.L},beforePNG:preview(before),afterPNG:preview(after)};
+};
+
+boot()}catch(err){console.error('boot failed',err);const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small style="color:#ff8">Boot error — check console. You can still try Singleplayer.</small>'}
 // Expose for menu handlers
 window.G=G;window.begin=begin;window.mpActive=typeof mpActive!=='undefined'?mpActive:false;
 window.__vcBegin=function(cont){try{const ov=document.getElementById('overlay');if(ov){ov.classList.add('home-hidden');ov.style.setProperty('display','none','important')}G.multiplayer=false;window.mpActive=false;begin(!!cont)}catch(e){console.error(e)}};
