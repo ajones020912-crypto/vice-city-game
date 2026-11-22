@@ -4786,7 +4786,7 @@ async function devFlightUnlock(raw){
  const token=++devFlightState.epoch,data=new TextEncoder().encode(String(raw).trim().toUpperCase());
  const digest=await crypto.subtle.digest('SHA-256',data),hash=Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join('');
  if(token!==devFlightState.epoch||G.state!=='paused'||G.multiplayer)return{ok:false,message:'Game state changed. Try again.'};
- if(hash!=='d5e1da7ce70c5fbfa581aa73383ff10fa5b1c1edf831759a7b5f633a99e3beaa')return{ok:false,message:'Incorrect code. Please try again.'};
+ if(hash!=='b27c4d18718678f40c889a159d28bbc43c2254a30c14cbe50e47008273cd8688')return{ok:false,message:'Incorrect code. Please try again.'};
  devFlightState.unlocked=true;const active=devFlightEnable();devFlightRender();return{ok:true,message:active?'Correct code! Flight enabled. Click Resume to fly. Space up, X down, Shift boost.':'Correct code! Dev tools unlocked below. Flight works on foot, outdoors, on dry ground.'};
 }
 const devFlightOriginalFoot=playerOnFoot;
