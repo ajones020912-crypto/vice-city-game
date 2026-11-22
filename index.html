@@ -1528,6 +1528,45 @@ function buildAirport(){
 }
 let airport=null;
 function spawnAirportPlanes(){if(!airport)return;for(const c of cars.slice())if(c.airportStatic)removeCar(c);const a=spawnCar('propPlane',airport.x+205,airport.z+152,Math.PI/2,'parked',0xe8e5d8);a.airportStatic=true;a.keep=true;const j=spawnCar('smallJet',airport.x+225,airport.z+85,Math.PI/2,'parked',0xf1f3f5);j.airportStatic=true;j.keep=true;}
+
+// PALMETTO_GROVE_V1
+const PG={paths:[],homes:[],signs:[]};
+function pgDistance(x,z,a,b){const dx=b.x-a.x,dz=b.z-a.z,t=Math.max(0,Math.min(1,((x-a.x)*dx+(z-a.z)*dz)/(dx*dx+dz*dz||1)));return Math.hypot(x-a.x-t*dx,z-a.z-t*dz)}
+function pgNear(x,z,margin=0){return PG.paths.some(p=>p.points.some((a,i)=>i&&pgDistance(x,z,p.points[i-1],a)<p.width/2+margin))}
+function pgHitsBox(x0,z0,x1,z1,margin=0){return PG.paths.some(p=>p.points.some((b,i)=>{if(!i)return false;const a=p.points[i-1],m=p.width/2+margin;return Math.max(a.x,b.x)+m>x0&&Math.min(a.x,b.x)-m<x1&&Math.max(a.z,b.z)+m>z0&&Math.min(a.z,b.z)-m<z1}))}
+const pgOldDefineRoads=defineRoads;
+defineRoads=function(){
+ pgOldDefineRoads();PG.paths=[];PG.homes=[];PG.signs=[];
+ for(let i=roads.length-1;i>=0;i--){const r=roads[i];if((r.o==='v'&&[-270,-150,-30,90,210].includes(r.c)&&r.a===420&&r.b===1100)||(r.o==='h'&&[540,660,780,900,1020].includes(r.c)&&r.a===-330&&r.b===380))roads.splice(i,1)}
+ addRoad('v',-300,420,1200,14,'city');addRoad('v',300,420,1200,14,'city');
+ addRoad('h',480,-300,380,14,'city');addRoad('h',1080,-300,380,14,'city');
+ const defs=[['Grove Drive',[[-30,480],[-80,550],[-40,650],[80,730],[55,850],[140,970],[90,1080]],14],['Banyan Loop',[[-40,650],[-200,650],[-235,780],[-180,920],[55,850]],12],['Palm Court',[[80,730],[200,710],[230,610]],12]];
+ for(const [name,control,width] of defs){const curve=new T.CatmullRomCurve3(control.map(p=>new T.Vector3(p[0],0,p[1])),false,'centripetal');const points=curve.getPoints(Math.ceil(curve.getLength()/4));PG.paths.push({name,width,curve,points})}
+};
+const pgOldNearRoad=nearRoad;nearRoad=function(x,z,m=0){return pgOldNearRoad(x,z,m)||pgNear(x,z,m)};
+const pgOldFootprint=footprintHitsRoad;footprintHitsRoad=function(x0,z0,x1,z1,m=.8){return pgOldFootprint(x0,z0,x1,z1,m)||pgHitsBox(x0,z0,x1,z1,m)};
+const pgOldRoadClear=roadClear;roadClear=function(x,z,r=3){return pgOldRoadClear(x,z,r)&&!pgNear(x,z,r)};
+const pgOldBakeTerrain=bakeTerrain;bakeTerrain=function(){pgOldBakeTerrain();for(let iz=0;iz<=TN;iz++)for(let ix=0;ix<=TN;ix++){const x=-WS+ix*TS,z=-WS+iz*TS;if(x< -330||x>330||z<450||z>1110)continue;const w=sstep(-330,-300,x)*(1-sstep(300,330,x))*sstep(450,480,z)*(1-sstep(1080,1110,z));const i=iz*(TN+1)+ix;hg[i]=lerp(hg[i],0,w)}};
+const pgOldHouses=houses;houses=function(){pgOldHouses();for(let i=parcels.length-1;i>=0;i--)if(parcels[i].cityId==='sub')parcels.splice(i,1)};
+function buildPalmettoGrove(){
+ const materials={},batches=new Map();
+ function material(color){if(!materials[color])materials[color]=new T.MeshStandardMaterial({color,roughness:.9});return materials[color]}
+ function box(w,h,d,color,x,y,z,angle=0){const m=material(color);if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,x,y,z,angle])}
+ function ribbon(path,offset,width,key,y){const p=[],uv=[],idx=[],pts=path.points;let dist=0;for(let i=0;i<pts.length;i++){const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)],dx=b.x-a.x,dz=b.z-a.z,len=Math.hypot(dx,dz)||1,nx=dz/len,nz=-dx/len;if(i)dist+=pts[i].distanceTo(pts[i-1]);for(const side of [-1,1]){const o=offset+side*width/2;p.push(pts[i].x+nx*o,y,pts[i].z+nz*o);uv.push(side===-1?0:1,dist/14)}if(i){const k=(i-1)*2;idx.push(k,k+2,k+1,k+1,k+2,k+3)}}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();const mesh=new T.Mesh(g,material(key));mesh.name='palmetto-'+path.name;mesh.receiveShadow=true;world.add(mesh)}
+ for(const path of PG.paths){ribbon(path,0,path.width,0x45494b,.055);for(const side of [-1,1]){ribbon(path,side*(path.width/2+1.15),2.2,0xb9b5a8,.085);ribbon(path,side*path.width/2,.20,0xd5d0c3,.10)}}
+ const deadEnd=PG.paths[2].points.at(-1),circle=new T.Mesh(new T.CircleGeometry(14,40),material(0x45494b));circle.rotation.x=-Math.PI/2;circle.position.set(deadEnd.x,.058,deadEnd.z);world.add(circle);
+ const reserved=[[-141.6,600],[97,590],[30,610],[-30,590]];
+ function safe(x,z,hx,hz){if(x-hx< -280||x+hx>280||z-hz<505||z+hz>1055)return false;if(footprintHitsRoad(x-hx,z-hz,x+hx,z+hz,2.5))return false;if(reserved.some(p=>Math.hypot(p[0]-x,p[1]-z)<38))return false;if(Math.hypot(x-deadEnd.x,z-deadEnd.z)<28)return false;if(PG.homes.some(p=>Math.abs(p.x-x)<p.hx+hx+8&&Math.abs(p.z-z)<p.hz+hz+8))return false;if(queryCols(x,z,Math.hypot(hx,hz)+3).some(c=>c.h>1&&x+hx+2>c.x0&&x-hx-2<c.x1&&z+hz+2>c.z0&&z-hz-2<c.z1))return false;return true}
+ const palette=[0xe0cbb1,0xbdd1bd,0xd6b9a5,0xc1d3df,0xe3d9c3];
+ for(let road=0;road<PG.paths.length;road++){const path=PG.paths[road],count=road===2?8:16;for(let i=0;i<count;i++){const t=.07+.86*Math.floor(i/2)/(count/2-1),p=path.curve.getPoint(t),tan=path.curve.getTangent(t),side=i%2?1:-1,off=path.width/2+21,x=p.x+tan.z*side*off,z=p.z-tan.x*side*off,angle=Math.atan2(-tan.z*side,tan.x*side),w=13+(i%3),d=12+(i%2)*2,h=i%5===0?6.3:3.7,hx=Math.abs(Math.cos(angle))*w/2+Math.abs(Math.sin(angle))*d/2,hz=Math.abs(Math.sin(angle))*w/2+Math.abs(Math.cos(angle))*d/2;if(!safe(x,z,hx,hz))continue;const y=heightAt(x,z),forward={x:Math.sin(angle),z:Math.cos(angle)};box(w,h,d,palette[(i+road)%palette.length],x,y+h/2,z,angle);box(w+1,.45,d+1,0x73645b,x,y+h+.23,z,angle);box(w*.65,.2,3,0xe5dfd0,x+forward.x*(d/2+1),y+2.9,z+forward.z*(d/2+1),angle);box(1.1,2.3,.12,0x6e5140,x+forward.x*(d/2+.08),y+1.15,z+forward.z*(d/2+.08),angle);for(const sign of [-1,1])box(2.1,1.25,.14,0x375966,x+forward.x*(d/2+.1)+Math.cos(angle)*sign*3.5,y+1.9,z+forward.z*(d/2+.1)-Math.sin(angle)*sign*3.5,angle);const driveLength=off-d/2-path.width/2+2,driveCenter=d/2+driveLength/2;box(4,.04,driveLength,0xa6a49b,x+forward.x*driveCenter,y+.065,z+forward.z*driveCenter,angle);addCol(x-hx,z-hz,x+hx,z+hz,h+.7);BLD.push({x0:x-hx,x1:x+hx,z0:z-hz,z1:z+hz,H:h+.7,cx:x,cz:z,style:'house',cityId:'sub'});PG.homes.push({x,z,hx,hz});const tx=x-forward.x*(d/2+5),tz=z-forward.z*(d/2+5);if(roadClear(tx,tz,4))palm(tx,tz,.8)}}
+ const pole=material(0x53635a),red=material(0xb82a2e),border=material(0xf0eee2),signCache={};
+ function plate(text,color,w,h,x,y,z,angle){const key=text+color;if(!signCache[key])signCache[key]=new T.MeshBasicMaterial({map:signTex(text,color),toneMapped:false,side:T.DoubleSide});const mesh=new T.Mesh(new T.PlaneGeometry(w,h),signCache[key]);mesh.position.set(x,y,z);mesh.rotation.y=angle;world.add(mesh)}
+ function stop(path,t){const p=path.curve.getPoint(t),d=path.curve.getTangent(t),x=p.x+d.z*(path.width/2+2),z=p.z-d.x*(path.width/2+2);if(zoneName(x,z)!=='PALMETTO GROVE')return;const y=heightAt(x,z),angle=Math.atan2(-d.x,-d.z);box(.09,3.5,.09,0x53635a,x,y+1.75,z);for(const [radius,m,offset] of [[.63,border,0],[.56,red,.012]]){const mesh=new T.Mesh(new T.CircleGeometry(radius,8),m);mesh.geometry.rotateZ(Math.PI/8);mesh.position.set(x+Math.sin(angle)*offset,y+2.35,z+Math.cos(angle)*offset);mesh.rotation.y=angle;world.add(mesh)}plate('STOP','#b82a2e',.76,.30,x+Math.sin(angle)*.025,y+2.35,z+Math.cos(angle)*.025,angle);plate(path.name,'#174b36',3,.52,x,y+3.25,z,angle);PG.signs.push({x,z,name:path.name})}
+ for(const path of PG.paths){stop(path,.035);if(path.name!=='Palm Court')stop(path,.965)}
+ const geometry=new T.BoxGeometry(1,1,1),matrix=new T.Matrix4();for(const [m,items] of batches){const mesh=new T.InstancedMesh(geometry,m,items.length);for(let i=0;i<items.length;i++){const [w,h,d,x,y,z,a]=items[i];matrix.compose(new T.Vector3(x,y,z),new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),a),new T.Vector3(w,h,d));mesh.setMatrixAt(i,matrix)}mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;world.add(mesh)}
+}
+const pgOldBaseMap=buildBaseMap;buildBaseMap=function(){pgOldBaseMap();const ctx=baseMap.getContext('2d');ctx.save();ctx.strokeStyle='#d8d8d8';ctx.lineCap='round';ctx.lineJoin='round';for(const path of PG.paths){ctx.lineWidth=Math.max(1.6,path.width/MAPPX*.8);ctx.beginPath();path.points.forEach((p,i)=>ctx[i?'lineTo':'moveTo']((p.x+WS)/MAPPX,(p.z+WS)/MAPPX));ctx.stroke()}ctx.restore()};
+
 function buildWorld(){
  initMaterials();initPalm();defineRoads();buildNodes();bakeTerrain();buildTerrainMesh();buildRoadMeshes();
  makeParcels();houses();
@@ -1538,7 +1577,7 @@ function buildWorld(){
  buildDowntownPark();
  forceShopDoors();
  portExtras();streetProps();addOuterStreetlights();beachProps();swampProps();hillProps();keysProps();buildSignals();buildAirport();
- finalizeBatches();buildBaseMap();
+ buildPalmettoGrove();finalizeBatches();buildBaseMap();
 }
 
 
