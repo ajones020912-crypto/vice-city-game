@@ -2873,6 +2873,18 @@ function addCrime(p,opts={}){
   if(pl.wanted>before){toast('Wanted level: '+'★'.repeat(pl.wanted)+(pl.wanted>=6?'  MANHUNT!':''));G.hudDirty=true}
   pl.sightT=0;G.hudDirty=true;
 }
+// RED_LIGHTS_V1: entering a signalled junction on red counts as running it; 3 within 7 seconds = one more wanted star
+const RL={node:null,runs:[]},WANTED_AT=[0,1,4,8,14,22,30];
+function updateRedLights(){
+ const c=pl.car;if(G.state!=='play'||!c||c.dead||c.t.aircraft||c.t.boat||c.airborne||!G.sigNodes){RL.node=null;return}
+ let at=null;for(const nd of G.sigNodes)if(Math.abs(c.x-nd.x)<nd.v.hw&&Math.abs(c.z-nd.z)<nd.h.hw){at=nd;break}
+ if(at&&at!==RL.node&&c.speed>4){
+  const axis=Math.abs(c.vx)>Math.abs(c.vz)?'h':'v';
+  if(sigState(at,G.time,axis)===0){const now=G.time;RL.runs=RL.runs.filter(t=>now-t<7);RL.runs.push(now);
+   if(RL.runs.length>=3){RL.runs=[];const next=Math.min(6,(pl.wanted||0)+1);addCrime(Math.max(.1,WANTED_AT[next]-(pl.crime||0)));toast('🚦 Ran 3 red lights: the police want a word',2200)}
+   else toast('🚦 Ran a red light ('+RL.runs.length+'/3)',1300)}}
+ RL.node=at;
+}
 function addWanted(n,why){addCrime(n>0?n*2:.6)}
 function clearWanted(){pl.crime=0;pl.wanted=0;pl.heat={face:0,clothes:0,vehicle:0,weapon:0,partner:0,cctv:0};G.hudDirty=true}
 function killCop(){addCrime(6)}
@@ -3763,7 +3775,7 @@ function updateGators(dt){
   for(const c of cars){if(c.speed<4)continue;if(Math.hypot(c.x-a.x,c.z-a.z)<2.3){hurtGator(a,c.speed*8,c.occ==='player');break}}
  }}
 function showPrompt(t){if(t!==lastPrompt){lastPrompt=t;promptEl.textContent=t;promptEl.style.display=t?'block':'none'}}
-function simulate(dt){updateBreakin(dt);
+function simulate(dt){updateBreakin(dt);updateRedLights();
  G.time+=dt;updateEconomy(dt);G.clock=(G.clock+dt*.06)%24;
  const play=G.state==='play'&&pl.alive;
  if(!pl.inside){
@@ -4810,6 +4822,61 @@ Car.prototype.place=function(){
 };
 const crumpleOriginalRemove=removeCar;
 removeCar=function(c){if(c&&c._crumple){for(const p of c._crumple.parts)p.geometry.dispose();c._crumple=null}return crumpleOriginalRemove.apply(this,arguments)};
+// CRASH_FX_V1: crashes throw sparks, glass, paint chips and dust from the actual contact point; hard hits knock
+// pieces off that bounce and settle on the road; damaged engines steam, then smoke.
+const CFX={debris:[],geo:new T.BoxGeometry(1,1,1),mats:new Map(),last:new WeakMap()};
+const GLASS1=[.82,.93,1],GLASS2=[.45,.6,.7];
+function crashMat(hex,trim){const key=trim?'trim':hex;let m=CFX.mats.get(key);if(!m){m=new T.MeshStandardMaterial(trim?{color:0x1a1c20,roughness:.7,metalness:.2}:{color:hex,roughness:.35,metalness:.35});CFX.mats.set(key,m)}return m}
+function crashFx(c,imp,contact){
+ if(!c||c.t.boat||c.t.aircraft||imp<2)return;
+ if(Math.hypot(c.x-camera.position.x,c.z-camera.position.z)>120)return;
+ const now=G.time||0,prev=CFX.last.get(c)??-9;if(now-prev<.15)return;CFX.last.set(c,now);
+ const sn=Math.sin(c.h),cs=Math.cos(c.h),fw=c.vf<0?-1:1;
+ const px=contact?contact.x:c.x+sn*c.t.L*.45*fw,pz=contact?contact.z:c.z+cs*c.t.L*.45*fw;
+ let nx=contact?contact.nx:-sn*fw,nz=contact?contact.nz:-cs*fw;const nl=Math.hypot(nx,nz)||1;nx/=nl;nz/=nl;
+ const tx=-nz,tz=nx,py=(c.y||0)+.55,s=clamp((imp-2)/18,0,1),R=()=>Math.random()-.5;
+ const col=new T.Color(c.color!=null?c.color:0x888888),paint=[col.r,col.g,col.b],paint2=[col.r*.5,col.g*.5,col.b*.5];
+ // sparks: skate along the surface and bounce off it
+ const ns=4+Math.round(s*26);
+ for(let i=0;i<ns;i++){const along=R()*14*(.4+s),out=1+Math.random()*5*(.5+s);
+  emit(px+R()*.6,py+R()*.5,pz+R()*.6,tx*along+nx*out,1+Math.random()*4*(.4+s),tz*along+nz*out,.25+Math.random()*.4,.14,.03,SPK,FIRE2,9,1)}
+ // dust / pulverised paint puff
+ for(let i=0;i<2+Math.round(s*6);i++)emit(px+R(),py+R()*.4,pz+R(),nx*1.5+R()*2,.6+Math.random(),nz*1.5+R()*2,.9+Math.random()*.8,.5,2.2+s*1.5,DUST,SMK,-.25,.45);
+ // paint chips
+ for(let i=0;i<Math.round(s*14);i++)emit(px+R()*.8,py+R()*.6,pz+R()*.8,nx*(2+Math.random()*4)+R()*4,1.5+Math.random()*3,nz*(2+Math.random()*4)+R()*4,.9+Math.random()*.6,.1,.08,paint,paint2,12,1);
+ // glass on harder hits
+ if(imp>6){const ng=6+Math.round(s*22);for(let i=0;i<ng;i++)emit(px+R()*1.2,py+.35+Math.random()*.5,pz+R()*1.2,nx*(1+Math.random()*4)+R()*5,1+Math.random()*3.5,nz*(1+Math.random()*4)+R()*5,.8+Math.random()*.7,.09,.06,GLASS1,GLASS2,13,1)}
+ // knocked-off pieces (bumper corners, trim, mirror, lamp)
+ if(imp>9){const n=1+(imp>14?1:0)+(imp>20?1:0);for(let i=0;i<n;i++)if(Math.random()<.75)crashDebris(c,px,py,pz,nx,nz,tx,tz,s,i)}
+}
+function crashDebris(c,px,py,pz,nx,nz,tx,tz,s,i){
+ const trim=i===1||Math.random()<.3,m=new T.Mesh(CFX.geo,crashMat(c.color!=null?c.color:0x888888,trim));
+ const big=Math.random()<.4;m.scale.set(big?.9+Math.random()*.6:.25+Math.random()*.35,big?.16+Math.random()*.1:.06+Math.random()*.1,big?.25+Math.random()*.2:.15+Math.random()*.25);
+ m.position.set(px+tx*(Math.random()-.5),py+.2,pz+tz*(Math.random()-.5));m.rotation.set(Math.random()*3,Math.random()*6,Math.random()*3);
+ m.castShadow=G.quality>=2;world.add(m);
+ const sp=3+s*7,a=(Math.random()-.5)*1.6;
+ CFX.debris.push({m,vx:(nx*Math.cos(a)-tx*Math.sin(a)*.6)*sp+(c.vx||0)*.25,vy:2+Math.random()*3+s*3,vz:(nz*Math.cos(a)-tz*Math.sin(a)*.6)*sp+(c.vz||0)*.25,
+  wx:(Math.random()-.5)*14,wy:(Math.random()-.5)*14,wz:(Math.random()-.5)*14,age:0,rest:false});
+ while(CFX.debris.length>36){const d=CFX.debris.shift();world.remove(d.m)}
+}
+function updateCrashFx(dt){
+ for(let i=CFX.debris.length-1;i>=0;i--){const d=CFX.debris[i],m=d.m;d.age+=dt;
+  if(d.age>30){m.position.y-=dt*.25;if(d.age>32){world.remove(m);CFX.debris.splice(i,1)}continue}
+  if(d.rest)continue;
+  d.vy-=18*dt;m.position.x+=d.vx*dt;m.position.y+=d.vy*dt;m.position.z+=d.vz*dt;m.rotation.x+=d.wx*dt;m.rotation.y+=d.wy*dt;m.rotation.z+=d.wz*dt;
+  const g=heightAt(m.position.x,m.position.z)+m.scale.y*.5+.02;
+  if(m.position.y<g){m.position.y=g;if(Math.abs(d.vy)<1.6&&Math.hypot(d.vx,d.vz)<1.2){d.rest=true;m.rotation.x=m.rotation.z=0;continue}
+   d.vy=-d.vy*.32;d.vx*=.6;d.vz*=.6;d.wx*=.5;d.wy*=.6;d.wz*=.5;
+   if(Math.random()<.5)emit(m.position.x,g,m.position.z,(Math.random()-.5)*3,1+Math.random()*2,(Math.random()-.5)*3,.2,.1,.02,SPK,FIRE2,9,1)}}
+ // engine steam once a car is hurt; the existing dark smoke takes over below 40 HP
+ if(!(G.state==='play'||G.state==='dead'))return;
+ for(const c of cars){if(c.dead||c.t.boat||c.t.aircraft)continue;const f=c.hp/(maxHp(c)||100);if(f>.7||c.hp<40)continue;
+  if(Math.abs(c.x-camera.position.x)>90||Math.abs(c.z-camera.position.z)>90)continue;
+  if(Math.random()<dt*7*(1-f)){const sn=Math.sin(c.h),cs=Math.cos(c.h),h=c.t.L*.38;emit(c.x+sn*h+(Math.random()-.5)*.6,(c.y||0)+1,c.z+cs*h+(Math.random()-.5)*.6,(Math.random()-.5)*.4,1.1+Math.random()*.6,(Math.random()-.5)*.4,1.3,.35,1.6,[.85,.86,.88],[.55,.56,.58],-.5,.35)}}
+}
+const crashFxCrumple=crumpleCrash;crumpleCrash=function(c,imp,contact){try{crashFx(c,imp,contact)}catch(e){}return crashFxCrumple.apply(this,arguments)};
+const crashFxParticles=updateParticles;updateParticles=function(dt){const r=crashFxParticles.apply(this,arguments);try{updateCrashFx(dt)}catch(e){}return r};
+const crashFxNewGame=newGame;newGame=function(){for(const d of CFX.debris)world.remove(d.m);CFX.debris.length=0;return crashFxNewGame.apply(this,arguments)};
 
 // DEV_CODE_FEEDBACK_V1
 // DEV_FLIGHT_V1
