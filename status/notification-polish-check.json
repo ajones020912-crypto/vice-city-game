@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "safeTextRendering": true,
+  "maximumCards": 4,
+  "newestFirst": true,
+  "expiryAndEvictionCleanup": true,
+  "progressMatchesMessageDuration": true,
+  "severityLabels": true,
+  "politeLiveRegion": true,
+  "reducedMotionStyles": true,
+  "responsiveStyles": true,
+  "eventBannerTextColorsAndTimingPreserved": true,
+  "gameplayRulesUnchanged": true,
+  "scope": "DOM behavior, CSS parse, and JavaScript syntax checks; full-game browser visuals and live deployment not verified."
+}
