@@ -1,0 +1,37 @@
+{
+  "passed": true,
+  "changedNormalVertices": 3031,
+  "affected": [
+    {
+      "name": "",
+      "vertices": 231
+    },
+    {
+      "name": "",
+      "vertices": 38
+    },
+    {
+      "name": "lucia-skin-hip-bridge",
+      "vertices": 889
+    },
+    {
+      "name": "",
+      "vertices": 38
+    },
+    {
+      "name": "lucia-skin-hip-bridge",
+      "vertices": 888
+    },
+    {
+      "name": "lucia-pelvis-skin-bridge",
+      "vertices": 947
+    }
+  ],
+  "poseChecks": 12,
+  "contactRadius": 0.028,
+  "allPositionsAndIndicesUnchanged": true,
+  "gapSurfaceTopologyUnchanged": true,
+  "skinWeightsAndMaterialsUnchanged": true,
+  "otherCharactersUnchanged": true,
+  "scope": "Localized bind-pose contact-normal blending only; no reshaping, topology welding, new layers, or animation-code edits. Rendered seam appearance and live deployment not verified."
+}
