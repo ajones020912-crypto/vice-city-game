@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "restoredFrom": "0dbe9e38c2866c403f73a39ddb3a3942dcd40605",
+  "animationCases": 12,
+  "continuousChestAndClothingDepth": true,
+  "hipAndDenimRefittedTogether": true,
+  "blackCroppedTank": true,
+  "blueDenim": true,
+  "brownPonytail": true,
+  "blueHighTops": true,
+  "noBandana": true,
+  "rigOffsetsUnchanged": true,
+  "denimSkinWeightsUnchanged": true,
+  "otherCharactersMatchRestoredBaseline": true,
+  "scope": "Reference-inspired geometry and animation checks; rendered likeness and live deployment not yet verified."
+}
