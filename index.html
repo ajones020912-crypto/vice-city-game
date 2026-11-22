@@ -270,6 +270,7 @@ small{color:#b9cce0}
 <script src="js/supercar.js"></script>
 <script src="js/suv-details-live.js?v=2"></script>
 <script src="js/punch-visual-fix.js?v=1"></script>
+<script src="js/one-hand-hit.js?v=1"></script>
 <script>
 (()=>{'use strict';
 if(!window.THREE){document.querySelector('.card').innerHTML='<h2>Could not load 3D engine</h2><p>Check your internet connection and reload.</p>';return;}
@@ -4731,6 +4732,13 @@ if(new URLSearchParams(location.search).get('suv-qa')==='1')window.__runSUVLiveC
 // VISIBLE_PUNCH_FIX_V1
 if(!window.VCVisiblePunch)throw Error('Punch animation module missing');
 animHuman=window.VCVisiblePunch.wrap(animHuman);
+// ONE_HAND_HIT_V1
+if(!window.VCOneHandHit)throw Error('One-hand punch module missing');
+animHuman=window.VCOneHandHit.wrap(animHuman);
+const oneHandBlood=window.VCOneHandHit.createBlood(T,world,intGroup);
+hurtPed=window.VCOneHandHit.wrapDamage(hurtPed,{player:()=>pl,position:p=>({x:p.x,y:(Number.isFinite(p.y)?p.y:pl.inside?pl.y:heightAt(p.x,p.z))+1.25,z:p.z}),emit:(p,d,inside)=>oneHandBlood.emit(p,d,inside)});
+const originalOneHandSimulate=simulate;simulate=function(dt){const r=originalOneHandSimulate.apply(this,arguments);oneHandBlood.update(dt);return r;};
+const originalOneHandNewGame=newGame;newGame=function(){oneHandBlood.clear();return originalOneHandNewGame.apply(this,arguments);};
 boot()}catch(err){console.error('boot failed',err);const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small style="color:#ff8">Boot error — check console. You can still try Singleplayer.</small>'}
 // Expose for menu handlers
 window.G=G;window.begin=begin;window.mpActive=typeof mpActive!=='undefined'?mpActive:false;

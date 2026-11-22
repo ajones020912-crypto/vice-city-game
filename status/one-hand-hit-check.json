@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "animationCases": 48,
+  "rightHandOnly": true,
+  "windup": true,
+  "guard": true,
+  "bloodOnConfirmedPlayerPunchOnly": true,
+  "damageAndReturnsPreserved": true,
+  "particlePoolingAndCleanup": true,
+  "scope": "Actual rigs and native animator plus hit-wrapper/particle tests. Live deployment not verified."
+}
