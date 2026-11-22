@@ -1,0 +1,47 @@
+name: Deepen Lucia warm tan without geometry changes
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-warm-tan-v2.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-photo-reference
+  cancel-in-progress: false
+jobs:
+  tan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-warm-tan" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Prepare guarded color-only edits
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-warm-tan/node_modules/acorn');const original=fs.readFileSync('js/reference-characters.js','utf8');if(original.includes('// LUCIA_WARM_TAN_V2'))process.exit(0);if(!original.includes('// LUCIA_TAN_SMOOTH_V1'))throw Error('Reviewed tan setup missing');let s=original;for(const [a,b] of [['skin:0xa36d48','skin:0x965f3e'],['m.skin.color.setHex(0xa36d48)','m.skin.color.setHex(0x965f3e)']]){if(s.split(a).length!==2)throw Error('Skin tone changed since review');s=s.replace(a,b);}s='// LUCIA_WARM_TAN_V2\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-warm-before.js',original);fs.writeFileSync('/tmp/lucia-warm-after.js',s);
+          let html=fs.readFileSync('index.html','utf8');function walk(n,fn){fn(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,fn);}else if(v&&typeof v.type==='string')walk(v,fn);}}const matches=[];for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;walk(acorn.parse(m[1],{ecmaVersion:'latest'}),n=>{if(n.type==='VariableDeclarator'&&n.id.name==='CHAR'&&n.init&&n.init.type==='ObjectExpression'){const l=n.init.properties.find(p=>(p.key.name||p.key.value)==='lucia');if(l){const p=l.value.properties.find(p=>(p.key.name||p.key.value)==='skin');if(p)matches.push({m,p});}}});}if(matches.length!==1||matches[0].p.value.value!==0xa36d48)throw Error('Lucia skin default changed');const {m,p}=matches[0],offset=m.index+m[0].indexOf(m[1]),code=m[1].slice(0,p.value.start)+'0x965f3e'+m[1].slice(p.value.end);acorn.parse(code,{ecmaVersion:'latest'});html=html.slice(0,offset)+code+html.slice(offset+m[1].length);fs.writeFileSync('/tmp/lucia-warm-index.html',html);
+          JS
+      - name: Require identical geometry rig transforms and other characters
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-warm-tan/node_modules/three');if(!fs.existsSync('/tmp/lucia-warm-after.js')){if(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_WARM_TAN_V2'))process.exit(0);throw Error('Candidate missing');}function load(file){const c={window:{},console,Math};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}const old=load('/tmp/lucia-warm-before.js'),cur=load('/tmp/lucia-warm-after.js');
+          function signature(h,colors){const out=[];h.traverse(o=>{const row=[o.type,o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()];if(o.isMesh){row.push(Object.keys(o.geometry.attributes).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,colors&&m.color?m.color.getHex():null,m.roughness,m.metalness,m.flatShading,m.opacity]));}out.push(row);});return JSON.stringify(out);}
+          let builds=0;for(const id of Object.keys(old.DESIGNS)){for(const merge of [false,true]){const a=old.build(T,id,{merge}),b=cur.build(T,id,{merge});assert(signature(a,id!=='luciaC')===signature(b,id!=='luciaC'),'Non-color model or unrelated character changed: '+id);if(id==='luciaC'){assert(a.userData.m.skin.color.getHex()===0xa36d48);assert(b.userData.m.skin.color.getHex()===0x965f3e);assert(a.userData.m.skin.color.getHSL({}).l>b.userData.m.skin.color.getHSL({}).l);assert(b.userData.guns.pistol&&b.userData.guns.rifle);}builds++;}}
+          fs.copyFileSync('/tmp/lucia-warm-after.js','js/reference-characters.js');fs.copyFileSync('/tmp/lucia-warm-index.html','index.html');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-warm-tan-v2-check.json',JSON.stringify({passed:true,modelBuildsChecked:builds,previousSkinColor:'A36D48',newSkinColor:'965F3E',geometryAndRigTransformsUnchanged:true,materialFinishUnchanged:true,otherCharactersUnchanged:true,lightingAndGameplayCodeUnchanged:true,scope:'Skin-color defaults and material color only; rendered color and live deployment not verified.'},null,2)+'\n');
+          JS
+      - name: Publish only checked color changes
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js index.html status/lucia-warm-tan-v2-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Deepen Lucia warm tan without changing model geometry or lighting'
+          git push origin HEAD:main
