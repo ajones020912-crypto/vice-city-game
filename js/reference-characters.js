@@ -1,3 +1,5 @@
+// LUCIA_TANK_SUBTLE_RIBBING_V1
+// LUCIA_DARK_GREY_OUTER_TANK_V1
 // LUCIA_SMALLER_CONNECTED_BRIEFS_V2
 // LUCIA_FITTED_BRIEFS_V1
 // LUCIA_BRA_FRONT_REFINEMENT_V3
@@ -103,7 +105,7 @@
  function hideLuciaClothingOnly(T,h){
   const u=h.userData,m=u.m,garments=[];h.traverse(o=>{if(!o.isMesh||o.material===m.skin)return;const garment=o.material===m.shirt||o.material===m.pants||/^lucia-.*(?:tank|shoulder-strap|denim|shorts)/.test(o.name),waist=o.parent===u.hips&&(o.material===m.trim||(m.belt&&o.material===m.belt));if(garment||waist)garments.push(o);});
   if(!garments.some(o=>o.name==='lucia-dark-tank-top')||!garments.some(o=>o.name==='lucia-seamless-denim'))throw Error('Expected tank and shorts meshes missing');
-  u.luciaRemovedClothing=garments.map(o=>o.name);for(const mesh of garments)mesh.parent.remove(mesh);
+  h.updateMatrixWorld(true);luciaTankTemplates.set(h,garments.filter(o=>/tank|shoulder-strap/.test(o.name)).map(mesh=>({mesh,toSpine:new T.Matrix4().copy(u.spine.matrixWorld).invert().multiply(mesh.matrixWorld)})));u.luciaRemovedClothing=garments.map(o=>o.name);for(const mesh of garments)mesh.parent.remove(mesh);
  }
  
  
@@ -158,6 +160,15 @@ function addLuciaFittedBra(T,h){
   const perSide=(cols+1)*(rows+1),at=(side,j,i)=>side*perSide+j*(cols+1)+i;for(let side=0;side<2;side++)for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){const a=at(side,j,i),b=at(side,j,i+1),c=at(side,j+1,i),d=at(side,j+1,i+1);if(side===0)indices.push(a,c,b,b,c,d);else indices.push(a,b,c,b,d,c);}for(let j=0;j<rows;j++){let a=at(0,j,0),b=at(1,j,0),c=at(0,j+1,0),d=at(1,j+1,0);indices.push(a,b,c,b,d,c);a=at(0,j,cols);b=at(1,j,cols);c=at(0,j+1,cols);d=at(1,j+1,cols);indices.push(a,c,b,b,c,d);}for(let i=21;i<27;i++){const a=at(0,rows,i),b=at(1,rows,i),c=at(0,rows,i+1),d=at(1,rows,i+1);indices.push(a,b,c,c,b,d);}
   const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3));geometry.setAttribute('skinIndex',new T.Uint16BufferAttribute(boneIndices,4));geometry.setAttribute('skinWeight',new T.Float32BufferAttribute(weights,4));geometry.setIndex(indices);geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();const material=u.luciaFittedBraMaterial.clone();material.skinning=true;material.side=T.DoubleSide;material.transparent=false;material.opacity=1;material.needsUpdate=true;const mesh=new T.SkinnedMesh(geometry,material);mesh.name='lucia-fitted-black-briefs';mesh.castShadow=true;mesh.receiveShadow=true;mesh.frustumCulled=false;h.add(mesh);mesh.bind(bridge.skeleton,bridge.bindMatrix);mesh.onBeforeRender=bridge.onBeforeRender;mesh.onBeforeRender();u.luciaFittedBriefs=true;
  }
+
+ const luciaTankTemplates=new WeakMap();
+ function addLuciaDarkGreyOuterTank(T,h){
+  const u=h.userData;if(u.luciaDarkGreyOuterTank)return;const templates=luciaTankTemplates.get(h);if(!templates||!templates.some(o=>o.mesh.name==='lucia-dark-tank-top'))throw Error('Original fitted tank template missing');const group=new T.Group();group.name='lucia-dark-grey-tank-outfit';group.userData.luciaOuterTank=true;let meshCount=0;for(const source of templates){if(source.mesh.isSkinnedMesh)throw Error('Unexpected skinned tank template');const mesh=source.mesh.clone(true),g=source.mesh.geometry.clone(),p=g.attributes.position,n=g.attributes.normal;if(!n)throw Error('Tank normals missing');const M=source.toSpine,N=new T.Matrix3().getNormalMatrix(M),back=M.clone().invert(),v=new T.Vector3(),normal=new T.Vector3();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(M);normal.fromBufferAttribute(n,i).applyMatrix3(N).normalize();const clearance=.009+.010*Math.exp(-Math.pow((v.y-.385)/.120,2));v.addScaledVector(normal,clearance).applyMatrix4(back);p.setXYZ(i,v.x,v.y,v.z);}p.needsUpdate=true;g.computeBoundingBox();g.computeBoundingSphere();mesh.geometry=g;function grey(original){const material=original.clone();material.color.setHex(0x3b3d40);material.map=null;material.bumpMap=null;material.normalMap=null;material.roughnessMap=null;material.alphaMap=null;material.alphaTest=0;material.transparent=false;material.opacity=1;material.roughness=.94;material.metalness=0;material.side=T.DoubleSide;material.needsUpdate=true;return material;}mesh.material=Array.isArray(source.mesh.material)?source.mesh.material.map(grey):grey(source.mesh.material);mesh.matrix.copy(M);mesh.matrix.decompose(mesh.position,mesh.quaternion,mesh.scale);mesh.name=source.mesh.name==='lucia-dark-tank-top'?'lucia-dark-grey-tank-top':'lucia-dark-grey-'+source.mesh.name.replace(/^lucia-/,'');mesh.traverse(o=>{o.userData.luciaOuterTank=true;});mesh.castShadow=true;mesh.receiveShadow=true;group.add(mesh);meshCount++;}u.spine.add(group);u.setLuciaTankVisible=function(visible){if(typeof visible!=='boolean')throw Error('Tank visibility must be boolean');group.visible=visible;u.luciaTankVisible=visible;return visible;};u.luciaDarkGreyOuterTank={color:0x3b3d40,meshCount,layer:'outer',removable:true};u.setLuciaTankVisible(true);luciaTankTemplates.delete(h);
+ }
+
+ function addLuciaTankSubtleRibbing(T,h){
+  const u=h.userData,group=h.getObjectByName('lucia-dark-grey-tank-outfit');if(!group)throw Error('Tank outfit missing');if(!addLuciaTankSubtleRibbing.map){const width=256,height=64,data=new Uint8Array(width*height*4);for(let y=0;y<height;y++)for(let x=0;x<width;x++){const value=Math.round(128+30*Math.cos(2*Math.PI*8*x/width)+Math.cos(2*Math.PI*16*y/height)),k=(y*width+x)*4;data[k]=data[k+1]=data[k+2]=value;data[k+3]=255;}const texture=new T.DataTexture(data,width,height,T.RGBAFormat);texture.name='lucia-fine-vertical-rib-knit-height';texture.wrapS=texture.wrapT=T.RepeatWrapping;texture.repeat.set(16,1);texture.magFilter=T.LinearFilter;texture.minFilter=T.LinearMipmapLinearFilter;texture.generateMipmaps=true;texture.anisotropy=2;texture.needsUpdate=true;addLuciaTankSubtleRibbing.map=texture;}h.updateMatrixWorld(true);const inverse=new T.Matrix4().copy(u.spine.matrixWorld).invert();let meshes=0,generatedUVs=0;group.traverse(o=>{if(!o.isMesh)return;const p=o.geometry.attributes.position,uv=o.geometry.attributes.uv;let valid=!!(uv&&uv.count===p.count&&uv.itemSize===2),umin=Infinity,umax=-Infinity,vmin=Infinity,vmax=-Infinity;if(valid)for(let i=0;i<uv.count;i++){const x=uv.getX(i),y=uv.getY(i);if(!Number.isFinite(x)||!Number.isFinite(y)){valid=false;break;}umin=Math.min(umin,x);umax=Math.max(umax,x);vmin=Math.min(vmin,y);vmax=Math.max(vmax,y);}valid=valid&&umax-umin>.001&&vmax-vmin>.001;if(!valid){const g=o.geometry.clone(),M=inverse.clone().multiply(o.matrixWorld),out=[],v=new T.Vector3();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(M);out.push(v.x/.9+.5,v.y/.55);}g.setAttribute('uv',new T.Float32BufferAttribute(out,2));o.geometry=g;generatedUVs++;}for(const material of Array.isArray(o.material)?o.material:[o.material]){material.bumpMap=addLuciaTankSubtleRibbing.map;material.bumpScale=.00022;material.needsUpdate=true;}meshes++;});if(!meshes)throw Error('No tank fabric meshes');u.luciaTankRibbing={direction:'vertical',style:'subtle rib knit',bumpScale:.00022,meshes,generatedUVs};
+ }
 function lucia(T,h){
   const u=h.userData,m=u.m; m.skin.roughness=.74;m.hair.roughness=.82;m.lip.color.setHex(0xa6535d);m.lip.roughness=.65;m.iris.color.setHex(0x543c26);
   for(const mesh of u.spine.children.slice())if(mesh.isMesh&&((mesh.material===m.shirt)||(mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y-.195)<.002)))remove(mesh);
@@ -180,6 +191,10 @@ function lucia(T,h){
  addLuciaTailoredBra(T,h);
 
  addLuciaFittedBriefs(T,h);
+
+ addLuciaDarkGreyOuterTank(T,h);
+
+ addLuciaTankSubtleRibbing(T,h);
 }
 
 

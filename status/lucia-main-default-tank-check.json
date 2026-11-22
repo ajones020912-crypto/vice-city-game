@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "branch": "main",
+  "sourceBranch": "lucia-outfits",
+  "sourceCommits": [
+    "c508d501de7f12c7e7c7bd092fe13f4abf8f4b60",
+    "f4e0de2b3cfa4df77490503f3834aeedf93d8bcc"
+  ],
+  "defaultOuterLayer": "dark-grey-ribbed-tank",
+  "automaticOnBuild": true,
+  "baseBraAndBriefsRetained": true,
+  "existingOutfitsBodySkinToneAndRigUnchanged": true,
+  "otherCharactersUnchanged": true,
+  "fabricChecks": 8,
+  "poseChecks": 6,
+  "scope": "Tank-only and ribbing-only promotion; no merge of the outfits branch. Tank is enabled at character construction over the retained bra. Structural validation does not verify rendered fit, clipping or live deployment."
+}
