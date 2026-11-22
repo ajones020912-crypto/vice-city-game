@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "parts": [
+    "left-cup",
+    "right-cup",
+    "center-connector",
+    "underband",
+    "side-back-band",
+    "left-strap",
+    "right-strap"
+  ],
+  "cupCoverageRays": 6,
+  "poseChecks": 6,
+  "strapWidth": 0.009,
+  "oldBandeauReplaced": true,
+  "bodyGeometrySkinToneMaterialsAndRigUnchanged": true,
+  "otherCharactersUnchanged": true,
+  "scope": "Fitted opaque two-cup garment with connector, narrow bands and torso-fitted shoulder ribbons. No skin-tone edit. Rendered fit, strap junctions, clipping during gameplay and live deployment not verified."
+}
