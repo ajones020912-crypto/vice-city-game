@@ -310,7 +310,7 @@ small{color:#b9cce0}
 <script src="js/characters.js"></script>
 <script src="js/reference-characters.js"></script>
 <script src="js/supercar.js"></script>
-<script src="js/suv-details-live.js?v=3"></script>
+<script src="js/suv-details-live.js?v=2"></script>
 <script src="js/punch-visual-fix.js?v=1"></script>
 <script src="js/one-hand-hit.js?v=1"></script>
 <script>
@@ -1725,7 +1725,7 @@ const CAR_TYPES={
   gh:[[-1.12,.76],[.52,.76],[.12,1.13],[-.82,1.15],[-1.18,.91]],
   colors:(window.VCSupercar&&window.VCSupercar.GAME_COLORS)||[0x6a2cd8]},
  suv:{name:'SUV',L:4.8,W:1.96,wb:2.9,wr:.38,mass:2000,power:7,top:36,grip:8.5,steer:.5,hp:130,
-  body:[[-2.4,.38],[2.4,.38],[2.43,.70],[2.32,.91],[1.92,1.08],[1.18,1.12],[-2.12,1.12],[-2.40,.88]],gh:[[-2.20,1.10],[.94,1.10],[.55,1.80],[-1.92,1.82],[-2.20,1.54]],colors:[0x1c2430,0xcfd3d6,0x6b4a35,0x8c1d1d,0x3d5a45]},
+  body:[[-2.4,.4],[2.4,.4],[2.43,.72],[2.3,.96],[1.6,1.1],[.9,1.14],[-2.2,1.16],[-2.43,.92]],gh:[[-2.25,1.12],[1.0,1.12],[.55,1.74],[-2.2,1.78]],colors:[0x1c2430,0xcfd3d6,0x6b4a35,0x8c1d1d,0x3d5a45]},
  van:{name:'Van',L:5.0,W:2.0,wb:3.1,wr:.36,mass:2300,power:6,top:32,grip:8,steer:.48,hp:140,
   body:[[-2.5,.4],[2.5,.4],[2.55,.8],[2.3,1.12],[1.6,1.28],[-2.5,1.35]],gh:[[-2.5,1.3],[1.6,1.3],[1.15,2.05],[-2.5,2.18]],colors:[0xe8e8e8,0x3b6ea5,0xc2a44b,0x8b2e2e]},
  taxi:{name:'Taxi',base:'sedan',colors:[0xf5c518]},
@@ -4809,11 +4809,11 @@ function mountDevFlightMenu(){
 }
 mountDevFlightMenu();
 
-try{// SUV_DETAILS_LIVE_V3
-if(!window.VCSUVDetails||window.VCSUVDetails.version!==3)throw Error('SUV detail module v3 failed to load');
+try{// SUV_DETAILS_LIVE_V2
+if(!window.VCSUVDetails||window.VCSUVDetails.version!==2)throw Error('SUV detail module failed to load');
 const originalSUVLiveFactory=makeCarVisual;
 makeCarVisual=function(tk,color){const v=originalSUVLiveFactory.apply(this,arguments);if(tk!=='suv')return v;try{return window.VCSUVDetails.enhance(T,v,CAR_TYPES[tk],color);}catch(error){G.suvDetailError=String(error.message||error);console.error('SUV enhancement failed',error);return v;}};
-G.suvDetailVersion=3;
+G.suvDetailVersion=2;
 if(new URLSearchParams(location.search).get('suv-qa')==='1')window.__runSUVLiveCheck=function(){
  const check=(condition,message)=>{if(!condition)throw Error(message);},t=CAR_TYPES.suv,registry=JSON.stringify(CAR_TYPES),base=originalSUVLiveFactory('suv',0x356c87),before=originalSUVLiveFactory('suv',0x356c87);
  const refs={g:base.g,ch:base.ch,body:base.body,pm:base.pm,wheels:base.wheels},oldWheelObjects=base.wheels.map(w=>({entry:w,w:w.w,piv:w.piv}));
@@ -4826,7 +4826,7 @@ if(new URLSearchParams(location.search).get('suv-qa')==='1')window.__runSUVLiveC
  if(CAR_TYPES.sedan)check(!makeCarVisual('sedan',0x356c87).suvDetailed,'Non-SUV was modified');
  const detailBounds=new T.Box3().setFromObject(after.g.getObjectByName('suv-exterior-details'));check(detailBounds.min.x>=-t.W/2-.04&&detailBounds.max.x<=t.W/2+.04&&detailBounds.min.z>=-t.L/2-.04&&detailBounds.max.z<=t.L/2+.04,'Detail geometry exceeds vehicle footprint');
  function preview(v){const scene=new T.Scene();scene.background=new T.Color(0x23303c);scene.add(v.g);scene.add(new T.AmbientLight(0xffffff,.85));const lamp=new T.DirectionalLight(0xffffff,1.1);lamp.position.set(4,8,6);scene.add(lamp);const floor=new T.Mesh(new T.PlaneGeometry(30,30),new T.MeshStandardMaterial({color:0x55616a,roughness:1}));floor.rotation.x=-Math.PI/2;floor.position.y=-.04;scene.add(floor);const cam=new T.PerspectiveCamera(35,1.5,.1,100);cam.position.set(t.L*1.05,t.L*.65,t.L*1.3);cam.lookAt(0,1,0);const renderer=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setSize(900,600);renderer.outputEncoding=T.sRGBEncoding;renderer.render(scene,cam);check(renderer.info.render.calls>0,'SUV preview did not render');const image=renderer.domElement.toDataURL('image/png');renderer.dispose();return image;}
- return{passed:true,version:3,before:old,after:added,addedTriangles:added.triangles-old.triangles,addedMeshes:added.meshes-old.meshes,dimensions:{W:t.W,L:t.L},beforePNG:preview(before),afterPNG:preview(after)};
+ return{passed:true,version:2,before:old,after:added,addedTriangles:added.triangles-old.triangles,addedMeshes:added.meshes-old.meshes,dimensions:{W:t.W,L:t.L},beforePNG:preview(before),afterPNG:preview(after)};
 };
 
 // VISIBLE_PUNCH_FIX_V1
