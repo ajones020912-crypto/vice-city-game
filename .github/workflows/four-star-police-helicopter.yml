@@ -1,0 +1,125 @@
+name: Add four star police helicopter
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/four-star-police-helicopter.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  helicopter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/police-air" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Prepare isolated helicopter module and integration
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess
+          s=Path('index.html').read_text()
+          if '// POLICE_AIR_FOUR_STARS_V1' in s: raise SystemExit('Police air support already installed.')
+          for name in ['simulate','newGame','applySave','heightAt','queryCols']:
+           if not re.search(r'function\s+'+name+r'\s*\(',s): raise SystemExit('Missing integration hook '+name)
+          if s.count('boot();')!=1: raise SystemExit('Expected one boot call.')
+          module=r'''// POLICE_AIR_FOUR_STARS_V1
+          function policeActiveStars(doc){const e=doc.getElementById('stars');return e?Array.from(e.querySelectorAll('b')).reduce((n,b)=>n+(b.textContent.match(/★/g)||[]).length,0):0;}
+          function createPoliceAir(T,env){
+           let unit=null,time=0,cooldown=0;
+           const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+           function roof(x,z){let y=env.ground(x,z);for(const b of env.obstacles(x,z,14))if(b.tag!=='int'&&b.h>2&&b.h<350)y=Math.max(y,env.ground((b.x0+b.x1)/2,(b.z0+b.z1)/2)+b.h);return y;}
+           function dispose(){if(!unit)return;const gs=new Set(),ms=new Set(),ts=new Set();for(const root of [unit.root,unit.beam])root.traverse(o=>{if(o.geometry)gs.add(o.geometry);if(o.material){for(const m of Array.isArray(o.material)?o.material:[o.material]){ms.add(m);if(m.map)ts.add(m.map);}}});for(const g of gs)g.dispose();for(const m of ms)m.dispose();for(const t of ts)t.dispose();env.scene.remove(unit.root,unit.beam,unit.target);unit=null;env.sound(0);}
+           function make(s){
+            const root=new T.Group();root.name='police-helicopter';root.rotation.order='YXZ';
+            const white=new T.MeshStandardMaterial({color:0xe4e8e7,roughness:.7}),dark=new T.MeshStandardMaterial({color:0x17222b,roughness:.65}),glass=new T.MeshStandardMaterial({color:0x204452,roughness:.25,metalness:.1});
+            const add=(g,m,x,y,z,parent=root)=>{const o=new T.Mesh(g,m);o.position.set(x,y,z);parent.add(o);return o;};
+            const box=(w,h,d,m,x,y,z,parent=root)=>add(new T.BoxGeometry(w,h,d),m,x,y,z,parent);
+            const body=add(new T.SphereGeometry(1,20,12),white,0,0,0);body.scale.set(1.4,1.05,2.5);
+            const cabin=add(new T.SphereGeometry(1,16,10),glass,0,.22,1.30);cabin.scale.set(1.17,.80,1.38);
+            const boom=add(new T.CylinderGeometry(.18,.40,5.6,10),dark,0,.25,-4.1);boom.rotation.x=Math.PI/2;
+            box(.13,1.8,1.1,white,0,1,-6.7);box(2.8,.12,.7,white,0,.55,-5.7);
+            for(const x of [-1.1,1.1]){box(.10,.75,.10,dark,x,-1.15,.9);box(.10,.75,.10,dark,x,-1.15,-.9);box(.13,.13,4.2,dark,x,-1.55,0);}
+            if(env.label){const map=env.label(),mat=new T.MeshBasicMaterial({map,toneMapped:false});for(const side of [-1,1]){const p=add(new T.PlaneGeometry(2.4,.55),mat,side*1.39,.02,-.45);p.rotation.y=side*Math.PI/2;}}
+            const main=new T.Group();main.position.y=1.48;root.add(main);add(new T.CylinderGeometry(.13,.13,.5,8),dark,0,0,0,main);for(let i=0;i<4;i++){const a=i*Math.PI/2,o=box(5.1,.045,.20,dark,Math.cos(a)*2.55,.22,Math.sin(a)*2.55,main);o.rotation.y=-a;}
+            const tail=new T.Group();tail.position.set(.21,.85,-6.65);root.add(tail);box(.06,2.2,.14,dark,0,0,0,tail);const second=box(.06,2.2,.14,dark,0,0,0,tail);second.rotation.x=Math.PI/2;
+            const red=new T.MeshBasicMaterial({color:0xff2828}),green=new T.MeshBasicMaterial({color:0x38ff87}),blue=new T.MeshBasicMaterial({color:0x3985ff});add(new T.SphereGeometry(.09,8,6),red,-1.45,.2,-.5);add(new T.SphereGeometry(.09,8,6),green,1.45,.2,-.5);const flashA=add(new T.SphereGeometry(.13,8,6),red,-.32,1.05,1),flashB=add(new T.SphereGeometry(.13,8,6),blue,.32,1.05,1);
+            const target=new T.Object3D(),light=new T.SpotLight(0xffefc8,0,400,.20,.5,1);light.position.set(0,-.8,1);light.target=target;light.castShadow=false;root.add(light);
+            const beam=new T.Mesh(new T.ConeGeometry(1,1,24,1,true),new T.MeshBasicMaterial({color:0xffedbe,transparent:true,opacity:.045,depthWrite:false,side:T.DoubleSide,blending:T.AdditiveBlending}));beam.visible=false;
+            const a=time+.8,x=s.x+Math.sin(a)*190,z=s.z+Math.cos(a)*190;root.position.set(x,roof(x,z)+75,z);env.scene.add(root,beam,target);
+            unit={root,main,tail,flashA,flashB,light,beam,target,last:new T.Vector3(s.x,s.y+1.4,s.z),mode:'pursuit',lost:0,check:0,clear:0,ceiling:root.position.y,vx:0,vz:0};
+           }
+           function sees(s){if(s.inside)return false;const p=unit.root.position;for(let i=1;i<16;i++){const t=i/16,x=p.x+(s.x-p.x)*t,z=p.z+(s.z-p.z)*t,y=p.y+(s.y+1.4-p.y)*t;for(const b of env.obstacles(x,z,1))if(b.tag!=='int'&&x>b.x0&&x<b.x1&&z>b.z0&&z<b.z1&&y<env.ground(x,z)+b.h+1)return false;}return true;}
+           function update(delta){
+            const s=env.state();if(!s.playing){env.sound(0);return;}const dt=clamp(Number(delta)||0,0,.1);time+=dt;cooldown=Math.max(0,cooldown-dt);
+            if(!unit&&s.alive&&!s.inside&&s.stars>=4&&cooldown===0)make(s);if(!unit){env.sound(0);return;}
+            const u=unit,p=u.root.position;u.root.visible=!s.inside;u.main.rotation.y+=dt*36;u.tail.rotation.x+=dt*65;u.flashA.visible=Math.sin(time*16)>0;u.flashB.visible=!u.flashA.visible;
+            if(s.stars<4||!s.alive)u.mode='depart';
+            u.check-=dt;if(u.mode!=='depart'&&u.check<=0){u.check=.25;if(sees(s)){u.last.set(s.x,s.y+1.4,s.z);u.lost=0;u.mode='pursuit';}else u.mode='search';}
+            if(u.mode==='search'){u.lost+=dt;if(u.lost>22)u.mode='depart';}
+            const radius=u.mode==='search'?58:38,angle=time*.30;
+            let tx=u.last.x+Math.sin(angle)*radius,tz=u.last.z+Math.cos(angle)*radius;
+            if(u.mode==='depart'){const dx=p.x-u.last.x,dz=p.z-u.last.z,len=Math.hypot(dx,dz)||1;tx=p.x+dx/len*180;tz=p.z+dz/len*180;if(Math.hypot(p.x-u.last.x,p.z-u.last.z)>360){dispose();cooldown=25;return;}}
+            let dx=(tx-p.x)*.7,dz=(tz-p.z)*.7,len=Math.hypot(dx,dz);if(len>46){dx*=46/len;dz*=46/len;}const blend=1-Math.exp(-dt*1.6);u.vx+=(dx-u.vx)*blend;u.vz+=(dz-u.vz)*blend;
+            u.clear-=dt;if(u.clear<=0){u.clear=.2;let high=roof(p.x,p.z)+22;for(let i=1;i<=4;i++)high=Math.max(high,roof(p.x+(tx-p.x)*i/4,p.z+(tz-p.z)*i/4)+22);u.ceiling=Math.max(high,env.ground(u.last.x,u.last.z)+65);}
+            p.x+=u.vx*dt;p.z+=u.vz*dt;p.y+=(u.ceiling-p.y)*(1-Math.exp(-dt*.9));p.y=Math.max(p.y,roof(p.x,p.z)+12);
+            const heading=Math.atan2(u.vx,u.vz),error=Math.atan2(Math.sin(heading-u.root.rotation.y),Math.cos(heading-u.root.rotation.y));u.root.rotation.y+=error*(1-Math.exp(-dt*2));u.root.rotation.z=clamp(-error*.08,-.16,.16);u.root.rotation.x=Math.min(.10,Math.hypot(u.vx,u.vz)*.002);
+            u.target.position.copy(u.last);const night=s.night&&!s.inside&&u.mode!=='depart';u.light.intensity=night?2.7:0;u.beam.visible=night;
+            if(night){const source=p.clone().add(new T.Vector3(0,-.8,1)),direction=source.clone().sub(u.last),distance=direction.length();u.beam.position.copy(source).add(u.last).multiplyScalar(.5);u.beam.scale.set(distance*Math.tan(.20),distance,distance*Math.tan(.20));u.beam.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),direction.normalize());}
+            const distance=Math.hypot(p.x-s.x,p.y-s.y,p.z-s.z);env.sound(s.inside?0:clamp(.8/(1+distance*distance/12000),0,.8));
+           }
+           return {update,reset(){dispose();cooldown=0;env.sound(0);},get count(){return unit?1:0;},get state(){return unit?{mode:unit.mode,position:unit.root.position.toArray(),last:unit.last.toArray()}:null;}};
+          }
+          '''
+          audioCode=r'''// POLICE_ROTOR_AUDIO_V1
+          let policeRotorVoice=null;
+          A.policeRotor=function(level){try{
+           level=Math.max(0,Math.min(1,Number(level)||0));
+           if(level<.001||!ctx||ctx.state!=='running'||G.state!=='play'){if(policeRotorVoice){const v=policeRotorVoice;policeRotorVoice=null;v.gain.gain.setTargetAtTime(0,v.context.currentTime,.025);v.source.stop(v.context.currentTime+.12);}return;}
+           if(policeRotorVoice&&policeRotorVoice.context!==ctx){try{policeRotorVoice.source.stop();}catch(e){}policeRotorVoice=null;}
+           if(!policeRotorVoice){const buffer=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate),data=buffer.getChannelData(0);let low=0,seed=72819;for(let i=0;i<data.length;i++){const t=i/ctx.sampleRate;seed=(Math.imul(seed,1664525)+1013904223)>>>0;low+=(seed/2147483648-1-low)*.035;const fade=Math.min(1,t/.005,(1-t)/.005);data[i]=(low*1.6+.10*Math.sin(t*Math.PI*160))*(.6+.4*Math.sin(t*Math.PI*48))*fade;}const source=ctx.createBufferSource(),gain=ctx.createGain();source.buffer=buffer;source.loop=true;gain.gain.value=0;source.connect(gain);gain.connect(master);source.onended=()=>{source.disconnect();gain.disconnect();};source.start();policeRotorVoice={source,gain,context:ctx};}
+           policeRotorVoice.gain.gain.setTargetAtTime(level*.16,ctx.currentTime,.08);
+          }catch(error){if(policeRotorVoice){try{policeRotorVoice.source.stop();}catch(e){}policeRotorVoice=null;}}};
+          const policeRotorOriginalPause=A.setPaused;A.setPaused=function(on){const result=policeRotorOriginalPause?policeRotorOriginalPause.apply(this,arguments):undefined;if(on)A.policeRotor(0);return result;};
+          '''
+          audio=re.search(r'const\s+audio\s*=',s)
+          if not audio: raise SystemExit('Audio module not found.')
+          footer=re.search(r'\breturn\s+A\s*\}\)\(\);',s[audio.end():])
+          if not footer: raise SystemExit('Audio module footer changed.')
+          at=audio.end()+footer.start();s=s[:at]+audioCode+'\n'+s[at:]
+          integration=r'''
+          const policeAir=createPoliceAir(T,{scene:world,ground:heightAt,obstacles:queryCols,sound:v=>audio.policeRotor(v),state:()=>{const p=pl.car||pl,hour=Number((document.getElementById('time').textContent||'12:00').split(':')[0]);return {playing:G.state==='play'&&!G.multiplayer,alive:!!pl.alive,inside:!!pl.inside,stars:policeActiveStars(document),x:p.x,y:p.y||0,z:p.z,night:hour>=19||hour<6};},label:()=>{const c=document.createElement('canvas');c.width=512;c.height=128;const x=c.getContext('2d');x.fillStyle='#17222b';x.fillRect(0,0,512,128);x.fillStyle='#ffffff';x.font='bold 86px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText('POLICE',256,68,480);const t=new T.CanvasTexture(c);t.encoding=T.sRGBEncoding;return t;}});
+          const policeAirBaseSimulate=simulate;simulate=function(dt){const result=policeAirBaseSimulate.apply(this,arguments);if(G.multiplayer)policeAir.reset();else policeAir.update(dt);return result;};
+          const policeAirBaseNew=newGame;newGame=function(){policeAir.reset();return policeAirBaseNew.apply(this,arguments);};
+          const policeAirBaseLoad=applySave;applySave=function(){policeAir.reset();return policeAirBaseLoad.apply(this,arguments);};
+          G.policeAir={threshold:4,get active(){return policeAir.count;},get state(){return policeAir.state;}};
+          '''
+          s=s.replace('boot();',module+'\n'+integration+'\nboot();',1)
+          Path('/tmp/police-air-module.js').write_text(module+'\nmodule.exports={createPoliceAir,policeActiveStars};')
+          Path('/tmp/police-air-index.html').write_text(s)
+          subprocess.run(['node','--check','/tmp/police-air-module.js'],check=True)
+          for code in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I):
+           if code.strip():
+            Path('/tmp/police-air-check.js').write_text(code);subprocess.run(['node','--check','/tmp/police-air-check.js'],check=True)
+          PY
+      - name: Test dispatch pursuit searching pause cleanup and threshold
+        run: |
+          node <<'JS'
+          const assert=require('assert'),fs=require('fs'),T=require(process.env.RUNNER_TEMP+'/police-air/node_modules/three'),{createPoliceAir,policeActiveStars}=require('/tmp/police-air-module.js');
+          assert(policeActiveStars({getElementById:()=>({querySelectorAll:()=>[{textContent:'★★★'}]})})===3);assert(policeActiveStars({getElementById:()=>({querySelectorAll:()=>[{textContent:'★★★★'}]})})===4);
+          const scene=new T.Scene(),s={playing:true,alive:true,inside:false,stars:3,x:0,y:0,z:0,night:true};let volume=0,blocked=false;const air=createPoliceAir(T,{scene,ground:()=>0,obstacles:()=>blocked?[{x0:-9999,x1:9999,z0:-9999,z1:9999,h:200,tag:'solid'}]:[],state:()=>s,sound:v=>{volume=v;}});
+          for(let i=0;i<60;i++)air.update(1/60);assert(air.count===0);s.stars=4;air.update(1/60);assert(air.count===1);assert(scene.getObjectByName('police-helicopter'));for(let i=0;i<300;i++)air.update(1/60);assert(air.count===1&&air.state.mode==='pursuit');assert(volume>0);
+          const before=air.state.position;s.playing=false;air.update(1);assert(JSON.stringify(before)===JSON.stringify(air.state.position)&&volume===0);s.playing=true;blocked=true;for(let i=0;i<60;i++)air.update(1/60);assert(air.state.mode==='search');
+          s.inside=true;const last=air.state.last;s.x=7000;for(let i=0;i<30;i++)air.update(1/60);assert(JSON.stringify(last)===JSON.stringify(air.state.last));s.inside=false;s.x=0;s.stars=3;air.update(1/60);assert(air.state.mode==='depart');for(let i=0;i<2400&&air.count;i++)air.update(1/60);assert(air.count===0&&scene.children.length===0);s.stars=4;s.alive=false;for(let i=0;i<2000;i++)air.update(1/60);assert(air.count===0);s.alive=true;blocked=false;air.reset();air.update(1/60);assert(air.count===1);air.reset();assert(air.count===0&&scene.children.length===0&&volume===0);
+          fs.copyFileSync('/tmp/police-air-index.html','index.html');
+          JS
+      - name: Commit helicopter only after checks
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Dispatch unarmed police helicopter at four stars with pursuit search rotors lights and audio'
+          git push origin HEAD:main
