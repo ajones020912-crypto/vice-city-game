@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "animationCases": 12,
+  "denserBridges": 2,
+  "changedThighVertices": 92,
+  "maxThighShift": 0.0019391308716631482,
+  "localizedHipAndUpperThighSmoothing": true,
+  "lowerLegsAndUpperBodyUnchanged": true,
+  "rigOffsetsUnchanged": true,
+  "skinColorUnchanged": true,
+  "otherCharactersUnchanged": true,
+  "scope": "Existing hip and upper-thigh surface refinement and structural animation checks; rendered joint transitions and live deployment not verified."
+}

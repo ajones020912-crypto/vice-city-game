@@ -1,3 +1,4 @@
+// LUCIA_HIP_THIGH_SMOOTH_V1
 // LUCIA_CLOTHING_ONLY_V1
 // LUCIA_TAN_SMOOTH_V1
 // LUCIA_ROUND_DENIM_V2
@@ -37,18 +38,18 @@
   const maps=luciaVisibleDenimTextures(T);for(const material of new Set([u.m.pants,denim.material])){material.map=maps.color;material.bumpMap=maps.height;material.bumpScale=.00065;material.roughnessMap=maps.rough;material.roughness=.98;material.metalness=0;material.flatShading=false;material.needsUpdate=true;}u.luciaVisibleDenim=true;u.luciaRoundDenimVersion=2;
  }
 
- function smoothLuciaSkinSurface(T,h){
+ function smoothLuciaSkinSurface(T,h,hipOnly=false){
   const u=h.userData;h.updateMatrixWorld(true);u.m.skin.flatShading=false;u.m.skin.needsUpdate=true;let changed=0;
   h.traverse(mesh=>{
-   if(!mesh.isMesh||mesh.material!==u.m.skin)return;for(let parent=mesh;parent;parent=parent.parent)if(parent===u.headP)return;
+   if(!mesh.isMesh||mesh.material!==u.m.skin)return;if(hipOnly&&mesh.parent!==u.hips&&!u.Lg.some(l=>mesh.parent===l.hp))return;for(let parent=mesh;parent;parent=parent.parent)if(parent===u.headP)return;
    const original=mesh.geometry,p=original.attributes.position;if(!p)return;const matrix=new T.Matrix4().copy(h.matrixWorld).invert().multiply(mesh.matrixWorld),inverse=matrix.clone().invert(),box=new T.Box3().setFromBufferAttribute(p).applyMatrix4(matrix);if(Math.max(...box.getSize(new T.Vector3()).toArray())<.13)return;
    const ids=[],points=[],groups=[],lookup=new Map();for(let i=0;i<p.count;i++){const v=new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(matrix),key=v.toArray().map(x=>Math.round(x*1e5)).join(',');if(!lookup.has(key)){lookup.set(key,points.length);points.push(v);groups.push([]);}const id=lookup.get(key);ids.push(id);groups[id].push(i);}
    const neighbors=points.map(()=>new Set()),edges=new Map(),index=original.index,count=index?index.count:p.count;for(let i=0;i<count;i+=3){const triangle=[0,1,2].map(k=>ids[index?index.getX(i+k):i+k]);if(new Set(triangle).size<3)continue;for(let j=0;j<3;j++){const a=triangle[j],b=triangle[(j+1)%3],key=a<b?a+','+b:b+','+a;neighbors[a].add(b);neighbors[b].add(a);edges.set(key,(edges.get(key)||0)+1);}}
    const pinned=new Set();for(const [key,count] of edges)if(count!==2)for(const id of key.split(',').map(Number))pinned.add(id);const start=points.map(v=>v.clone());let surface=points.map(v=>v.clone());
-   for(const rate of [.18,-.185,.18,-.185])surface=surface.map((v,i)=>{if(pinned.has(i)||!neighbors[i].size)return v.clone();const mean=new T.Vector3();for(const j of neighbors[i])mean.add(surface[j]);mean.multiplyScalar(1/neighbors[i].size);return v.clone().addScaledVector(mean.sub(v),rate);});
-   const g=original.clone(),out=g.attributes.position;for(let i=0;i<surface.length;i++){const delta=surface[i].clone().sub(start[i]);if(delta.length()>.0008)delta.setLength(.0008);const v=start[i].clone().add(delta).applyMatrix4(inverse);for(const j of groups[i])out.setXYZ(j,v.x,v.y,v.z);}out.needsUpdate=true;g.computeVertexNormals();const n=g.attributes.normal;for(const group of groups){const normal=new T.Vector3();for(const i of group)normal.add(new T.Vector3(n.getX(i),n.getY(i),n.getZ(i)));normal.normalize();for(const i of group)n.setXYZ(i,normal.x,normal.y,normal.z);}n.needsUpdate=true;g.computeBoundingBox();g.computeBoundingSphere();mesh.geometry=g;changed++;
+   for(const rate of (hipOnly?[.28,-.29,.28,-.29,.28,-.29]:[.18,-.185,.18,-.185]))surface=surface.map((v,i)=>{if(pinned.has(i)||!neighbors[i].size)return v.clone();const mean=new T.Vector3();for(const j of neighbors[i])mean.add(surface[j]);mean.multiplyScalar(1/neighbors[i].size);return v.clone().addScaledVector(mean.sub(v),rate);});
+   const g=original.clone(),out=g.attributes.position;for(let i=0;i<surface.length;i++){const delta=surface[i].clone().sub(start[i]);let weight=1;if(hipOnly){const leg=u.Lg.find(l=>mesh.parent===l.hp);if(leg){const anchor=leg.hp.getWorldPosition(new T.Vector3()).applyMatrix4(new T.Matrix4().copy(h.matrixWorld).invert()),t=Math.max(0,Math.min(1,(start[i].y-anchor.y+.26)/.14));weight=t*t*(3-2*t);}}delta.multiplyScalar(weight);const limit=hipOnly?.003*weight:.0008;if(delta.length()>limit)delta.setLength(limit);const v=start[i].clone().add(delta).applyMatrix4(inverse);for(const j of groups[i])out.setXYZ(j,v.x,v.y,v.z);}out.needsUpdate=true;g.computeVertexNormals();const n=g.attributes.normal;for(const group of groups){const normal=new T.Vector3();for(const i of group)normal.add(new T.Vector3(n.getX(i),n.getY(i),n.getZ(i)));normal.normalize();for(const i of group)n.setXYZ(i,normal.x,normal.y,normal.z);}n.needsUpdate=true;g.computeBoundingBox();g.computeBoundingSphere();mesh.geometry=g;changed++;
   });
-  if(!changed)throw Error('No body surfaces qualified for smoothing');u.luciaSkinSmoothed=true;u.luciaSmoothedMeshCount=changed;
+  if(!changed)throw Error('No body surfaces qualified for smoothing');if(hipOnly){u.luciaHipThighSmoothed=true;u.luciaHipThighMeshCount=changed;}else{u.luciaSkinSmoothed=true;u.luciaSmoothedMeshCount=changed;}
  }
  function fitLuciaPhotoReference(T,h){
   const u=h.userData,m=u.m;h.updateMatrixWorld(true);
@@ -96,7 +97,7 @@
   const highlight=cloth(T,0x49342a);for(const side of[-1,1]){add(T,u.headP,tube(T,[[side*.078,.245,.048],[side*.098,.19,.06],[side*.104,.075,.02],[side*.091,.025,.01]],.012,16),side===1?highlight:m.hair,'lucia-face-framing-hair');add(T,u.headP,tube(T,[[side*.019,.203,.100],[side*.037,.210,.101],[side*.058,.206,.092]],.0037,14),m.brow,'lucia-arched-brow')}
   for(const mesh of u.headP.children.slice())if(mesh.isMesh){if(mesh.material===m.brow&&mesh.geometry.type==='BoxGeometry')remove(mesh);else if(mesh.material===m.eyeW){mesh.scale.x*=.98;mesh.scale.y*=.82}else if(mesh.material===m.lip){mesh.scale.x*=1.16;mesh.scale.y*=1.12}else if(mesh.material===m.skin&&mesh.geometry.type==='LatheGeometry'){const a=mesh.geometry.attributes.position;for(let i=0;i<a.count;i++){const y=a.getY(i),x=a.getX(i);a.setX(i,x*(1+.085*Math.exp(-Math.pow((y-.145)/.04,2))-.065*Math.exp(-Math.pow((y-.075)/.025,2))))}a.needsUpdate=true;mesh.geometry.computeVertexNormals()}}
   const threads=cloth(T,0xc8c2ad);for(let k=0;k<u.Lg.length;k++){const hp=u.Lg[k].hp;for(const mesh of hp.children.slice())if(mesh.isMesh&&mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y+.26)<.002)remove(mesh);const shorts=hp.children.find(o=>o.isMesh&&o.material===m.pants&&o.geometry.type==='LatheGeometry');if(shorts){shorts.name='lucia-reference-denim-shorts-'+k;const a=shorts.geometry.attributes.position;for(let i=0;i<a.count;i++)if(Math.abs(a.getY(i)+.26)<.001){const angle=Math.atan2(a.getZ(i),a.getX(i));a.setY(i,-.26+.003*Math.sin(angle*9)+.002*Math.sin(angle*17))}a.needsUpdate=true;shorts.geometry.computeVertexNormals()}for(let j=0;j<9;j++){const phi=j/9*Math.PI*2,len=.007+(j%3)*.003;add(T,hp,new T.CylinderGeometry(.0008,.0005,len,4),threads,'lucia-denim-fray',Math.sin(phi)*.095,-.26-len*.45,Math.cos(phi)*.095)}}
-  const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);fitLuciaShortsLegs(T,h);denimLuciaShorts(T,h);joinLuciaShoulders(T,h);refineLuciaV3(T,h);installLuciaDenimV3(T,h);fitLuciaReferenceBodyClothes(T,h);finishLuciaV4(T,h);makeLuciaCurlyPonytail(T,h);fitLuciaFrontHair(T,h);addLuciaBackCurls(T,h);polishLuciaV5(T,h);enlargeLuciaEyes(T,h);smoothLuciaHipTransition(T,h);finishLuciaReferenceOutfit(T,h);fitLuciaPhotoReference(T,h);hideLuciaClothingOnly(T,h);
+  const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);fitLuciaShortsLegs(T,h);denimLuciaShorts(T,h);joinLuciaShoulders(T,h);refineLuciaV3(T,h);installLuciaDenimV3(T,h);fitLuciaReferenceBodyClothes(T,h);finishLuciaV4(T,h);makeLuciaCurlyPonytail(T,h);fitLuciaFrontHair(T,h);addLuciaBackCurls(T,h);polishLuciaV5(T,h);enlargeLuciaEyes(T,h);smoothLuciaHipTransition(T,h);finishLuciaReferenceOutfit(T,h);fitLuciaPhotoReference(T,h);hideLuciaClothingOnly(T,h);smoothLuciaSkinSurface(T,h,true);
  }
 
 
@@ -109,7 +110,7 @@
    shorts.updateMatrix();
    const box=new T.Box3().setFromBufferAttribute(shorts.geometry.attributes.position).applyMatrix4(shorts.matrix);
    const size=box.getSize(new T.Vector3()),center=box.getCenter(new T.Vector3());
-   const hip=add(T,hp,new T.SphereGeometry(1,24,16),u.m.skin,'lucia-skin-hip-bridge',center.x,.015,center.z);
+   const hip=add(T,hp,new T.SphereGeometry(1,48,32),u.m.skin,'lucia-skin-hip-bridge',center.x,.015,center.z);
    hip.scale.set(size.x*.46,.12,size.z*.44);
    const g=shorts.geometry,a=g.attributes.position;
    for(let i=0;i<a.count;i++){
