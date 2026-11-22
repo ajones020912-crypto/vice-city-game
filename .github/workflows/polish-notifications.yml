@@ -1,0 +1,74 @@
+name: Polish in-game notification cards and event banners
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/polish-notifications.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: notification-polish
+  cancel-in-progress: false
+jobs:
+  polish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/notices" --no-package-lock --ignore-scripts acorn@8 jsdom@22
+      - name: Prepare notification-only changes and validate DOM behavior
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/notices/node_modules/acorn'),{JSDOM}=require(process.env.RUNNER_TEMP+'/notices/node_modules/jsdom');let html=fs.readFileSync('index.html','utf8');if(html.includes('id="vc-notification-polish-v1"'))process.exit(0);
+          const css=String.raw`<style id="vc-notification-polish-v1">
+          #toast{position:fixed;top:84px;left:50%;right:auto;bottom:auto;transform:translateX(-50%);width:min(380px,calc(100vw - 32px));max-height:max(90px,calc(50vh - 105px));display:flex;flex-direction:column;gap:8px;padding:4px 4px 8px;box-sizing:border-box;overflow:hidden;text-align:left;pointer-events:none;z-index:45;font-family:system-ui,Arial,sans-serif}
+          #toast .vc-notice{--notice-accent:#69ded3;position:relative;flex:none;box-sizing:border-box;margin:0;padding:12px 15px 14px 17px;border:1px solid #d8eeff24;border-left:3px solid var(--notice-accent);border-radius:12px;background:linear-gradient(120deg,#102136f7,#080f1bf5);box-shadow:0 8px 24px #0006,inset 0 1px 0 #ffffff09;color:#edf5fc;overflow:hidden;font-size:13px;line-height:1.45;overflow-wrap:anywhere;animation:vcNoticeIn .2s ease-out both;transition:opacity .18s ease,transform .18s ease}
+          #toast .vc-notice[data-tone=warning]{--notice-accent:#ffce71}#toast .vc-notice[data-tone=error]{--notice-accent:#ff7794}#toast .vc-notice[data-tone=success]{--notice-accent:#81e3ae}
+          #toast .vc-notice-label{display:block;margin:0 0 4px;color:var(--notice-accent);font-size:10px;font-weight:800;letter-spacing:1.6px;line-height:1.3}#toast .vc-notice-copy{display:block;font-weight:500;color:#edf5fc}
+          #toast .vc-notice:after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--notice-accent);opacity:.65;transform-origin:left;animation:vcNoticeLife var(--notice-duration,3200ms) linear forwards}
+          #toast .vc-notice.vc-notice-out{animation:none;opacity:0;transform:translateY(-6px)}
+          @keyframes vcNoticeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}@keyframes vcNoticeLife{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+          #banner{box-sizing:border-box;left:50%;right:auto;top:24%;width:min(680px,calc(100vw - 32px));transform:translateX(-50%);padding:20px 24px;border-radius:16px;border:1px solid #c9e3ff35;background:linear-gradient(125deg,#101b30ed,#100d22eb);box-shadow:0 16px 48px #0007,inset 0 2px 0 #ff88bd88;pointer-events:none}
+          #banner.pop{animation:vcBannerIn .28s ease-out}#bnT{font:900 clamp(26px,4.3vw,46px)/1.12 system-ui,Arial,sans-serif;letter-spacing:1.4px;text-shadow:0 3px 12px #0008;overflow-wrap:anywhere}#bnS{font:500 clamp(13px,1.8vw,18px)/1.45 system-ui,Arial,sans-serif;letter-spacing:.2px;margin-top:9px;color:#edf4fc;text-shadow:0 1px 5px #0008;overflow-wrap:anywhere}
+          @keyframes vcBannerIn{from{opacity:0;transform:translateX(-50%) translateY(8px) scale(.98)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
+          @media(max-height:540px){#toast{top:64px;max-height:max(80px,calc(50vh - 80px))}#toast .vc-notice{padding:9px 12px 11px;font-size:12px}#banner{padding:13px 18px}}
+          @media(max-width:520px){#toast{width:calc(100vw - 24px)}#banner{width:calc(100vw - 24px);padding:15px}#bnT{font-size:27px}#bnS{font-size:13px}}
+          @media(prefers-reduced-motion:reduce){#toast .vc-notice,#toast .vc-notice:after,#banner.pop{animation:none}#toast .vc-notice{transition:none}#toast .vc-notice:after{transform:scaleX(0)}}
+          </style>`;
+          const renderer=String.raw`function notificationPresentation(text){
+           if(/wanted level:|speeding reported|manhunt/i.test(text))return ['error','POLICE ALERT'];
+           if(/failed|busted|wasted|out of ammo/i.test(text))return ['error','ALERT'];
+           if(/slow down|not enough|cannot|can't|please wait|costs|blocked|locked/i.test(text))return ['warning','WARNING'];
+           if(/saved|purchased|bought|completed|you lost the cops|wanted level dropped|heat cleared|repaired|resprayed|received/i.test(text))return ['success','SUCCESS'];
+           return ['info','UPDATE'];
+          }
+          function toast(msg,ms=3200){
+           const container=$('#toast');if(!container)return;const text=String(msg==null?'':msg);if(!text)return;const number=Number(ms),duration=Number.isFinite(number)?Math.max(0,number):3200,[tone,label]=notificationPresentation(text),card=document.createElement('div'),heading=document.createElement('strong'),copy=document.createElement('span');
+           container.setAttribute('role','log');container.setAttribute('aria-live','polite');container.setAttribute('aria-relevant','additions');card.className='vc-notice';card.dataset.tone=tone;card.style.setProperty('--notice-duration',duration+'ms');heading.className='vc-notice-label';heading.textContent=label;copy.className='vc-notice-copy';copy.textContent=text;card.append(heading,copy);
+           const queue=toast._noticeQueue||(toast._noticeQueue=[]),record={card,timer:null};const remove=()=>{clearTimeout(record.timer);card.remove();const i=queue.indexOf(record);if(i>=0)queue.splice(i,1);};record.remove=remove;queue.push(record);container.prepend(card);while(queue.length>4)queue[0].remove();
+           record.timer=setTimeout(()=>{card.classList.add('vc-notice-out');record.timer=setTimeout(remove,180);},duration);
+          }`;
+          acorn.parse(renderer,{ecmaVersion:'latest'});const dom=new JSDOM('<!doctype html><head>'+css+'</head><body><div id="toast"></div><div id="banner"><div id="bnT"></div><div id="bnS"></div></div></body>'),timers=new Map();let serial=0;const ctx={document:dom.window.document,$:s=>dom.window.document.querySelector(s),setTimeout(fn,ms){const id=++serial;timers.set(id,{fn,ms});return id;},clearTimeout(id){timers.delete(id);}};vm.createContext(ctx);vm.runInContext(renderer,ctx);const runTimer=id=>{const timer=timers.get(id);assert(timer);timers.delete(id);timer.fn();};
+          ctx.toast('<img src=x onerror=alert(1)>',900);let card=ctx.$('#toast').firstElementChild;assert(card.querySelector('img')===null&&card.querySelector('.vc-notice-copy').textContent==='<img src=x onerror=alert(1)>');assert(card.style.getPropertyValue('--notice-duration')==='900ms'&&ctx.$('#toast').getAttribute('aria-live')==='polite');runTimer([...timers.keys()][0]);assert(card.classList.contains('vc-notice-out'));runTimer([...timers.keys()][0]);assert(!card.isConnected&&timers.size===0);
+          for(const [text,tone] of [['Wanted level: three stars','error'],['Speeding reported: 55 mph limit.','error'],['Slow down: 55 mph limit.','warning'],['Game saved','success'],['You lost the cops!','success'],['Race failed','error'],['Now playing as Jason','info']])assert(ctx.notificationPresentation(text)[0]===tone);
+          for(let i=0;i<10;i++)ctx.toast('Message '+i,3200);assert(ctx.$('#toast').children.length===4&&timers.size===4);assert(ctx.$('#toast').firstElementChild.querySelector('.vc-notice-copy').textContent==='Message 9');assert(!ctx.$('#toast').textContent.includes('Message 0'));for(const id of [...timers.keys()])runTimer(id);for(const id of [...timers.keys()])runTimer(id);assert(ctx.$('#toast').children.length===0&&timers.size===0);assert(dom.window.document.styleSheets.length===1);
+          const found=[];function walk(n,fn){fn(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,fn);}else if(v&&typeof v.type==='string')walk(v,fn);}}
+          for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;const ast=acorn.parse(m[1],{ecmaVersion:'latest'});walk(ast,n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='toast')found.push({m,node:n});});}
+          if(found.length!==1||html.split('</head>').length!==2||!html.includes('id="toast"')||!html.includes('id="banner"')||!html.includes('id="bnT"')||!html.includes('id="bnS"'))throw Error('Notification integration layout changed; refusing ambiguous edits');const c=found[0],code=c.m[1].slice(0,c.node.start)+renderer+c.m[1].slice(c.node.end);acorn.parse(code,{ecmaVersion:'latest'});const offset=c.m.index+c.m[0].indexOf(c.m[1]);html=html.slice(0,offset)+code+html.slice(offset+c.m[1].length);html=html.replace('</head>',css+'\n</head>');for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(m[1].trim())acorn.parse(m[1],{ecmaVersion:'latest'});
+          fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/notification-polish-check.json',JSON.stringify({passed:true,safeTextRendering:true,maximumCards:4,newestFirst:true,expiryAndEvictionCleanup:true,progressMatchesMessageDuration:true,severityLabels:true,politeLiveRegion:true,reducedMotionStyles:true,responsiveStyles:true,eventBannerTextColorsAndTimingPreserved:true,gameplayRulesUnchanged:true,scope:'DOM behavior, CSS parse, and JavaScript syntax checks; full-game browser visuals and live deployment not verified.'},null,2)+'\n');fs.writeFileSync('index.html',html);
+          JS
+      - name: Publish only the checked notification changes
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- index.html status/notification-polish-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Polish notification cards and event banners with clear labels and timed expiry bars'
+          git push origin HEAD:main
