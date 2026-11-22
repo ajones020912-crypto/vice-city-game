@@ -227,7 +227,7 @@
    if(!near)continue;
    changes.push([o,eye.center]);
   }
-  for(const [o,center] of changes){const old=o.geometry,g=old.clone(),a=g.attributes.position,to=o.matrix.clone(),from=to.clone().invert(),v=new T.Vector3();for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(to);v.x=center.x+(v.x-center.x)*1.15;v.y=center.y+(v.y-center.y)*1.20;v.applyMatrix4(from);a.setXYZ(i,v.x,v.y,v.z);}a.needsUpdate=true;g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();o.geometry=g;old.dispose();}
+  for(const [o,center] of changes){const old=o.geometry,g=old.clone(),a=g.attributes.position,to=o.matrix.clone(),from=to.clone().invert(),v=new T.Vector3();for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(to);v.x=center.x+(v.x-center.x)*1.25;v.y=center.y+(v.y-center.y)*1.35;v.applyMatrix4(from);a.setXYZ(i,v.x,v.y,v.z);}a.needsUpdate=true;g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();o.geometry=g;old.dispose();}
   u.luciaLargerEyes=true;
  }
 
