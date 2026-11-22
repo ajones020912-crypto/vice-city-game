@@ -1,0 +1,94 @@
+name: Restore detailed characters and refine Lucia from photo
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-photo-reference.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-photo-reference
+  cancel-in-progress: false
+jobs:
+  refine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-photo" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Restore exact working source and prepare photo refinement
+        run: |
+          node <<'JS'
+          const fs=require('fs'),cp=require('child_process'),acorn=require(process.env.RUNNER_TEMP+'/lucia-photo/node_modules/acorn');
+          const file='js/reference-characters.js',current=fs.readFileSync(file,'utf8');if(current.includes('// LUCIA_PHOTO_REFERENCE_V1'))process.exit(0);
+          const hash=cp.execFileSync('git',['hash-object',file],{encoding:'utf8'}).trim();if(hash!=='cbdeec97aa8b33143e12b7571e7718b7628283ff')throw Error('Character module changed since review; refusing to overwrite new work');
+          const restored=cp.execFileSync('git',['show','0dbe9e38c2866c403f73a39ddb3a3942dcd40605:js/reference-characters.js'],{encoding:'utf8'});if(restored.length<50000)throw Error('Historical source is incomplete');fs.writeFileSync('/tmp/lucia-photo-before.js',restored);let source=restored;
+          function once(a,b){if(source.split(a).length!==2)throw Error('Ambiguous reference anchor: '+a);source=source.replace(a,b);}
+          once('skin:0x8f5e40','skin:0xb17e5a');
+          const helper=String.raw`
+           function fitLuciaPhotoReference(T,h){
+            const u=h.userData,m=u.m;h.updateMatrixWorld(true);
+            function reshape(mesh,space,shape){
+             if(!mesh.isMesh||!mesh.geometry.attributes.position)return;const g=mesh.geometry.clone(),p=g.attributes.position,toSpace=new T.Matrix4().copy(space.matrixWorld).invert().multiply(mesh.matrixWorld),back=toSpace.clone().invert(),v=new T.Vector3();
+             for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(toSpace);shape(v);v.applyMatrix4(back);p.setXYZ(i,v.x,v.y,v.z);}p.needsUpdate=true;g.computeVertexNormals();
+             const n=g.attributes.normal,sums=new Map(),key=i=>[p.getX(i),p.getY(i),p.getZ(i)].map(x=>Math.round(x*1e5)).join(',');for(let i=0;i<p.count;i++){const k=key(i);if(!sums.has(k))sums.set(k,new T.Vector3());sums.get(k).add(new T.Vector3(n.getX(i),n.getY(i),n.getZ(i)));}for(let i=0;i<p.count;i++){const normal=sums.get(key(i)).clone().normalize();n.setXYZ(i,normal.x,normal.y,normal.z);}n.needsUpdate=true;g.computeBoundingBox();g.computeBoundingSphere();mesh.geometry=g;
+            }
+            const tank=u.spine.children.find(o=>o.name==='lucia-dark-tank-top'),denim=h.getObjectByName('lucia-seamless-denim');if(!tank||!denim||!denim.isSkinnedMesh)throw Error('Expected detailed cropped tank and skinned denim');
+            for(const mesh of u.spine.children){
+             if(!mesh.isMesh)continue;const cloth=mesh.material===m.shirt||/tank|shoulder-strap/.test(mesh.name);if(mesh.material!==m.skin&&!cloth)continue;
+             if(cloth){mesh.material=mesh.material.clone();mesh.material.color.setHex(0x151619);mesh.material.roughness=.92;mesh.material.flatShading=false;}
+             reshape(mesh,u.spine,v=>{const waist=Math.exp(-Math.pow((v.y-.16)/.10,2));v.x*=1-.025*waist;const front=Math.max(0,Math.min(1,v.z/.035)),chest=Math.exp(-Math.pow((v.y-.39)/.085,2)),round=Math.exp(-Math.pow((Math.abs(v.x)-.070)/.070,2));v.z+=front*chest*(.012+.033*round);});
+            }
+            m.shirt.color.setHex(0x151619);m.skin.color.setHex(0xb17e5a);m.skin.roughness=.78;m.pants.color.setHex(0x4b739a);denim.material.color.setHex(0x4b739a);
+            const hipMeshes=[];h.traverse(o=>{if(o.isMesh&&(o===denim||o.parent===u.hips||u.Lg.some(l=>o.parent===l.hp)))hipMeshes.push(o);});
+            for(const mesh of hipMeshes)reshape(mesh,u.hips,v=>{const hip=Math.exp(-Math.pow((v.y+.045)/.14,2)),thigh=Math.exp(-Math.pow((v.y+.22)/.13,2));v.x*=1+.025*hip+.018*thigh;v.z*=1+.07*hip+.025*thigh;});
+            for(const child of u.headP.children.slice())if(child.isMesh&&(child.material===m.hair||/hair|ponytail|curl/i.test(child.name)))u.headP.remove(child);
+            m.hair.color.setHex(0x3b291f);m.hair.flatShading=false;m.hair.roughness=.78;add(T,u.headP,ponyCap(T),m.hair,'lucia-photo-hair-cap');
+            add(T,u.headP,tube(T,[[0,.265,-.095],[.012,.27,-.15],[.022,.19,-.20],[.018,.075,-.215],[.005,-.035,-.19]],.037,32),m.hair,'lucia-photo-ponytail');
+            for(const side of [-1,1])add(T,u.headP,tube(T,[[side*.078,.24,.045],[side*.099,.175,.05],[side*.099,.075,.015]],.007,14),m.hair,'lucia-photo-face-framing-hair');
+            if(!m.shoe||!m.sole)throw Error('Expected shoe materials');m.shoe.color.setHex(0x315f8f);m.sole.color.setHex(0xf2f0e9);const white=cloth(T,0xf2f0e9);
+            for(const leg of u.Lg){leg.shin.updateMatrix();const box=new T.Box3().setFromBufferAttribute(leg.shin.geometry.attributes.position).applyMatrix4(leg.shin.matrix),ankle=box.min.y;
+             add(T,leg.kn,new T.CylinderGeometry(.052,.059,.105,16),m.shoe,'lucia-photo-high-top-cuff',0,ankle+.045,0);const toe=add(T,leg.kn,new T.SphereGeometry(1,16,10),white,'lucia-photo-white-toe',0,ankle-.012,.112);toe.scale.set(.050,.027,.057);
+             for(let i=0;i<3;i++)add(T,leg.kn,new T.BoxGeometry(.058,.006,.008),white,'lucia-photo-lace',0,ankle+.018+i*.023,.061-i*.006);
+            }
+            u.faceUncovered=true;u.luciaPhotoReference=true;u.luciaPhotoReferenceVersion=1;
+           }
+          `;
+          once(' function lucia(T,h){',helper+' function lucia(T,h){');once('finishLuciaReferenceOutfit(T,h);','finishLuciaReferenceOutfit(T,h);fitLuciaPhotoReference(T,h);');source='// LUCIA_PHOTO_REFERENCE_V1\n'+source;acorn.parse(source,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-photo-after.js',source);
+          JS
+      - name: Verify complete rigs clothes skinning and unchanged other characters
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/lucia-photo/node_modules/acorn'),T=require(process.env.RUNNER_TEMP+'/lucia-photo/node_modules/three');
+          function load(file){const c={window:{},console,Math,T,clamp:(x,a,b)=>Math.max(a,Math.min(b,x))};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);assert(c.window.VCCharacters.referenceLeadsInstalled);return c;}
+          if(!fs.existsSync('/tmp/lucia-photo-after.js')){if(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_PHOTO_REFERENCE_V1'))process.exit(0);throw Error('Candidate missing');}
+          const before=load('/tmp/lucia-photo-before.js'),after=load('/tmp/lucia-photo-after.js'),old=before.window.VCCharacters,cur=after.window.VCCharacters;
+          function signature(h){const a=[];h.traverse(o=>{if(o.isMesh)a.push([o.name,o.position.toArray(),o.scale.toArray(),Array.from(o.geometry.attributes.position.array),...(Array.isArray(o.material)?o.material:[o.material]).map(m=>m.color?m.color.getHex():null)]);});return JSON.stringify(a);}
+          for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)),'Unrelated restored character changed: '+id);
+          const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC'),joints=h=>{const u=h.userData;return [u.hips.position.toArray(),u.spine.position.toArray(),u.headP.position.toArray(),...u.A.flatMap(x=>[x.sh.position.toArray(),x.el.position.toArray()]),...u.Lg.flatMap(x=>[x.hp.position.toArray(),x.kn.position.toArray()])];};assert(JSON.stringify(joints(a))===JSON.stringify(joints(b)));
+          function front(h){h.updateMatrixWorld(true);const u=h.userData,o=h.getObjectByName('lucia-dark-tank-top'),p=o.geometry.attributes.position,M=new T.Matrix4().copy(u.spine.matrixWorld).invert().multiply(o.matrixWorld),v=new T.Vector3();let max=-Infinity;for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(M);if(v.y>.30&&v.y<.45)max=Math.max(max,v.z);}assert(Number.isFinite(max));return max;}assert(front(b)>front(a)+.015,'Continuous torso depth did not improve');
+          const oldDenim=a.getObjectByName('lucia-seamless-denim'),newDenim=b.getObjectByName('lucia-seamless-denim');for(const key of ['skinIndex','skinWeight'])assert(JSON.stringify(Array.from(oldDenim.geometry.attributes[key].array))===JSON.stringify(Array.from(newDenim.geometry.attributes[key].array)),'Skinning weights changed');
+          const originalHtml=fs.readFileSync('index.html','utf8');let html=originalHtml;function walk(n,fn){fn(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,fn);}else if(v&&typeof v.type==='string')walk(v,fn);}}const defaults=[],animators=[];
+          for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;const ast=acorn.parse(m[1],{ecmaVersion:'latest'});walk(ast,n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='animHuman')animators.push(m[1].slice(n.start,n.end));if(n.type==='VariableDeclarator'&&n.id.type==='Identifier'&&n.id.name==='CHAR'&&n.init&&n.init.type==='ObjectExpression'){const lucia=n.init.properties.find(p=>(p.key.name||p.key.value)==='lucia');if(lucia&&lucia.value.type==='ObjectExpression')defaults.push({m,properties:lucia.value.properties});}});}
+          if(defaults.length!==1||animators.length!==1||!html.includes('js/reference-characters.js'))throw Error('Character integration changed');const item=defaults[0],values={skin:0xb17e5a,shirt:0x151619,pants:0x4b739a,hair:0x3b291f,shoe:0x315f8f},edits=[];for(const [name,value] of Object.entries(values)){const p=item.properties.find(p=>(p.key.name||p.key.value)===name);if(!p)throw Error('Missing Lucia default '+name);edits.push({start:p.value.start,end:p.value.end,text:'0x'+value.toString(16)});}let code=item.m[1];for(const e of edits.sort((a,b)=>b.start-a.start))code=code.slice(0,e.start)+e.text+code.slice(e.end);const offset=item.m.index+item.m[0].indexOf(item.m[1]);html=html.slice(0,offset)+code+html.slice(offset+item.m[1].length);
+          vm.runInContext(animators[0],after);for(const file of ['js/one-hand-hit.js','js/gun-animation.js'])vm.runInContext(fs.readFileSync(file,'utf8'),after);const animate=after.window.VCGunAnimation.wrap(after.window.VCOneHandHit.wrap(after.animHuman),T);let cases=0;
+          for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),u=h.userData,denim=h.getObjectByName('lucia-seamless-denim');assert(u.luciaPhotoReference&&u.faceUncovered&&u.guns.pistol&&u.guns.rifle);assert(!cur.DESIGNS.luciaC.extras.some(x=>x==='bandana'||x==='shades'));if(!merge){assert(h.getObjectByName('lucia-photo-ponytail')&&h.getObjectByName('lucia-photo-high-top-cuff'));assert(u.m.shirt.color.getHex()===0x151619&&u.m.shoe.color.getHex()===0x315f8f);}
+           for(const state of [{speed:0,weapon:null,punch:0},{speed:2,weapon:null,punch:0},{speed:7,weapon:null,punch:0},{speed:0,weapon:null,punch:1},{speed:0,weapon:'pistol',aim:true},{speed:0,weapon:'rifle',aim:true}]){for(let i=0;i<60;i++)animate(h,1/60,state);h.updateMatrixWorld(true);denim.onBeforeRender();assert(Array.from(denim.skeleton.boneMatrices).every(Number.isFinite));h.traverse(o=>{if(o.isMesh){for(const key of ['position','normal','uv'])if(o.geometry.attributes[key])assert(Array.from(o.geometry.attributes[key].array).every(Number.isFinite));assert(o.matrixWorld.elements.every(Number.isFinite));}});cases++;}
+          }
+          for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(m[1].trim())acorn.parse(m[1],{ecmaVersion:'latest'});fs.copyFileSync('/tmp/lucia-photo-after.js','js/reference-characters.js');fs.writeFileSync('index.html',html);fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-photo-reference-check.json',JSON.stringify({passed:true,restoredFrom:'0dbe9e38c2866c403f73a39ddb3a3942dcd40605',animationCases:cases,continuousChestAndClothingDepth:true,hipAndDenimRefittedTogether:true,blackCroppedTank:true,blueDenim:true,brownPonytail:true,blueHighTops:true,noBandana:true,rigOffsetsUnchanged:true,denimSkinWeightsUnchanged:true,otherCharactersMatchRestoredBaseline:true,scope:'Reference-inspired geometry and animation checks; rendered likeness and live deployment not yet verified.'},null,2)+'\n');
+          JS
+      - name: Publish only checked restoration and Lucia refinement
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed during checks; rerun against latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js index.html status/lucia-photo-reference-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Restore full character module and refine Lucia silhouette and outfit from photo without bandana'
+          git push origin HEAD:main
