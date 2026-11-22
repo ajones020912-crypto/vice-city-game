@@ -1,0 +1,49 @@
+name: Smaller Lucia underwear panels and narrower visible side joins
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-briefs-smaller-connected.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-photo-reference
+  cancel-in-progress: false
+jobs:
+  refine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-briefs" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Reduce front and back fabric and lift side connections outside hips
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-briefs/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_SMALLER_CONNECTED_BRIEFS_V2'))process.exit(0);if(!s.includes('// LUCIA_FITTED_BRIEFS_V1'))throw Error('Existing fitted briefs required');fs.writeFileSync('/tmp/lucia-briefs-before.js',s);function once(a,b){if(s.split(a).length!==2)throw Error('Reviewed garment implementation changed: '+a);s=s.replace(a,b);}once('bottom=-.200+.180*Math.pow(Math.abs(t),1.3)','bottom=-.188+.225*Math.pow(Math.abs(t),.85)');once('x=a.x+(b.x-a.x)*blend,z=','fittedWidth=profiles[k].width+(profiles[k+1].width-profiles[k].width)*blend,x=a.x+(b.x-a.x)*blend+Math.sign(t)*(.02*fittedWidth+.006)*smooth((Math.abs(t)-.78)/.22),z=');s='// LUCIA_SMALLER_CONNECTED_BRIEFS_V2\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-briefs-after.js',s);
+          JS
+      - name: Run existing garment coverage topology preservation and pose tests
+        run: |
+          node <<'JS'
+          const fs=require('fs');const text=fs.readFileSync('.github/workflows/lucia-fitted-briefs.yml','utf8'),heading='      - name: Verify three garment openings coverage and preserved body bra and rig',start=text.indexOf(heading);if(start<0)throw Error('Original garment tests missing');const block=text.slice(start).split('        run: |\n')[1];if(!block)throw Error('Test block changed');const script=block.split('\n      - name: ')[0].split('\n').map(line=>line.startsWith('          ')?line.slice(10):line).join('\n');if(!script.startsWith("node <<'JS'"))throw Error('Unexpected test runner');fs.writeFileSync('/tmp/lucia-briefs-original-tests.sh',script);
+          JS
+          bash /tmp/lucia-briefs-original-tests.sh
+      - name: Verify smaller panels thinner side bands and exterior side connections
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-briefs/node_modules/three');if(!fs.existsSync('/tmp/lucia-briefs-before.js')){assert(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_SMALLER_CONNECTED_BRIEFS_V2'));process.exit(0);}function load(file){const c={window:{},console,Math};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}const before=load('/tmp/lucia-briefs-before.js').build(T,'luciaC',{merge:false}),after=load('/tmp/lucia-briefs-after.js').build(T,'luciaC',{merge:false}),name='lucia-fitted-black-briefs',old=before.getObjectByName(name),cur=after.getObjectByName(name),u=after.userData;function panelArea(mesh){const g=mesh.geometry,p=g.attributes.position,a=new T.Vector3(),b=new T.Vector3(),c=new T.Vector3();let area=0;for(let i=0;i<2*24*48*6;i+=3){a.fromBufferAttribute(p,g.index.getX(i));b.fromBufferAttribute(p,g.index.getX(i+1));c.fromBufferAttribute(p,g.index.getX(i+2));area+=b.sub(a).cross(c.sub(a)).length()*.5;}return area;}const areaBefore=panelArea(old),areaAfter=panelArea(cur);assert(areaAfter<areaBefore*.95,'Panels did not become smaller');function sideHeight(h){h.updateMatrixWorld(true);const m=h.getObjectByName(name),inv=new T.Matrix4().copy(h.userData.hips.matrixWorld).invert(),M=inv.multiply(m.matrixWorld),p=m.geometry.attributes.position,a=new T.Vector3().fromBufferAttribute(p,0).applyMatrix4(M),b=new T.Vector3().fromBufferAttribute(p,24*49).applyMatrix4(M);return a.y-b.y;}const bandBefore=sideHeight(before),bandAfter=sideHeight(after);assert(bandAfter>0.015&&bandAfter<bandBefore*.5,'Side bands not narrower');after.updateMatrixWorld(true);const inverse=new T.Matrix4().copy(u.hips.matrixWorld).invert(),triangles=[],bridge=after.getObjectByName('lucia-pelvis-skin-bridge');after.traverse(o=>{if(!o.isMesh||!(o===bridge||(o.material===u.m.skin&&(o.parent===u.spine||o.parent===u.hips||u.Lg.some(l=>o.parent===l.hp)))))return;const g=o.geometry,p=g.attributes.position,M=inverse.clone().multiply(o.matrixWorld),points=[];for(let i=0;i<p.count;i++)points.push(new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(M));for(let i=0,n=g.index?g.index.count:p.count;i<n;i+=3){const t=[0,1,2].map(j=>points[g.index?g.index.getX(i+j):i+j]);if(Math.min(...t.map(v=>v.y))<=.07&&Math.max(...t.map(v=>v.y))>=.03)triangles.push(t);}});function width(y){let w=0;for(const t of triangles)for(let j=0;j<3;j++){const a=t[j],b=t[(j+1)%3],dy=b.y-a.y;if(Math.abs(dy)<1e-10)continue;const f=(y-a.y)/dy;if(f>=0&&f<=1)w=Math.max(w,Math.abs(a.x+(b.x-a.x)*f));}return w;}const M=inverse.clone().multiply(cur.matrixWorld),p=cur.geometry.attributes.position;let minimumSideClearance=Infinity,sideVerticesChecked=0;for(let side=0;side<2;side++)for(let row=0;row<=24;row++)for(const col of [0,48]){const v=new T.Vector3().fromBufferAttribute(p,side*49*25+row*49+col).applyMatrix4(M),w=width(v.y);assert(w>.05);const clearance=Math.abs(v.x)-w;assert(clearance>.004,'Side connection remains inside hip surface');minimumSideClearance=Math.min(minimumSideClearance,clearance);sideVerticesChecked++;}const base=JSON.parse(fs.readFileSync('status/lucia-fitted-briefs-check.json','utf8'));assert(base.passed&&base.boundaryLoops===3);const report={...base,style:'opaque black smaller front and back panels with narrow connected side bands',frontBackPanelAreaBefore:areaBefore,frontBackPanelAreaAfter:areaAfter,sideBandHeightBefore:bandBefore,sideBandHeightAfter:bandAfter,minimumRestPoseSideClearance:minimumSideClearance,sideVerticesChecked,scope:'Smaller opaque panels; narrower connected side bands; side edges verified outside rest-pose body profiles; existing gusset and three openings retained. Structural checks do not establish rendered realism, all-pose clipping, or live deployment.'};fs.writeFileSync('status/lucia-smaller-connected-briefs-check.json',JSON.stringify(report,null,2)+'\n');fs.writeFileSync('status/lucia-fitted-briefs-check.json',JSON.stringify(report,null,2)+'\n');
+          JS
+      - name: Publish only validated garment refinements
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-fitted-briefs-check.json status/lucia-smaller-connected-briefs-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Reduce Lucia underwear panels and side bands and expose connected hip joins'
+          git push origin HEAD:main
