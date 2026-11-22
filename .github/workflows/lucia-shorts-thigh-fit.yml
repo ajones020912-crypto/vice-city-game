@@ -1,0 +1,87 @@
+name: Fit Lucia thighs and cover joint gaps while keeping shorts
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-shorts-thigh-fit.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-shorts-test" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Refit thighs and add body overlap
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('js/reference-characters.js')
+          s=p.read_text(encoding='utf-8')
+          Path('/tmp/lucia-shorts-before.js').write_text(s,encoding='utf-8')
+          if 'function fitLuciaShortsLegs(' in s: raise SystemExit('Repair already installed.')
+          anchor='waist.scale.z=.70;shapeLucia(T,h);'
+          old='xScale=1+.12*k;zScale=1+.10*k'
+          if s.count(anchor)!=1 or s.count(old)!=1: raise SystemExit('Current geometry changed; refusing ambiguous edit.')
+          if 'seatLuciaLegs(T,h);' in s or 'coverLuciaLegs(T,h);' in s: raise SystemExit('Unexpected prior leg modification.')
+          s=s.replace(old,'xScale=1+.18*k;zScale=1+.14*k',1)
+          helper='''
+           function fitLuciaShortsLegs(T,h){
+            const u=h.userData;
+            for(const leg of u.Lg){
+             const hp=leg.hp,kn=leg.kn;
+             const shorts=hp.children.find(o=>o.isMesh&&o.name.indexOf('lucia-reference-denim-shorts-')===0);
+             if(!shorts)throw new Error('Expected Lucia jean shorts');
+             shorts.updateMatrix();
+             const box=new T.Box3().setFromBufferAttribute(shorts.geometry.attributes.position).applyMatrix4(shorts.matrix);
+             const size=box.getSize(new T.Vector3()),center=box.getCenter(new T.Vector3());
+             const hip=add(T,hp,new T.SphereGeometry(1,24,16),u.m.skin,'lucia-skin-hip-bridge',center.x,.015,center.z);
+             hip.scale.set(size.x*.46,.12,size.z*.44);
+             const g=shorts.geometry,a=g.attributes.position;
+             for(let i=0;i<a.count;i++){
+              const y=a.getY(i),t=Math.max(0,Math.min(1,(y+.16)/.16));
+              a.setY(i,y+.035*t*t*(3-2*t));
+             }
+             a.needsUpdate=true;g.computeVertexNormals();g.computeBoundingSphere();g.computeBoundingBox();
+             const shin=leg.shin;shin.updateMatrix();
+             const sb=new T.Box3().setFromBufferAttribute(shin.geometry.attributes.position).applyMatrix4(shin.matrix);
+             const ss=sb.getSize(new T.Vector3()),sc=sb.getCenter(new T.Vector3());
+             const knee=add(T,kn,new T.SphereGeometry(1,24,16),u.m.skin,'lucia-skin-knee-bridge',sc.x,0,sc.z);
+             knee.scale.set(Math.max(.065,ss.x*.51),.075,Math.max(.060,ss.z*.51));
+            }
+            u.luciaShortsThighFit=true;
+           }
+          '''
+          s=s.replace(anchor,anchor+'fitLuciaShortsLegs(T,h);',1)
+          s=s.replace(' function roundLuciaGeometry(',helper+' function roundLuciaGeometry(',1)
+          Path('/tmp/lucia-shorts-after.js').write_text(s,encoding='utf-8')
+          subprocess.run(['node','--check','/tmp/lucia-shorts-after.js'],check=True)
+          PY
+      - name: Check shorts, unchanged upper body, rig, and animated geometry
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert');
+          const T=require(process.env.RUNNER_TEMP+'/lucia-shorts-test/node_modules/three');
+          function load(path){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(path,'utf8'),c);return c.window.VCCharacters;}
+          const old=load('/tmp/lucia-shorts-before.js'),cur=load('/tmp/lucia-shorts-after.js');
+          const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');
+          function sig(root){const out=[];root.traverse(o=>{if(o.isMesh)out.push([o.name,o.position.toArray(),o.scale.toArray(),Array.from(o.geometry.attributes.position.array)]);});return JSON.stringify(out);}
+          assert(sig(a.userData.spine)===sig(b.userData.spine),'Upper body changed');
+          assert(cur.DESIGNS.luciaC.legs.kind==='shorts');
+          for(let i=0;i<2;i++){const x=a.userData.Lg[i],y=b.userData.Lg[i];assert(JSON.stringify(x.hp.position.toArray())===JSON.stringify(y.hp.position.toArray()));assert(JSON.stringify(x.kn.position.toArray())===JSON.stringify(y.kn.position.toArray()));assert(sig(x.kn.children.find(o=>o===x.shin))===sig(y.shin));assert(b.getObjectByName('lucia-reference-denim-shorts-'+i));assert(y.hp.children.some(o=>o.name==='lucia-skin-hip-bridge'&&o.material===b.userData.m.skin));}
+          for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge});for(const angle of [-.6,0,.6]){h.userData.Lg[0].hp.rotation.x=angle;h.userData.Lg[1].hp.rotation.x=-angle;h.userData.Lg[0].kn.rotation.x=.7;h.updateMatrixWorld(true);h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(o.matrixWorld.elements.every(Number.isFinite));}});}}
+          fs.copyFileSync('/tmp/lucia-shorts-after.js','js/reference-characters.js');
+          console.log('Shorts, rig, and geometry checks passed; in-game visual review still required.');
+          JS
+      - name: Commit shorts-preserving repair
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Refit Lucia thighs and shorts with skin-colored joint overlap'
+          git push origin HEAD:main

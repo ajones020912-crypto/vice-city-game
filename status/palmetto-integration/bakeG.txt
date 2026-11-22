@@ -1,0 +1,1 @@
+function bakeG(key,g,x,y,z,ry,sx,sy,sz,col,rx=0,rz=0){_e.set(rx,ry,rz);_q.setFromEuler(_e);_m.compose(_p.set(x,y,z),_q,_sc.set(sx,sy,sz));B(key,x,z).geo(g,_m,col)}

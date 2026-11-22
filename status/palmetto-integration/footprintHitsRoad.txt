@@ -1,0 +1,1 @@
+function footprintHitsRoad(x0,z0,x1,z1,margin=.8){for(const r of roads){const a=r.o==='h'?r.a:r.c-r.hw,b=r.o==='h'?r.c-r.hw:r.a,c=r.o==='h'?r.b:r.c+r.hw,d=r.o==='h'?r.c+r.hw:r.b;if(x1+margin>a&&x0-margin<c&&z1+margin>b&&z0-margin<d)return true}return false}

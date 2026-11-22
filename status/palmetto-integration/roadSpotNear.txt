@@ -1,0 +1,5 @@
+function roadSpotNear(x,z){let best=null,bd=1e9;
+ for(const r of roads){if(r.type==='hwy')continue;const along=r.o==='h'?x:z,lat=r.o==='h'?z:x;const p=clamp(along,r.a+12,r.b-12),side=lat>=r.c?1:-1,L=r.c+side*(r.hw-1.4);
+  const px=r.o==='h'?p:L,pz=r.o==='h'?L:p,d=Math.hypot(px-x,pz-z);
+  if(d<bd){bd=d;best={x:px,z:pz,h:r.o==='h'?(side>0?Math.PI/2:-Math.PI/2):(side>0?Math.PI:0),r}}}
+ return best}

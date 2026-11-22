@@ -1,0 +1,10 @@
+{
+  "stop sign": [],
+  "stopSign": [],
+  "STOP": [],
+  "road.cross": [
+    "ty'||n.v.type!=='city')continue;\n  const hw=n.v.hw,hh=n.h.hw,depth=3.2,setback=1.2,bar=.7,gap=.6,inset=.7;\n  const rect=(key,x0,z0,x1,z1)=>{const y=key==='mark'?.073:.061,uv=key==='mark'?[1,1]:[(x1-x0)/6,(z1-z0)/6];B(key,(x0+x1)/2,(z0+z1)/2).quad([x0,y,z1],[x1,y,z1],[x1,y,z0],[x0,y,z0],0,1,0,0,0,uv[0],uv[1],key==='mark'?[.92,.93,.91]:col)};\n  const room=(road,at,a,b)=>a>=road.a+.2&&b<=road.b-.2&&!road.cross.some(c=>Math.abs(c.p-at)>.1&&a<c.p+c.other.hw+.3&&b>c.p-c.other.hw-.3);\n  for(const side of[-1,1]){\n   const za=n.z+side*(hh+setback),zb=n.z+side*(hh+setback+depth),z0=Math.min(za,zb),z1=Math.max(za,zb),ns=n.x+','+n.z+':ns:'+side;\n   if(!zebraSeen.has(ns)&&room(n.v,n.z,z0-.15,z1+.15)){\n    zebraSeen.add(ns);rect('asph',n.x-hw,z0-.15,n.x+hw,z1+.15);\n    const span=2*(hw-inset),count=Math.max(1,Math.floor((span+gap)/(bar+gap))),width=count*bar+(count-1)*gap;\n    for(let i=0;i<count;i++){const x=n.x-width/2+i*(bar+gap);rect('mark',x,z0,x+bar,z1)}\n   }\n   const xa=n.x+side*(hw+setback),xb=n.x+side*(hw+setback+depth),x0=Math.min(xa,xb),x1=Math.max(xa,xb),ew=n.x+','+n.z+':ew:'+side;\n   if(!zebraSeen.has(ew)&&room(n.h,n.x,x0-.15,x1+.15)){\n    zebraSeen.add(ew);rect('asph',x0-.15,n.z-hh,x1+.15,n.z+hh);\n    const span=2*(hh-inset),count=Math.max(1,Math.floor((span+gap)/(bar+gap))),width=count*bar+(count-1)*gap;\n    for(let i=0;i<count;i++){const z=n.z-width/2+i*(bar+gap);rect('mark',x0,z,x1,z+bar)}\n   }\n  }\n }\n // sidewalks with gaps at crossings\n for(const r of roads){if(r.type!=='city')continue;let s=r.a;const gaps=r.cross.map(c=>[c.p-c.other.hw-.3,c.p+c.other.hw+.3]);gaps.push([r.b,r.b+1]);\n  const seg=(s0,s1)=>{if(s1-s0<3)return;for(const side of[-1,1]){const off=side*(r.hw+1.4);\n    if(r.o==='h')bakeG('walk',GEO.box,(s0+s1)/2,0,r.c+off,0,s1-s0,.17,2.8,[.78,.76,.72]);else"
+  ],
+  "this.road": [],
+  "this.rd": []
+}
