@@ -347,7 +347,7 @@ const G={quality:2}; // global game state container (also exposed for debugging)
 window.__vc=G;
 
 // ---------- renderer / scene ----------
-const WS=2750,TS=10,TN=WS*2/TS,WL=-.35;
+const WS=3000,TS=10,TN=WS*2/TS,WL=-.35;
 const scene=new T.Scene();
 const camera=new T.PerspectiveCamera(70,innerWidth/innerHeight,.25,2600);
 const renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
@@ -610,15 +610,31 @@ const water=new T.Mesh(new T.PlaneGeometry(10000,10000),waterMat);water.rotation
 
 // ---------- terrain height field ----------
 const ISL=[[380,-820,150,95],[160,-840,100,70],[-120,-830,110,80],[600,-830,120,80],[830,-820,110,75],[1030,-830,110,90],[1280,-900,130,95],[1480,-860,110,80],[-280,-920,100,70],[720,-980,120,85]];
-const shoreZ=x=>-372+10*Math.sin(x*.012)+6*Math.sin(x*.031+1);
+// JAGGED_COAST_V1: layered waves give bays and headlands; inward bites are capped (~90 m) so no streets get cut off
+const coastJ=(t,k)=>{const j=72*Math.sin(t*.0041+k)+44*Math.sin(t*.0107+k*2.3)+24*Math.sin(t*.0263+k*3.1)+11*Math.sin(t*.061+k*5.7)+6*Math.sin(t*.13+k);return (j>0?j*.58:j)-Math.max(0,260*Math.sin(t*.0019+k*1.9)-60)-Math.max(0,150*Math.sin(t*.0047+k*.7)-50)}; // big outward peninsulas break up the rectangle
+// north shore: headlands and coves only push land out to sea, never into the beachfront
+const shoreZ=x=>-372+10*Math.sin(x*.012)+6*Math.sin(x*.031+1)-Math.max(0,55*Math.sin(x*.0047+1.3)+38*Math.sin(x*.0121+.4)+16*Math.sin(x*.029+2));
 // HARBOR_ISLAND_V1: irregular island in the Calusa bay (negative = land)
 function hhIsle(x,z){const dx=(x+1090)/480,dz=(z-1960)/440,a=Math.atan2(dz,dx);
  const wob=.07*Math.sin(a*3+.8)+.05*Math.sin(a*5+2.1)+.035*Math.sin(a*9+.3);return (Math.hypot(dx,dz)-1-wob)*440}
+// FLORIDA_SHAPE_V1: a (slightly squashed) southern-Florida outline. East coast runs down then curves in, the land
+// narrows to a broad tip at the bottom, the Gulf side steps in below Port Calusa, mangrove islets dot the bay and a
+// chain of keys curls away south-west from the tip.
+const flLerp=(pts,t)=>{if(t<=pts[0][0])return pts[0][1];for(let i=1;i<pts.length;i++)if(t<=pts[i][0]){const [a,A]=pts[i-1],[b,B]=pts[i],k=(t-a)/(b-a),e=k*k*(3-2*k);return A+(B-A)*e}return pts[pts.length-1][1]};
+const flEast=z=>flLerp([[500,1750],[900,1640],[1300,1430],[1700,1250],[2100,1110],[2450,1010],[2700,880]],z);
+const flSouth=x=>2600-Math.pow((x-330)/820,2)*120-Math.max(0,(x-900)*.55);
+const FL_KEYS=(()=>{const k=[];for(let i=0;i<14;i++){const t=i/13,x=430-1250*t+120*t*t,z=2640+300*t-110*t*t+18*Math.sin(i*2.3);k.push([x,z,52-22*t+10*Math.sin(i*1.7),22+6*Math.cos(i*2.1),-.25-.55*t])} // curls away south-west
+ // mangrove islets (Ten Thousand Islands style) in the bay west of the mainland, clear of the causeway
+ const isle=[[-1480,1180],[-1360,1290],[-1560,1360],[-1250,1150],[-640,1200],[-560,1330],[-1690,1600],[-1660,1880],[-1700,2150],[-1580,2420],[-1340,2520],[-620,2440],[-560,2250],[-1180,1300],[-1650,1080]];
+ for(const [x,z] of isle)k.push([x,z,26+((x*7+z*3)%17+17)%17,18+((x+z)%9+9)%9,(x*z)%3]);return k})();
+function flKeysD(x,z){let d=1e9;for(const [cx,cz,rx,rz,a] of FL_KEYS){const c=Math.cos(a),s=Math.sin(a),dx=x-cx,dz=z-cz,u=(dx*c+dz*s)/rx,v=(-dx*s+dz*c)/rz;
+ const e=Math.hypot(u,v);if(e<3)d=Math.min(d,(e-1)*Math.min(rx,rz))}return d}
 function seaD(x,z){ // signed metres into the sea (>0 sea, <0 land)
  const n=shoreZ(x)-z;let isl=1e9;
  for(const [cx,cz,rx,rz] of ISL){const d=Math.hypot((x-cx)/rx,(z-cz)/rz);isl=Math.min(isl,(d-.62)*Math.min(rx,rz))}
- const edge=Math.max(Math.abs(x)-1750,-z-1750,z-2600),bay=x<-450?(z-1030)*(x<-470?1:(x+450)/-20+0):-1e9;
- return Math.max(edge,Math.min(Math.max(bay,Math.min(n,isl)),hhIsle(x,z)));
+ const edge=Math.max(-x-1750+coastJ(z,1.7),x-flEast(z)+coastJ(z,4.2)*.75,-z-1750,z-flSouth(Math.max(x,-460))+Math.max(-70,coastJ(x,2.9)*.7),
+  (-z-x)*.7071-(3500*.7071-180)+coastJ(x-z,3.3)*.6,(x-z)*.7071-(3500*.7071-200)+coastJ(x+z,5.5)*.6),bay=x<-450?(z-1030)*(x<-470?1:(x+450)/-20+0):-1e9;
+ return Math.min(Math.max(edge,Math.min(Math.max(bay,Math.min(n,isl)),hhIsle(x,z))),flKeysD(x,z));
 }
 const swampMask=(x,z)=>sstep(440,520,x)*sstep(-300,-230,z)*sstep(520,380,z)*(1-sstep(1400,1600,x));
 // AIRPORT_FLAT_V1: 1 over the airfield (x -1080..-500, z -250..160), easing to 0 over 60 m
@@ -627,7 +643,7 @@ const hillMask=(x,z)=>sstep(-640,-1100,x)*sstep(400,200,z)*sstep(-400,-280,z);
 function rawH(x,z){
  const S=seaD(x,z);let h=0;
  if(S>0)h=-3.5*sstep(0,28,S)-.05*Math.max(0,S-28);else h=.15*sstep(-30,-4,S)*(fbm(x*.05,z*.05)-.3);
- const hm=hillMask(x,z)*(1-airportMask(x,z));if(hm>0)h+=hm*(26+30*fbm(x*.0065+3,z*.0065)+8*vnoise(x*.03,z*.03));
+ const hm=hillMask(x,z)*(1-airportMask(x,z))*(1-sstep(-12,30,S)); // no hill under the seaif(hm>0)h+=hm*(26+30*fbm(x*.0065+3,z*.0065)+8*vnoise(x*.03,z*.03));
  const am=airportMask(x,z);if(am>0)h=lerp(h,0,am);
  const sw=swampMask(x,z);if(sw>0){const f=fbm(x*.011+5,z*.011);h+=-1.15*sstep(.5,.37,f)*sw+.22*vnoise(x*.09,z*.09)*sw}
  return h;
@@ -2821,7 +2837,7 @@ function stepCar(c,dt){
     const nl=ct.nx*cs-ct.nz*sn,off=(k-1)*-(t.L/2-.95);c.yr+=off*nl*imp*.035;}}}
  if(hit>1)crumpleCrash(c,hit,crumpleContact);if(hit>2.5){carImpact(c,hit)}
  // world bounds
- c.x=clamp(c.x,-1850,1850);c.z=clamp(c.z,-1850,2700);
+ c.x=clamp(c.x,-1850,1850);c.z=clamp(c.z,-1850,2950);
  // tire smoke / drift
  if(!c.dead&&Math.abs(vl)>3.2&&Math.abs(vf)>4&&Math.random()<dt*28&&water<=.1){emit(c.x-sn*1.4,c.y+.2,c.z-cs*1.4,(Math.random()-.5)*1.5,.6,(Math.random()-.5)*1.5,1.1,.5,2,DUST,DUST,-.2,.5)}
  if(c.hp<40&&!c.dead&&Math.random()<dt*10*(1-c.hp/40)){emit(c.x+sn*1.8,c.y+1,c.z+cs*1.8,0,1.5,0,1.6,.4,1.8,SMK,SMK2,-.6,.6)}
@@ -2950,7 +2966,7 @@ function playerOnFoot(dt){
   pl.swim=gy<WL-1.05;if(pl.swim){pl.y=WL-.75;pl.vy=0}
   pl.x+=pl.vx*dt;pl.z+=pl.vz*dt;
   resolveFoot(pl,.38);
-  pl.x=clamp(pl.x,-1850,1850);pl.z=clamp(pl.z,-1850,2700);
+  pl.x=clamp(pl.x,-1850,1850);pl.z=clamp(pl.z,-1850,2950);
  }
  const spd=Math.hypot(pl.vx,pl.vz);pl.walkSpd=spd;
  if(aiming||pl.fireT>0&&pl.weapon!=='fists'){const ty=Math.atan2(-Math.sin(camYaw),-Math.cos(camYaw));pl.h+=wrapA(ty-pl.h)*Math.min(1,dt*14)}
@@ -4662,7 +4678,7 @@ function stepBoat(c,dt){const t=c.t,inp=c.inp;c.age+=dt;if(c.dead){inp.thr=0;inp
  for(let k=0;k<3;k++){const p=_cc[k];for(const col of queryCols(p[0],p[1],r+1)){const ct=circleBox(p,r,col);if(!ct)continue;
   c.x+=ct.nx*ct.pen;c.z+=ct.nz*ct.pen;p[0]+=ct.nx*ct.pen;p[1]+=ct.nz*ct.pen;const vn=c.vx*ct.nx+c.vz*ct.nz;if(vn<0){c.vx-=1.3*vn*ct.nx;c.vz-=1.3*vn*ct.nz;hit=Math.max(hit,-vn)}}}
  if(hit>2.5)carImpact(c,hit);
- c.x=clamp(c.x,-1850,1850);c.z=clamp(c.z,-1850,2700);
+ c.x=clamp(c.x,-1850,1850);c.z=clamp(c.z,-1850,2950);
  if(onW&&sp>3&&Math.random()<dt*30)emit(c.x-sn*t.L*.5+(Math.random()-.5)*1.4,WL+.1,c.z-cs*t.L*.5,(Math.random()-.5)*2-sn*2,1+Math.random()*1.5,(Math.random()-.5)*2-cs*2,.7,.4,1.6,[.95,.97,1],[.8,.88,.95],3,.7);
  if(onW&&sp>8&&Math.random()<dt*20)for(const s of[-1,1])emit(c.x+sn*t.L*.3+cs*s*1.2,WL+.2,c.z+cs*t.L*.3-sn*s*1.2,cs*s*3,1.5,-sn*s*3,.5,.3,.9,[1,1,1],[.85,.9,.95],5,.6);
  if(swampLand&&!onW&&sp>3&&Math.random()<dt*20)emit(c.x-sn*2,c.y+.2,c.z-cs*2,0,.6,0,1,.5,2,DUST,DUST,-.2,.4);
@@ -5214,7 +5230,7 @@ playerOnFoot=function(dt){
  if(G.state!=='play'||G.mapOpen||G.phoneOpen){pl.vx=pl.vy=pl.vz=0;return}
  dt=clamp(Number(dt)||0,0,.05);const f=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0),r=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),u=(keys[' ']?1:0)-(keys.x?1:0),length=Math.max(1,Math.hypot(f,r,u)),speed=keys.shift?48:18;
  pl.vx=(-Math.sin(camYaw)*f+Math.cos(camYaw)*r)/length*speed;pl.vz=(-Math.cos(camYaw)*f-Math.sin(camYaw)*r)/length*speed;pl.vy=u/length*speed;
- pl.x=clamp(pl.x+pl.vx*dt,-1850,1850);pl.z=clamp(pl.z+pl.vz*dt,-1850,2700);pl.y=clamp(pl.y+pl.vy*dt,heightAt(pl.x,pl.z)+.75,600);resolveFoot(pl,.38);
+ pl.x=clamp(pl.x+pl.vx*dt,-1850,1850);pl.z=clamp(pl.z+pl.vz*dt,-1850,2950);pl.y=clamp(pl.y+pl.vy*dt,heightAt(pl.x,pl.z)+.75,600);resolveFoot(pl,.38);
  pl.h=wrapA(camYaw+Math.PI);pl.swim=false;pl.walkSpd=0;pl.aim=0;
 };
 const devFlightOriginalEnterCar=enterCar;enterCar=function(){if(devFlightState.active){toast('Disable Dev Mode before entering a vehicle.');return}return devFlightOriginalEnterCar.apply(this,arguments)};
