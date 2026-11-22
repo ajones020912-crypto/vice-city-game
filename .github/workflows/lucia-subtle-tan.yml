@@ -1,4 +1,4 @@
-name: Subtle Lucia tan
+name: Give Lucia a deeper warm tan
 on:
   push:
     branches: [main]
@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+concurrency:
+  group: lucia-skin-tone
+  cancel-in-progress: false
 jobs:
   tan:
     runs-on: ubuntu-latest
@@ -14,29 +17,38 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Adjust only Lucia skin color
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-tan" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Prepare only the Lucia reference skin color change
         run: |
-          python3 - <<'PY'
+          python3 <<'PY'
           from pathlib import Path
-          import subprocess, tempfile
-          p=Path('js/reference-characters.js')
-          s=p.read_text(encoding='utf-8')
-          old="luciaC:{referenceLead:'lucia',name:'Lucia',realistic:true,female:true,luciaSummer:true,build:'slim',skin:0xa86b43"
-          new=old.replace('0xa86b43','0xa26740')
-          if new in s: raise SystemExit(0)
-          if s.count(old)!=1: raise SystemExit('Lucia skin anchor changed; refusing ambiguous edit.')
+          import subprocess
+          p=Path('js/reference-characters.js');s=p.read_text(encoding='utf-8')
+          old="luciaC:{referenceLead:'lucia',name:'Lucia',realistic:true,female:true,luciaSummer:true,build:'slim',skin:0xa06c4d"
+          new=old.replace('0xa06c4d','0x8f5e40')
+          if s.count(old)!=1: raise SystemExit('Lucia appearance changed; refusing an ambiguous color edit.')
+          Path('/tmp/lucia-tan-before.js').write_text(s,encoding='utf-8')
           updated=s.replace(old,new,1)
-          with tempfile.TemporaryDirectory() as d:
-              check=Path(d)/'check.js'
-              check.write_text(updated,encoding='utf-8')
-              subprocess.run(['node','--check',str(check)],check=True)
-          p.write_text(updated,encoding='utf-8')
+          Path('/tmp/lucia-tan-after.js').write_text(updated,encoding='utf-8')
+          subprocess.run(['node','--check','/tmp/lucia-tan-after.js'],check=True)
           PY
-      - name: Commit skin-tone change
+      - name: Verify color geometry rig and other characters
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),crypto=require('crypto'),T=require(process.env.RUNNER_TEMP+'/lucia-tan/node_modules/three');
+          function load(path){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(path,'utf8'),c);return c.window.VCCharacters;}
+          function signature(h,colors){const hash=crypto.createHash('sha256');h.traverse(o=>{hash.update(JSON.stringify([o.name,o.type,o.position.toArray(),o.rotation.toArray(),o.scale.toArray()]));if(o.isMesh){for(const key of ['position','normal','uv']){const a=o.geometry.attributes[key];if(a)hash.update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));}if(o.geometry.index){const a=o.geometry.index.array;hash.update(Buffer.from(a.buffer,a.byteOffset,a.byteLength));}if(colors)for(const m of Array.isArray(o.material)?o.material:[o.material])hash.update(JSON.stringify([m.color&&m.color.getHex(),m.roughness,m.metalness,m.opacity]));}});return hash.digest('hex');}
+          const before=load('/tmp/lucia-tan-before.js'),after=load('/tmp/lucia-tan-after.js');let checked=0;
+          for(const id of Object.keys(before.DESIGNS))if(id!=='luciaC'){assert(JSON.stringify(before.DESIGNS[id])===JSON.stringify(after.DESIGNS[id]));assert(signature(before.build(T,id),true)===signature(after.build(T,id),true),'Other character changed: '+id);checked++;}
+          for(const merge of [false,true]){const a=before.build(T,'luciaC',{merge}),b=after.build(T,'luciaC',{merge});assert(signature(a,false)===signature(b,false),'Lucia geometry or rig changed');assert(b.userData.m.skin.color.getHex()===0x8f5e40,'Final skin material did not take the tan');for(const k of ['hair','shirt','pants','lip','iris'])if(a.userData.m[k]&&b.userData.m[k])assert(a.userData.m[k].color.getHex()===b.userData.m[k].color.getHex(),'Unrelated appearance changed: '+k);}
+          assert(after.DESIGNS.luciaC.skin===0x8f5e40);fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-deeper-tan.json',JSON.stringify({passed:true,previous:'a06c4d',updated:'8f5e40',geometryAndRigUnchanged:true,otherCharactersChecked:checked,mergedAndUnmerged:true,liveDeploymentVerified:false},null,2)+'\n');
+          JS
+          cp /tmp/lucia-tan-after.js js/reference-characters.js
+      - name: Commit only after model checks pass
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add js/reference-characters.js
+          git add -- js/reference-characters.js status/lucia-deeper-tan.json
           git diff --cached --quiet && exit 0
-          git commit -m 'Give Lucia a slightly deeper warm tan'
+          git commit -m 'Give Lucia a deeper warm tan without changing geometry outfit or animations'
           git push origin HEAD:main
