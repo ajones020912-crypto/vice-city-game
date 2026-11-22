@@ -1,0 +1,163 @@
+name: Refine Palmetto details and Lucia torso width
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/palmetto-details-v2.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  refine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/palmetto-test" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Correct signs driveway endpoints curb crossings and torso width
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess,tempfile
+          src=Path('scripts/palmetto-grove.js');old=src.read_text(encoding='utf-8');s=old
+          if '// PALMETTO_DETAILS_V2' in s: raise SystemExit('Detail update already installed.')
+          def once(a,b):
+              global s
+              if s.count(a)!=1: raise SystemExit('Unexpected neighborhood anchor: '+a[:90])
+              s=s.replace(a,b,1)
+          once('const PG={paths:[],homes:[],signs:[]};','const PG={paths:[],homes:[],signs:[],driveways:[]};')
+          once('PG.paths=[];PG.homes=[];PG.signs=[];','PG.paths=[];PG.homes=[];PG.signs=[];PG.driveways=[];')
+          curb=''' function curbBlocked(path,x,z){
+            if(PG.driveways.some(q=>{const dx=x-q.x,dz=z-q.z,along=dx*q.fx+dz*q.fz,lat=dx*q.fz-dz*q.fx;return Math.abs(lat)<2.5&&along>q.start-.3&&along<q.end+.9}))return true;
+            if(path.name==='Palm Court'&&Math.hypot(x-path.points.at(-1).x,z-path.points.at(-1).z)<14.3)return true;
+            if(pgOldNearRoad(x,z,.7))return true;
+            return PG.paths.some(other=>other!==path&&other.points.some((b,i)=>i&&pgDistance(x,z,other.points[i-1],b)<other.width/2+.7));
+           }
+          '''
+          once(' function ribbon(',curb+' function ribbon(')
+          once('idx.push(k,k+2,k+1,k+1,k+2,k+3)','if(offset===0||![k,k+1,k+2,k+3].some(j=>curbBlocked(path,p[j*3],p[j*3+2])))idx.push(k,k+2,k+1,k+1,k+2,k+3)')
+          once("mesh.name='palmetto-'+path.name;mesh.receiveShadow=true;","mesh.name='palmetto-'+path.name;mesh.userData.pgCurb=offset!==0;mesh.userData.pgPath=path.name;mesh.receiveShadow=true;")
+          road_draw=" for(const path of PG.paths){ribbon(path,0,path.width,0x45494b,.055);for(const side of [-1,1]){ribbon(path,side*(path.width/2+1.15),2.2,0xb9b5a8,.085);ribbon(path,side*path.width/2,.20,0xd5d0c3,.10)}}"
+          once(road_draw,' // Draw road edging after driveway placement.')
+          once(' const geometry=new T.BoxGeometry(1,1,1),matrix=new T.Matrix4();',road_draw+'\n const geometry=new T.BoxGeometry(1,1,1),matrix=new T.Matrix4();')
+          once('const driveLength=off-d/2-path.width/2+2,driveCenter=d/2+driveLength/2;',"const driveStart=d/2+.10,driveEnd=off-path.width/2-.35,driveLength=driveEnd-driveStart,driveCenter=(driveEnd+driveStart)/2;PG.driveways.push({x,z,fx:forward.x,fz:forward.z,start:driveStart,end:driveEnd,edge:off-path.width/2});")
+          signs=''' function plate(text,color,w,h,x,y,z,angle){
+            const key=text+color;
+            if(!signCache[key]){
+             let map;
+             if(typeof document!=='undefined'){
+              const canvas=document.createElement('canvas');canvas.width=768;canvas.height=128;
+              const ctx=canvas.getContext('2d');ctx.fillStyle=color;ctx.fillRect(0,0,768,128);
+              ctx.strokeStyle='#ffffff';ctx.lineWidth=5;ctx.strokeRect(4,4,760,120);
+              ctx.fillStyle='#ffffff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 66px Arial';ctx.fillText(text,384,67,724);
+              map=new T.CanvasTexture(canvas);map.encoding=T.sRGBEncoding;
+             }else map=signTex(text,color);
+             signCache[key]=new T.MeshBasicMaterial({map,toneMapped:false,side:T.FrontSide});
+            }
+            box(w,h,.16,0x174b36,x,y,z,angle);
+            for(const side of [-1,1]){
+             const mesh=new T.Mesh(new T.PlaneGeometry(w,h),signCache[key]);mesh.name='palmetto-name-face';
+             mesh.position.set(x+Math.sin(angle)*side*.085,y,z+Math.cos(angle)*side*.085);
+             mesh.rotation.y=angle+(side<0?Math.PI:0);world.add(mesh);
+            }
+           }
+           function stop(path,t){
+            const p=path.curve.getPoint(t),d=path.curve.getTangent(t),x=p.x+d.z*(path.width/2+2),z=p.z-d.x*(path.width/2+2);
+            if(zoneName(x,z)!=='PALMETTO GROVE')return;
+            const y=heightAt(x,z),angle=Math.atan2(-d.x,-d.z);
+            box(.09,3.5,.09,0x8b9390,x,y+1.75,z);
+            const shape=new T.Shape();
+            for(let i=0;i<8;i++){const a=Math.PI/8+i*Math.PI/4,px=Math.cos(a)*.63,py=Math.sin(a)*.63;if(i)shape.lineTo(px,py);else shape.moveTo(px,py)}
+            shape.closePath();
+            const geo=new T.ExtrudeGeometry(shape,{depth:.14,bevelEnabled:false});geo.translate(0,0,-.07);
+            const body=new T.Mesh(geo,material(0xa6aba9));body.name='palmetto-stop-body';body.position.set(x,y+2.35,z);body.rotation.y=angle;world.add(body);
+            if(!signCache.stopText){
+             let map;
+             if(typeof document!=='undefined'){
+              const canvas=document.createElement('canvas');canvas.width=512;canvas.height=256;
+              const ctx=canvas.getContext('2d');ctx.clearRect(0,0,512,256);ctx.fillStyle='#ffffff';ctx.font='bold 174px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('STOP',256,137,485);
+              map=new T.CanvasTexture(canvas);map.encoding=T.sRGBEncoding;
+             }else map=signTex('STOP','#b82a2e');
+             signCache.stopText=new T.MeshBasicMaterial({map,transparent:true,alphaTest:.2,depthWrite:false,toneMapped:false,side:T.FrontSide});
+            }
+            for(const side of [-1,1]){
+             const rot=angle+(side<0?Math.PI:0);
+             for(const [radius,m,offset] of [[.63,border,.071],[.58,red,.073]]){
+              const face=new T.Mesh(new T.CircleGeometry(radius,8),m);face.geometry.rotateZ(Math.PI/8);
+              face.name=m===red?'palmetto-stop-red-face':'palmetto-stop-border';face.position.set(x+Math.sin(angle)*side*offset,y+2.35,z+Math.cos(angle)*side*offset);face.rotation.y=rot;world.add(face);
+             }
+             const text=new T.Mesh(new T.PlaneGeometry(.84,.42),signCache.stopText);text.name='palmetto-stop-text';
+             text.position.set(x+Math.sin(angle)*side*.078,y+2.35,z+Math.cos(angle)*side*.078);text.rotation.y=rot;world.add(text);
+            }
+            plate(path.name,'#174b36',3,.52,x,y+3.25,z,angle);
+            PG.signs.push({x,z,name:path.name});
+           }
+          '''
+          start=s.index(' function plate(');end=s.index(' for(const path of PG.paths){stop',start)
+          s=s[:start]+signs+s[end:]
+          native='''const pgPreviousRoadMeshes=buildRoadMeshes;
+          buildRoadMeshes=function(){
+           const original=bakeG;
+           bakeG=function(key,g,x,y,z,ry,sx,sy,sz,col,rx=0,rz=0){
+            if(key!=='walk'||ry!==0)return original(key,g,x,y,z,ry,sx,sy,sz,col,rx,rz);
+            const horizontal=sx>=sz,len=horizontal?sx:sz,step=len/Math.ceil(len/1.5),n=Math.ceil(len/1.5),radius=Math.min(sx,sz)/2+.7;
+            for(let i=0;i<n;i++){
+             const along=-len/2+(i+.5)*step,px=x+(horizontal?along:0),pz=z+(horizontal?0:along);
+             if(pgNear(px,pz,radius))continue;
+             original(key,g,px,y,pz,ry,horizontal?step:sx,sy,horizontal?sz:step,col,rx,rz);
+            }
+           };
+           try{return pgPreviousRoadMeshes()}finally{bakeG=original}
+          };
+          '''
+          once('const pgOldBakeTerrain=bakeTerrain;',native+'const pgOldBakeTerrain=bakeTerrain;')
+          s='// PALMETTO_DETAILS_V2\n'+s
+          index=Path('index.html');game=index.read_text(encoding='utf-8')
+          if game.count(old)!=1: raise SystemExit('Installed neighborhood differs from source; refusing overwrite.')
+          game=game.replace(old,s,1)
+          char=Path('js/reference-characters.js');body=char.read_text(encoding='utf-8')
+          torso='xScale=1-.07*waist+.17*chest;'
+          if body.count(torso)!=1: raise SystemExit('Lucia torso anchor changed.')
+          Path('/tmp/lucia-torso-before.js').write_text(body,encoding='utf-8')
+          body=body.replace(torso,'xScale=(1-.07*waist+.17*chest)*(1+.05*Math.max(0,Math.min(1,(.5-y)/.06)));',1)
+          test=Path('scripts/test-palmetto-grove.cjs');checks=test.read_text(encoding='utf-8')
+          if checks.count('G:{},')!=1: raise SystemExit('Test context changed.')
+          checks=checks.replace('G:{},','G:{},buildRoadMeshes(){},bakeG(){},',1)
+          checks+='''
+          let stopFaces=0,stopText=0,nameFaces=0;
+          world.traverse(o=>{if(o.name==='palmetto-stop-red-face')stopFaces++;if(o.name==='palmetto-stop-text')stopText++;if(o.name==='palmetto-name-face')nameFaces++;});
+          assert(stopFaces===10&&stopText===10&&nameFaces===10,'Signs must have readable faces on both sides');
+          vm.runInContext(`for(const d of PG.driveways)if(!(d.end<d.edge&&d.end>d.start))throw Error('Driveway enters the street');`,c);
+          '''
+          updates={src:s,index:game,char:body,test:checks}
+          with tempfile.TemporaryDirectory() as d:
+           for path,text in updates.items():
+            scripts=re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',text,re.I) if path.name=='index.html' else [text]
+            if not any(v.strip() for v in scripts): raise SystemExit('No scripts found in '+str(path))
+            for code in scripts:
+             if code.strip():
+              f=Path(d)/'check.js';f.write_text(code,encoding='utf-8');subprocess.run(['node','--check',str(f)],check=True)
+          for path,text in updates.items():path.write_text(text,encoding='utf-8')
+          PY
+      - name: Run neighborhood regression including sign faces and driveway endpoints
+        run: node scripts/test-palmetto-grove.cjs
+      - name: Verify Lucia width-only adjustment preserves depth and lower body
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/palmetto-test/node_modules/three');
+          function load(path){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(path,'utf8'),c);return c.window.VCCharacters.build(T,'luciaC');}
+          const a=load('/tmp/lucia-torso-before.js'),b=load('js/reference-characters.js');let changed=false;
+          const am=a.userData.spine.children.filter(o=>o.isMesh),bm=b.userData.spine.children.filter(o=>o.isMesh);assert(am.length===bm.length);
+          for(let j=0;j<am.length;j++){const x=am[j].geometry.attributes.position,y=bm[j].geometry.attributes.position;assert(x.count===y.count);for(let i=0;i<x.count;i++){assert(Math.abs(x.getY(i)-y.getY(i))<1e-6);assert(Math.abs(x.getZ(i)-y.getZ(i))<1e-6);if(Math.abs(x.getX(i))>1e-5){const r=y.getX(i)/x.getX(i);assert(r>.9999&&r<1.0501);if(r>1.01)changed=true;}}}assert(changed);
+          function sig(root,skip){const out=[];function visit(o){if(o===skip)return;if(o.isMesh)out.push([o.name,o.position.toArray(),Array.from(o.geometry.attributes.position.array)]);for(const child of o.children)visit(child);}visit(root);return JSON.stringify(out);}
+          assert(sig(a,a.userData.spine)===sig(b,b.userData.spine));assert(sig(a.userData.headP)===sig(b.userData.headP));
+          JS
+      - name: Commit corrections only after checks pass
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html scripts/palmetto-grove.js scripts/test-palmetto-grove.cjs js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Fix Palmetto sign faces driveway overruns curb junctions and widen Lucia torso slightly'
+          git push origin HEAD:main
