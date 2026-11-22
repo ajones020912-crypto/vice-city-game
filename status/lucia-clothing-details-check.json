@@ -1,0 +1,133 @@
+{
+  "passed": true,
+  "animationCases": 12,
+  "removedDetails": [
+    {
+      "name": "",
+      "type": "BufferGeometry",
+      "position": [
+        0,
+        0.075,
+        0
+      ],
+      "colors": [
+        3758972
+      ]
+    },
+    {
+      "name": "",
+      "type": "BufferGeometry",
+      "position": [
+        -0.12811292361300414,
+        0.075,
+        0.030649333624820117
+      ],
+      "colors": [
+        3758972
+      ]
+    },
+    {
+      "name": "",
+      "type": "BufferGeometry",
+      "position": [
+        -0.0647224477115674,
+        0.075,
+        0.08530102501574423
+      ],
+      "colors": [
+        3758972
+      ]
+    },
+    {
+      "name": "",
+      "type": "BufferGeometry",
+      "position": [
+        0.0647224477115674,
+        0.075,
+        0.08530102501574423
+      ],
+      "colors": [
+        3758972
+      ]
+    },
+    {
+      "name": "",
+      "type": "BufferGeometry",
+      "position": [
+        0.12811292361300414,
+        0.075,
+        0.030649333624820117
+      ],
+      "colors": [
+        3758972
+      ]
+    },
+    {
+      "name": "",
+      "type": "BufferGeometry",
+      "position": [
+        1.653273178848927e-17,
+        0.075,
+        -0.09720000000000001
+      ],
+      "colors": [
+        3758972
+      ]
+    },
+    {
+      "name": "",
+      "type": "BufferGeometry",
+      "position": [
+        -0.07,
+        -0.025,
+        -0.095
+      ],
+      "colors": [
+        3758972
+      ]
+    },
+    {
+      "name": "",
+      "type": "BufferGeometry",
+      "position": [
+        -0.13,
+        0.045,
+        0.06
+      ],
+      "colors": [
+        14070362
+      ]
+    },
+    {
+      "name": "",
+      "type": "BufferGeometry",
+      "position": [
+        0.07,
+        -0.025,
+        -0.095
+      ],
+      "colors": [
+        3758972
+      ]
+    },
+    {
+      "name": "",
+      "type": "BufferGeometry",
+      "position": [
+        0.13,
+        0.045,
+        0.06
+      ],
+      "colors": [
+        14070362
+      ]
+    }
+  ],
+  "remainingModelGeometryAndMaterialsUnchanged": true,
+  "hipSmoothingPreserved": true,
+  "rigOffsetsUnchanged": true,
+  "hairShoesAndUpperBodyAccessoriesPreserved": true,
+  "otherCharactersUnchanged": true,
+  "noInterfaceOrGameplayChanges": true,
+  "scope": "Waist and upper-thigh clothing attachment cleanup; rendered belt and pocket absence and live deployment not verified."
+}
