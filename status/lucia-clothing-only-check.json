@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "animationCases": 12,
+  "removedClothing": [
+    "lucia-dark-tank-top",
+    "lucia-tank-hem",
+    "lucia-continuous-shoulder-strap--1",
+    "lucia-continuous-shoulder-strap-1",
+    "lucia-seamless-denim"
+  ],
+  "remainingGeometryAndMaterialsUnchanged": true,
+  "bodyTanHairShoesAndAccessoriesPreserved": true,
+  "rigOffsetsUnchanged": true,
+  "otherCharactersUnchanged": true,
+  "noBodyGeometryAdded": true,
+  "noInterfaceOrGameplayEdits": true,
+  "scope": "Clothing mesh removal and structural animation checks only; missing underlying body areas are not repaired; rendered appearance and live deployment not verified."
+}
