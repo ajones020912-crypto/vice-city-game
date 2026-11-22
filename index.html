@@ -5053,6 +5053,39 @@ const originalOneHandNewGame=newGame;newGame=function(){oneHandBlood.clear();ret
 // GUN_ANIMATION_V1
 if(!window.VCGunAnimation)throw Error('Gun animation module missing');
 animHuman=window.VCGunAnimation.wrap(animHuman,T);
+// ROADSIDE_SPEED_LIMIT_SIGNS_V1
+function planRoadsideSpeedLimits(list,buildings,ground){
+ const valid=list.filter(r=>(r.o==='h'||r.o==='v')&&[r.a,r.b,r.c,r.w].every(Number.isFinite)&&r.w>0),out=[];
+ for(const r of valid){
+  if(r.type==='dirt')continue;const lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),length=hi-lo;if(length<90)continue;
+  const hw=Number.isFinite(r.hw)?r.hw:r.w/2,limit=r.type==='hwy'?75:r.w>=20?65:55,spacing=r.type==='hwy'?240:180,steps=Math.max(1,Math.ceil((length-70)/spacing));
+  for(let i=0;i<=steps;i++){const t=lo+35+(length-70)*i/steps;
+   const crossing=valid.some(q=>q!==r&&q.o!==r.o&&r.c>=Math.min(q.a,q.b)-hw-2&&r.c<=Math.max(q.a,q.b)+hw+2&&Math.abs(t-q.c)<q.w/2+16);if(crossing)continue;
+   for(const dir of [1,-1]){
+    const x=r.o==='h'?t:r.c+dir*(hw+1.5),z=r.o==='h'?r.c-dir*(hw+1.5):t;
+    if(valid.some(q=>q!==r&&(q.o==='h'?x>=Math.min(q.a,q.b)-1&&x<=Math.max(q.a,q.b)+1&&Math.abs(z-q.c)<q.w/2+1:z>=Math.min(q.a,q.b)-1&&z<=Math.max(q.a,q.b)+1&&Math.abs(x-q.c)<q.w/2+1)))continue;
+    if(buildings.some(b=>x>b.x0-.6&&x<b.x1+.6&&z>b.z0-.6&&z<b.z1+.6))continue;
+    if(out.some(p=>(p.x-x)**2+(p.z-z)**2<64))continue;
+    const y=ground(x,z),center=ground(r.o==='h'?t:r.c,r.o==='h'?r.c:t);if(!Number.isFinite(y)||!Number.isFinite(center)||y<-.2||Math.abs(y-center)>1)continue;
+    const nx=r.o==='h'?-dir:0,nz=r.o==='v'?-dir:0;out.push({x,y,z,limit,nx,nz,yaw:Math.atan2(nx,nz),axis:r.o,dir,center:r.c,hw});if(out.length>=400)return out;
+   }
+  }
+ }return out;
+}
+let roadsideSpeedLimitsGroup=null;
+function buildRoadsideSpeedLimits(){
+ if(roadsideSpeedLimitsGroup){const geos=new Set(),mats=new Set(),maps=new Set();roadsideSpeedLimitsGroup.traverse(o=>{if(o.geometry)geos.add(o.geometry);if(o.material)mats.add(o.material);});for(const m of mats)if(m.map)maps.add(m.map);for(const t of maps)t.dispose();for(const m of mats)m.dispose();for(const g of geos)g.dispose();if(roadsideSpeedLimitsGroup.parent)roadsideSpeedLimitsGroup.parent.remove(roadsideSpeedLimitsGroup);}
+ const spots=planRoadsideSpeedLimits(roads,typeof BLD==='undefined'?[]:Array.from(BLD),heightAt),group=new T.Group();group.name='roadside-speed-limit-signs';group.userData.signCount=spots.length;roadsideSpeedLimitsGroup=group;if(!spots.length)return;
+ const poleMat=new T.MeshStandardMaterial({color:0x8e969b,metalness:.65,roughness:.65}),backMat=new T.MeshStandardMaterial({color:0xaab0b3,metalness:.45,roughness:.7}),poleGeo=new T.CylinderGeometry(.035,.045,1,6),boxGeo=new T.BoxGeometry(1,1,1),faceGeo=new T.PlaneGeometry(1,1),matrix=new T.Matrix4(),pos=new T.Vector3(),rot=new T.Quaternion(),scale=new T.Vector3(),up=new T.Vector3(0,1,0);
+ const poles=new T.InstancedMesh(poleGeo,poleMat,spots.length),backs=new T.InstancedMesh(boxGeo,backMat,spots.length);poles.frustumCulled=backs.frustumCulled=false;group.add(poles,backs);
+ for(let i=0;i<spots.length;i++){const p=spots[i];rot.setFromAxisAngle(up,p.yaw);matrix.compose(pos.set(p.x-p.nx*.055,p.y+1.1,p.z-p.nz*.055),rot,scale.set(1,2.2,1));poles.setMatrixAt(i,matrix);matrix.compose(pos.set(p.x,p.y+2.05,p.z),rot,scale.set(.72,.95,.045));backs.setMatrixAt(i,matrix);}poles.instanceMatrix.needsUpdate=backs.instanceMatrix.needsUpdate=true;
+ for(const limit of [55,65,75]){const points=spots.filter(p=>p.limit===limit);if(!points.length)continue;const canvas=document.createElement('canvas');canvas.width=256;canvas.height=320;const ctx=canvas.getContext('2d');if(!ctx)throw Error('Speed sign canvas unavailable');ctx.fillStyle='#fafaf6';ctx.fillRect(0,0,256,320);ctx.strokeStyle='#111111';ctx.lineWidth=7;ctx.strokeRect(10,10,236,300);ctx.fillStyle='#111111';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='bold 42px Arial, sans-serif';ctx.fillText('SPEED',128,55);ctx.fillText('LIMIT',128,104);ctx.font='bold 134px Arial, sans-serif';ctx.fillText(String(limit),128,205);ctx.font='bold 21px Arial, sans-serif';ctx.fillText('MPH',128,283);
+  const texture=new T.CanvasTexture(canvas);texture.encoding=T.sRGBEncoding;const material=new T.MeshStandardMaterial({map:texture,color:0xffffff,roughness:.85,metalness:0,side:T.FrontSide}),faces=new T.InstancedMesh(faceGeo,material,points.length);faces.name='speed-limit-'+limit;faces.frustumCulled=false;for(let i=0;i<points.length;i++){const p=points[i];rot.setFromAxisAngle(up,p.yaw);matrix.compose(pos.set(p.x+p.nx*.026,p.y+2.05,p.z+p.nz*.026),rot,scale.set(.72,.95,1));faces.setMatrixAt(i,matrix);}faces.instanceMatrix.needsUpdate=true;group.add(faces);
+ }world.add(group);
+}
+const roadsideOriginalBuildSignals=buildSignals;
+buildSignals=function(){const result=roadsideOriginalBuildSignals.apply(this,arguments);buildRoadsideSpeedLimits();return result;};
+
 boot()}catch(err){console.error('boot failed',err);const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small style="color:#ff8">Boot error — check console. You can still try Singleplayer.</small>'}
 // Expose for menu handlers
 window.G=G;window.begin=begin;window.mpActive=typeof mpActive!=='undefined'?mpActive:false;

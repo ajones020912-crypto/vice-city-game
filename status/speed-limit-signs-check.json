@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "limitsMph": [
+    55,
+    65,
+    75
+  ],
+  "placementTests": true,
+  "rightSideAndFacingTests": true,
+  "intersectionAvoidance": true,
+  "buildingExclusion": true,
+  "terrainChecks": true,
+  "instanceMatricesFinite": true,
+  "rebuildCleanup": true,
+  "vehicleRulesUnchanged": true,
+  "scope": "Synthetic road placement and Three.js model tests; live map visual placement and deployment not verified."
+}
