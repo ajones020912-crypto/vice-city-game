@@ -1,0 +1,25 @@
+{
+  "passed": true,
+  "rigCases": 48,
+  "weapons": [
+    "pistol",
+    "smg",
+    "shot",
+    "rifle"
+  ],
+  "characters": [
+    "jasonC",
+    "luciaC"
+  ],
+  "fps": [
+    30,
+    60,
+    120
+  ],
+  "mergedAndUnmerged": true,
+  "barrelAlignment": true,
+  "supportGrip": true,
+  "recoilAndRecovery": true,
+  "unarmedAndDeathCleanup": true,
+  "scope": "Native animator and actual rig tests; visual browser review and live deployment not yet verified."
+}

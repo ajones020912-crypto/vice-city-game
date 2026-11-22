@@ -313,6 +313,7 @@ small{color:#b9cce0}
 <script src="js/suv-details-live.js?v=2"></script>
 <script src="js/punch-visual-fix.js?v=1"></script>
 <script src="js/one-hand-hit.js?v=1"></script>
+<script src="js/gun-animation.js?v=1"></script>
 <script>
 (()=>{'use strict';
 if(!window.THREE){document.querySelector('.card').innerHTML='<h2>Could not load 3D engine</h2><p>Check your internet connection and reload.</p>';return;}
@@ -3104,7 +3105,7 @@ function castRay(ox,oy,oz,dx,dy,dz,range,skipPlayerCar){
  _hit.t=best;_hit.kind=kind;_hit.obj=obj;_hit.head=head;return _hit}
 function fireWeapon(){
  const w=WEAP[pl.weapon];if(!w||pl.weapon==='fists')return;if(pl.fireT>0)return;if(pl.ammo[w.key]<=0){toast('Out of ammo');pl.fireT=.4;return}
- pl.fireT=w.rate;pl.ammo[w.key]--;G.hudDirty=true;audio.shot(pl.weapon);G.shake=Math.max(G.shake,.05);
+ pl.fireT=w.rate;pl.ammo[w.key]--;G.hudDirty=true;(window.VCGunAnimation.notifyShot(plH,pl.weapon),audio.shot(pl.weapon));G.shake=Math.max(G.shake,.05);
  const camD=camera.getWorldDirection(_d.set(0,0,0)).clone(),cp=camera.position;
  const dcam=Math.hypot(pl.x-cp.x,pl.z-cp.z)+.8;
  const mx=pl.x+Math.sin(pl.h)*.6+Math.cos(pl.h)*-.25,my=pl.y+1.38,mz=pl.z+Math.cos(pl.h)*.6-Math.sin(pl.h)*-.25;
@@ -4982,6 +4983,9 @@ const oneHandBlood=window.VCOneHandHit.createBlood(T,world,intGroup);
 hurtPed=window.VCOneHandHit.wrapDamage(hurtPed,{player:()=>pl,position:p=>({x:p.x,y:(Number.isFinite(p.y)?p.y:pl.inside?pl.y:heightAt(p.x,p.z))+1.25,z:p.z}),emit:(p,d,inside)=>oneHandBlood.emit(p,d,inside)});
 const originalOneHandSimulate=simulate;simulate=function(dt){const r=originalOneHandSimulate.apply(this,arguments);oneHandBlood.update(dt);return r;};
 const originalOneHandNewGame=newGame;newGame=function(){oneHandBlood.clear();return originalOneHandNewGame.apply(this,arguments);};
+// GUN_ANIMATION_V1
+if(!window.VCGunAnimation)throw Error('Gun animation module missing');
+animHuman=window.VCGunAnimation.wrap(animHuman,T);
 boot()}catch(err){console.error('boot failed',err);const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small style="color:#ff8">Boot error — check console. You can still try Singleplayer.</small>'}
 // Expose for menu handlers
 window.G=G;window.begin=begin;window.mpActive=typeof mpActive!=='undefined'?mpActive:false;
