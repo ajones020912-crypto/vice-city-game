@@ -1,0 +1,51 @@
+name: Promote Lucia default ribbed tank to main
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-main-default-tank.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-photo-reference
+  cancel-in-progress: false
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-main-tank" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Apply only the reviewed tank and ribbing commits
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          cp js/reference-characters.js /tmp/lucia-main-tank-before.js
+          git fetch origin lucia-outfits
+          git merge-base --is-ancestor c508d501de7f12c7e7c7bd092fe13f4abf8f4b60 origin/lucia-outfits
+          git merge-base --is-ancestor f4e0de2b3cfa4df77490503f3834aeedf93d8bcc origin/lucia-outfits
+          node <<'JS'
+          const fs=require('fs'),s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_DARK_GREY_OUTER_TANK_V1')||s.includes('// LUCIA_TANK_SUBTLE_RIBBING_V1'))throw Error('Main already contains some tank changes; inspect instead of applying twice');
+          JS
+          git cherry-pick --no-commit c508d501de7f12c7e7c7bd092fe13f4abf8f4b60 f4e0de2b3cfa4df77490503f3834aeedf93d8bcc
+          node <<'JS'
+          const assert=require('assert'),cp=require('child_process'),allowed=new Set(['js/reference-characters.js','status/lucia-dark-grey-tank-check.json','status/lucia-tank-ribbing-check.json']),paths=cp.execFileSync('git',['diff','--cached','--name-only'],{encoding:'utf8'}).trim().split('\n').filter(Boolean);assert(paths.length&&paths.every(p=>allowed.has(p)),'Promotion contains unrelated changes');
+          JS
+      - name: Validate automatic tank over retained base on main
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-main-tank/node_modules/three'),acorn=require(process.env.RUNNER_TEMP+'/lucia-main-tank/node_modules/acorn');acorn.parse(fs.readFileSync('js/reference-characters.js','utf8'),{ecmaVersion:'latest'});function load(file){const c={window:{},console,Math};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}const before=load('/tmp/lucia-main-tank-before.js'),after=load('js/reference-characters.js');function signature(h){const rows=[];h.traverse(o=>{if(o.userData.luciaOuterTank)return;const row=[o.type,o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()];if(o.isMesh)row.push(Object.keys(o.geometry.attributes).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.metalness,m.skinning,m.transparent,m.opacity,!!m.map,!!m.bumpMap,m.bumpScale]));rows.push(row);});return JSON.stringify(rows);}for(const id of Object.keys(before.DESIGNS))if(id!=='luciaC')assert(signature(before.build(T,id))===signature(after.build(T,id)),'Other character changed');let poses=0,fabricChecks=0;for(const merge of [false,true]){const a=before.build(T,'luciaC',{merge}),h=after.build(T,'luciaC',{merge}),u=h.userData,group=h.getObjectByName('lucia-dark-grey-tank-outfit'),tank=h.getObjectByName('lucia-dark-grey-tank-top'),bra=h.getObjectByName('lucia-tailored-bra'),briefs=h.getObjectByName('lucia-fitted-black-briefs');assert(signature(a)===signature(h),'Underlying character bra underwear or outfit changed');assert(group&&tank&&group.parent===u.spine&&group.visible&&u.luciaTankVisible&&bra&&bra.visible&&briefs&&briefs.visible,'Tank is not automatic over retained base');assert(u.luciaOutfit===a.userData.luciaOutfit,'Unrelated outfit selection changed');group.traverse(o=>{if(o.isMesh)for(const m of Array.isArray(o.material)?o.material:[o.material]){assert(m.color.getHex()===0x3b3d40&&!m.transparent&&m.opacity===1&&m.bumpMap&&m.bumpScale===.00022);fabricChecks++;}});u.setLuciaTankVisible(false);assert(bra.visible&&briefs.visible);u.setLuciaTankVisible(true);for(const angle of [-.7,0,.7]){u.spine.rotation.y=angle*.2;u.A[0].sh.rotation.x=angle;u.A[1].sh.rotation.x=-angle;h.updateMatrixWorld(true);h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh)for(const k of ['position','normal'])if(o.geometry.attributes[k])assert(Array.from(o.geometry.attributes[k].array).every(Number.isFinite));});poses++;}}for(const file of ['status/lucia-dark-grey-tank-check.json','status/lucia-tank-ribbing-check.json']){const report=JSON.parse(fs.readFileSync(file,'utf8'));assert(report.passed);report.branch='main';report.promotedFrom='lucia-outfits';fs.writeFileSync(file,JSON.stringify(report,null,2)+'\n');}fs.writeFileSync('status/lucia-main-default-tank-check.json',JSON.stringify({passed:true,branch:'main',sourceBranch:'lucia-outfits',sourceCommits:['c508d501de7f12c7e7c7bd092fe13f4abf8f4b60','f4e0de2b3cfa4df77490503f3834aeedf93d8bcc'],defaultOuterLayer:'dark-grey-ribbed-tank',automaticOnBuild:true,baseBraAndBriefsRetained:true,existingOutfitsBodySkinToneAndRigUnchanged:true,otherCharactersUnchanged:true,fabricChecks,poseChecks:poses,scope:'Tank-only and ribbing-only promotion; no merge of the outfits branch. Tank is enabled at character construction over the retained bra. Structural validation does not verify rendered fit, clipping or live deployment.'},null,2)+'\n');
+          JS
+      - name: Publish only validated main tank promotion
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against latest.'; exit 1; }
+          git add -- js/reference-characters.js status/lucia-dark-grey-tank-check.json status/lucia-tank-ribbing-check.json status/lucia-main-default-tank-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Enable Lucia dark grey ribbed tank automatically over bra on main'
+          git push origin HEAD:refs/heads/main
