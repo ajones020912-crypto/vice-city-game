@@ -2271,6 +2271,18 @@ function animHuman(h,dt,s){
  }
 }
 
+
+const luciaPolishBaseAnimV5=animHuman;
+animHuman=function(h,dt,s){
+ const result=luciaPolishBaseAnimV5(h,dt,s),u=h.userData;
+ if(u.referenceLead!=='luciaC'||s.dead||s.aim||s.weapon||s.punch>0)return result;
+ const w=1-Math.min(1,Math.max(0,s.speed||0)/.8);
+ u.hips.rotation.z+=.035*w;u.spine.rotation.z-=.025*w;
+ u.A[0].sh.rotation.z+=.025*w;u.A[1].sh.rotation.z-=.025*w;
+ if(u.headP)u.headP.rotation.z-=.012*w;
+ return result;
+};
+
 // ================= INPUT =================
 const keys={};let camZoom=1;let mouseLocked=false,camYaw=0,camPitch=.2,mouseIdle=0,mouseDown=false,camMode=0;
 
