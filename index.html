@@ -4823,6 +4823,64 @@ function mountDevFlightMenu(){
 }
 mountDevFlightMenu();
 
+// DEV_TOOLS_V1: everything below unlocks with the same developer code as flight (single-player only).
+// Buttons live in the pause menu's Dev Mode panel; window.__vcDev exposes the same tools for scripted testing.
+const DEV={god:false,noWanted:false,perf:false,perfEl:null,frames:[],cpu:[]};
+const devOK=()=>devFlightState.unlocked&&!G.multiplayer;
+const devHurtOriginal=hurtPlayer;hurtPlayer=function(){if(devOK()&&DEV.god)return;return devHurtOriginal.apply(this,arguments)};
+const devSimOriginal=simulate;simulate=function(){const r=devSimOriginal.apply(this,arguments);if(devOK()){if(DEV.god){pl.hp=Math.max(pl.hp,100);pl.armor=Math.max(pl.armor||0,100)}if(DEV.noWanted&&(pl.wanted||pl.crime))clearWanted()}return r};
+// flying into a car: land first instead of refusing
+const devEnterOriginal=enterCar;enterCar=function(){if(devFlightState.active)devFlightStop(false);return devEnterOriginal.apply(this,arguments)};
+const devRenderOriginal=renderFrame;renderFrame=function(){const t0=performance.now();const r=devRenderOriginal.apply(this,arguments);
+ if(DEV.perf){const t1=performance.now();DEV.frames.push(t1);DEV.cpu.push(t1-t0);while(DEV.frames.length&&t1-DEV.frames[0]>2000){DEV.frames.shift();DEV.cpu.shift()}}return r};
+function devPerfTick(){requestAnimationFrame(devPerfTick);if(!DEV.perf||!DEV.perfEl)return;const f=DEV.frames,n=f.length;if(n<2)return;
+ let worst=0;for(let i=1;i<n;i++)worst=Math.max(worst,f[i]-f[i-1]);const fps=(n-1)/((f[n-1]-f[0])/1000),cpu=DEV.cpu.reduce((a,b)=>a+b,0)/DEV.cpu.length;
+ DEV.perfEl.textContent=`${fps.toFixed(1)} FPS | worst ${worst.toFixed(0)} ms | render ${cpu.toFixed(1)} ms | ${['Low','Medium','High','Ultra'][G.quality]}${G.quality>=3?' @ '+ultraRes.cur.toFixed(2)+'x':''}`}
+requestAnimationFrame(devPerfTick);
+function devPerfStats(){const f=DEV.frames,n=f.length;if(n<2)return null;let worst=0;for(let i=1;i<n;i++)worst=Math.max(worst,f[i]-f[i-1]);
+ return{fps:+((n-1)/((f[n-1]-f[0])/1000)).toFixed(1),worstMs:+worst.toFixed(1),renderMs:+(DEV.cpu.reduce((a,b)=>a+b,0)/n).toFixed(2),quality:G.quality,ultraScale:ultraRes.cur}}
+const devForward=d=>({x:pl.x-Math.sin(camYaw)*d,z:pl.z-Math.cos(camYaw)*d});
+const DEVAPI={
+ god(on=!DEV.god){DEV.god=!!on;return DEV.god},
+ noWanted(on=!DEV.noWanted){DEV.noWanted=!!on;if(on)clearWanted();return DEV.noWanted},
+ heal(){pl.hp=100;pl.armor=100;G.hudDirty=true},
+ money(n=100000){pl.cash=(pl.cash||0)+n;G.hudDirty=true;return pl.cash},
+ rep(n=9999){pl.rep=Math.max(pl.rep||0,n);G.hudDirty=true;return pl.rep},
+ weapons(){for(const k of['pistol','smg','shot','rifle']){pl.weapons[k]=1;pl.ammo[k]=Math.max(pl.ammo[k]||0,999)}G.hudDirty=true},
+ vehicles:()=>Object.keys(CAR_TYPES),
+ spawn(tk='sports'){if(!CAR_TYPES[tk])return'unknown vehicle: '+tk;const air=CAR_TYPES[tk].aircraft,p=devForward(air?14:6),c=spawnCar(tk,p.x,p.z,pl.h,'parked');return c},
+ drive(tk='sports'){if(pl.car)ejectPlayer&&ejectPlayer();const c=DEVAPI.spawn(tk);if(typeof c==='string')return c;enterCar(c);return c},
+ teleport(x,z){if(pl.car){const c=pl.car;c.x=x;c.z=z;c.vx=c.vz=0;c.y=heightAt(x,z);c.place()}else{pl.x=x;pl.z=z;pl.y=heightAt(x,z)}camInit=false},
+ where:()=>({x:+pl.x.toFixed(1),z:+pl.z.toFixed(1),car:pl.car?pl.car.tk:null}),
+ weather(m='clear'){if(!['clear','rain','storm','fog'].includes(m))return'clear | rain | storm | fog';WX.mode=m;WX.next=1e9;const el=$('#weather');if(el){el.style.display=m==='clear'?'none':'block';el.textContent={rain:'🌧 Rain',storm:'⛈ Tropical Storm',fog:'🌫 Fog'}[m]||''}return m},
+ time(h=12){G.clock=((+h%24)+24)%24;return G.clock},
+ quality(q=3){setQuality(clamp(q|0,0,3));return G.quality},
+ perf(on=!DEV.perf){DEV.perf=!!on;DEV.frames=[];DEV.cpu=[];if(DEV.perfEl)DEV.perfEl.hidden=!DEV.perf;return DEV.perf},
+ stats:devPerfStats,
+ fly(on=!devFlightState.active){if(!on){devFlightStop(true);return false}const was=G.state;if(was==='paused')return devFlightEnable();G.state='paused';const ok=devFlightEnable();G.state=was;return ok},
+ state:()=>({god:DEV.god,noWanted:DEV.noWanted,flying:devFlightState.active,perf:DEV.perf,cash:pl.cash,hp:pl.hp,wanted:pl.wanted,quality:G.quality})
+};
+Object.defineProperty(window,'__vcDev',{get(){return devOK()?DEVAPI:undefined},configurable:true});
+(function mountDevTools(){
+ const panel=document.getElementById('devModeCode')?.parentElement;if(!panel)return;
+ const box=document.createElement('div');box.hidden=true;box.style.cssText='margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:6px';
+ const btn=(label,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.style.cssText='padding:7px 6px;font-size:12px';b.onclick=()=>{const r=fn();refresh();if(typeof r==='string')toast(r,1500)};box.appendChild(b);return b};
+ const sel=(opts,fn,label)=>{const s=document.createElement('select');s.setAttribute('aria-label',label);s.style.cssText='padding:6px;font-size:12px;background:#071426;color:white;border:1px solid #8de0f777;border-radius:6px';for(const [v,t] of opts){const o=document.createElement('option');o.value=v;o.textContent=t;s.appendChild(o)}s.onchange=()=>{fn(s.value);refresh()};box.appendChild(s);return s};
+ const bGod=btn('God mode',()=>DEVAPI.god()),bWant=btn('Never wanted',()=>DEVAPI.noWanted());
+ btn('+$100,000',()=>{DEVAPI.money();return'Cash: $'+pl.cash});btn('All weapons + ammo',()=>{DEVAPI.weapons();DEVAPI.rep();return'All weapons unlocked'});
+ btn('Heal + armor',()=>DEVAPI.heal());const bPerf=btn('FPS meter',()=>DEVAPI.perf());
+ const vs=sel([['','Spawn vehicle…'],...Object.keys(CAR_TYPES).map(k=>[k,CAR_TYPES[k].name||k])],v=>{if(v){DEVAPI.spawn(v);toast('Spawned '+(CAR_TYPES[v].name||v)+' in front of you',1500);vs.value=''}},'Spawn vehicle');
+ const qs=sel([['0','Quality: Low'],['1','Quality: Medium'],['2','Quality: High'],['3','Quality: Ultra']],v=>{DEVAPI.quality(+v);const pq=$('#pQual');if(pq)pq.textContent='Quality: '+['Low','Medium','High','Ultra'][G.quality]},'Quality');
+ sel([['','Weather…'],['clear','Clear'],['rain','Rain'],['storm','Storm'],['fog','Fog']],v=>{if(v)DEVAPI.weather(v)},'Weather');
+ sel([['','Time of day…'],['7','Morning'],['12','Noon'],['18.5','Sunset'],['23','Night']],v=>{if(v)DEVAPI.time(+v)},'Time of day');
+ panel.appendChild(box);
+ const perf=document.createElement('div');perf.hidden=true;perf.id='devPerf';perf.style.cssText='position:fixed;top:48px;right:12px;z-index:45;padding:6px 10px;border-radius:8px;background:#071426e8;color:#8df3ba;font:12px ui-monospace,monospace;pointer-events:none';document.body.appendChild(perf);DEV.perfEl=perf;
+ function refresh(){box.hidden=!devOK();bGod.textContent='God mode: '+(DEV.god?'ON':'OFF');bWant.textContent='Never wanted: '+(DEV.noWanted?'ON':'OFF');bPerf.textContent='FPS meter: '+(DEV.perf?'ON':'OFF');qs.value=String(G.quality);perf.hidden=!DEV.perf}
+ const prev=devFlightRender;devFlightRender=function(){prev.apply(this,arguments);refresh()};refresh();
+ // a new game or loaded save locks dev mode again; switch the extras off with it
+ const prevReset=devFlightReset;devFlightReset=function(){DEV.god=DEV.noWanted=false;DEVAPI.perf(false);return prevReset.apply(this,arguments)};
+})();
+
 try{// SUV_DETAILS_LIVE_V2
 if(!window.VCSUVDetails||window.VCSUVDetails.version!==2)throw Error('SUV detail module failed to load');
 const originalSUVLiveFactory=makeCarVisual;
