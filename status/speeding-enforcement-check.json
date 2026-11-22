@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "cases": 16,
+  "limitsMph": [
+    55,
+    65,
+    75
+  ],
+  "continuousSeconds": 15,
+  "strictlyOverThreshold": true,
+  "nativeCrimeFunctionTested": true,
+  "onePenaltyPerStreak": true,
+  "pauseExcluded": true,
+  "boatsAndAircraftExcluded": true,
+  "sharedSignLimitResolver": true,
+  "scope": "Deterministic timing tests and native crime function integration; browser gameplay and live deployment not yet verified."
+}

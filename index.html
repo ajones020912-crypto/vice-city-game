@@ -5094,7 +5094,7 @@ function planRoadsideSpeedLimits(list,buildings,ground){
  const valid=list.filter(r=>(r.o==='h'||r.o==='v')&&[r.a,r.b,r.c,r.w].every(Number.isFinite)&&r.w>0),out=[];
  for(const r of valid){
   if(r.type==='dirt')continue;const lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),length=hi-lo;if(length<90)continue;
-  const hw=Number.isFinite(r.hw)?r.hw:r.w/2,limit=r.type==='hwy'?75:r.w>=20?65:55,spacing=r.type==='hwy'?240:180,steps=Math.max(1,Math.ceil((length-70)/spacing));
+  const hw=Number.isFinite(r.hw)?r.hw:r.w/2,limit=roadPostedSpeedLimit(r),spacing=r.type==='hwy'?240:180,steps=Math.max(1,Math.ceil((length-70)/spacing));
   for(let i=0;i<=steps;i++){const t=lo+35+(length-70)*i/steps;
    const crossing=valid.some(q=>q!==r&&q.o!==r.o&&r.c>=Math.min(q.a,q.b)-hw-2&&r.c<=Math.max(q.a,q.b)+hw+2&&Math.abs(t-q.c)<q.w/2+16);if(crossing)continue;
    for(const dir of [1,-1]){
@@ -5121,6 +5121,26 @@ function buildRoadsideSpeedLimits(){
 }
 const roadsideOriginalBuildSignals=buildSignals;
 buildSignals=function(){const result=roadsideOriginalBuildSignals.apply(this,arguments);buildRoadsideSpeedLimits();return result;};
+
+// SPEEDING_ENFORCEMENT_V1
+function roadPostedSpeedLimit(r){return r.type==='hwy'?75:r.w>=20?65:55;}
+function speedingRoadAt(car,list){
+ let best=null,score=Infinity;const h=Number.isFinite(car.h)?car.h:0;
+ for(const r of list){if((r.o!=='h'&&r.o!=='v')||r.type==='dirt'||![r.a,r.b,r.c,r.w].every(Number.isFinite)||r.w<=0)continue;const along=r.o==='h'?car.x:car.z,lateral=Math.abs((r.o==='h'?car.z:car.x)-r.c),hw=Number.isFinite(r.hw)?r.hw:r.w/2;if(along<Math.min(r.a,r.b)||along>Math.max(r.a,r.b)||lateral>hw)continue;const alignment=r.o==='h'?Math.abs(Math.sin(h)):Math.abs(Math.cos(h)),rank=(1-alignment)*100+lateral/Math.max(1,hw);if(rank<score){best=r;score=rank;}}return best;
+}
+const speedingEnforcement={car:null,seconds:0,issued:false,warned:false};
+function resetSpeedingEnforcement(){speedingEnforcement.car=null;speedingEnforcement.seconds=0;speedingEnforcement.issued=false;speedingEnforcement.warned=false;}
+function updateSpeedingEnforcement(dt){
+ const state=speedingEnforcement,car=pl.car;if(!pl.alive||!car||car.dead||!car.t||car.t.boat||car.t.aircraft||pl.inside){resetSpeedingEnforcement();return;}if(G.state!=='play')return;
+ const road=speedingRoadAt(car,roads);if(!road||!Number.isFinite(car.speed)){resetSpeedingEnforcement();return;}const limit=roadPostedSpeedLimit(road),mph=Math.abs(car.speed)*2.2369362920544;
+ if(mph<=limit+1e-6){resetSpeedingEnforcement();return;}if(state.car!==car){resetSpeedingEnforcement();state.car=car;}
+ if(!Number.isFinite(dt)||dt<=0||dt>.25)return;state.seconds+=dt;
+ if(!state.warned&&state.seconds>=10){state.warned=true;toast('Slow down: '+limit+' mph limit. Speeding for over 15 seconds is a crime.',2600);}
+ if(!state.issued&&state.seconds>15+1e-7){state.issued=true;addCrime(Math.max(1,1-(Number(pl.crime)||0)));toast('Speeding reported: '+limit+' mph limit.',2600);}
+}
+const speedingNativeSimulate=simulate;simulate=function(dt){const result=speedingNativeSimulate.apply(this,arguments);updateSpeedingEnforcement(Number.isFinite(G.rdt)?G.rdt:dt);return result;};
+const speedingNativeClearWanted=clearWanted;clearWanted=function(){resetSpeedingEnforcement();return speedingNativeClearWanted.apply(this,arguments);};
+const speedingNativeNewGame=newGame;newGame=function(){resetSpeedingEnforcement();return speedingNativeNewGame.apply(this,arguments);};
 
 boot()}catch(err){console.error('boot failed',err);const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small style="color:#ff8">Boot error — check console. You can still try Singleplayer.</small>'}
 // Expose for menu handlers
