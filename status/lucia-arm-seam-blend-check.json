@@ -1,0 +1,53 @@
+{
+  "passed": true,
+  "changedNormalVertices": 1658,
+  "shoulderVertexCounts": [
+    830,
+    828
+  ],
+  "affected": [
+    {
+      "name": "",
+      "vertices": 264
+    },
+    {
+      "name": "",
+      "vertices": 50
+    },
+    {
+      "name": "",
+      "vertices": 258
+    },
+    {
+      "name": "",
+      "vertices": 261
+    },
+    {
+      "name": "",
+      "vertices": 236
+    },
+    {
+      "name": "",
+      "vertices": 225
+    },
+    {
+      "name": "",
+      "vertices": 40
+    },
+    {
+      "name": "",
+      "vertices": 40
+    },
+    {
+      "name": "lucia-continuous-shoulders-neck",
+      "vertices": 284
+    }
+  ],
+  "poseChecks": 12,
+  "allPositionsAndIndicesUnchanged": true,
+  "skinWeightsAndMaterialsUnchanged": true,
+  "allRigTransformsUnchanged": true,
+  "workingLowerBodyBlendPreserved": true,
+  "otherCharactersUnchanged": true,
+  "scope": "Shoulder and upper arm contact-normal blending only. No new layers, shape changes or topology welding. Pose checks are structural, not visual verification of animation seams. Rendered appearance and live deployment not verified."
+}
