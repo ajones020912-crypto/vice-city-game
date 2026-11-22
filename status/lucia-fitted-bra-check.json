@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "style": "plain opaque black strapless fitted bra",
+  "frontCoverageRays": 9,
+  "poseChecks": 6,
+  "existingBodyGeometryAndMaterialsUnchanged": true,
+  "existingRigTransformsUnchanged": true,
+  "otherCharactersUnchanged": true,
+  "garmentMaterialPresentInBothMergeModes": true,
+  "scope": "Torso-fitted garment shell with 0.003 model-unit radial clearance and spine attachment. No other clothing restored. Rendered fit, edge quality, clipping during gameplay and live deployment not verified."
+}

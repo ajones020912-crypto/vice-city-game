@@ -1,3 +1,4 @@
+// LUCIA_FITTED_BRA_V1
 // LUCIA_CENTER_CONTOUR_V2
 // LUCIA_CENTER_CONTOUR_V1
 // LUCIA_ARM_SEAM_BLEND_V1
@@ -128,6 +129,12 @@ function installLuciaPelvisBridge(T,h){
   for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(M);const ax=Math.abs(v.x);if(ax>=.140||v.y<=.265||v.y>=.505||v.z<=.025)continue;const vertical=smooth((v.y-.265)/.060)*smooth((.505-v.y)/.060),front=smooth((v.z-.025)/.060),edge=1-smooth((ax-.105)/.035),lobe=Math.exp(-Math.pow((ax-.080)/.042,2))*edge,center=.026*(1-smooth(ax/.065))*vertical*front,fullness=.014*lobe*vertical*front,outward=.006*Math.sign(v.x)*smooth(ax/.050)*lobe*vertical*front,depth=center-fullness;if(Math.abs(depth)<1e-8&&Math.abs(outward)<1e-8)continue;v.x+=outward;v.z-=depth;v.applyMatrix4(back);p.setXYZ(i,v.x,v.y,v.z);edited.add(i);affected.add(i);maxDepression=Math.max(maxDepression,depth);}if(edited.size<10)throw Error('Insufficient center contour coverage');
   const count=g.index?g.index.count:p.count;for(let i=0;i<count;i+=3){const tri=[0,1,2].map(j=>g.index?g.index.getX(i+j):i+j);if(tri.some(j=>edited.has(j)))for(const j of tri)affected.add(j);}p.needsUpdate=true;g.computeVertexNormals();const groups=new Map(),normal=g.attributes.normal;for(const i of affected){const k=[p.getX(i),p.getY(i),p.getZ(i)].map(x=>Math.round(x*1e5)).join(',');if(!groups.has(k))groups.set(k,[]);groups.get(k).push(i);}for(const indices of groups.values()){const sum=new T.Vector3();for(const i of indices)sum.add(new T.Vector3().fromBufferAttribute(normal,i));sum.normalize();for(const i of indices)normal.setXYZ(i,sum.x,sum.y,sum.z);}for(let i=0;i<normal.count;i++)if(!affected.has(i))normal.setXYZ(i,originalNormal.getX(i),originalNormal.getY(i),originalNormal.getZ(i));normal.needsUpdate=true;g.computeBoundingBox();g.computeBoundingSphere();o.geometry=g;u.luciaCenterContour={spineChildIndex:u.spine.children.indexOf(o),editedVertices:edited.size,normalVertices:affected.size,maxDepression};
  }
+
+ function addLuciaFittedBra(T,h){
+  const u=h.userData;if(u.luciaFittedBra)return;const info=u.luciaCenterContour,torso=info&&u.spine.children[info.spineChildIndex];if(!torso||!torso.isMesh||torso.material!==u.m.skin)throw Error('Reviewed torso mesh missing');h.updateMatrixWorld(true);const M=new T.Matrix4().copy(u.spine.matrixWorld).invert().multiply(torso.matrixWorld),N=new T.Matrix3().getNormalMatrix(M),source=torso.geometry,p=source.attributes.position,n=source.attributes.normal,positions=[],normals=[],low=.290,high=.495;
+  function vertex(i){return {p:new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(M),n:new T.Vector3().fromBufferAttribute(n,i).applyMatrix3(N).normalize()};}function clip(poly,height,above){const out=[];if(!poly.length)return out;for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length],insideA=above?a.p.y>=height:a.p.y<=height,insideB=above?b.p.y>=height:b.p.y<=height;if(insideA)out.push(a);if(insideA!==insideB){const t=(height-a.p.y)/(b.p.y-a.p.y);out.push({p:a.p.clone().lerp(b.p,t),n:a.n.clone().lerp(b.n,t).normalize()});}}return out;}function emit(v){const q=v.p.clone(),r=Math.hypot(q.x,q.z);if(r<.025)throw Error('Invalid garment fitting radius');q.x+=q.x/r*.003;q.z+=q.z/r*.003;positions.push(q.x,q.y,q.z);normals.push(v.n.x,v.n.y,v.n.z);}
+  const count=source.index?source.index.count:p.count;for(let i=0;i<count;i+=3){let poly=[0,1,2].map(j=>vertex(source.index?source.index.getX(i+j):i+j));poly=clip(clip(poly,low,true),high,false);for(let j=1;j+1<poly.length;j++){const a=poly[0].p,b=poly[j].p,c=poly[j+1].p;if(new T.Vector3().subVectors(b,a).cross(new T.Vector3().subVectors(c,a)).lengthSq()<1e-16)continue;emit(poly[0]);emit(poly[j]);emit(poly[j+1]);}}if(positions.length<300)throw Error('Garment coverage missing');const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3));geometry.setAttribute('normal',new T.Float32BufferAttribute(normals,3));geometry.computeBoundingBox();geometry.computeBoundingSphere();const material=new T.MeshStandardMaterial({color:0x191a1e,roughness:.88,metalness:0,side:T.DoubleSide,transparent:false,opacity:1}),mesh=new T.Mesh(geometry,material);mesh.name='lucia-fitted-black-bra';mesh.castShadow=true;mesh.receiveShadow=true;u.spine.add(mesh);u.luciaFittedBra=true;u.luciaFittedBraMaterial=material;
+ }
 function lucia(T,h){
   const u=h.userData,m=u.m; m.skin.roughness=.74;m.hair.roughness=.82;m.lip.color.setHex(0xa6535d);m.lip.roughness=.65;m.iris.color.setHex(0x543c26);
   for(const mesh of u.spine.children.slice())if(mesh.isMesh&&((mesh.material===m.shirt)||(mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y-.195)<.002)))remove(mesh);
@@ -146,6 +153,8 @@ function lucia(T,h){
  installLuciaPelvisBridge(T,h);blendLuciaPelvisSeams(T,h);blendLuciaArmSeams(T,h);
 
  defineLuciaCenterContour(T,h);
+
+ addLuciaFittedBra(T,h);
 }
 
 
