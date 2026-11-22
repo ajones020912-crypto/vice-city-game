@@ -1,3 +1,4 @@
+// LUCIA_CENTER_CONTOUR_V1
 // LUCIA_ARM_SEAM_BLEND_V1
 // LUCIA_PELVIS_SEAM_BLEND_V1
 // LUCIA_PELVIS_GAP_REPAIR_V1
@@ -120,6 +121,12 @@ function installLuciaPelvisBridge(T,h){
   function synchronize(){inverseRoot.copy(h.matrixWorld).invert();for(let i=0;i<bones.length;i++){bones[i].matrix.copy(inverseRoot).multiply(joints[i].matrixWorld);bones[i].matrixWorld.copy(joints[i].matrixWorld);bones[i].matrixWorldNeedsUpdate=false;}}
   h.updateMatrixWorld(true);synchronize();const skeleton=new T.Skeleton(bones);mesh.bind(skeleton);mesh.onBeforeRender=function(){synchronize();skeleton.update();};mesh.onBeforeRender();u.luciaPelvisGapBridge=true;
  }
+
+ function defineLuciaCenterContour(T,h){
+  const u=h.userData;h.updateMatrixWorld(true);const inverse=new T.Matrix4().copy(u.spine.matrixWorld).invert(),candidates=[];for(const o of u.spine.children){if(!o.isMesh||o.material!==u.m.skin)continue;const M=inverse.clone().multiply(o.matrixWorld),box=new T.Box3().setFromBufferAttribute(o.geometry.attributes.position).applyMatrix4(M),size=box.getSize(new T.Vector3());if(box.min.y<.10&&box.max.y>.50&&size.y>.45&&size.x>.25)candidates.push({o,M});}if(candidates.length!==1)throw Error('Cannot safely identify the main torso');const {o,M}=candidates[0],g=o.geometry.clone(),p=g.attributes.position,originalNormal=g.attributes.normal.clone(),back=M.clone().invert(),edited=new Set(),affected=new Set(),v=new T.Vector3(),smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};let maxDepression=0;
+  for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(M);if(Math.abs(v.x)>=.065||v.y<=.265||v.y>=.505||v.z<=.025)continue;const lateral=1-smooth(Math.abs(v.x)/.065),vertical=smooth((v.y-.265)/.060)*smooth((.505-v.y)/.060),front=smooth((v.z-.025)/.060),depth=.018*lateral*vertical*front;if(depth<=1e-8)continue;v.z-=depth;v.applyMatrix4(back);p.setXYZ(i,v.x,v.y,v.z);edited.add(i);affected.add(i);maxDepression=Math.max(maxDepression,depth);}if(edited.size<10)throw Error('Insufficient center contour coverage');
+  const count=g.index?g.index.count:p.count;for(let i=0;i<count;i+=3){const tri=[0,1,2].map(j=>g.index?g.index.getX(i+j):i+j);if(tri.some(j=>edited.has(j)))for(const j of tri)affected.add(j);}p.needsUpdate=true;g.computeVertexNormals();const groups=new Map(),normal=g.attributes.normal;for(const i of affected){const k=[p.getX(i),p.getY(i),p.getZ(i)].map(x=>Math.round(x*1e5)).join(',');if(!groups.has(k))groups.set(k,[]);groups.get(k).push(i);}for(const indices of groups.values()){const sum=new T.Vector3();for(const i of indices)sum.add(new T.Vector3().fromBufferAttribute(normal,i));sum.normalize();for(const i of indices)normal.setXYZ(i,sum.x,sum.y,sum.z);}for(let i=0;i<normal.count;i++)if(!affected.has(i))normal.setXYZ(i,originalNormal.getX(i),originalNormal.getY(i),originalNormal.getZ(i));normal.needsUpdate=true;g.computeBoundingBox();g.computeBoundingSphere();o.geometry=g;u.luciaCenterContour={spineChildIndex:u.spine.children.indexOf(o),editedVertices:edited.size,normalVertices:affected.size,maxDepression};
+ }
 function lucia(T,h){
   const u=h.userData,m=u.m; m.skin.roughness=.74;m.hair.roughness=.82;m.lip.color.setHex(0xa6535d);m.lip.roughness=.65;m.iris.color.setHex(0x543c26);
   for(const mesh of u.spine.children.slice())if(mesh.isMesh&&((mesh.material===m.shirt)||(mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y-.195)<.002)))remove(mesh);
@@ -136,6 +143,8 @@ function lucia(T,h){
   const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);fitLuciaShortsLegs(T,h);denimLuciaShorts(T,h);joinLuciaShoulders(T,h);refineLuciaV3(T,h);installLuciaDenimV3(T,h);fitLuciaReferenceBodyClothes(T,h);finishLuciaV4(T,h);makeLuciaCurlyPonytail(T,h);fitLuciaFrontHair(T,h);addLuciaBackCurls(T,h);polishLuciaV5(T,h);enlargeLuciaEyes(T,h);smoothLuciaHipTransition(T,h);finishLuciaReferenceOutfit(T,h);fitLuciaPhotoReference(T,h);hideLuciaClothingOnly(T,h);removeLuciaClothingDetails(T,h);smoothLuciaSkinSurface(T,h,true);
  
  installLuciaPelvisBridge(T,h);blendLuciaPelvisSeams(T,h);blendLuciaArmSeams(T,h);
+
+ defineLuciaCenterContour(T,h);
 }
 
 

@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "editedVertices": 120,
+  "centerDepth": 0.01800000250339509,
+  "maximumAllowedDepression": 0.018,
+  "poseChecks": 6,
+  "torsoIndicesAndVertexCountUnchanged": true,
+  "outerChestVerticesUnchanged": true,
+  "noNewPartsOrOpenings": true,
+  "unrelatedGeometryMaterialsAndRigTransformsUnchanged": true,
+  "existingBlendPassesPreserved": true,
+  "scope": "Shallow center-front contour only; no halving, mesh splitting or added anatomical detail. Rendered appearance and live deployment not verified."
+}
