@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "branch": "lucia-outfits",
+  "texture": "subtle vertical rib knit",
+  "bumpScale": 0.00022,
+  "colour": "#3b3d40",
+  "fabricMaterialChecks": 8,
+  "generatedUVChecks": 0,
+  "poseChecks": 6,
+  "tankFitOpacityAndDefaultPreserved": true,
+  "baseGarmentsBodySkinToneAndRigUnchanged": true,
+  "otherCharactersUnchanged": true,
+  "scope": "Procedural greyscale bump texture only, with UV coordinates generated where absent. No vertex positions or silhouettes changed. Structural checks do not verify GPU rendering, perceived rib strength, clipping or live deployment."
+}
