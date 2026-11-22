@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "style": "opaque black fitted briefs",
+  "boundaryLoops": 3,
+  "frontBackCoverageRays": 18,
+  "poseChecks": 6,
+  "sharesExistingPelvisSkeleton": true,
+  "bodyBraSkinToneMaterialsAndRigUnchanged": true,
+  "otherCharactersUnchanged": true,
+  "scope": "Body-section fitted garment with waistband opening, front/back panels, side joins, gusset and two leg openings. Structural tests do not verify rendered fit, gusset placement, animation clipping or live deployment."
+}
