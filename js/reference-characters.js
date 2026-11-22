@@ -219,16 +219,21 @@
   function bounds(o){o.updateMatrix();const p=o.geometry.attributes.position,b=new T.Box3(),v=new T.Vector3();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(o.matrix);b.expandByPoint(v);}return b;}
   const eyes=meshes.filter(o=>o.material===u.m.eyeW).map(o=>{const b=bounds(o);return {mesh:o,center:b.getCenter(new T.Vector3()),size:b.getSize(new T.Vector3())};});
   if(eyes.length!==2)throw new Error('Expected two separate eye whites');
+  
+  const faces=meshes.filter(o=>o.material===u.m.skin&&o.geometry.type==='LatheGeometry');
+  for(const eye of eyes){let surface=-Infinity;for(const face of faces){face.updateMatrix();const a=face.geometry.attributes.position,v=new T.Vector3();for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(face.matrix);if(Math.abs(v.x-eye.center.x)<eye.size.x*.7&&Math.abs(v.y-eye.center.y)<eye.size.y*1.5)surface=Math.max(surface,v.z);}}
+   eye.forward=Number.isFinite(surface)?Math.max(0,Math.min(.025,surface+.005-bounds(eye.mesh).max.z)):0;
+  }
   const changes=[];
   for(const o of meshes){
    if(o.material===u.m.brow||/brow/i.test(o.name))continue;
    const b=bounds(o),c=b.getCenter(new T.Vector3());let eye=eyes[0];if(c.distanceToSquared(eyes[1].center)<c.distanceToSquared(eye.center))eye=eyes[1];
    const d=c.clone().sub(eye.center),near=Math.abs(d.x)<eye.size.x*.7&&Math.abs(d.y)<eye.size.y*1.5&&Math.abs(d.z)<eye.size.z+.015;
    if(!near)continue;
-   changes.push([o,eye.center]);
+   changes.push([o,eye.center,eye.forward]);
   }
-  for(const [o,center] of changes){const old=o.geometry,g=old.clone(),a=g.attributes.position,to=o.matrix.clone(),from=to.clone().invert(),v=new T.Vector3();for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(to);v.x=center.x+(v.x-center.x)*1.25;v.y=center.y+(v.y-center.y)*1.35;v.applyMatrix4(from);a.setXYZ(i,v.x,v.y,v.z);}a.needsUpdate=true;g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();o.geometry=g;old.dispose();}
-  u.luciaLargerEyes=true;
+  for(const [o,center,forward] of changes){const old=o.geometry,g=old.clone(),a=g.attributes.position,to=o.matrix.clone(),from=to.clone().invert(),v=new T.Vector3();for(let i=0;i<a.count;i++){v.fromBufferAttribute(a,i).applyMatrix4(to);v.x=center.x+(v.x-center.x)*1.60;v.y=center.y+(v.y-center.y)*1.85;v.z+=forward;v.applyMatrix4(from);a.setXYZ(i,v.x,v.y,v.z);}a.needsUpdate=true;g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();o.geometry=g;old.dispose();}
+  u.luciaLargerEyes=true;u.luciaEyeVisibilityFit=eyes.map(e=>e.forward);
  }
 
  function smoothLuciaHipTransition(T,h){
