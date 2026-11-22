@@ -113,7 +113,11 @@ small{color:#b9cce0}
 @media(max-height:650px),(max-width:800px){#mini{width:190px;height:209px;right:12px;bottom:12px}#speedo{bottom:235px}#hud{font-size:12px;padding:9px}#help{max-width:60vw;font-size:10px}}
 #legend{line-height:1.7;padding:10px 14px;max-width:min(94vw,850px);text-align:center}
 
-#controlsDock{position:fixed;left:12px;bottom:12px;z-index:40;display:flex;flex-direction:column;align-items:flex-start;gap:7px;pointer-events:auto}#controlsDock .controls-actions{display:flex;gap:7px}#controlsDock button{margin:0;padding:9px 12px;border:1px solid #9bc7d677;border-radius:9px;background:#071426ed;color:#eaf6ff;font-size:10px;font-weight:800;letter-spacing:.8px;box-shadow:0 5px 16px #0008}#controlsDock button:hover{background:#244565}#help{position:static;max-width:min(560px,82vw);padding:12px 14px;font-size:11px;line-height:1.65;pointer-events:auto;background:#071426f2;border:1px solid #9bc7d677;box-shadow:0 8px 24px #0009}#help[hidden]{display:none}
+#controlsDock{position:fixed;left:12px;bottom:12px;z-index:40;display:flex;flex-direction:column;align-items:flex-start;gap:7px;pointer-events:auto}#controlsDock .controls-actions{display:flex;gap:7px}
+#controlsDock #speedo{position:static;right:auto;bottom:auto;margin:0}
+#controlsDock #vehiclePanel{position:static;right:auto;bottom:auto;width:270px;max-height:40vh}
+#controlsDock .vehicle-toggle{position:static;right:auto;bottom:auto;margin:0;padding:9px 12px;font-size:10px;letter-spacing:.8px;border-radius:9px;background:#071426ed;border:1px solid #ff83bd99;box-shadow:0 5px 16px #0008}
+#controlsDock .vehicle-toggle:hover{background:#3a1d33}#controlsDock button{margin:0;padding:9px 12px;border:1px solid #9bc7d677;border-radius:9px;background:#071426ed;color:#eaf6ff;font-size:10px;font-weight:800;letter-spacing:.8px;box-shadow:0 5px 16px #0008}#controlsDock button:hover{background:#244565}#help{position:static;max-width:min(560px,82vw);padding:12px 14px;font-size:11px;line-height:1.65;pointer-events:auto;background:#071426f2;border:1px solid #9bc7d677;box-shadow:0 8px 24px #0009}#help[hidden]{display:none}
 
 /* ===== VC3D Homescreen (fullscreen) ===== */
 #overlay{
@@ -238,7 +242,7 @@ body.cine #hud,body.cine #mini,body.cine #goal,body.cine #controlsDock,body.cine
 <div class="vital-head"><span>HEALTH</span><span id="hpValue">100 / 100</span></div><div id="healthTrack" class="vital-track" role="progressbar" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i id="hpTrail"></i><i id="hpb"></i></div><div id="regenStatus">Healthy</div><div class="vital-head armor-head"><span>ARMOR</span><span id="armorValue">0 / 100</span></div><div class="vital-track armor-track" role="progressbar" aria-label="Armor" id="armorTrack" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="arb" style="width:0"></i></div><div class="bar" id="fuelbar" style="display:none"><i id="fuelb" style="width:100%"></i></div>
 <div id="stars">★★★★★★</div><div id="heat"></div><div id="wpn">Fists</div><small id="zone"></small></div>
 <div id="goal" class="panel"><b style="color:#ffe17a" id="mtitle">OBJECTIVE</b><br><span id="objective">Find the glowing checkpoint and drive through it.</span></div>
-<div id="cine" aria-live="polite"><div class="cine-bar cine-top"></div><div class="cine-bar cine-bot"></div><div id="cineTitle"></div><div id="cineSub"></div><div id="cineSkip">SPACE to skip</div></div><div id="controlsDock"><div class="controls-actions"><button id="controlsToggle" type="button" aria-expanded="false">CONTROLS ▾</button></div><div id="help" class="panel" hidden>WASD · Move<br>Mouse · Look around · LMB shoot<br>1–5 / Mouse wheel · Weapons<br>E · Enter/use · R · Jobs/rob store · K · Work board<br>B · Nonlethal hold-up · Shift · Run · Space · Jump/handbrake<br>H · Lights · M · Map · T · Radio · V · Camera · Q · Quality<br>C · Switch Jason/Lucia · P · Phone · F · Focus · Esc · Pause · J · Save<br>U · Release / recapture mouse</div></div>
+<div id="cine" aria-live="polite"><div class="cine-bar cine-top"></div><div class="cine-bar cine-bot"></div><div id="cineTitle"></div><div id="cineSub"></div><div id="cineSkip">SPACE to skip</div></div><div id="controlsDock"><div id="speedo"><svg class="sp-svg" viewBox="0 0 200 178" aria-hidden="true"><defs><linearGradient id="spGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3fd1c4"/><stop offset=".55" stop-color="#ff9e4f"/><stop offset="1" stop-color="#ff3d6e"/></linearGradient><filter id="spGlow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><path id="spTrack" class="sp-track"/><path id="spFill" class="sp-fill"/><g id="spTicks"></g><g id="spNeedle"><polygon class="sp-needle" points="100,92.5 166,96 100,99.5 92,96"/></g><circle class="sp-hub" cx="100" cy="96" r="13"/><text id="spdGear" x="100" y="96.5">N</text><text id="spd" x="100" y="160">0</text><text id="spdMph" class="sp-unit" x="100" y="174">MPH</text></svg><div class="sp-bars"><div class="sp-bar">FUEL<b><span id="spFuel"></span></b></div><div class="sp-bar">CAR<b><span id="spHp"></span></b></div></div></div><div id="vehiclePanel"><div class="vehicle-panel-head"><b>MY VEHICLES</b><button id="vehicleClose" class="alt">×</button></div><div id="vehicleList"></div></div><div class="controls-actions"><button id="controlsToggle" type="button" aria-expanded="false">CONTROLS ▾</button><button id="vehicleToggle" class="vehicle-toggle">🚘 VEHICLES</button></div><div id="help" class="panel" hidden>WASD · Move<br>Mouse · Look around · LMB shoot<br>1–5 / Mouse wheel · Weapons<br>E · Enter/use · R · Jobs/rob store · K · Work board<br>B · Nonlethal hold-up · Shift · Run · Space · Jump/handbrake<br>H · Lights · M · Map · T · Radio · V · Camera · Q · Quality<br>C · Switch Jason/Lucia · P · Phone · F · Focus · Esc · Pause · J · Save<br>U · Release / recapture mouse</div></div>
 <div id="weather"></div><div id="actionPanel"><div id="actionTitle"></div><div id="actionHint"></div><div class="action-track"><i id="actionFill"></i></div></div>
 <div id="phone"><div class="ph-bezel">
   <div class="ph-status"><span id="phClock">12:00</span><b>VICE CITY</b><span id="phBatt">🔋 100%</span></div>
@@ -259,7 +263,7 @@ body.cine #hud,body.cine #mini,body.cine #goal,body.cine #controlsDock,body.cine
   <div class="ph-dock"><div class="ph-homebtn" id="phHomeBtn" title="Home"></div></div>
 </div></div>
 <div id="mini"><canvas id="minic" width="472" height="520"></canvas></div>
-<div id="speedo"><svg class="sp-svg" viewBox="0 0 200 178" aria-hidden="true"><defs><linearGradient id="spGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3fd1c4"/><stop offset=".55" stop-color="#ff9e4f"/><stop offset="1" stop-color="#ff3d6e"/></linearGradient><filter id="spGlow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><path id="spTrack" class="sp-track"/><path id="spFill" class="sp-fill"/><g id="spTicks"></g><g id="spNeedle"><polygon class="sp-needle" points="100,92.5 166,96 100,99.5 92,96"/></g><circle class="sp-hub" cx="100" cy="96" r="13"/><text id="spdGear" x="100" y="96.5">N</text><text id="spd" x="100" y="160">0</text><text id="spdMph" class="sp-unit" x="100" y="174">KM/H · 0 MPH</text></svg><div class="sp-bars"><div class="sp-bar">FUEL<b><span id="spFuel"></span></b></div><div class="sp-bar">CAR<b><span id="spHp"></span></b></div></div></div><button id="vehicleToggle" class="vehicle-toggle">🚘 VEHICLES</button><div id="vehiclePanel"><div class="vehicle-panel-head"><b>MY VEHICLES</b><button id="vehicleClose" class="alt">×</button></div><div id="vehicleList"></div></div>
+
 <div id="toast"></div><div id="banner"><div id="bnT"></div><div id="bnS"></div></div><div id="radioName"></div><div id="prompt"></div><div id="cross"></div><div id="fade"></div><div id="big"><div id="bigt">WASTED</div></div>
 <div id="mapfull"><canvas id="mapc" width="900" height="900"></canvas><div id="legend">Drag to pan · Scroll to zoom · M to close · ◆ Mission<br>🍔 Food · 👕 Clothes · 🔫 Guns · 🏠 Safehouse · ⛽ Fuel · 🔧 Garage · 🚘 Dealer · 🏥 Hospital · 🚓 Police</div></div>
 <div id="shop"><div class="card" style="min-width:340px"><h2 id="shoptitle" style="margin:0 0 6px"></h2><div id="shopcash" style="color:#7fff9a;margin-bottom:6px"></div><div id="shopitems"></div><button class="alt" id="shopclose">Leave</button></div></div>
@@ -1538,6 +1542,45 @@ function buildAirport(){
 }
 let airport=null;
 function spawnAirportPlanes(){if(!airport)return;for(const c of cars.slice())if(c.airportStatic)removeCar(c);const a=spawnCar('propPlane',airport.x+205,airport.z+152,Math.PI/2,'parked',0xe8e5d8);a.airportStatic=true;a.keep=true;const j=spawnCar('smallJet',airport.x+225,airport.z+85,Math.PI/2,'parked',0xf1f3f5);j.airportStatic=true;j.keep=true;}
+
+// PALMETTO_GROVE_V1
+const PG={paths:[],homes:[],signs:[]};
+function pgDistance(x,z,a,b){const dx=b.x-a.x,dz=b.z-a.z,t=Math.max(0,Math.min(1,((x-a.x)*dx+(z-a.z)*dz)/(dx*dx+dz*dz||1)));return Math.hypot(x-a.x-t*dx,z-a.z-t*dz)}
+function pgNear(x,z,margin=0){return PG.paths.some(p=>p.points.some((a,i)=>i&&pgDistance(x,z,p.points[i-1],a)<p.width/2+margin))}
+function pgHitsBox(x0,z0,x1,z1,margin=0){return PG.paths.some(p=>p.points.some((b,i)=>{if(!i)return false;const a=p.points[i-1],m=p.width/2+margin;return Math.max(a.x,b.x)+m>x0&&Math.min(a.x,b.x)-m<x1&&Math.max(a.z,b.z)+m>z0&&Math.min(a.z,b.z)-m<z1}))}
+const pgOldDefineRoads=defineRoads;
+defineRoads=function(){
+ pgOldDefineRoads();PG.paths=[];PG.homes=[];PG.signs=[];
+ for(let i=roads.length-1;i>=0;i--){const r=roads[i];if((r.o==='v'&&[-270,-150,-30,90,210].includes(r.c)&&r.a===420&&r.b===1100)||(r.o==='h'&&[540,660,780,900,1020].includes(r.c)&&r.a===-330&&r.b===380))roads.splice(i,1)}
+ addRoad('v',-300,420,1200,14,'city');addRoad('v',300,420,1200,14,'city');
+ addRoad('h',480,-300,380,14,'city');addRoad('h',1080,-300,380,14,'city');
+ const defs=[['Grove Drive',[[-30,480],[-80,550],[-40,650],[80,730],[55,850],[140,970],[90,1080]],14],['Banyan Loop',[[-40,650],[-200,650],[-235,780],[-180,920],[55,850]],12],['Palm Court',[[80,730],[200,710],[230,610]],12]];
+ for(const [name,control,width] of defs){const curve=new T.CatmullRomCurve3(control.map(p=>new T.Vector3(p[0],0,p[1])),false,'centripetal');const points=curve.getPoints(Math.ceil(curve.getLength()/4));PG.paths.push({name,width,curve,points})}
+};
+const pgOldNearRoad=nearRoad;nearRoad=function(x,z,m=0){return pgOldNearRoad(x,z,m)||pgNear(x,z,m)};
+const pgOldFootprint=footprintHitsRoad;footprintHitsRoad=function(x0,z0,x1,z1,m=.8){return pgOldFootprint(x0,z0,x1,z1,m)||pgHitsBox(x0,z0,x1,z1,m)};
+// Use nearRoad for clearance; roadClear is not part of this build.
+const pgOldBakeTerrain=bakeTerrain;bakeTerrain=function(){pgOldBakeTerrain();for(let iz=0;iz<=TN;iz++)for(let ix=0;ix<=TN;ix++){const x=-WS+ix*TS,z=-WS+iz*TS;if(x< -330||x>330||z<450||z>1110)continue;const w=sstep(-330,-300,x)*(1-sstep(300,330,x))*sstep(450,480,z)*(1-sstep(1080,1110,z));const i=iz*(TN+1)+ix;hg[i]=lerp(hg[i],0,w)}};
+const pgOldHouses=houses;houses=function(){pgOldHouses();for(let i=parcels.length-1;i>=0;i--)if(parcels[i].cityId==='sub')parcels.splice(i,1)};
+function buildPalmettoGrove(){
+ const materials={},batches=new Map();
+ function material(color){if(!materials[color])materials[color]=new T.MeshStandardMaterial({color,roughness:.9});return materials[color]}
+ function box(w,h,d,color,x,y,z,angle=0){const m=material(color);if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,x,y,z,angle])}
+ function ribbon(path,offset,width,key,y){const p=[],uv=[],idx=[],pts=path.points;let dist=0;for(let i=0;i<pts.length;i++){const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)],dx=b.x-a.x,dz=b.z-a.z,len=Math.hypot(dx,dz)||1,nx=dz/len,nz=-dx/len;if(i)dist+=pts[i].distanceTo(pts[i-1]);for(const side of [-1,1]){const o=offset+side*width/2;p.push(pts[i].x+nx*o,y,pts[i].z+nz*o);uv.push(side===-1?0:1,dist/14)}if(i){const k=(i-1)*2;idx.push(k,k+2,k+1,k+1,k+2,k+3)}}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();const mesh=new T.Mesh(g,material(key));mesh.name='palmetto-'+path.name;mesh.receiveShadow=true;world.add(mesh)}
+ for(const path of PG.paths){ribbon(path,0,path.width,0x45494b,.055);for(const side of [-1,1]){ribbon(path,side*(path.width/2+1.15),2.2,0xb9b5a8,.085);ribbon(path,side*path.width/2,.20,0xd5d0c3,.10)}}
+ const deadEnd=PG.paths[2].points.at(-1),circle=new T.Mesh(new T.CircleGeometry(14,40),material(0x45494b));circle.rotation.x=-Math.PI/2;circle.position.set(deadEnd.x,.058,deadEnd.z);world.add(circle);
+ const reserved=[[-141.6,600],[97,590],[30,610],[-30,590]];
+ function safe(x,z,hx,hz){if(x-hx< -280||x+hx>280||z-hz<505||z+hz>1055)return false;if(footprintHitsRoad(x-hx,z-hz,x+hx,z+hz,2.5))return false;if(reserved.some(p=>Math.hypot(p[0]-x,p[1]-z)<38))return false;if(Math.hypot(x-deadEnd.x,z-deadEnd.z)<28)return false;if(PG.homes.some(p=>Math.abs(p.x-x)<p.hx+hx+8&&Math.abs(p.z-z)<p.hz+hz+8))return false;if(queryCols(x,z,Math.hypot(hx,hz)+3).some(c=>c.h>1&&x+hx+2>c.x0&&x-hx-2<c.x1&&z+hz+2>c.z0&&z-hz-2<c.z1))return false;return true}
+ const palette=[0xe0cbb1,0xbdd1bd,0xd6b9a5,0xc1d3df,0xe3d9c3];
+ for(let road=0;road<PG.paths.length;road++){const path=PG.paths[road],count=road===2?8:16;for(let i=0;i<count;i++){const t=.07+.86*Math.floor(i/2)/(count/2-1),p=path.curve.getPoint(t),tan=path.curve.getTangent(t),side=i%2?1:-1,off=path.width/2+21,x=p.x+tan.z*side*off,z=p.z-tan.x*side*off,angle=Math.atan2(-tan.z*side,tan.x*side),w=13+(i%3),d=12+(i%2)*2,h=i%5===0?6.3:3.7,hx=Math.abs(Math.cos(angle))*w/2+Math.abs(Math.sin(angle))*d/2,hz=Math.abs(Math.sin(angle))*w/2+Math.abs(Math.cos(angle))*d/2;if(!safe(x,z,hx,hz))continue;const y=heightAt(x,z),forward={x:Math.sin(angle),z:Math.cos(angle)};box(w,h,d,palette[(i+road)%palette.length],x,y+h/2,z,angle);box(w+1,.45,d+1,0x73645b,x,y+h+.23,z,angle);box(w*.65,.2,3,0xe5dfd0,x+forward.x*(d/2+1),y+2.9,z+forward.z*(d/2+1),angle);box(1.1,2.3,.12,0x6e5140,x+forward.x*(d/2+.08),y+1.15,z+forward.z*(d/2+.08),angle);for(const sign of [-1,1])box(2.1,1.25,.14,0x375966,x+forward.x*(d/2+.1)+Math.cos(angle)*sign*3.5,y+1.9,z+forward.z*(d/2+.1)-Math.sin(angle)*sign*3.5,angle);const driveLength=off-d/2-path.width/2+2,driveCenter=d/2+driveLength/2;box(4,.04,driveLength,0xa6a49b,x+forward.x*driveCenter,y+.065,z+forward.z*driveCenter,angle);addCol(x-hx,z-hz,x+hx,z+hz,h+.7);BLD.push({x0:x-hx,x1:x+hx,z0:z-hz,z1:z+hz,H:h+.7,cx:x,cz:z,style:'house',cityId:'sub'});PG.homes.push({x,z,hx,hz});const tx=x-forward.x*(d/2+5),tz=z-forward.z*(d/2+5);if(!nearRoad(tx,tz,4))palm(tx,tz,.8)}}
+ const pole=material(0x53635a),red=material(0xb82a2e),border=material(0xf0eee2),signCache={};
+ function plate(text,color,w,h,x,y,z,angle){const key=text+color;if(!signCache[key])signCache[key]=new T.MeshBasicMaterial({map:signTex(text,color),toneMapped:false,side:T.DoubleSide});const mesh=new T.Mesh(new T.PlaneGeometry(w,h),signCache[key]);mesh.position.set(x,y,z);mesh.rotation.y=angle;world.add(mesh)}
+ function stop(path,t){const p=path.curve.getPoint(t),d=path.curve.getTangent(t),x=p.x+d.z*(path.width/2+2),z=p.z-d.x*(path.width/2+2);if(zoneName(x,z)!=='PALMETTO GROVE')return;const y=heightAt(x,z),angle=Math.atan2(-d.x,-d.z);box(.09,3.5,.09,0x53635a,x,y+1.75,z);for(const [radius,m,offset] of [[.63,border,0],[.56,red,.012]]){const mesh=new T.Mesh(new T.CircleGeometry(radius,8),m);mesh.geometry.rotateZ(Math.PI/8);mesh.position.set(x+Math.sin(angle)*offset,y+2.35,z+Math.cos(angle)*offset);mesh.rotation.y=angle;world.add(mesh)}plate('STOP','#b82a2e',.76,.30,x+Math.sin(angle)*.025,y+2.35,z+Math.cos(angle)*.025,angle);plate(path.name,'#174b36',3,.52,x,y+3.25,z,angle);PG.signs.push({x,z,name:path.name})}
+ for(const path of PG.paths){stop(path,.035);if(path.name!=='Palm Court')stop(path,.965)}
+ const geometry=new T.BoxGeometry(1,1,1),matrix=new T.Matrix4();for(const [m,items] of batches){const mesh=new T.InstancedMesh(geometry,m,items.length);for(let i=0;i<items.length;i++){const [w,h,d,x,y,z,a]=items[i];matrix.compose(new T.Vector3(x,y,z),new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),a),new T.Vector3(w,h,d));mesh.setMatrixAt(i,matrix)}mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;world.add(mesh)}
+}
+const pgOldBaseMap=buildBaseMap;buildBaseMap=function(){pgOldBaseMap();const ctx=baseMap.getContext('2d');ctx.save();ctx.strokeStyle='#d8d8d8';ctx.lineCap='round';ctx.lineJoin='round';for(const path of PG.paths){ctx.lineWidth=Math.max(1.6,path.width/MAPPX*.8);ctx.beginPath();path.points.forEach((p,i)=>ctx[i?'lineTo':'moveTo']((p.x+WS)/MAPPX,(p.z+WS)/MAPPX));ctx.stroke()}ctx.restore()};
+
 function buildWorld(){
  initMaterials();initPalm();defineRoads();buildNodes();bakeTerrain();buildTerrainMesh();buildRoadMeshes();
  makeParcels();houses();
@@ -1548,7 +1591,7 @@ function buildWorld(){
  buildDowntownPark();
  forceShopDoors();
  portExtras();streetProps();addOuterStreetlights();beachProps();swampProps();hillProps();keysProps();buildSignals();buildAirport();
- finalizeBatches();buildBaseMap();
+ buildPalmettoGrove();finalizeBatches();buildBaseMap();
 }
 
 
@@ -2141,8 +2184,22 @@ setHumanLook=function(h,o){
  if(d!=='fisherman'&&o.hair!=null)m.hair.color.setHex(o.hair);
 };
 // animate: s={speed,aim,punch,dead,weapon}
+function applyLeadLeanPunch(u,p){
+ if(!u._luciaPunchActive||p>(u._luciaPunchLast||0)+.05){u._luciaPunchActive=true;u._luciaPunchStart=Math.max(.001,p);u._luciaPunchSerial=(u._luciaPunchSerial||0)+1;u._luciaPunchArm=(u._luciaPunchSerial-1)%2;}
+ u._luciaPunchLast=p;
+ const t=Math.max(0,Math.min(1,1-p/u._luciaPunchStart));
+ const frames=[[0,-.60,-1.30,.02,.01,0],[.20,-.40,-1.55,.22,.08,-.24],[.30,-.65,-1.10,.15,.04,-.12],[.46,-1.62,-.08,-.32,-.12,.20],[.55,-1.58,-.12,-.30,-.11,.17],[.78,-.85,-1.30,.04,.02,-.04],[1,0,-.15,0,0,0]];
+ let k=0;while(k<frames.length-2&&t>frames[k+1][0])k++;
+ const a=frames[k],b=frames[k+1],r=Math.max(0,Math.min(1,(t-a[0])/(b[0]-a[0]))),ease=r*r*(3-2*r),q=a.map((v,i)=>v+(b[i]-v)*ease),w=Math.min(1,t/.10)*Math.min(1,(1-t)/.15),arm=u._luciaPunchArm,sign=arm===1?1:-1,hit=u.A[arm],guard=u.A[1-arm];
+ const blend=(x,y)=>x+(y-x)*w;
+ hit.sh.rotation.x=blend(hit.sh.rotation.x,q[1]);hit.sh.rotation.y=blend(hit.sh.rotation.y,0);hit.sh.rotation.z=blend(hit.sh.rotation.z,-sign*.10);hit.el.rotation.x=blend(hit.el.rotation.x,q[2]);
+ guard.sh.rotation.x=blend(guard.sh.rotation.x,-.85);guard.sh.rotation.z=blend(guard.sh.rotation.z,sign*.13);guard.el.rotation.x=blend(guard.el.rotation.x,-1.40);
+ u.spine.rotation.y+=sign*q[3]*w;u.hips.rotation.y+=sign*q[4]*w;u.spine.rotation.x+=q[5]*w;
+ if(u.headP)u.headP.rotation.x-=q[5]*w*.35;
+}
 function animHuman(h,dt,s){
  const u=h.userData,{hips,spine,A,Lg}=u;
+ if(!(s.punch>0))u._luciaPunchActive=false;
  const spd=Math.max(0,s.speed||0);
  const walkW=clamp(spd/2.2,0,1);
  const runW=clamp((spd-3.2)/3.6,0,1);
@@ -2220,11 +2277,25 @@ function animHuman(h,dt,s){
   A[0].sh.rotation.set(-1.25-(long?.1:0),0,long?.35:.5);A[0].el.rotation.x=-.4;
   spine.rotation.x=.04;
  }else if(s.punch>0){
+  if(u.referenceLead==='luciaC'||u.referenceLead==='jasonC'){applyLeadLeanPunch(u,s.punch);}else{
   const p=Math.sin(Math.min(s.punch,1)*Math.PI);
   A[1].sh.rotation.set(-1.45*p,0,-.1);A[1].el.rotation.x=-.2-.1*p;
   A[0].sh.rotation.x=.4*p;spine.rotation.y=-.5*p;
+  }
  }
 }
+
+
+const luciaPolishBaseAnimV5=animHuman;
+animHuman=function(h,dt,s){
+ const result=luciaPolishBaseAnimV5(h,dt,s),u=h.userData;
+ if(u.referenceLead!=='luciaC'||s.dead||s.aim||s.weapon||s.punch>0)return result;
+ const w=1-Math.min(1,Math.max(0,s.speed||0)/.8);
+ u.hips.rotation.z+=.035*w;u.spine.rotation.z-=.025*w;
+ u.A[0].sh.rotation.z+=.025*w;u.A[1].sh.rotation.z-=.025*w;
+ if(u.headP)u.headP.rotation.z-=.012*w;
+ return result;
+};
 
 // ================= INPUT =================
 const keys={};let camZoom=1;let mouseLocked=false,camYaw=0,camPitch=.2,mouseIdle=0,mouseDown=false,camMode=0;
@@ -2580,10 +2651,35 @@ const audio=(()=>{let ctx=null,eng=null,engG=null,sir=null,sirG=null,master=null
   bodyOsc=ctx.createOscillator();bodyOsc.setPeriodicWave(ctx.createPeriodicWave(new Float32Array([0,0,0,0,0,0]),new Float32Array([0,1,.32,.12,.06,.025])));bodyFilter=ctx.createBiquadFilter();bodyFilter.type='lowpass';bodyFilter.frequency.value=550;bodyGain=ctx.createGain();bodyGain.gain.value=0;bodyOsc.connect(bodyFilter);bodyFilter.connect(bodyGain);bodyGain.connect(engineBus);bodyOsc.start();
   subOsc=ctx.createOscillator();subOsc.type='sine';subGain=ctx.createGain();subGain.gain.value=0;subOsc.connect(subGain);subGain.connect(engineBus);subOsc.start();
   const air=ctx.createBufferSource();air.buffer=noiseBuf;air.loop=true;airFilter=ctx.createBiquadFilter();airFilter.type='bandpass';airFilter.Q.value=.5;airGain=ctx.createGain();airGain.gain.value=0;air.connect(airFilter);airFilter.connect(airGain);airGain.connect(engineBus);air.start();
+  mkPlaneVoices();
   radioBus.gain.value=.72;const delay=ctx.createDelay(1),feedback=ctx.createGain(),echo=ctx.createGain(),filter=ctx.createBiquadFilter();delay.delayTime.value=.28;feedback.gain.value=.19;echo.gain.value=.13;filter.type='lowpass';filter.frequency.value=2600;radioBus.connect(delay);delay.connect(filter);filter.connect(echo);echo.connect(master);filter.connect(feedback);feedback.connect(delay);
  };
+ // PLANE_AUDIO_V1: original synthesized aircraft sound. Prop plane: piston drone + propeller blade buzz.
+ // Small jet: turbine whine that spools up and down, exhaust roar and thrust rumble. Both: wind over the airframe.
+ let pv=null;
+ function mkPlaneVoices(){
+  const g=v=>{const x=ctx.createGain();x.gain.value=v;return x},bq=(type,f,Q)=>{const x=ctx.createBiquadFilter();x.type=type;x.frequency.value=f;x.Q.value=Q;return x},
+   noise=()=>{const n=ctx.createBufferSource();n.buffer=noiseBuf;n.loop=true;n.start(ctx.currentTime+Math.random()*.4);return n},out=g(1);out.connect(engineBus);
+  const pOsc=ctx.createOscillator(),pOsc2=ctx.createOscillator(),pLp=bq('lowpass',600,.9),pG=g(0);pOsc.type='sawtooth';pOsc2.type='square';pOsc.connect(pLp);pOsc2.connect(pLp);pLp.connect(pG);pG.connect(out);pOsc.start();pOsc2.start();
+  const bladeN=noise(),bladeBp=bq('bandpass',600,.9),bladeAM=g(.5),bladeG=g(0),lfo=ctx.createOscillator(),lfoD=g(.5);lfo.type='sine';lfo.frequency.value=30;lfo.connect(lfoD);lfoD.connect(bladeAM.gain);bladeN.connect(bladeBp);bladeBp.connect(bladeAM);bladeAM.connect(bladeG);bladeG.connect(out);lfo.start();
+  const jw1=ctx.createOscillator(),jw2=ctx.createOscillator(),jwHp=bq('highpass',900,.5),jwG=g(0);jw1.type='triangle';jw2.type='sine';jw1.frequency.value=2000;jw2.frequency.value=3000;jw1.connect(jwHp);jw2.connect(jwHp);jwHp.connect(jwG);jwG.connect(out);jw1.start();jw2.start();
+  const roarN=noise(),roarBp=bq('bandpass',450,.6),roarG=g(0);roarN.connect(roarBp);roarBp.connect(roarG);roarG.connect(out);
+  const rumN=noise(),rumLp=bq('lowpass',110,.8),rumG=g(0);rumN.connect(rumLp);rumLp.connect(rumG);rumG.connect(out);
+  const wN=noise(),wBp=bq('bandpass',450,.45),wG=g(0);wN.connect(wBp);wBp.connect(wG);wG.connect(out);
+  pv={pOsc,pOsc2,pLp,pG,lfo,bladeBp,bladeG,jw1,jw2,jwG,roarBp,roarG,rumG,wBp,wG}}
+ function planeTick(t,car,on,speed,throttle){if(!pv)return;const P=pv,jet=on&&car.tk==='smallJet',prop=on&&!jet,set=(prm,v,tc)=>prm.setTargetAtTime(v,t,tc);
+  // propeller plane: engine rpm follows the throttle quickly
+  const rpm=900+throttle*1500+Math.min(400,speed*6),fire=rpm/60*3,blade=rpm/60*2;
+  set(P.pOsc.frequency,fire,.18);set(P.pOsc2.frequency,fire*.5,.18);set(P.pLp.frequency,300+throttle*900,.2);set(P.pG.gain,prop?.045+throttle*.055:0,.15);
+  set(P.lfo.frequency,blade,.18);set(P.bladeBp.frequency,480+throttle*520,.2);set(P.bladeG.gain,prop?.035+throttle*.07:0,.15);
+  // jet: turbine spools slowly toward the throttle
+  const whine=jet?2000+throttle*3200+Math.min(800,speed*8):2000; // rests at idle pitch when not in the jet
+  set(P.jw1.frequency,whine,1.1);set(P.jw2.frequency,whine*1.502,1.1);set(P.jwG.gain,jet?.012+throttle*.016:0,.6);
+  set(P.roarBp.frequency,380+throttle*700,.8);set(P.roarG.gain,jet?.018+throttle*.1:0,.7);set(P.rumG.gain,jet?.025+throttle*.08:0,.8);
+  // wind over the airframe grows with airspeed, mostly once airborne
+  set(P.wBp.frequency,350+speed*12,.3);set(P.wG.gain,on?Math.min(.09,speed*speed*.00004)*(car.airborne?1:.45):0,.3)}
  A.setPaused=function(on){on=!!on;if(paused===on)return;paused=on;if(!ctx||!engineBus)return;const t=ctx.currentTime;engineBus.gain.cancelScheduledValues(t);engineBus.gain.setTargetAtTime(on?0:1,t,on?.025:.08);radioBus.gain.setTargetAtTime(on?0:.72,t,.08)};
- A.tick=function(spd,thr,inCar,sirenLvl){legacyTick(spd,thr,false,sirenLvl);if(!ctx||!engineBus||paused)return;const t=ctx.currentTime,car=pl.car,kind=car?car.tk:'sedan',boat=!!(car&&car.t.boat),speed=Math.max(0,Math.abs(Number(spd)||0)),throttle=Math.min(1,Math.abs(Number(thr)||0)),limits=[0,9,18,30,45,65,95];let gear=0;while(gear<5&&speed>limits[gear+1])gear++;const phase=(speed-limits[gear])/(limits[gear+1]-limits[gear]),rpm=boat?Math.min(5200,950+speed*130+throttle*700):Math.min(6500,900+phase*4200+throttle*600),tone=kind==='sports'?2:kind==='van'||kind==='suv'?1.2:1.6,f=Math.max(26,rpm/60*tone),active=inCar&&!(car&&car.dead);
+ A.tick=function(spd,thr,inCar,sirenLvl){legacyTick(spd,thr,false,sirenLvl);if(!ctx||!engineBus||paused)return;const t=ctx.currentTime,car=pl.car,kind=car?car.tk:'sedan',boat=!!(car&&car.t.boat),speed=Math.max(0,Math.abs(Number(spd)||0)),throttle=Math.min(1,Math.abs(Number(thr)||0)),limits=[0,9,18,30,45,65,95];let gear=0;while(gear<5&&speed>limits[gear+1])gear++;const phase=(speed-limits[gear])/(limits[gear+1]-limits[gear]),rpm=boat?Math.min(5200,950+speed*130+throttle*700):Math.min(6500,900+phase*4200+throttle*600),tone=kind==='sports'?2:kind==='van'||kind==='suv'?1.2:1.6,f=Math.max(26,rpm/60*tone),inPlane=!!(inCar&&car&&car.t&&car.t.aircraft&&!car.dead),active=inCar&&!(car&&car.dead)&&!inPlane;planeTick(t,car,inPlane,speed,throttle);
   bodyOsc.frequency.setTargetAtTime(f,t,.1);subOsc.frequency.setTargetAtTime(f*.5,t,.12);bodyFilter.frequency.setTargetAtTime(350+rpm*.10+throttle*850,t,.12);bodyGain.gain.setTargetAtTime(active?.045+throttle*.045+Math.min(.025,speed*.0007):0,t,.08);subGain.gain.setTargetAtTime(active?.022+throttle*.018:0,t,.1);airFilter.frequency.setTargetAtTime(650+speed*16+throttle*400,t,.12);airGain.gain.setTargetAtTime(active?.003+throttle*.012+Math.min(.008,speed*.0002):0,t,.1);
  };
 R.o=function(f,type,d,v,fc,t){const os=ctx.createOscillator(),g=ctx.createGain(),fl=ctx.createBiquadFilter();os.type=type;os.frequency.value=f;fl.type='lowpass';fl.frequency.value=fc||2200;const duration=Math.max(.06,d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(Math.max(.001,v),t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+duration);os.connect(fl);fl.connect(g);g.connect(radioBus);os.onended=()=>{os.disconnect();fl.disconnect();g.disconnect()};os.start(t);os.stop(t+duration+.03)};
@@ -3617,14 +3713,16 @@ const SPD={cx:100,cy:96,r:80,a0:150,sweep:240,max:0,len:80*240*Math.PI/180,last:
 const spPt=(ang,r)=>{const a=ang*Math.PI/180;return[(SPD.cx+r*Math.cos(a)).toFixed(1),(SPD.cy+r*Math.sin(a)).toFixed(1)]};
 (function initSpeedo(){const [x0,y0]=spPt(SPD.a0,SPD.r),[x1,y1]=spPt(SPD.a0+SPD.sweep,SPD.r),d=`M${x0} ${y0}A${SPD.r} ${SPD.r} 0 1 1 ${x1} ${y1}`;
  const tr=$('#spTrack'),fi=$('#spFill');if(!tr)return;tr.setAttribute('d',d);fi.setAttribute('d',d);fi.style.strokeDasharray=SPD.len;fi.style.strokeDashoffset=SPD.len})();
-function speedoScale(max){if(SPD.max===max)return;SPD.max=max;const step=max>300?50:20,maj=max>300?100:40;let h='';
+function speedoScale(max,step,maj){if(SPD.max===max)return;SPD.max=max;let h='';
  for(let v=0;v<=max+.1;v+=step){const f=v/max,ang=SPD.a0+SPD.sweep*f,isM=v%maj===0,red=f>.84?' red':'';const [ax,ay]=spPt(ang,SPD.r-9),[bx,by]=spPt(ang,SPD.r-(isM?18:14));
   h+=`<line class="sp-tick${isM?' maj':''}${red}" x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}"/>`;if(isM){const [lx,ly]=spPt(ang,SPD.r-29);h+=`<text class="sp-lab${red}" x="${lx}" y="${ly}">${v}</text>`}}
  $('#spTicks').innerHTML=h}
-function updateSpeedo(c){const t=c.t,km=Math.max(0,Math.round(c.speed*3.6)),air=!!t.aircraft;
- speedoScale(air?Math.max(400,Math.ceil(t.top*3.6/100)*100):Math.max(120,Math.ceil(t.top*3.6*1.05/40)*40));
- const f=Math.min(1,km/SPD.max),L=SPD.last;
- if(L.km!==km){L.km=km;$('#spd').textContent=km;$('#spdMph').textContent='KM/H · '+Math.round(km*.621371)+' MPH';$('#spd').classList.toggle('hot',f>.84);
+function updateSpeedo(c){const t=c.t,km=Math.max(0,Math.round(c.speed*3.6)),mph=Math.max(0,Math.round(c.speed*2.23694)),air=!!t.aircraft;
+ // dial in MPH, scaled to the vehicle's top speed
+ if(air)speedoScale(Math.max(250,Math.ceil(t.top*2.23694/50)*50),25,50);
+ else{const max=Math.max(80,Math.ceil(t.top*2.23694*1.05/20)*20);speedoScale(max,max>160?20:10,max>160?40:20)}
+ const f=Math.min(1,mph/SPD.max),L=SPD.last;
+ if(L.km!==mph){L.km=mph;$('#spd').textContent=mph;$('#spdMph').textContent='MPH';$('#spd').classList.toggle('hot',f>.84);
   $('#spFill').style.strokeDashoffset=(SPD.len*(1-f)).toFixed(1);$('#spNeedle').style.transform=`rotate(${(SPD.a0+SPD.sweep*f).toFixed(1)}deg)`}
  const gear=air?'AIR':c.reversing?'R':km<1?'N':km<25?'1':km<50?'2':km<85?'3':km<125?'4':'5';if(L.gear!==gear){L.gear=gear;$('#spdGear').textContent=gear;$('#spdGear').style.fontSize=gear.length>1?'8.5px':'13px'}
  const fuel=Math.round(clamp(c.fuel??100,0,100)),hp=Math.round(clamp(100*c.hp/(typeof maxHp==='function'?maxHp(c):100),0,100));

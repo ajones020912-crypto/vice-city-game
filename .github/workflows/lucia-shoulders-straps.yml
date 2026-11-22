@@ -1,0 +1,92 @@
+name: Fit Lucia shoulders straps and subtle tan
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-shoulders-straps.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-shoulder-test" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Fit shoulders straps and a slightly deeper tan
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess
+          p=Path('js/reference-characters.js');s=p.read_text(encoding='utf-8')
+          if 'function joinLuciaShoulders(' in s: raise SystemExit('Shoulder update already installed.')
+          Path('/tmp/lucia-shoulder-before.js').write_text(s,encoding='utf-8')
+          if s.count('skin:0xa26740')!=1: raise SystemExit('Lucia skin-color anchor changed.')
+          s=s.replace('skin:0xa26740','skin:0x9c623d',1)
+          anchor='shapeLucia(T,h);fitLuciaShortsLegs(T,h);denimLuciaShorts(T,h);'
+          if s.count(anchor)!=1: raise SystemExit('Lucia builder changed; refusing ambiguous edit.')
+          helper='''
+           function joinLuciaShoulders(T,h){
+            const u=h.userData,shoulder=Math.max(...u.A.map(a=>Math.abs(a.sh.position.x)));
+            for(const mesh of u.spine.children.slice())if(mesh.name==='lucia-tank-strap')remove(mesh);
+            const control=[[.165,.102,.455],[shoulder*.87,.105,.485],[shoulder+.018,.092,.512],[shoulder*.72,.075,.54],[.074,.060,.57],[.052,.051,.60],[.052,.051,u.headP.position.y+.065]],rings=[];
+            for(let i=0;i<control.length-1;i++)for(let j=0;j<6;j++){const t=j/6,k=t*t*(3-2*t),a=control[i],b=control[i+1];rings.push([a[0]+(b[0]-a[0])*k,a[1]+(b[1]-a[1])*k,a[2]+(b[2]-a[2])*t]);}
+            rings.push(control[control.length-1]);
+            const positions=[],uv=[],idx=[],cols=48;
+            for(let i=0;i<rings.length;i++)for(let j=0;j<cols;j++){const a=j/cols*Math.PI*2,r=rings[i];positions.push(Math.sin(a)*r[0],r[2],Math.cos(a)*r[1]);uv.push(j/cols,i/(rings.length-1));}
+            for(let i=0;i<rings.length-1;i++)for(let j=0;j<cols;j++){const a=i*cols+j,b=i*cols+(j+1)%cols,c=a+cols,d=b+cols;idx.push(a,c,b,b,c,d);}
+            const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(positions,3));geo.setAttribute('uv',new T.Float32BufferAttribute(uv,2));geo.setIndex(idx);geo.computeVertexNormals();geo.computeBoundingBox();geo.computeBoundingSphere();
+            add(T,u.spine,geo,u.m.skin,'lucia-continuous-shoulders-neck');
+            const fabric=u.m.shirt.clone();fabric.side=T.DoubleSide;fabric.flatShading=false;fabric.polygonOffset=true;fabric.polygonOffsetFactor=-1;fabric.polygonOffsetUnits=-1;
+            function section(x){
+             const front=[];
+             for(let i=0;i<rings.length;i++){const r=rings[i];if(r[0]>=Math.abs(x)){front.push(new T.Vector3(x,r[2],r[1]*Math.sqrt(Math.max(0,1-x*x/(r[0]*r[0])))));}
+              else if(front.length){const a=rings[i-1],t=(Math.abs(x)-a[0])/(r[0]-a[0]);front.push(new T.Vector3(x,a[2]+(r[2]-a[2])*t,0));break;}}
+             if(front.length<3)throw new Error('Shoulder strap surface section is too short');
+             const back=front.slice(0,-1).reverse().map(v=>new T.Vector3(v.x,v.y,-v.z));
+             return new T.CatmullRomCurve3(front.concat(back),false,'centripetal');
+            }
+            const center=Math.min(.135,Math.max(.105,shoulder*.53)),segments=64;
+            for(const side of [-1,1]){
+             const left=section(side*center-.0175),right=section(side*center+.0175),p=[],tex=[],tri=[];
+             for(let i=0;i<=segments;i++)for(const [j,curve] of [[0,left],[1,right]]){const t=i/segments,v=curve.getPoint(t),tangent=curve.getTangent(t),normal=new T.Vector3(0,-tangent.z,tangent.y).normalize();v.addScaledVector(normal,.004);p.push(v.x,v.y,v.z);tex.push(j,t);}
+             for(let i=0;i<segments;i++){const a=i*2;tri.push(a,a+2,a+1,a+1,a+2,a+3);}
+             const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(p,3));g.setAttribute('uv',new T.Float32BufferAttribute(tex,2));g.setIndex(tri);g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();
+             add(T,u.spine,g,fabric,'lucia-continuous-shoulder-strap-'+side);
+            }
+            u.luciaContinuousShoulders=true;
+           }
+          '''
+          s=s.replace(anchor,anchor+'joinLuciaShoulders(T,h);',1)
+          marker=' function roundLuciaGeometry('
+          if s.count(marker)!=1: raise SystemExit('Expected one geometry helper boundary.')
+          s=s.replace(marker,helper+marker,1)
+          Path('/tmp/lucia-shoulder-after.js').write_text(s,encoding='utf-8')
+          subprocess.run(['node','--check','/tmp/lucia-shoulder-after.js'],check=True)
+          PY
+      - name: Check connected geometry rig preservation and skin color
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-shoulder-test/node_modules/three');
+          function load(path){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync(path,'utf8'),c);return c.window.VCCharacters;}
+          const old=load('/tmp/lucia-shoulder-before.js'),cur=load('/tmp/lucia-shoulder-after.js'),a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');
+          assert(cur.DESIGNS.luciaC.skin===0x9c623d);assert(b.userData.m.skin.color.getHex()===0x9c623d);assert(cur.DESIGNS.jasonC.skin===old.DESIGNS.jasonC.skin);
+          function sig(root,skip){const out=[];function visit(o){if(o===skip)return;if(o.isMesh)out.push([o.name,o.position.toArray(),Array.from(o.geometry.attributes.position.array)]);for(const c of o.children)visit(c);}visit(root);return JSON.stringify(out);}
+          assert(sig(a,a.userData.spine)===sig(b,b.userData.spine));assert(sig(a.userData.headP)===sig(b.userData.headP));
+          const joints=u=>[u.spine.position.toArray(),u.headP.position.toArray(),...u.A.flatMap(a=>[a.sh.position.toArray(),a.el.position.toArray()])];assert(JSON.stringify(joints(a.userData))===JSON.stringify(joints(b.userData)));
+          function connected(mesh){assert(mesh);const g=mesh.geometry,n=g.attributes.position.count,adj=Array.from({length:n},()=>[]),idx=g.index.array;for(let i=0;i<idx.length;i+=3){const [a,b,c]=[idx[i],idx[i+1],idx[i+2]];adj[a].push(b,c);adj[b].push(a,c);adj[c].push(a,b);}const seen=new Set([0]),todo=[0];while(todo.length){for(const j of adj[todo.pop()])if(!seen.has(j)){seen.add(j);todo.push(j);}}assert(seen.size===n,'Surface is disconnected');}
+          connected(b.getObjectByName('lucia-continuous-shoulders-neck'));for(const side of [-1,1]){const strap=b.getObjectByName('lucia-continuous-shoulder-strap-'+side);connected(strap);assert(strap.geometry.boundingBox.max.z>0&&strap.geometry.boundingBox.min.z<0);}
+          assert(!b.getObjectByName('lucia-tank-strap'));
+          for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge});for(const angle of [-.7,0,.7]){h.userData.A[0].sh.rotation.x=angle;h.userData.A[1].sh.rotation.x=-angle;h.updateMatrixWorld(true);h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});}}
+          fs.copyFileSync('/tmp/lucia-shoulder-after.js','js/reference-characters.js');console.log('Geometry rig and tan checks passed; visual appearance still needs browser review.');
+          JS
+      - name: Commit combined Lucia update after checks
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add js/reference-characters.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Join Lucia shoulder neck surface fit continuous straps and subtly deepen tan'
+          git push origin HEAD:main

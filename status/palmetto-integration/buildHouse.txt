@@ -1,0 +1,17 @@
+function buildHouse(p){
+ if(footprintHitsRoad(p.x0,p.z0,p.x1,p.z1,1.1))return false;
+ const{x0,z0,x1,z1,H}=p,w=x1-x0,d=z1-z0,col=pick(PAL),face=p.row?'n':'s';const fz=p.row?z0:z1;
+ const hw=Math.min(w-4,16),hx0=p.cx-hw/2,hx1=p.cx+hw/2,hz0=p.row?z0+3:z0+2,hz1=p.row?z1-2:z1-3;
+ const bh=3.4;for(const f of['s','n','e','w'])wallQ('f_deco',f,hx0,hz0,hx1,hz1,0,bh,col,10,10);
+ B('roof',hx0,hz0).quad([hx0,bh,hz1],[hx1,bh,hz1],[hx1,bh,hz0],[hx0,bh,hz0],0,1,0,0,0,1,1,[.5,.4,.36]);
+ bakeG('plain',GEO.cone4,p.cx,bh,(hz0+hz1)/2,0,(hx1-hx0)/2*1.12/.7071,2.4,(hz1-hz0)/2*1.12/.7071,pick([[.62,.3,.24],[.45,.47,.5],[.55,.38,.28],[.35,.42,.38]]));
+ const dz=p.row?hz1:hz0,sgn=p.row?1:-1;
+ bakeG('plain',GEO.box,p.cx-hw*.25,0,dz+sgn*.12,0,2.4,2.3,.2,[.2,.2,.22]);bakeG('plain',GEO.box,p.cx+hw*.2,0,dz+sgn*.12,0,1,2.2,.2,[.55,.35,.22]);
+ const fy=p.row?hz0-2.5:hz1+2.5;
+ bakeG('walk',GEO.box,p.cx-hw*.25,0,dz+sgn*4,0,3.4,.05,9,[.75,.75,.72]);
+ if(rnd()<.5)bakeG('water2',GEO.box,p.cx,0,p.row?hz0-3.5:hz1+3.5,0,Math.min(hw*.6,7),.1,4,[.2,.8,.9]);
+ if(rnd()<.6)(rnd()<.5?palm:oak)(x0+2,p.row?z1-1.2:z0+1.2,rr(.8,1));
+ addCol(hx0,hz0,hx1,hz1,H);BLD.push(p);
+ if(p.shop){const s=p.shop;const fx=p.cx+hw*.2,fz2=dz+sgn*1.4;doors.push({x:fx,z:fz2,kind:s.k,name:s.name,col:s.col,ret:{x:fx,z:fz2+sgn*2.5}});
+  const sg=new T.Mesh(new T.PlaneGeometry(4.5,1.1),new T.MeshBasicMaterial({map:signTex(s.name,s.col),toneMapped:false}));sg.position.set(fx,3.9,dz+sgn*.35);if(!p.row)sg.rotation.y=Math.PI;world.add(sg)}
+}

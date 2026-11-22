@@ -1,0 +1,1 @@
+function nearRoad(x,z,m){for(const r of roads){if(r.o==='h'){if(x>r.a-m&&x<r.b+m&&Math.abs(z-r.c)<r.hw+m)return true}else if(z>r.a-m&&z<r.b+m&&Math.abs(x-r.c)<r.hw+m)return true}return false}
