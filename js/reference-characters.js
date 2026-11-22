@@ -31,7 +31,7 @@
   const highlight=cloth(T,0x49342a);for(const side of[-1,1]){add(T,u.headP,tube(T,[[side*.078,.245,.048],[side*.098,.19,.06],[side*.104,.075,.02],[side*.091,.025,.01]],.012,16),side===1?highlight:m.hair,'lucia-face-framing-hair');add(T,u.headP,tube(T,[[side*.019,.203,.100],[side*.037,.210,.101],[side*.058,.206,.092]],.0037,14),m.brow,'lucia-arched-brow')}
   for(const mesh of u.headP.children.slice())if(mesh.isMesh){if(mesh.material===m.brow&&mesh.geometry.type==='BoxGeometry')remove(mesh);else if(mesh.material===m.eyeW){mesh.scale.x*=.98;mesh.scale.y*=.82}else if(mesh.material===m.lip){mesh.scale.x*=1.16;mesh.scale.y*=1.12}else if(mesh.material===m.skin&&mesh.geometry.type==='LatheGeometry'){const a=mesh.geometry.attributes.position;for(let i=0;i<a.count;i++){const y=a.getY(i),x=a.getX(i);a.setX(i,x*(1+.085*Math.exp(-Math.pow((y-.145)/.04,2))-.065*Math.exp(-Math.pow((y-.075)/.025,2))))}a.needsUpdate=true;mesh.geometry.computeVertexNormals()}}
   const threads=cloth(T,0xc8c2ad);for(let k=0;k<u.Lg.length;k++){const hp=u.Lg[k].hp;for(const mesh of hp.children.slice())if(mesh.isMesh&&mesh.geometry.type==='TorusGeometry'&&Math.abs(mesh.position.y+.26)<.002)remove(mesh);const shorts=hp.children.find(o=>o.isMesh&&o.material===m.pants&&o.geometry.type==='LatheGeometry');if(shorts){shorts.name='lucia-reference-denim-shorts-'+k;const a=shorts.geometry.attributes.position;for(let i=0;i<a.count;i++)if(Math.abs(a.getY(i)+.26)<.001){const angle=Math.atan2(a.getZ(i),a.getX(i));a.setY(i,-.26+.003*Math.sin(angle*9)+.002*Math.sin(angle*17))}a.needsUpdate=true;shorts.geometry.computeVertexNormals()}for(let j=0;j<9;j++){const phi=j/9*Math.PI*2,len=.007+(j%3)*.003;add(T,hp,new T.CylinderGeometry(.0008,.0005,len,4),threads,'lucia-denim-fray',Math.sin(phi)*.095,-.26-len*.45,Math.cos(phi)*.095)}}
-  const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);fitLuciaShortsLegs(T,h);denimLuciaShorts(T,h);joinLuciaShoulders(T,h);refineLuciaV3(T,h);installLuciaDenimV3(T,h);finishLuciaV4(T,h);makeLuciaCurlyPonytail(T,h);fitLuciaFrontHair(T,h);polishLuciaV5(T,h);enlargeLuciaEyes(T,h);smoothLuciaHipTransition(T,h);
+  const waist=add(T,u.hips,new T.LatheGeometry([[.142,.07],[.138,.105],[.134,.13]].map(p=>new T.Vector2(...p)),24),m.pants,'lucia-denim-waist');waist.scale.z=.70;shapeLucia(T,h);fitLuciaShortsLegs(T,h);denimLuciaShorts(T,h);joinLuciaShoulders(T,h);refineLuciaV3(T,h);installLuciaDenimV3(T,h);finishLuciaV4(T,h);makeLuciaCurlyPonytail(T,h);fitLuciaFrontHair(T,h);addLuciaBackCurls(T,h);polishLuciaV5(T,h);enlargeLuciaEyes(T,h);smoothLuciaHipTransition(T,h);
  }
 
 
@@ -280,6 +280,24 @@
   function surface(x,y){const r=profile(y-.003),nx=(x-center.x)/(r.rx+clearance);return [x,y,center.z+(r.front+clearance)*Math.sqrt(Math.max(0,1-nx*nx))+.002];}
   for(const side of [-1,1])for(let k=0;k<2;k++){const points=[surface(center.x+side*(.012+k*.018),top-.025),surface(center.x+side*(.026+k*.020),top-.045),surface(center.x+side*(.047+k*.018),top-.070),surface(center.x+side*(.061+k*.015),top-.091)];add(T,u.headP,tube(T,points,.0055,32),u.m.hair,'lucia-short-front-curl');}
   u.luciaFrontHairFit={top,frontY:top-.095,clearance};
+ }
+
+ function addLuciaBackCurls(T,h){
+  const u=h.userData,cap=u.headP.children.find(o=>o.name==='lucia-reference-hair-cap');
+  if(!cap||!u.luciaFrontHairFit)throw Error('Expected fitted scalp surface');
+  const p=cap.geometry.attributes.position,n=cap.geometry.attributes.normal,cols=64,rows=24;
+  if(p.count!==1601)throw Error('Scalp grid dimensions changed');
+  function sample(row,col,offset){
+   row=Math.max(0,Math.min(rows-.001,row));col=((col%cols)+cols)%cols;const a=Math.floor(row),b=Math.floor(col),fy=row-a,fx=col-b,v=new T.Vector3(),normal=new T.Vector3();
+   for(const [di,dj,w] of [[0,0,(1-fy)*(1-fx)],[0,1,(1-fy)*fx],[1,0,fy*(1-fx)],[1,1,fy*fx]]){const k=(a+di)*cols+(b+dj)%cols;v.addScaledVector(new T.Vector3(p.getX(k),p.getY(k),p.getZ(k)),w);normal.addScaledVector(new T.Vector3(n.getX(k),n.getY(k),n.getZ(k)),w);}
+   return v.addScaledVector(normal.normalize(),offset).toArray();
+  }
+  for(let k=0;k<12;k++){
+   const points=[],center=16+(k+.5)*32/12,start=2+(k%3)*.6,end=21-(k%2)*1.2,turns=2.6+(k%3)*.4;
+   for(let j=0;j<=96;j++){const t=j/96,phase=t*turns*Math.PI*2+k*.7,envelope=Math.sin(Math.PI*t),row=start+(end-start)*t+.65*Math.cos(phase)*envelope,col=center+.85*Math.sin(phase)*envelope,offset=.003+.0018*(1+Math.cos(phase))*envelope;points.push(sample(row,col,offset));}
+   add(T,u.headP,tube(T,points,.0045+(k%3)*.0005,96),u.m.hair,'lucia-back-scalp-curl');
+  }
+  u.luciaBackScalpCurls=true;
  }
  function finishLuciaV4(T,h){
   const u=h.userData,m=u.m;m.hair.color.setHex(0x2d1b12);m.brow.color.setHex(0x4b2e1e);m.lip.color.setHex(0x9f6255);m.lip.roughness=.65;
