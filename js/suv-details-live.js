@@ -30,21 +30,9 @@ function enhance(T,v,t,color){
  box(W*.22,H*.013,L*.009,trim,0,H*.79,-L*.350);
  const c=document.createElement('canvas');c.width=256;c.height=128;const x=c.getContext('2d');if(!x)throw Error('License plate canvas unavailable');x.fillStyle='#eee9da';x.fillRect(0,0,256,128);x.fillStyle='#254a60';x.textAlign='center';x.font='bold 22px Arial';x.fillText('LEONIDA',128,30);x.font='bold 43px Arial';x.fillText('VC '+String((Number(color)>>>0)%900+100),128,90);
  const map=new T.CanvasTexture(c);map.encoding=T.sRGBEncoding;const plate=new T.MeshBasicMaterial({map,toneMapped:false});part(new T.PlaneGeometry(W*.32,H*.08),plate,0,H*.31,L*.499);part(new T.PlaneGeometry(W*.32,H*.08),plate,0,H*.34,-L*.499,0,Math.PI);
- // Boxy modern-SUV finishing: roof rails, framed side glass, door hardware and grille.
- for(const side of [-1,1]){
-  box(W*.025,H*.018,L*.72,steel,side*W*.345,H*1.025,-L*.045);
-  for(const z of [-L*.25,-L*.02,L*.22])box(W*.012,H*.34,L*.018,trim,side*W*.405,H*.82,z);
-  for(const z of [-L*.24,L*.12])box(W*.022,H*.035,L*.085,steel,side*(W*.5-.035),H*.78,z);
-  box(W*.012,H*.025,L*.46,steel,side*W*.405,H*.69,-L*.045);
- }
- for(let i=0;i<9;i++)box(W*.52,.018,.012,steel,0,H*.285,L*.492-i*.0001);
- box(W*.72,H*.065,.025,trim,0,H*.245,L*.49);
- box(W*.72,H*.065,.025,trim,0,H*.245,-L*.49);
- box(W*.018,H*.018,L*.22,steel,0,H*1.035,-L*.20);
- box(W*.018,H*.018,L*.22,steel,0,H*1.035,L*.20);
  const group=new T.Group();group.name='suv-exterior-details';v.ch.add(group);batch(parts,group,'suv-batched-exterior-detail');
  for(const wheel of v.wheels){if(!wheel.w||!wheel.piv)continue;const spokes=[],side=Math.sign(wheel.piv.position.x)||1;for(let i=0;i<5;i++)box(.020,t.wr*1.35,.028,steel,side*.100,0,0,i*Math.PI/5,0,0,spokes);part(new T.CylinderGeometry(t.wr*.18,t.wr*.18,.022,12),steel,side*.105,0,0,0,0,Math.PI/2,spokes);batch(spokes,wheel.w,'suv-wheel-rim-detail');}
  v.suvDetailed=true;return v;
 }
-root.VCSUVDetails={version:3,enhance};
+root.VCSUVDetails={version:2,enhance};
 })(typeof globalThis!=='undefined'?globalThis:window);
