@@ -1,0 +1,79 @@
+name: Jason and Lucia lean back and punch
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/leads-lean-back-punch.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  animate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lead-punch" --no-package-lock --ignore-scripts three@0.128.0
+      - name: Prepare shared wind up strike and recovery phases
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,subprocess
+          s=Path('index.html').read_text()
+          if 'function applyLeadLeanPunch(' in s: raise SystemExit('Shared lean-back punch already installed.')
+          anchor="if(u.referenceLead==='luciaC'){applyLuciaPunchV4(u,s.punch);}"
+          if s.count(anchor)!=1: raise SystemExit('Expected one Lucia punch hook; refusing ambiguous edit.')
+          s=s.replace(anchor,"if(u.referenceLead==='luciaC'||u.referenceLead==='jasonC'){applyLeadLeanPunch(u,s.punch);}",1)
+          start=s.index('function applyLuciaPunchV4(u,p){');end=s.index('function animHuman(h,dt,s){',start)
+          helper='''function applyLeadLeanPunch(u,p){
+           if(!u._luciaPunchActive||p>(u._luciaPunchLast||0)+.05){u._luciaPunchActive=true;u._luciaPunchStart=Math.max(.001,p);u._luciaPunchSerial=(u._luciaPunchSerial||0)+1;u._luciaPunchArm=(u._luciaPunchSerial-1)%2;}
+           u._luciaPunchLast=p;
+           const t=Math.max(0,Math.min(1,1-p/u._luciaPunchStart));
+           const frames=[[0,-.60,-1.30,.02,.01,0],[.20,-.40,-1.55,.22,.08,-.24],[.30,-.65,-1.10,.15,.04,-.12],[.46,-1.62,-.08,-.32,-.12,.20],[.55,-1.58,-.12,-.30,-.11,.17],[.78,-.85,-1.30,.04,.02,-.04],[1,0,-.15,0,0,0]];
+           let k=0;while(k<frames.length-2&&t>frames[k+1][0])k++;
+           const a=frames[k],b=frames[k+1],r=Math.max(0,Math.min(1,(t-a[0])/(b[0]-a[0]))),ease=r*r*(3-2*r),q=a.map((v,i)=>v+(b[i]-v)*ease),w=Math.min(1,t/.10)*Math.min(1,(1-t)/.15),arm=u._luciaPunchArm,sign=arm===1?1:-1,hit=u.A[arm],guard=u.A[1-arm];
+           const blend=(x,y)=>x+(y-x)*w;
+           hit.sh.rotation.x=blend(hit.sh.rotation.x,q[1]);hit.sh.rotation.y=blend(hit.sh.rotation.y,0);hit.sh.rotation.z=blend(hit.sh.rotation.z,-sign*.10);hit.el.rotation.x=blend(hit.el.rotation.x,q[2]);
+           guard.sh.rotation.x=blend(guard.sh.rotation.x,-.85);guard.sh.rotation.z=blend(guard.sh.rotation.z,sign*.13);guard.el.rotation.x=blend(guard.el.rotation.x,-1.40);
+           u.spine.rotation.y+=sign*q[3]*w;u.hips.rotation.y+=sign*q[4]*w;u.spine.rotation.x+=q[5]*w;
+           if(u.headP)u.headP.rotation.x-=q[5]*w*.35;
+          }
+          '''
+          s=s[:start]+helper+s[end:]
+          if 'applyLuciaPunchV4(' in s: raise SystemExit('Old punch implementation remains unexpectedly.')
+          Path('/tmp/leads-punch-index.html').write_text(s);Path('/tmp/leads-punch-helper.js').write_text(helper)
+          start=s.index('function animHuman(h,dt,s){');end=s.index('// ================= INPUT =================',start)
+          Path('/tmp/leads-punch-anim.js').write_text(s[start:end])
+          for path in ['/tmp/leads-punch-helper.js','/tmp/leads-punch-anim.js']:subprocess.run(['node','--check',path],check=True)
+          for code in re.findall(r'<script\b[^>]*>([\s\S]*?)</script>',s,re.I):
+           if code.strip():
+            Path('/tmp/leads-punch-check.js').write_text(code);subprocess.run(['node','--check','/tmp/leads-punch-check.js'],check=True)
+          PY
+      - name: Verify both characters lean back strike alternate and recover
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lead-punch/node_modules/three'),c={window:{},console,Math,clamp:(x,a,b)=>Math.max(a,Math.min(b,x))};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(fs.readFileSync('js/reference-characters.js','utf8'),c);vm.runInContext(fs.readFileSync('/tmp/leads-punch-helper.js','utf8')+fs.readFileSync('/tmp/leads-punch-anim.js','utf8'),c);
+          for(const id of ['jasonC','luciaC'])for(const merge of [false,true]){
+           const h=c.window.VCCharacters.build(T,id,{merge}),u=h.userData;let back=0,forward=0,extension=0;
+           for(let attack=0;attack<2;attack++){
+            c.animHuman(h,1/60,{speed:0,punch:0,weapon:null});
+            for(let i=0;i<60;i++){c.animHuman(h,1/60,{speed:0,punch:.5*(1-i/60),weapon:null});back=Math.min(back,u.spine.rotation.x);forward=Math.max(forward,u.spine.rotation.x);extension=Math.min(extension,u.A[0].sh.rotation.x,u.A[1].sh.rotation.x);h.updateMatrixWorld(true);for(const arm of u.A)for(const j of [arm.sh,arm.el])assert(j.rotation.toArray().slice(0,3).every(Number.isFinite));}
+           }
+           assert(back<-.12&&forward>.12&&extension<-1.20);assert(u._luciaPunchSerial===2&&u._luciaPunchArm===1);
+           for(let i=0;i<120;i++)c.animHuman(h,1/60,{speed:0,punch:0,weapon:null});assert(!u._luciaPunchActive);assert(Math.abs(u.spine.rotation.x)<.1);
+           for(const speed of [2,6])for(let i=0;i<60;i++)c.animHuman(h,1/60,{speed,punch:0,weapon:null});
+           c.animHuman(h,1/60,{speed:0,punch:0,aim:true,weapon:'pistol'});assert(!u._luciaPunchActive);assert(Math.abs(u.A[1].sh.rotation.x+1.5)<1e-5);
+           c.animHuman(h,1/60,{speed:0,punch:0,dead:true});assert(!u._luciaPunchActive);
+           h.traverse(o=>{if(o.isMesh){assert(Array.from(o.geometry.attributes.position.array).every(Number.isFinite));assert(Array.from(o.geometry.attributes.normal.array).every(Number.isFinite));}});
+          }
+          fs.copyFileSync('/tmp/leads-punch-index.html','index.html');
+          JS
+      - name: Commit animation only after checks
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Animate Jason and Lucia leaning back winding up and driving alternating punches forward'
+          git push origin HEAD:main
