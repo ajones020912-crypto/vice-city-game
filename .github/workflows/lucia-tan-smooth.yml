@@ -1,0 +1,68 @@
+name: Give Lucia a deeper warm tan and smoother body surfaces
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-tan-smooth.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: lucia-photo-reference
+  cancel-in-progress: false
+jobs:
+  polish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-tan-smooth" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Prepare Lucia-only tan and conservative surface smoothing
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-tan-smooth/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_TAN_SMOOTH_V1'))process.exit(0);if(!s.includes('// LUCIA_ROUND_DENIM_V2'))throw Error('Rounded shape and denim correction must be installed first');fs.writeFileSync('/tmp/lucia-tan-before.js',s);
+          function once(a,b){if(s.split(a).length!==2)throw Error('Reviewed implementation changed: '+a);s=s.replace(a,b);}once('skin:0xb17e5a','skin:0xa36d48');once('m.skin.color.setHex(0xb17e5a);m.skin.roughness=.78','m.skin.color.setHex(0xa36d48);m.skin.roughness=.80');
+          const helper=String.raw`
+           function smoothLuciaSkinSurface(T,h){
+            const u=h.userData;h.updateMatrixWorld(true);u.m.skin.flatShading=false;u.m.skin.needsUpdate=true;let changed=0;
+            h.traverse(mesh=>{
+             if(!mesh.isMesh||mesh.material!==u.m.skin)return;for(let parent=mesh;parent;parent=parent.parent)if(parent===u.headP)return;
+             const original=mesh.geometry,p=original.attributes.position;if(!p)return;const matrix=new T.Matrix4().copy(h.matrixWorld).invert().multiply(mesh.matrixWorld),inverse=matrix.clone().invert(),box=new T.Box3().setFromBufferAttribute(p).applyMatrix4(matrix);if(Math.max(...box.getSize(new T.Vector3()).toArray())<.13)return;
+             const ids=[],points=[],groups=[],lookup=new Map();for(let i=0;i<p.count;i++){const v=new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(matrix),key=v.toArray().map(x=>Math.round(x*1e5)).join(',');if(!lookup.has(key)){lookup.set(key,points.length);points.push(v);groups.push([]);}const id=lookup.get(key);ids.push(id);groups[id].push(i);}
+             const neighbors=points.map(()=>new Set()),edges=new Map(),index=original.index,count=index?index.count:p.count;for(let i=0;i<count;i+=3){const triangle=[0,1,2].map(k=>ids[index?index.getX(i+k):i+k]);if(new Set(triangle).size<3)continue;for(let j=0;j<3;j++){const a=triangle[j],b=triangle[(j+1)%3],key=a<b?a+','+b:b+','+a;neighbors[a].add(b);neighbors[b].add(a);edges.set(key,(edges.get(key)||0)+1);}}
+             const pinned=new Set();for(const [key,count] of edges)if(count!==2)for(const id of key.split(',').map(Number))pinned.add(id);const start=points.map(v=>v.clone());let surface=points.map(v=>v.clone());
+             for(const rate of [.18,-.185,.18,-.185])surface=surface.map((v,i)=>{if(pinned.has(i)||!neighbors[i].size)return v.clone();const mean=new T.Vector3();for(const j of neighbors[i])mean.add(surface[j]);mean.multiplyScalar(1/neighbors[i].size);return v.clone().addScaledVector(mean.sub(v),rate);});
+             const g=original.clone(),out=g.attributes.position;for(let i=0;i<surface.length;i++){const delta=surface[i].clone().sub(start[i]);if(delta.length()>.0008)delta.setLength(.0008);const v=start[i].clone().add(delta).applyMatrix4(inverse);for(const j of groups[i])out.setXYZ(j,v.x,v.y,v.z);}out.needsUpdate=true;g.computeVertexNormals();const n=g.attributes.normal;for(const group of groups){const normal=new T.Vector3();for(const i of group)normal.add(new T.Vector3(n.getX(i),n.getY(i),n.getZ(i)));normal.normalize();for(const i of group)n.setXYZ(i,normal.x,normal.y,normal.z);}n.needsUpdate=true;g.computeBoundingBox();g.computeBoundingSphere();mesh.geometry=g;changed++;
+            });
+            if(!changed)throw Error('No body surfaces qualified for smoothing');u.luciaSkinSmoothed=true;u.luciaSmoothedMeshCount=changed;
+           }
+          `;once(' function fitLuciaPhotoReference(T,h){',helper+' function fitLuciaPhotoReference(T,h){');once('fitLuciaVisibleDenim(T,h);u.faceUncovered=true;','fitLuciaVisibleDenim(T,h);smoothLuciaSkinSurface(T,h);u.faceUncovered=true;');s='// LUCIA_TAN_SMOOTH_V1\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-tan-after.js',s);
+          JS
+      - name: Check surface limits unchanged clothing and all animation states
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/lucia-tan-smooth/node_modules/acorn'),T=require(process.env.RUNNER_TEMP+'/lucia-tan-smooth/node_modules/three');if(!fs.existsSync('/tmp/lucia-tan-after.js')){if(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_TAN_SMOOTH_V1'))process.exit(0);throw Error('Candidate missing');}
+          function load(file){const c={window:{},console,Math,T,clamp:(x,a,b)=>Math.max(a,Math.min(b,x))};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c;}const before=load('/tmp/lucia-tan-before.js'),after=load('/tmp/lucia-tan-after.js'),old=before.window.VCCharacters,cur=after.window.VCCharacters;
+          function signature(h,colors=true){const a=[];h.traverse(o=>{if(o.isMesh)a.push([o.name,o.position.toArray(),o.scale.toArray(),Array.from(o.geometry.attributes.position.array),...(colors?(Array.isArray(o.material)?o.material:[o.material]).map(m=>m.color?m.color.getHex():null):[])]);});return JSON.stringify(a);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)),'Unrelated character changed');
+          const a=old.build(T,'luciaC'),b=cur.build(T,'luciaC');assert(b.userData.m.skin.color.getHex()===0xa36d48&&b.userData.m.skin.flatShading===false);assert(signature(a.userData.headP,false)===signature(b.userData.headP,false),'Face or hair geometry changed');const am=[],bm=[];a.traverse(o=>{if(o.isMesh)am.push(o);});b.traverse(o=>{if(o.isMesh)bm.push(o);});assert(am.length===bm.length);a.updateMatrixWorld(true);b.updateMatrixWorld(true);let maxDisplacement=0,changedVertices=0;
+          for(let k=0;k<am.length;k++){const x=am[k],y=bm[k],p=x.geometry.attributes.position,q=y.geometry.attributes.position;assert(x.name===y.name&&p.count===q.count);assert((x.geometry.index?x.geometry.index.count:0)===(y.geometry.index?y.geometry.index.count:0));for(let i=0;i<p.count;i++){const va=new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(x.matrixWorld),vb=new T.Vector3().fromBufferAttribute(q,i).applyMatrix4(y.matrixWorld),d=va.distanceTo(vb);assert(d<.00082,'Surface correction exceeded limit');if(d>1e-7)changedVertices++;maxDisplacement=Math.max(maxDisplacement,d);}if(x.material!==a.userData.m.skin)assert(JSON.stringify(Array.from(p.array))===JSON.stringify(Array.from(q.array)),'Non-skin geometry changed');}
+          assert(changedVertices>0&&b.userData.luciaSkinSmoothed);const da=a.getObjectByName('lucia-seamless-denim'),db=b.getObjectByName('lucia-seamless-denim');for(const key of ['position','normal','uv','skinIndex','skinWeight'])assert(JSON.stringify(Array.from(da.geometry.attributes[key].array))===JSON.stringify(Array.from(db.geometry.attributes[key].array)));for(const key of ['map','bumpMap','roughnessMap'])assert(JSON.stringify(Array.from(da.material[key].image.data))===JSON.stringify(Array.from(db.material[key].image.data)));assert(signature(a.getObjectByName('lucia-dark-tank-top'))===signature(b.getObjectByName('lucia-dark-tank-top')),'Bust garment shape changed');
+          const joints=h=>{const u=h.userData;return [u.hips.position.toArray(),u.spine.position.toArray(),u.headP.position.toArray(),...u.A.flatMap(x=>[x.sh.position.toArray(),x.el.position.toArray()]),...u.Lg.flatMap(x=>[x.hp.position.toArray(),x.kn.position.toArray()])];};assert(JSON.stringify(joints(a))===JSON.stringify(joints(b)));
+          let html=fs.readFileSync('index.html','utf8');function walk(n,fn){fn(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,fn);}else if(v&&typeof v.type==='string')walk(v,fn);}}const defaults=[],animators=[];for(const m of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;walk(acorn.parse(m[1],{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='animHuman')animators.push(m[1].slice(n.start,n.end));if(n.type==='VariableDeclarator'&&n.id.name==='CHAR'&&n.init&&n.init.type==='ObjectExpression'){const l=n.init.properties.find(p=>(p.key.name||p.key.value)==='lucia');if(l){const p=l.value.properties.find(p=>(p.key.name||p.key.value)==='skin');if(p)defaults.push({m,p});}}});}assert(defaults.length===1&&animators.length===1);const {m,p}=defaults[0],offset=m.index+m[0].indexOf(m[1]),code=m[1].slice(0,p.value.start)+'0xa36d48'+m[1].slice(p.value.end);acorn.parse(code,{ecmaVersion:'latest'});html=html.slice(0,offset)+code+html.slice(offset+m[1].length);
+          vm.runInContext(animators[0],after);for(const p of ['js/one-hand-hit.js','js/gun-animation.js'])vm.runInContext(fs.readFileSync(p,'utf8'),after);const animate=after.window.VCGunAnimation.wrap(after.window.VCOneHandHit.wrap(after.animHuman),T);let cases=0;for(const merge of [false,true]){const h=cur.build(T,'luciaC',{merge}),u=h.userData,d=h.getObjectByName('lucia-seamless-denim');assert(u.luciaSkinSmoothed&&u.luciaVisibleDenim&&u.faceUncovered&&u.guns.pistol&&u.guns.rifle);for(const state of [{speed:0,weapon:null,punch:0},{speed:2,weapon:null,punch:0},{speed:7,weapon:null,punch:0},{speed:0,weapon:null,punch:1},{speed:0,weapon:'pistol',aim:true},{speed:0,weapon:'rifle',aim:true}]){for(let i=0;i<60;i++)animate(h,1/60,state);h.updateMatrixWorld(true);d.onBeforeRender();assert(Array.from(d.skeleton.boneMatrices).every(Number.isFinite));h.traverse(o=>{if(o.isMesh){for(const key of ['position','normal','uv'])if(o.geometry.attributes[key])assert(Array.from(o.geometry.attributes[key].array).every(Number.isFinite));assert(o.matrixWorld.elements.every(Number.isFinite));}});cases++;}}
+          fs.copyFileSync('/tmp/lucia-tan-after.js','js/reference-characters.js');fs.writeFileSync('index.html',html);fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-tan-smooth-check.json',JSON.stringify({passed:true,animationCases:cases,skinColor:'a36d48',changedVertices,maxDisplacement,smoothedBodyMeshes:b.userData.luciaSmoothedMeshCount,bodyBoundariesPinned:true,polygonAndMeshCountsUnchanged:true,faceAndHairGeometryUnchanged:true,bustGarmentGeometryUnchanged:true,denimGeometryAndTexturesUnchanged:true,rigOffsetsUnchanged:true,otherCharactersUnchanged:true,scope:'Geometry, material and animation tests only; rendered appearance and live deployment not verified.'},null,2)+'\n');
+          JS
+      - name: Publish only checked tan and smoothing changes
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against the latest revision.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js index.html status/lucia-tan-smooth-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Deepen Lucia warm tan and gently smooth body surfaces without changing proportions'
+          git push origin HEAD:main
