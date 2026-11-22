@@ -1,0 +1,52 @@
+name: Inspect safehouse healing and wanted state
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/inspect-safehouse-wanted.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/safehouse-inspect" --no-package-lock --ignore-scripts acorn@8
+      - name: Extract relevant existing code without executing or modifying it
+        run: |
+          node <<'JS'
+          const fs=require('fs'),crypto=require('crypto'),acorn=require(process.env.RUNNER_TEMP+'/safehouse-inspect/node_modules/acorn');
+          const html=fs.readFileSync('index.html','utf8'),hash=crypto.createHash('sha256').update(html).digest('hex'),safe=[],wanted=[],states=[],references=[];
+          const clip=(s,n=5000)=>s.length<=n?s:s.slice(0,Math.floor(n*.7))+'\n/* inspection excerpt omitted middle */\n'+s.slice(-Math.floor(n*.3));
+          const add=(a,name,code)=>{if(!a.some(v=>v.name===name&&v.code===code))a.push({name,code:clip(code)});};
+          for(const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){
+           const source=match[1];if(!source.trim())continue;const ast=acorn.parse(source,{ecmaVersion:'latest'}),stack=[ast];
+           while(stack.length){const node=stack.pop();
+            if(node.type==='FunctionDeclaration'&&node.id){const name=node.id.name,text=source.slice(node.start,node.end);if(/safe|interior|shop|heal|rest|sleep/i.test(name))add(safe,name,text);if(/wanted|heat|police|cop|arrest|bust|wast|respawn|crime/i.test(name))add(wanted,name,text);}
+            if(node.type==='AssignmentExpression'){const name=source.slice(node.left.start,node.left.end);if(/^SHOP_ITEMS(?:\.safe|\[['"]safe['"]\])$/.test(name))add(safe,name,source.slice(node.start,node.end));}
+            if(node.type==='VariableDeclarator'&&node.id.type==='Identifier'&&node.init){
+             if(node.id.name==='SHOP_ITEMS'&&node.init.type==='ObjectExpression')for(const p of node.init.properties){const key=p.key&&(p.key.name||p.key.value);if(key==='safe')add(safe,'SHOP_ITEMS.safe initializer',source.slice(p.start,p.end));}
+             if(node.init.type==='ObjectExpression'){const keys=node.init.properties.map(p=>p.key&&(p.key.name||p.key.value)),score=keys.filter(k=>['stars','heat','wanted','search','seen','lastSeen','lastX','lastZ','timer','cooldown'].includes(k)).length;if(/wanted|heat|pursuit|^W$|^WN$/i.test(node.id.name)||(score>=2&&keys.some(k=>['stars','heat','wanted'].includes(k))))add(states,node.id.name,source.slice(node.start,node.end));}
+            }
+            for(const value of Object.values(node)){if(Array.isArray(value)){for(const child of value)if(child&&typeof child.type==='string')stack.push(child);}else if(value&&typeof value.type==='string')stack.push(value);}
+           }
+           for(const m of source.matchAll(/\b(?:wanted|heat)\b|\$\(['"]stars['"]\)|getElementById\(['"]stars['"]\)/gi)){const text=source.slice(Math.max(0,m.index-320),Math.min(source.length,m.index+650));if(!references.some(r=>r.code===text)&&references.length<35)references.push({name:m[0],code:text});}
+          }
+          safe.sort((a,b)=>Number(/SHOP_ITEMS\.safe|enterInterior|openShop|heal|rest/i.test(b.name))-Number(/SHOP_ITEMS\.safe|enterInterior|openShop|heal|rest/i.test(a.name)));
+          wanted.sort((a,b)=>Number(/clear|reset|wanted|heat|arrest|bust|wast/i.test(b.name))-Number(/clear|reset|wanted|heat|arrest|bust|wast/i.test(a.name)));
+          const dir='status/safehouse-wanted';fs.mkdirSync(dir,{recursive:true});
+          fs.writeFileSync(dir+'/safehouse.json',JSON.stringify({source_sha256:hash,gameplay_changed:false,sections:safe.slice(0,12)},null,2)+'\n');
+          fs.writeFileSync(dir+'/wanted.json',JSON.stringify({source_sha256:hash,gameplay_changed:false,state_declarations:states.slice(0,8),functions:wanted.slice(0,10),references},null,2)+'\n');
+          if(!safe.length||(!wanted.length&&!states.length))throw Error('Expected safehouse and wanted sections were not found.');
+          JS
+      - name: Commit diagnostic reports only
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add status/safehouse-wanted/safehouse.json status/safehouse-wanted/wanted.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Record safehouse healing and wanted pursuit source for targeted bug fix'
+          git push origin HEAD:main
