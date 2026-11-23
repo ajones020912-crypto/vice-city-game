@@ -1,0 +1,183 @@
+{
+  "passed": true,
+  "branch": "lucia-outfits",
+  "reports": [
+    {
+      "merge": false,
+      "profiles": [
+        {
+          "y": 0.3,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.148572346034742,
+            0.15107749679537907,
+            0.14911605882946577,
+            0.15114040812211704,
+            0.14867710119170352
+          ],
+          "centreDip": 0.002024349292651273
+        },
+        {
+          "y": 0.34,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.18039733785804613,
+            0.1831784935980637,
+            0.18137247018531766,
+            0.18297219641675233,
+            0.18039941012865623
+          ],
+          "centreDip": 0.0018060234127460495
+        },
+        {
+          "y": 0.38,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.19266026366425226,
+            0.19546682735469045,
+            0.19363766643250113,
+            0.19514402772041217,
+            0.1926553322716834
+          ],
+          "centreDip": 0.0018291609221893212
+        },
+        {
+          "y": 0.4,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.18879882150395022,
+            0.19136914334557587,
+            0.18961694547104768,
+            0.19102886047869128,
+            0.18880772666337675
+          ],
+          "centreDip": 0.001752197874528183
+        }
+      ],
+      "fit": {
+        "changedVertices": 9822,
+        "maxForwardLift": 0.07264522703821166,
+        "profile": "one broad rounded front with shallow central dip",
+        "dipParameter": 0.003,
+        "dipHalfScale": 0.025,
+        "curvature": 0.6,
+        "scope": "Outer tank geometry only; no body or base garment edits."
+      }
+    },
+    {
+      "merge": true,
+      "profiles": [
+        {
+          "y": 0.3,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.148572346034742,
+            0.15107749679537907,
+            0.14911605882946577,
+            0.15114040812211704,
+            0.14867710119170352
+          ],
+          "centreDip": 0.002024349292651273
+        },
+        {
+          "y": 0.34,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.18039733785804613,
+            0.1831784935980637,
+            0.18137247018531766,
+            0.18297219641675233,
+            0.18039941012865623
+          ],
+          "centreDip": 0.0018060234127460495
+        },
+        {
+          "y": 0.38,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.19266026366425226,
+            0.19546682735469045,
+            0.19363766643250113,
+            0.19514402772041217,
+            0.1926553322716834
+          ],
+          "centreDip": 0.0018291609221893212
+        },
+        {
+          "y": 0.4,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.18879882150395022,
+            0.19136914334557587,
+            0.18961694547104768,
+            0.19102886047869128,
+            0.18880772666337675
+          ],
+          "centreDip": 0.001752197874528183
+        }
+      ],
+      "fit": {
+        "changedVertices": 9822,
+        "maxForwardLift": 0.07264522703821166,
+        "profile": "one broad rounded front with shallow central dip",
+        "dipParameter": 0.003,
+        "dipHalfScale": 0.025,
+        "curvature": 0.6,
+        "scope": "Outer tank geometry only; no body or base garment edits."
+      }
+    }
+  ],
+  "poseChecks": 6,
+  "bodyUnderwearRigAndStrapsUnchanged": true,
+  "midpointNecklineRibbingAndOpacityPreserved": true,
+  "otherCharactersUnchanged": true,
+  "scope": "Numerical horizontal chest sections and finite pose checks. The top-down rendered appearance, all-pose clipping, shoulder-widening installation and earlier strap-correction installation are not certified by this report."
+}
