@@ -759,17 +759,21 @@ function seaD(x,z){ // signed metres into the sea (>0 sea, <0 land)
  const bay=(1-Math.pow(Math.pow(bu,3.2)+Math.pow(bv,3.2),1/3.2))*800-Math.abs(70*Math.sin(ba*3+.7)+45*Math.sin(ba*7+2.2)+22*Math.sin(ba*13+.4))-25;
  const pass=-1e9; // lake now: no channel to the sea
  const mainlandSea=Math.min(Math.max(edge,Math.min(Math.max(bay,pass,Math.min(n,isl)),hhIsle(x,z))),flKeysD(x,z),afbIsle(x,z));
- // VICE_CITY_COASTAL_ISLAND_V1: compact urban island immediately beside the Florida mainland.
- // The airport remains on the southwest corner; city neighborhoods wrap north and east around it.
- const ang=Math.atan2(z+180,x+120);
- const wob=34*Math.sin(ang*3+.6)+22*Math.sin(ang*5+1.8)+12*Math.sin(ang*9);
- const islandSdf=(Math.hypot((x+120)/1780,(z+180)/1550)-1)*1500-wob;
- const metroZone=x>-2200&&x<2200&&z>-2050&&z<1750;
- // Two short causeways keep the island closely tied to the mainland rather than offshore.
- const segDist=(px,pz,ax,az,bx,bz)=>{const dx=bx-ax,dz=bz-az,t=clamp(((px-ax)*dx+(pz-az)*dz)/(dx*dx+dz*dz),0,1);return Math.hypot(px-ax-t*dx,pz-az-t*dz)};
- const causeway=Math.min(segDist(x,z,1320,980,1840,1510),segDist(x,z,1480,520,1940,900));
- const islandSea=causeway<34?-18:islandSdf;
- if(metroZone)return islandSea<0?Math.min(mainlandSea,islandSea):Math.max(mainlandSea,islandSea);
+ // VICE_CITY_COASTAL_ISLAND_V2: a compact urban island tucked directly beside the mainland coast.
+ // VCIA (center 650,820) remains entirely on the mainland; the island begins east/northeast of the airfield.
+ const islandCx=1960,islandCz=170,islandRx=1120,islandRz=1390;
+ const ang=Math.atan2((z-islandCz)/islandRz,(x-islandCx)/islandRx);
+ const wob=24*Math.sin(ang*3+.6)+15*Math.sin(ang*5+1.8)+8*Math.sin(ang*9);
+ const islandSdf=(Math.hypot((x-islandCx)/islandRx,(z-islandCz)/islandRz)-1)*1050-wob;
+ const islandBounds=x>760&&x<3100&&z>-1450&&z<1850;
+ // A single short, narrow causeway links the island's southwest edge to the mainland.
+ const ax=820,az=770,bx=930,bz=690,dx=bx-ax,dz=bz-az;
+ const t=clamp(((x-ax)*dx+(z-az)*dz)/(dx*dx+dz*dz),0,1);
+ const causeway=Math.hypot(x-ax-t*dx,z-az-t*dz)<25;
+ if(islandBounds&&!airportMask(x,z)){
+  const islandSea=causeway?-16:islandSdf;
+  return islandSea<0?Math.min(mainlandSea,islandSea):Math.max(mainlandSea,islandSea);
+ }
  return mainlandSea;
 }
 const gladesMask=(x,z)=>sstep(-2300,-2000,x)*(1-sstep(1300,1700,x))*sstep(3200,3450,z)*(1-sstep(4400,4650,z))*(.75+.25*Math.sin(x*.003+z*.002));
@@ -1399,6 +1403,26 @@ function defineRoads(){
  addRoad('v',240,-1380,360,24,'hwy');
  addRoad('h',-420,-240,1560,24,'hwy');
 
+ // COAST_ADAPTIVE_STREETS_V1: clip the east/north island street grid to its irregular shoreline.
+ const clipped=[];
+ for(const r of roads){
+  const islandRoad=r.type==='city'&&r.b>760&&r.a<3100&&r.c>-1450&&r.c<1850;
+  if(!islandRoad){clipped.push(r);continue}
+  let run=null;
+  for(let p=r.a;p<=r.b+10;p+=10){
+   const q=Math.min(p,r.b),x=r.o==='h'?q:r.c,z=r.o==='h'?r.c:q;
+   const land=seaD(x,z)<-8;
+   if(land&&run===null)run=q;
+   if((!land||q>=r.b)&&run!==null){
+    const stop=land?q:q-10;
+    if(stop-run>18)clipped.push({id:roadId++,o:r.o,c:r.c,a:run,b:stop,w:r.w,hw:r.hw,type:r.type,sig:r.sig,cross:[]});
+    run=null;
+   }
+  }
+ }
+ roads.length=0;roads.push(...clipped);
+ // Short causeway from the mainland to the island's southwest shore.
+ addRoad('h',az,ax,bx,18,'hwy');
 }
 const CR_X=[],CR_Z=[];
 // Harbor Heights street plan: recursive random splits of the island, so every street ends in a T or at the shore
@@ -1538,6 +1562,7 @@ function makeParcels(){
  const lot=(x0,z0,x1,z1,mode,cx0,cz0)=>{ // subdivide a block lot
   const nx=pick(mode==='low'?[1,2,2,3]:[1,2]),nz=pick(mode==='low'?[1,2,2]:[1,2]);const w=(x1-x0)/nx,d=(z1-z0)/nz;
   for(let i=0;i<nx;i++)for(let j=0;j<nz;j++){const a=x0+i*w+.5,b=z0+j*d+.5,c=x0+(i+1)*w-.5,e=z0+(j+1)*d-.5,cx=(a+c)/2,cz=(b+e)/2;
+   if(cx>760&&cx<3100&&cz>-1450&&cz<1850&&seaD(cx,cz)>-12)continue;
    let H,style;
    if(mode==='core'){const dd=Math.hypot(cx/230,(cz+10)/250),core=clamp(1.05-dd,0,1);H=9+rnd()*16+Math.pow(core,1.6)*(40+rnd()*100);style=H>38&&rnd()<.75?pick(['glass','glass','glass','office','stone','concrete']):pick(['deco','deco','apt','mission','hotel','brick','stone']);if(cz<-250){H=8+rnd()*14;style=pick(['deco','hotel','mission','apt'])}}
    else if(mode==='port'){H=7+rnd()*10;style=rnd()<.55?'ware':pick(['brick','brick','concrete','apt','deco'])}
