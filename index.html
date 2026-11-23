@@ -6395,6 +6395,56 @@ function updateAirportPolice(dt){
 // hand airport cars their own driver instead of the road-network AI
 {const ctlOrig=controlAI;controlAI=function(c,dt){if(c.ai&&c.ai.airport)return apolDrive(c,dt);return ctlOrig.apply(this,arguments)}}
 {const simAP=simulate;simulate=function(dt){const r=simAP.apply(this,arguments);try{updateAirportPolice(Number.isFinite(dt)?dt:0)}catch(e){console.error('airport police',e)}return r}}
+// POLICE_DIALOGUE_V1: officers talk out loud. Each line is spoken with the browser's voice and written as a subtitle at
+// the bottom of the screen (O toggles the voice). Lines come from
+// what is happening: spotting you, chases, one-star arrests, busts, gunfights, losing you, and airport restricted areas.
+const DLG={cd:{},global:0,lastWanted:0,voice:true,box:null,sub:null,t:0};
+const DLG_LINES={
+ spot:["Freeze! Police!","Police! Don't move!","Suspect spotted, moving in!","Hey! Stop right there!","Vice City PD! Stay where you are!"],
+ dispatch:["Dispatch to all units: suspect reported in {zone}.","All units, be advised: {stars}-star suspect, last seen in {zone}.","Units in {zone}, respond to a reported disturbance.","Dispatch: suspect is armed and dangerous, use caution in {zone}."],
+ chase:["Pull over! Stop the vehicle!","Pull over now!","Suspect is fleeing, in pursuit!","Stop the car! This is your final warning!","Pursuit heading through {zone}, requesting backup!"],
+ arrest:["Hands where I can see them!","On the ground, now!","Don't make this harder than it has to be.","Turn around, hands behind your back!"],
+ busted:["You're under arrest.","You have the right to remain silent.","Got you. Watch your head getting in.","Suspect in custody."],
+ shots:["Shots fired! Shots fired!","Drop the weapon!","Officer needs assistance!","Take cover, suspect is armed!"],
+ lost:["We lost the suspect. Returning to patrol.","Dispatch, suspect evaded. Calling it off.","No visual on the suspect, resuming patrol."],
+ airport:["This is a restricted area! Leave now!","Airport police! You can't be out here!","Airside is off limits. Move!"],
+ stolenPlane:["Tower, we have an unauthorised aircraft!","Someone just stole a plane! All units respond!"]};
+function dlgPick(kind){const a=DLG_LINES[kind];const z=zoneName(pl.x,pl.z),zone=z.charAt(0)+z.slice(1).toLowerCase().replace(/ (\w)/g,(m,c)=>' '+c.toUpperCase());
+ return a[(Math.random()*a.length)|0].split('{zone}').join(zone).split('{stars}').join(String(Math.max(1,pl.wanted||1)))}
+function dlgSpeaker(maxD=70,airportOnly=false){let best=null,bd=maxD;
+ for(const p of (typeof cops!=='undefined'?cops:[])){if(!p.active||p.dead)continue;const d=Math.hypot(p.x-pl.x,p.z-pl.z);if(d<bd){bd=d;best={x:p.x,y:(p.y||0)+2.2,z:p.z,unit:'Officer'}}}
+ for(const c of cars){if(c.mode!=='cop'||c.dead||c.occ==='player')continue;if(airportOnly&&!c.apol)continue;const d=Math.hypot(c.x-pl.x,c.z-pl.z);if(d<bd){bd=d;best={x:c.x,y:(c.y||0)+2.6,z:c.z,unit:c.apol?'Airport Police':'Patrol car'}}}
+ return best}
+function say(kind,opt={}){const now=DLG.t;if(now<DLG.global&&!opt.force)return false;const cd=opt.cd??8;if(now<(DLG.cd[kind]||0)&&!opt.force)return false;
+ const sp=opt.radio?null:(opt.speaker||dlgSpeaker(opt.range||70,opt.airport));if(!sp&&!opt.radio&&!opt.fallbackRadio)return false;
+ const text=opt.text||dlgPick(kind),radio=!sp;DLG.cd[kind]=now+cd;DLG.global=now+2.6;
+ if(!DLG.box){DLG.box=document.createElement('div');DLG.box.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:40';document.body.appendChild(DLG.box);
+  DLG.sub=document.createElement('div');DLG.sub.style.cssText='position:fixed;left:50%;bottom:96px;transform:translateX(-50%);max-width:70vw;padding:6px 14px;border-radius:10px;background:#071426cc;color:#fff;font:600 15px Arial;text-align:center;pointer-events:none;z-index:41;display:none';document.body.appendChild(DLG.sub)}
+ DLG.sub.innerHTML=(radio?'<span style="color:#8de0f7">📻 DISPATCH:</span> ':'<span style="color:#7fb2ff">👮 '+sp.unit.toUpperCase()+':</span> ')+text;DLG.sub.style.display='block';DLG.subT=now+Math.max(3,text.length*.075);
+ if(DLG.voice&&window.speechSynthesis&&G.state==='play'){try{const u=new SpeechSynthesisUtterance(text);u.rate=radio?1.12:1.05;u.pitch=radio?.8:.95;u.volume=radio?.55:.8;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}}
+ return true}
+function updateDialogue(dt){DLG.t+=dt;const now=DLG.t;
+ if(DLG.sub&&now>DLG.subT)DLG.sub.style.display='none';
+ if(G.state!=='play')return;
+ // escaped
+ if(DLG.lastWanted>0&&pl.wanted===0&&pl.alive&&!G.busted)say('lost',{radio:true,force:true,cd:20});DLG.lastWanted=pl.wanted;
+ if(pl.wanted<=0||!pl.alive)return;
+ // chases, on-foot arrests, gunfights
+ if(pl.car&&!pl.car.t.aircraft){const sp=dlgSpeaker(55);if(sp&&sp.unit!=='Officer')say('chase',{speaker:sp,cd:9})}
+ else if(!pl.car&&pl.wanted===1){const sp=dlgSpeaker(14);if(sp)say('arrest',{speaker:sp,cd:7})}
+ else if(!pl.car&&pl.wanted>=2){const sp=dlgSpeaker(35);if(sp)say('shots',{speaker:sp,cd:10})}
+}
+// wanted level going up: the nearest cop calls it out, otherwise the radio dispatcher does
+{const acOrig=addCrime;addCrime=function(){const before=pl.wanted||0;const r=acOrig.apply(this,arguments);try{if((pl.wanted||0)>before){
+  const air=pl.car&&pl.car.t.aircraft&&before<2&&pl.wanted>=2;if(air)say('stolenPlane',{fallbackRadio:true,force:true,cd:15});
+  else if(!say('spot',{range:60,cd:6}))say('dispatch',{radio:true,cd:12})}}catch(e){}return r}}
+{const bustOrig=bustPlayer;bustPlayer=function(){const r=bustOrig.apply(this,arguments);try{say('busted',{force:true,fallbackRadio:true,range:40,cd:5})}catch(e){}return r}}
+// airport police speak up when you wander airside
+{const apUpd=updateAirportPolice;updateAirportPolice=function(dt){const w=APOL.warned,r=apUpd.apply(this,arguments);if(!w&&APOL.warned)say('airport',{airport:true,range:400,fallbackRadio:true,force:true,cd:12});return r}}
+{const simDLG=simulate;simulate=function(dt){const r=simDLG.apply(this,arguments);try{updateDialogue(Number.isFinite(dt)?dt:0)}catch(e){console.error('dialogue',e)}return r}}
+G.say=say;G.DLG=DLG;G.addCrime=addCrime;G.bustPlayer=bustPlayer;
+addEventListener('keydown',e=>{if(e.key&&e.key.toLowerCase()==='o'&&G.state==='play'&&!e.repeat){DLG.voice=!DLG.voice;if(!DLG.voice&&window.speechSynthesis)speechSynthesis.cancel();toast('👮 Police voices '+(DLG.voice?'on':'off')+' (O)',1400)}});
+{const pgD=pauseGame;pauseGame=function(){const r=pgD.apply(this,arguments);if(G.state!=='play'&&window.speechSynthesis)speechSynthesis.cancel();return r}}
 {const ngAP=newGame;newGame=function(){apolClear();APOL.near=false;return ngAP.apply(this,arguments)}}
 {const simFJ=simulate;simulate=function(dt){const r=simFJ.apply(this,arguments);try{updateInterceptors(Number.isFinite(dt)?dt:0)}catch(e){console.error('interceptors',e)}return r}}
 {const ngFJ=newGame;newGame=function(){for(const c of FJ.list.slice())removeInterceptor(c);return ngFJ.apply(this,arguments)}}
