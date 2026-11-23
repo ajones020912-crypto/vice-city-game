@@ -4276,7 +4276,7 @@ function drawMini(){
  const ctx=mini,canvas=ctx.canvas,W=264,H=222,dpr=Math.min(2,window.devicePixelRatio||1);
  if(canvas.width!==Math.round(W*dpr)||canvas.height!==Math.round(H*dpr)){canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr)}ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
  const top=29,bottom=190,cx=W/2,cy=(top+bottom)/2,anchor=pl.inside&&pl.inside.door?pl.inside.door.ret:pl;
- const speed=pl.car?pl.car.speed:0,targetRange=pl.car?185+Math.min(100,speed*2):125;
+ const speed=pl.car?pl.car.speed:0,isAircraft=!!(pl.car&&pl.car.t&&pl.car.t.aircraft),targetRange=pl.car?(isAircraft?300+Math.min(180,speed*2.5):185+Math.min(100,speed*2)):125;
  const last=drawMini._range||targetRange,dt=Math.min(.05,G.rdt||1/60),range=last+(targetRange-last)*(1-Math.exp(-dt*4));drawMini._range=range;
  const scale=W/(range*2),project=(x,z)=>[cx-(z-anchor.z)*scale,cy+(x-anchor.x)*scale]; // north (world -x) up
  ctx.fillStyle='#0c1824';ctx.fillRect(0,0,W,H);ctx.fillStyle='#a6bac7';ctx.font='bold 10px Arial';ctx.textAlign='left';ctx.fillText(pl.wanted>0?'WANTED '+String(pl.wanted):'LOCAL MAP',12,19);
