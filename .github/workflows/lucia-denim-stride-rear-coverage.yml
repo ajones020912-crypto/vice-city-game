@@ -1,0 +1,100 @@
+name: Lucia denim rear coverage during sampled strides
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-denim-stride-rear-coverage.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  coverage:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [main, lucia-outfits]
+    concurrency:
+      group: lucia-u-neck-${{ matrix.target }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TARGET_BRANCH: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.target }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          npm install --prefix "$RUNNER_TEMP/lucia-photo-denim" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+          python -m pip install 'Pillow>=10,<13'
+      - name: Repair cap handling match upper shorts to pelvis rig and require stride coverage
+        run: |
+          git fetch origin main
+          git show origin/main:.github/workflows/lucia-angled-distressed-denim.yml > /tmp/lucia-angled-original.yml
+          python <<'PY'
+          import json, os, pathlib, subprocess, traceback
+          p=pathlib.Path('js/reference-characters.js');baseline=p.read_bytes()
+          status=pathlib.Path('status/lucia-denim-stride-rear-coverage-check.json');status.parent.mkdir(exist_ok=True)
+          tracked=[pathlib.Path('status/lucia-photo-denim-short-seat-check.json'),pathlib.Path('status/lucia-angled-distressed-denim-check.json')]
+          previous={x:x.read_bytes() if x.exists() else None for x in tracked}
+          report={'passed':False,'branch':os.environ['TARGET_BRANCH'],'scope':'Sampled opposing leg swings and torso twists with posed body/briefs rear-occlusion rays. Does not establish live deployment or visually verify the complete game walking animation.'}
+          try:
+              if b'strideRearCoverageRig:true' in baseline: raise RuntimeError('Stride fitter already present; inspect prior report rather than refitting twice')
+              lines=pathlib.Path('/tmp/lucia-angled-original.yml').read_text().splitlines();blocks=[]
+              for i,line in enumerate(lines):
+                  if line!='        run: |': continue
+                  body=[]
+                  for value in lines[i+1:]:
+                      if value and not value.startswith('          '): break
+                      body.append(value[10:] if value else '')
+                  blocks.append('\n'.join(body)+'\n')
+              if len(blocks)!=2: raise RuntimeError('Reviewed angled installer layout changed')
+              shell=blocks[0]
+              def once(text,a,b):
+                  if text.count(a)!=1: raise RuntimeError('Reviewed fragment changed: '+a[:140])
+                  return text.replace(a,b,1)
+              shell=once(shell,'if(Math.max(points[a].y,points[b].y,points[c].y)<-.19&&capNormal.y<-.65)continue;', 'if((Math.max(points[a].y,points[b].y,points[c].y)<-.19&&capNormal.y<-.65)||(Math.min(points[a].y,points[b].y,points[c].y)>.115&&capNormal.y>.65))continue;')
+              rig="""d.visible=true;const bp=briefs.geometry.attributes.position,bw=briefs.geometry.attributes.skinWeight,bi=briefs.geometry.attributes.skinIndex,bM=inv.clone().multiply(briefs.matrixWorld),briefPoints=[];for(let j=0;j<bp.count;j++)briefPoints.push(new T.Vector3().fromBufferAttribute(bp,j).applyMatrix4(bM));const gp=g.attributes.position,gw=g.attributes.skinWeight,gi=g.attributes.skinIndex;for(let i=0;i<gp.count;i++){const v=new T.Vector3().fromBufferAttribute(gp,i).applyMatrix4(M),native=[gw.getX(i),0,gw.getY(i),gw.getZ(i)],blend=smooth((v.y+.18)/.10),nearest=[];if(blend>0){for(let j=0;j<briefPoints.length;j++){const distance=v.distanceToSquared(briefPoints[j]);if(nearest.length<4||distance<nearest[nearest.length-1].distance){nearest.push({j,distance});nearest.sort((a,b)=>a.distance-b.distance);if(nearest.length>4)nearest.pop();}}}const desired=[0,0,0,0];let total=0;for(const q of nearest){const k=q.j,amount=1/Math.max(1e-8,q.distance);total+=amount;for(let c=0;c<4;c++){const bone=bi.getComponent?bi.getComponent(k,c):[bi.getX(k),bi.getY(k),bi.getZ(k),bi.getW(k)][c],weight=[bw.getX(k),bw.getY(k),bw.getZ(k),bw.getW(k)][c];desired[bone]+=weight*amount;}}const out=native.map((value,k)=>value*(1-blend)+(total?desired[k]/total:value)*blend),sum=out.reduce((a,b)=>a+b,0);gi.setXYZW(i,0,1,2,3);gw.setXYZW(i,...out.map(value=>value/sum));}gi.needsUpdate=gw.needsUpdate=true;h.updateMatrixWorld(true);d.bind(briefs.skeleton,d.matrixWorld.clone());d.onBeforeRender=function(){briefs.onBeforeRender();d.skeleton.update();};d.onBeforeRender();u.luciaPhotoDenimShortSeat={strideRearCoverageRig:true,"""
+              injection='        fit=once(fit,'+json.dumps('let samples=0,maxExpansion=0;for(const v of points){')+','+json.dumps('const activeFitVertices=new Set(indices);let samples=0,maxExpansion=0;for(const key of activeFitVertices){const v=points[key];')+')\n'
+              injection+='        fit=once(fit,'+json.dumps('d.visible=true;d.onBeforeRender();u.luciaPhotoDenimShortSeat={')+','+json.dumps(rig)+')\n'
+              shell=once(shell,'        clipping=',injection+'        clipping=')
+              stride="""const walkCoverage=[],restInv=new T.Matrix4().copy(u.hips.matrixWorld).invert(),probes=[];h.traverse(o=>{if(!o.isMesh||!o.visible||!(o.name==='lucia-pelvis-skin-bridge'||(o.material===u.m.skin&&(o.parent===u.hips||o.parent===u.spine||u.Lg.some(l=>o.parent===l.hp)))))return;const p=o.geometry.attributes.position,n=o.geometry.attributes.normal,M=restInv.clone().multiply(o.matrixWorld),N=new T.Matrix3().getNormalMatrix(M);for(let i=0;i<p.count;i+=23){const v=new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(M),normal=new T.Vector3().fromBufferAttribute(n,i).applyMatrix3(N).normalize();if(v.y>=-.18&&v.y<=.06&&Math.abs(v.x)<=.17&&normal.z<-.20)probes.push({o,i,kind:'body'});}});const briefs=h.getObjectByName('lucia-fitted-black-briefs'),bCount=briefs.geometry.attributes.position.count;for(let i=Math.floor(bCount/2);i<bCount;i+=35)probes.push({o:briefs,i,kind:'briefs'});assert(probes.filter(q=>q.kind==='body').length>=8&&probes.filter(q=>q.kind==='briefs').length>=20,'Insufficient moving rear surface samples');for(let frame=0;frame<=12;frame++){const phase=frame/12*Math.PI*2,angle=.60*Math.sin(phase);u.Lg[0].hp.rotation.x=angle;u.Lg[1].hp.rotation.x=-angle;u.spine.rotation.y=.10*Math.sin(phase*2);h.updateMatrixWorld(true);h.traverse(o=>{if(o.isSkinnedMesh&&typeof o.onBeforeRender==='function')o.onBeforeRender();});h.updateMatrixWorld(true);d.onBeforeRender();const baked=d.geometry.clone(),a=baked.attributes.position;for(let i=0;i<a.count;i++){const v=d.boneTransform(i,new T.Vector3().fromBufferAttribute(d.geometry.attributes.position,i));a.setXYZ(i,v.x,v.y,v.z);}a.needsUpdate=true;baked.computeBoundingBox();baked.computeBoundingSphere();const proxy=new T.Mesh(baked,new T.MeshBasicMaterial({side:T.DoubleSide}));proxy.matrixAutoUpdate=false;proxy.matrixWorld.copy(d.matrixWorld);const rear=new T.Vector3(0,0,-1).transformDirection(u.hips.matrixWorld);let minimumGap=Infinity,bodyChecks=0,briefChecks=0;for(const q of probes){const v=new T.Vector3().fromBufferAttribute(q.o.geometry.attributes.position,q.i);if(q.o.isSkinnedMesh)q.o.boneTransform(q.i,v);v.applyMatrix4(q.o.matrixWorld);const origin=v.clone().addScaledVector(rear,1),direction=rear.clone().negate(),hit=new T.Raycaster(origin,direction,0,1.01).intersectObject(proxy,false)[0];assert(hit&&hit.distance<.999,'Rear '+q.kind+' exposed at sampled stride frame '+frame+' vertex '+q.i);minimumGap=Math.min(minimumGap,1-hit.distance);if(q.kind==='body')bodyChecks++;else briefChecks++;}walkCoverage.push({frame,hipSwing:angle,bodyChecks,briefChecks,minimumGap});baked.dispose();proxy.material.dispose();}checks.push({merge,sides,walkCoverage});"""
+              shell=once(shell,'checks.push({merge,sides});',stride)
+              path=pathlib.Path('/tmp/lucia-stride-repair.sh');path.write_text(shell)
+              result=subprocess.run(['bash','-e',str(path)],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=900)
+              report['outputTail']=(result.stdout or '')[-20000:]
+              if result.returncode: raise RuntimeError('Repair subprocess failed')
+              outcome=json.loads(pathlib.Path('status/lucia-angled-distressed-denim-check.json').read_text())
+              if not outcome.get('passed'): raise RuntimeError(outcome.get('error','Angled photo fitter failed'))
+              if b'strideRearCoverageRig:true' not in p.read_bytes(): raise RuntimeError('Stride rig not installed')
+              report.update(passed=True,outcome='Photo denim angled cutoffs fitted to shared pelvis rig with sampled moving body and underwear coverage checks',coverage=outcome.get('hemMeasurements'),permanentUnderwearBodyAndTankPreserved=True,topAndBottomSolidCapsExcluded=True,onlyReferencedShellVerticesRefitted=True)
+          except Exception as exc:
+              p.write_bytes(baseline)
+              for path,content in previous.items():
+                  if content is not None: path.write_bytes(content)
+                  elif path.exists(): path.unlink()
+              report.update(passed=False,error=str(exc),traceback=traceback.format_exc()[-12000:],baselinePreserved=True)
+          status.write_text(json.dumps(report,indent=2)+'\n')
+          PY
+      - name: Publish only coverage-checked shorts or exact failure diagnostics
+        run: |
+          git fetch origin "$TARGET_BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/"$TARGET_BRANCH")" || { echo 'Branch changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/lucia-denim-stride-rear-coverage-check.json
+          if test -f status/lucia-photo-denim-download.json; then git add -- status/lucia-photo-denim-download.json; fi
+          if node -e "process.exit(JSON.parse(require('fs').readFileSync('status/lucia-denim-stride-rear-coverage-check.json','utf8')).passed?0:1)"; then
+            git add -- js/reference-characters.js status/lucia-photo-denim-short-seat-check.json status/lucia-angled-distressed-denim-check.json assets/textures/lucia-denim-photo.jpg assets/textures/lucia-denim-photo-source.json
+          fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Fit Lucia shorts to pelvis motion and require sampled rear stride coverage or record error'
+            git push origin HEAD:"refs/heads/$TARGET_BRANCH"
+          fi
+          node -e "const r=JSON.parse(require('fs').readFileSync('status/lucia-denim-stride-rear-coverage-check.json','utf8'));if(!r.passed){console.error(r.error);process.exit(1);}"
