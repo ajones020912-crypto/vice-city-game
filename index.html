@@ -1888,6 +1888,17 @@ function buildAirport(){
  box(124,.45,11,white,-153,5.9,133);
  for(let x=-207;x<=-99;x+=12){box(.3,7,.5,metal,x,3.7,141.3);box(.4,5.7,.4,metal,x,2.9,129);}
  box(560,.16,9,asphalt,0,.10,192);paint(540,.2,yellow,0,192);
+ // VCIA public parking lot beside the terminal, connected to the airport access road
+ box(170,.16,80,asphalt,-320,.10,220,true);
+ paint(170,.4,white,-320,180);paint(170,.4,white,-320,220);paint(170,.4,white,-320,260);
+ for(let x=-400;x<=-240;x+=9.4){
+  paint(.45,38,white,x,200);
+  paint(.45,38,white,x,240);
+ }
+ // Accessible spaces and pedestrian walkway near the terminal-side entrance
+ paint(18,.55,yellow,-245,184);paint(18,.55,yellow,-245,256);
+ box(22,.12,5,concrete,-225,.10,220);
+
  box(38,.16,35,asphalt,-78,.10,176);
  for(let x=-200;x<=-110;x+=10)paint(.16,9,white,x,182);
  box(8,23,8,white,13,11.6,154,true);
