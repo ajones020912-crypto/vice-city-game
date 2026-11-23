@@ -1369,6 +1369,24 @@ function defineRoads(){
  addRoad('h',1520,900,2600,16,'city');                                        // parkway out to the coast
  addRoad('h',2600,1000,2600,9,'dirt');addRoad('h',1900,1000,2600,9,'dirt');addRoad('v',1800,700,3200,9,'dirt');addRoad('v',2200,1520,3200,9,'dirt');
  addRoad('h',4200,-1400,1600,9,'dirt');addRoad('v',-2300,2350,3200,9,'dirt');addRoad('h',1100,-3300,-2700,9,'dirt');addRoad('h',-150,-3300,-2700,9,'dirt');
+ // CITY_LAYOUT_REFERENCE_FIX_V3: map north is decreasing world-x; east is decreasing world-z.
+ // Clear the incorrectly placed metro grid and rebuild an L-shaped city north/east of VCIA.
+ for(let i=roads.length-1;i>=0;i--){
+  const r=roads[i];if(r.type!=='city')continue;
+  const minX=r.o==='h'?r.a:r.c-r.hw,maxX=r.o==='h'?r.b:r.c+r.hw;
+  const minZ=r.o==='h'?r.c-r.hw:r.a,maxZ=r.o==='h'?r.c+r.hw:r.b;
+  if(minX<1750&&maxX>-1650&&minZ<1450&&maxZ>-1500)roads.splice(i,1);
+ }
+ const nx=[-1500,-1320,-1140,-960,-780,-600,-420,-240,-60,120,300,480,660,840,1020,1200,1380,1560];
+ const nz=[-1380,-1200,-1020,-840,-660,-480,-300,-120,60,240,420,600,780,960,1140];
+ for(const z of nz)if(z<1080)addRoad('h',z,-1500,220,15,'city',true);
+ for(const x of nx)if(x<220)addRoad('v',x,-1380,1080,15,'city',true);
+ for(const z of nz)if(z<420)addRoad('h',z,-240,1560,15,'city',true);
+ for(const x of nx)if(x>=-240&&x<=1560)addRoad('v',x,-1380,360,15,'city',true);
+ addRoad('h',360,-1500,120,26,'hwy');
+ addRoad('v',240,-1380,360,24,'hwy');
+ addRoad('h',-420,-240,1560,24,'hwy');
+
 }
 const CR_X=[],CR_Z=[];
 // Harbor Heights street plan: recursive random splits of the island, so every street ends in a T or at the shore
@@ -1516,28 +1534,22 @@ function makeParcels(){
    parcels.push({x0:a,z0:b,x1:c,z1:e,cx,cz,H,style,col:natural?[1-rnd()*.06,1-rnd()*.07,1-rnd()*.08]:undefined,mode,edgeS:j===nz-1,cityId:mode==='port'?'port':'dt'})}};
  const xr=[],zr=[];
  const used=new Set(),K=(x,z)=>x+','+z;G.plazas=[];
- // The airport's west and south sides stay mostly open; build parcels in an L-shaped north/east city.
- const northGX=[420,540,660,780,900,1020,1140,1260,1380,1500,1620,1740,1860,1980,2100];
- const northGZ=[-900,-780,-660,-540,-420,-300,-180,-60,60,180];
- for(let i=0;i<northGX.length-1;i++)for(let j=0;j<northGZ.length-1;j++){
-  const x0=northGX[i]+11.9,x1=northGX[i+1]-11.9,z0=northGZ[j]+11.9,z1=northGZ[j+1]-11.9;
-  lot(x0,z0,x1,z1,'core');
+ // CITY_LAYOUT_REFERENCE_FIX_V3: dense urban footprint north and east of VCIA.
+ const gx=[-1500,-1320,-1140,-960,-780,-600,-420,-240,-60,120,300,480,660,840,1020,1200,1380,1560];
+ const gz=[-1380,-1200,-1020,-840,-660,-480,-300,-120,60,240,420,600,780,960,1140];
+ const airportBox={x0:80,x1:1220,z0:380,z1:1260};
+ const addCityBlock=(x0,z0,x1,z1,mode='core')=>{
+  if(x0<airportBox.x1&&x1>airportBox.x0&&z0<airportBox.z1&&z1>airportBox.z0)return;
+  lot(x0+11.9,z0+11.9,x1-11.9,z1-11.9,mode);
+ };
+ for(let i=0;i<gx.length-1;i++)for(let j=0;j<gz.length-1;j++){
+  const x0=gx[i],x1=gx[i+1],z0=gz[j],z1=gz[j+1];
+  if(x1<=220&&z0<1080)addCityBlock(x0,z0,x1,z1,'core');
  }
- const eastGX=[1680,1800,1920,2040,2160,2280,2400];
- const eastGZ=[-180,-60,60,180,300,420,540,660,780,900,1020,1140,1260,1380,1500,1620];
- for(let i=0;i<eastGX.length-1;i++)for(let j=0;j<eastGZ.length-1;j++){
-  const x0=eastGX[i]+11.9,x1=eastGX[i+1]-11.9,z0=eastGZ[j]+11.9,z1=eastGZ[j+1]-11.9;
-  lot(x0,z0,x1,z1,'core');
+ for(let i=0;i<gx.length-1;i++)for(let j=0;j<gz.length-1;j++){
+  const x0=gx[i],x1=gx[i+1],z0=gz[j],z1=gz[j+1];
+  if(x0<1560&&x1> -240&&z1<=420)addCityBlock(x0,z0,x1,z1,'core');
  }
- // Former west-side port parcel grid removed to leave the airport's west/south approaches open.
- // Airport-side city blocks: dense development east of VCIA, with neighborhoods on its north and south edges.
- const vx=[420,540,660,780,900,1020,1140,1260,1380,1500,1620,1740,1860,1980,2100];
- const nz=[-120,0,120,240,360];
- for(let i=0;i<vx.length-1;i++)for(let j=0;j<nz.length-1;j++)lot(vx[i]+11.9,nz[j]+11.9,vx[i+1]-11.9,nz[j+1]-11.9,'core');
- const ez=[360,480,600,720,840,960,1080,1200,1320];
- for(let i=0;i<5;i++)for(let j=0;j<ez.length-1;j++)lot(1500+11.9+i*120,ez[j]+11.9,1500+(i+1)*120-11.9,ez[j+1]-11.9,'core');
- const sz=[1320,1440,1560,1680];
- for(let i=0;i<10;i++)for(let j=0;j<sz.length-1;j++)lot(900+11.9+i*120,sz[j]+11.9,900+(i+1)*120-11.9,sz[j+1]-11.9,'low');
  // Harbor Heights: irregular blocks; warehouses by the water, homes and shops inland; nothing hangs over the shore
  for(const [x0,z0,x1,z1] of HH.blocks){if(x1-x0<40||z1-z0<40)continue;const n0=parcels.length,coast=hhIsle((x0+x1)/2,(z0+z1)/2)>-90;
   lot(x0+8+2.9,z0+8+2.9,x1-8-2.9,z1-8-2.9,coast?'port':'low');
@@ -1607,15 +1619,15 @@ function placeShopDoor(p){
 }
 const hexRGB=h=>{const c=new T.Color(h);return[c.r,c.g,c.b]};
 function houses(){
- // Suburban neighborhoods now sit north and east of VCIA, outside the runway and apron.
  const blocks=[];
- for(let x=420;x<1500;x+=120)for(let z=-1020;z<-900;z+=120)blocks.push([x,z,x+120,z+120]);
- for(let x=2400;x<2640;x+=120)for(let z=-180;z<1500;z+=120)blocks.push([x,z,x+120,z+120]);
+ for(let x=-1380;x<180;x+=180)for(let z=-1320;z<1020;z+=180)blocks.push([x,z,x+180,z+180]);
+ for(let x=240;x<1500;x+=180)for(let z=-1320;z<240;z+=180)blocks.push([x,z,x+180,z+180]);
  for(const [x0,z0,x1,z1] of blocks){
-  const nx=4,w=(x1-x0)/nx,depth=22;
-  for(let k=0;k<nx;k++)for(const row of[0,1]){
-   const hx0=x0+k*w+4,hx1=x0+(k+1)*w-4,hd=depth;
-   const hz0=row?z1-hd-2:z0+2,hz1=row?z1-2:z0+hd+2;
+  if(x0<1220&&x1>80&&z0<1260&&z1>380)continue;
+  const w=(x1-x0)/4,depth=22;
+  for(let k=0;k<4;k++)for(const row of[0,1]){
+   const hx0=x0+k*w+4,hx1=x0+(k+1)*w-4;
+   const hz0=row?z1-depth-2:z0+2,hz1=row?z1-2:z0+depth+2;
    const H=rr(5.5,8),p={x0:hx0,z0:hz0,x1:hx1,z1:hz1,cx:(hx0+hx1)/2,cz:(hz0+hz1)/2,H,style:'house',row,mode:'house',cityId:'north-east'};
    parcels.push(p);
   }
@@ -1891,7 +1903,7 @@ function buildCityRivers(){
  // CITY_WATERWAYS_V1: branching tidal rivers divide the urban districts and feed the eastern bay.
  const water=new T.MeshBasicMaterial({color:0x087f9b,transparent:true,opacity:.94,side:T.DoubleSide,depthWrite:false});
  const make=(start,segments,width)=>{
-  const curve=new T.CatmullRomCurve3([new T.Vector3(start[0]+700,0,start[1]-700),...segments.map(q=>new T.Vector3(q[4]+700,0,q[5]-700))]);
+  const curve=new T.CatmullRomCurve3([new T.Vector3(start[0]-1400,0,start[1]-1300),...segments.map(q=>new T.Vector3(q[4]+700,0,q[5]-700))]);
   const pts=curve.getPoints(100),left=[],right=[];
   for(let i=0;i<pts.length;i++){
    const p=pts[i],a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
@@ -1963,13 +1975,9 @@ function* buildBaseMapGen(){
    // Urban districts get a pale lavender-gray tint, while green spaces remain green.
    // REFERENCE_CITY_FOOTPRINT_V2: irregular Vice City urban mass wraps north/east of VCIA.
    // The airport's west and south approaches remain green/open; the city widens toward downtown and the bay.
-   const inNorth=(wx>430&&wx<1570&&wz>-920&&wz<120&&
-     wx>520+Math.max(0,-wz-500)*.18&&wx<1510-Math.max(0,-wz-600)*.12);
-   const inCore=(wx>1080&&wx<2110&&wz>-720&&wz<700);
-   const inEast=(wx>1640&&wx<2440&&wz>-250&&wz<1570&&
-     wx>1710+Math.max(0,wz-900)*.12);
-   const inSouthEast=(wx>1300&&wx<2070&&wz>680&&wz<1510);
-   const inDistrict=inNorth||inCore||inEast||inSouthEast;
+   const inNorth=wx>-1580&&wx<220&&wz>-1450&&wz<1080;
+   const inEast=wx>-240&&wx<1560&&wz>-1450&&wz<420;
+   const inDistrict=inNorth||inEast;
    if(inDistrict){r=.61;g=.63;b=.75;}
   }
   const R=Math.min(255,r*300),Gc=Math.min(255,g*300),Bc=Math.min(255,b*300);
@@ -1977,7 +1985,7 @@ function* buildBaseMapGen(){
  x.putImageData(id,0,0);
 
  // Draw the same river network into the satellite map so waterways read clearly at every zoom.
- {const river=(pts,width)=>{x.strokeStyle='#087f9b';x.lineWidth=width/MAPPX;x.lineCap='round';x.lineJoin='round';x.beginPath();pts.forEach((p,i)=>x[i?'lineTo':'moveTo']((p[0]+700+WS)/MAPPX,(p[1]-700+WS)/MAPPX));x.stroke();};
+ {const river=(pts,width)=>{x.strokeStyle='#087f9b';x.lineWidth=width/MAPPX;x.lineCap='round';x.lineJoin='round';x.beginPath();pts.forEach((p,i)=>x[i?'lineTo':'moveTo']((p[0]-1400+WS)/MAPPX,(p[1]-1300+WS)/MAPPX));x.stroke();};
   x.save();
   river([[1120,-260],[1060,-80],[1190,80],[1135,250],[1080,390],[930,470],[990,650],[1050,820],[1190,900],[1150,1080],[1090,1260],[1010,1410],[1080,1580],[1110,1690],[1270,1780],[1390,1830]],76);
   river([[480,520],[620,470],[700,390],[820,410],[930,425],[1010,520],[1110,550],[1220,590],[1310,560],[1420,590],[1540,625],[1660,690],[1810,700],[1910,710],[2020,650],[2130,620]],56);
