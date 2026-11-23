@@ -1903,65 +1903,29 @@ function updateSignals(t){
 const MAPPX=4;let baseMap=null;
 
 function buildCityRivers(){
- // CITY_WATERWAYS_V1: branching tidal rivers divide the urban districts and feed the eastern bay.
+ // CITY_WATERWAYS_V2: keep the main channels on the outside edges of the metro footprint.
  const water=new T.MeshBasicMaterial({color:0x087f9b,transparent:true,opacity:.94,side:T.DoubleSide,depthWrite:false});
- const make=(start,segments,width)=>{
-  const curve=new T.CatmullRomCurve3([new T.Vector3(start[0]-1400,0,start[1]-1300),...segments.map(q=>new T.Vector3(q[4]+700,0,q[5]-700))]);
-  const pts=curve.getPoints(100),left=[],right=[];
+ const make=(points,width)=>{
+  const curve=new T.CatmullRomCurve3(points.map(p=>new T.Vector3(p[0]-1400,0,p[1]-1300)));
+  const pts=curve.getPoints(120),left=[],right=[];
   for(let i=0;i<pts.length;i++){
    const p=pts[i],a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
    const dx=b.x-a.x,dz=b.z-a.z,len=Math.hypot(dx,dz)||1,nx=-dz/len,nz=dx/len;
-   const w=width*(.88+.12*Math.sin(i/pts.length*Math.PI));
+   const w=width*(.9+.1*Math.sin(i/pts.length*Math.PI));
    left.push([p.x+nx*w/2,p.z+nz*w/2]);right.push([p.x-nx*w/2,p.z-nz*w/2]);
   }
   const sh=new T.Shape();sh.moveTo(left[0][0],left[0][1]);
   for(let i=1;i<left.length;i++)sh.lineTo(left[i][0],left[i][1]);
   for(let i=right.length-1;i>=0;i--)sh.lineTo(right[i][0],right[i][1]);
-  sh.closePath();
-  const g=new T.ShapeGeometry(sh,12);g.rotateX(Math.PI/2);
+  sh.closePath();const g=new T.ShapeGeometry(sh,12);g.rotateX(Math.PI/2);
   const mesh=new T.Mesh(g,water);mesh.position.y=.16;mesh.renderOrder=2;scene.add(mesh);
  };
- // Main north-south river through the central city, widening toward the southern waterfront.
- make([1120,-260],[
-  [1060,-80,1190,80,1135,250],
-  [1080,390,930,470,990,650],
-  [1050,820,1190,900,1150,1080],
-  [1090,1260,1010,1410,1080,1580],
-  [1110,1690,1270,1780,1390,1830],
-  [1450,1850,1560,1830,1660,1810],
-  [1640,1740,1510,1660,1510,1540],
-  [1490,1370,1590,1210,1540,1040],
-  [1500,860,1350,770,1390,600],
-  [1410,430,1510,310,1470,130],
-  [1500,-50,1370,-190,1390,-260],
-  [1310,-300,1200,-290,1120,-260]
- ],72);
- // Western branch bends across the city toward the river.
- make([480,520],[
-  [620,470,700,390,820,410],
-  [930,425,1010,520,1110,550],
-  [1220,590,1310,560,1420,590],
-  [1540,625,1660,690,1810,700],
-  [1910,710,2020,650,2130,620],
-  [2100,570,1990,545,1870,555],
-  [1690,570,1580,500,1440,490],
-  [1300,465,1220,500,1100,470],
-  [980,430,900,350,800,340],
-  [670,320,550,405,480,520]
- ],54);
- // Southern canal/estuary opens the downtown waterfront toward the bay.
- make([1030,1120],[
-  [900,1200,820,1320,850,1440],
-  [870,1570,1010,1640,1160,1660],
-  [1310,1690,1440,1630,1530,1540],
-  [1610,1450,1710,1410,1840,1430],
-  [1930,1460,2010,1540,2110,1570],
-  [2070,1620,1950,1640,1840,1580],
-  [1690,1510,1600,1510,1510,1600],
-  [1390,1730,1250,1780,1090,1740],
-  [920,1710,760,1610,760,1450],
-  [750,1310,870,1190,1030,1120]
- ],46);
+ // Western greenbelt river: follows the edge of the urban area instead of bisecting downtown.
+ make([[-160,160],[-130,430],[-150,720],[-120,1010],[-90,1320],[-120,1630],[-80,1930],[-40,2200]],68);
+ // Northern tidal channel: separates the northern neighborhoods from wetlands.
+ make([[-100,-190],[220,-220],[560,-190],[900,-230],[1240,-190],[1580,-160],[1900,-120],[2200,-80]],58);
+ // Southern/eastern estuary: runs outside the east-side city edge and opens toward the bay.
+ make([[1650,420],[1770,610],[1810,850],[1780,1100],[1840,1340],[1970,1530],[2200,1650],[2460,1680]],64);
 }
 function buildBaseMap(){if(LOADPRE.map){LOADPRE.map=false;return}for(const _ of buildBaseMapGen());}
 function* buildBaseMapGen(){
@@ -1990,9 +1954,9 @@ function* buildBaseMapGen(){
  // Draw the same river network into the satellite map so waterways read clearly at every zoom.
  {const river=(pts,width)=>{x.strokeStyle='#087f9b';x.lineWidth=width/MAPPX;x.lineCap='round';x.lineJoin='round';x.beginPath();pts.forEach((p,i)=>x[i?'lineTo':'moveTo']((p[0]-1400+WS)/MAPPX,(p[1]-1300+WS)/MAPPX));x.stroke();};
   x.save();
-  river([[1120,-260],[1060,-80],[1190,80],[1135,250],[1080,390],[930,470],[990,650],[1050,820],[1190,900],[1150,1080],[1090,1260],[1010,1410],[1080,1580],[1110,1690],[1270,1780],[1390,1830]],76);
-  river([[480,520],[620,470],[700,390],[820,410],[930,425],[1010,520],[1110,550],[1220,590],[1310,560],[1420,590],[1540,625],[1660,690],[1810,700],[1910,710],[2020,650],[2130,620]],56);
-  river([[1030,1120],[900,1200],[820,1320],[850,1440],[870,1570],[1010,1640],[1160,1660],[1310,1690],[1440,1630],[1530,1540],[1610,1450],[1710,1410],[1840,1430],[1930,1460],[2010,1540],[2110,1570]],48);
+  river([[-160,160],[-130,430],[-150,720],[-120,1010],[-90,1320],[-120,1630],[-80,1930],[-40,2200]],68);
+  river([[-100,-190],[220,-220],[560,-190],[900,-230],[1240,-190],[1580,-160],[1900,-120],[2200,-80]],58);
+  river([[1650,420],[1770,610],[1810,850],[1780,1100],[1840,1340],[1970,1530],[2200,1650],[2460,1680]],64);
   x.restore();
  }
  // Buildings and developed blocks: soft slate-lavender, like the reference map.
