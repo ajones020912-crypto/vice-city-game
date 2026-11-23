@@ -1,0 +1,7 @@
+{
+  "passed": false,
+  "scope": "Actual Three.js model builds, preservation signatures, measurable inward fitting, and sampled rear occlusion during poses. Browser-rendered appearance, every animation, and deployment remain unverified.",
+  "error": "TypeError: Cannot read properties of undefined (reading 'opacity')",
+  "stack": "TypeError: Cannot read properties of undefined (reading 'opacity')\n    at [stdin]:6:491\n    at runScriptInThisContext (node:internal/vm:209:10)\n    at node:internal/process/execution:118:14\n    at [stdin]-wrapper:6:24\n    at runScript (node:internal/process/execution:101:62)\n    at evalScript (node:internal/process/execution:133:3)\n    at node:internal/main/eval_stdin:32:5\n    at Socket.<anonymous> (node:internal/process/execution:234:5)\n    at Socket.emit (node:events:536:35)\n    at endReadableNT (node:internal/streams/readable:1698:12)",
+  "baselinePreserved": true
+}
