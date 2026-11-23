@@ -3267,9 +3267,11 @@ function updateRedLights(){
   const out=side(e.nd,c.x,c.z);
   // car heading h: forward=(sin h,cos h); steering right lowers h, so right = cross(in,out) > 0
   const cross=e.inx*out[1]-e.inz*out[0],rightTurn=cross>0;
-  if(e.red&&!rightTurn&&!(out[0]===-e.inx&&out[1]===-e.inz)){const now=G.time;RL.runs=RL.runs.filter(t=>now-t<7);RL.runs.push(now);
-   if(RL.runs.length>=5){RL.runs=[];const next=Math.min(6,(pl.wanted||0)+1);addCrime(Math.max(.1,WANTED_AT[next]-(pl.crime||0)));toast('🚦 Ran 5 red lights: the police want a word',2200)}
-   else toast('🚦 Ran a red light ('+RL.runs.length+'/5)',1300)}}
+  // runs needed for the next star grow with your wanted level; at 5+ stars red lights add nothing
+  const need=(pl.wanted||0)>=5?Infinity:(pl.wanted||0)>=4?10:(pl.wanted||0)>=3?7:5;
+  if(e.red&&!rightTurn&&!(out[0]===-e.inx&&out[1]===-e.inz)&&need!==Infinity){const now=G.time;RL.runs=RL.runs.filter(t=>now-t<7);RL.runs.push(now);
+   if(RL.runs.length>=need){RL.runs=[];const next=Math.min(6,(pl.wanted||0)+1);addCrime(Math.max(.1,WANTED_AT[next]-(pl.crime||0)));toast('🚦 Ran '+need+' red lights: the police want a word',2200)}
+   else toast('🚦 Ran a red light ('+RL.runs.length+'/'+need+')',1300)}}
  RL.node=at;RL.px=c.x;RL.pz=c.z;
 }
 function addWanted(n,why){addCrime(n>0?n*2:.6)}
