@@ -2379,6 +2379,8 @@ function aiPlaneControl(c,dt){
   // glide path to a point 150 m past the threshold, flare low down, idle at the end
   const L=R.land,dist=c.z-L.z0,h=c.y-heightAt(c.x,c.z)-.88;let alt=Math.max(0,dist+150)*.055;
   if(dist<0)alt=0;fly(L.x,Math.min(c.z-500,L.z0),alt,vRef*.98,h<5?-2.4:dist<0?-4:-7);if(h<12&&dist<450){a.throttle=0;const vy=c.vy||0,ap=c.ap||0;a.pitch=vy>-1.4&&ap>-.1?-1:(vy<-2.8||ap<-.18?.7:0)} /* like a player holding nose-down: the landing assist then flares it */
+  // autoland: within 4 m of the runway, lined up and over the first 600 m, the AI airliner settles onto its wheels
+  if(c.airborne&&h<4&&dist<0&&dist>-600&&Math.abs(c.x-L.x)<16&&Math.abs(wrapA(c.h-Math.PI))<.25){c.airborne=false;c.vy=0;c.ap=0;c.gam=0;c.bank=0;c.y=heightAt(c.x,c.z)+.88}
   if(!c.airborne){a.phase='rollout';a.t=0}
   else if(dist<-600){a.phase='approach';a.wp=0;a.t=0;a.throttle=1} /* not down in the first 600 m: go around */
  }else if(a.phase==='rollout'){
