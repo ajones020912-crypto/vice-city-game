@@ -4624,6 +4624,7 @@ function buildInterior(kind,idx){
   if(kind==='spray'){
    plane(11,8,0,.04,0,M(0x20252c));bx(12,1.0,3,0,0,-3.8,M(0x3d4651));bx(12,.12,3,0,1.0,-3.8,trim);for(const x of[-6,0,6]){bx(.18,3.0,.18,x,.1,-5.7,trim);bx(2.2,.15,.3,x,2.8,-5.7,shelf)}sign("PAY 'N' SPRAY",'#d8b8ff',0,3.1,-6.82,7);sign('AUTO BODY · CUSTOM PAINT','#e5d7ff',0,2.35,-6.82,7);o.counter={x:cx,z:cz-3.8};
   }else if(kind==='bar'){
+   const wood=M(0x684b38),metal=M(0x59636b,{metalness:.55}),table=M(0xc49a68),seat=M(0x245b64);
    plane(11,8,0,.04,0,M(0x102d3b));bx(12,1.0,1.5,0,0,-4.8,wood);bx(12,.12,1.7,0,1.0,-4.8,trim);for(const x of[-7,-3,1,5]){cyl(.12,1.0,x,0,-2.7,metal);cyl(.42,.12,x,.95,-2.7,table)}for(let i=0;i<5;i++){const x=-8+i*4;bx(2.2,.12,1.2,x,.8,2.2,table);bx(2.3,.65,.12,x,.1,2.75,seat);col(2.2,1.2,x,2.2,1)}sign('THE BLUE PELICAN','#b8f5ff',0,3.1,-6.82,7);sign('MOCKTAILS · MUSIC · LATE NIGHTS','#d6f8ff',0,2.35,-6.82,8);o.counter={x:cx,z:cz-4.8};
   }else if(kind==='gym'){
    plane(11,8,0,.04,0,M(0x27343c));for(const x of[-7,-2,3,8]){bx(2.0,.18,1.2,x,.05,-3.5,metal);for(const dx of[-.8,.8]){cyl(.12,1.2,x+dx,.2,-3.5,metal);cyl(.42,.16,x+dx,.7,-3.5,trim)}}for(const x of[-6,0,6]){bx(2.4,.12,1.5,x,.8,2.2,seat);bx(2.5,.75,.12,x,.1,2.85,trim);col(2.4,1.5,x,2.2,1)}sign('VICE FITNESS CLUB','#e4ffc7',0,3.1,-6.82,7);sign('TRAIN · MOVE · RECOVER','#efffdd',0,2.35,-6.82,7);o.counter={x:cx,z:cz-3.8};
