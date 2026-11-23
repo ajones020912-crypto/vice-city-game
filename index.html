@@ -349,7 +349,7 @@ const G={quality:2}; // global game state container (also exposed for debugging)
 window.__vc=G;
 
 // ---------- renderer / scene ----------
-const WS=6500,TS=12,TN=WS*2/TS,WL=-.35;
+const WS=8000,TS=12,TN=WS*2/TS,WL=-.35;
 const scene=new T.Scene();
 const camera=new T.PerspectiveCamera(70,innerWidth/innerHeight,.25,2600);
 const renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
@@ -615,7 +615,7 @@ const ISL=[[380,-820,150,95],[160,-840,100,70],[-120,-830,110,80],[600,-830,120,
 // JAGGED_COAST_V1: layered waves give bays and headlands; inward bites are capped (~90 m) so no streets get cut off
 const coastJ=(t,k)=>{const j=72*Math.sin(t*.0041+k)+44*Math.sin(t*.0107+k*2.3)+24*Math.sin(t*.0263+k*3.1)+11*Math.sin(t*.061+k*5.7)+6*Math.sin(t*.13+k);return (j>0?j*.58:j)-Math.max(0,260*Math.sin(t*.0019+k*1.9)-60)-Math.max(0,150*Math.sin(t*.0047+k*.7)-50)}; // big outward peninsulas break up the rectangle
 // ATLANTIC_PENINSULA_COAST_V2: curved east coast; the existing city footprints remain inland.
-const shoreZ=x=>flLerp([[-6500,-1450],[-5350,-1050],[-4300,-780],[-3000,-600],[-1600,-490],[-500,-430],[1000,-390],[1900,-300],[2500,-80],[2950,220],[3300,450],[3600,950],[3900,1650],[4300,2500],[5100,3050]],x)
+const shoreZ=x=>flLerp([[-8000,-1600],[-6500,-1450],[-5350,-1050],[-4300,-780],[-3000,-600],[-1600,-490],[-500,-430],[1000,-390],[1900,-300],[2500,-80],[2950,220],[3300,450],[3600,950],[3900,1650],[4300,2500],[5100,3050],[6500,3400],[8000,3600]],x)
  +10*Math.sin(x*.012)+6*Math.sin(x*.031+1)-Math.max(0,55*Math.sin(x*.0047+1.3)+38*Math.sin(x*.0121+.4)+16*Math.sin(x*.029+2));
 // HARBOR_ISLAND_V1: irregular island in the Calusa bay (negative = land)
 const HH_CX=2150,HH_CZ=-1050; // Key Biscayne position: offshore, south-east of downtown
@@ -631,8 +631,8 @@ const flLerp=(pts,t)=>{if(t<=pts[0][0])return pts[0][1];for(let i=1;i<pts.length
 // Vice City sits on the Atlantic (east) coast like Miami; the Gulf coast is far to the west beyond the glades,
 // the peninsula ends in a broad south coast below the farm country, and the keys curl away south-west.
 // VICE_CITY_ISLAND_OUTLINE_V2: broad northern mainland, indented Gulf coast, and a narrowing southern peninsula.
-const flGulf=x=>flLerp([[-6500,2100],[-5500,1700],[-4600,2600],[-3600,3650],[-2400,4450],[-1000,5350],[500,5300],[1800,5000],[2700,4550],[3300,3900],[3700,3000],[4100,2150],[5000,1500]],x);
-const flSouthC=z=>flLerp([[-600,3600],[-400,3600],[600,3650],[1500,3820],[2300,3900],[3000,3800],[3600,3500],[4100,3100],[4300,2700],[5200,2300]],z);
+const flGulf=x=>flLerp([[-8000,2100],[-6500,2100],[-5500,1700],[-4600,2600],[-3600,3650],[-2400,4450],[-1000,5350],[500,5300],[1800,5000],[2700,4550],[3300,3900],[3700,3000],[4100,2150],[5000,1500],[6500,1450],[8000,1450]],x);
+const flSouthC=z=>flLerp([[-600,3600],[-400,3600],[600,3650],[1500,3820],[2300,3900],[3000,3800],[3600,3500],[4100,3100],[4300,2700],[5200,2300],[6500,2200],[8000,2200]],z);
 const bigJ=(t,k)=>coastJ(t*.55,k)*1.6;
 const FL_KEYS=(()=>{const k=[];
  // the Florida Keys: from the south-east corner, curving south then west
@@ -739,7 +739,7 @@ function seaD(x,z){ // signed metres into the sea (>0 sea, <0 land)
  const tampa=280-Math.hypot((x+4300)/1.0,(z-5050)/1.6)*.9+40*Math.sin(x*.01),charl=200-Math.hypot((x+1900)/1.0,(z-5000)/1.4)+30*Math.sin(z*.012);
  // OKEE_GLADES_LAKE_V1: a natural inland lake in open wetlands, away from all city footprints and roads.
  const gladesLake=(1-Math.hypot((x-1050)/270,(z-3800)/185)-.045*Math.sin(x*.018+z*.013))*185;
- const edge=Math.max(-6250-x+bigJ(z,1.7)*.5,z-flGulf(x)+bigJ(x,2.9)*.8,x-flSouthC(z)+bigJ(z,4.2)*.8,tampa,charl,gladesLake);
+ const edge=Math.max(-7750-x+bigJ(z,1.7)*.5,z-flGulf(x)+bigJ(x,2.9)*.8,x-flSouthC(z)+bigJ(z,4.2)*.8,tampa,charl,gladesLake);
  // Calusa bay (an inlet now) and Calusa Pass, the channel out to the Gulf
  // rounded, ragged bay: a superellipse whose shore only ever bites into the water (never into Port Calusa / Coral Ridge)
  const bu=Math.abs(x+1250)/800,bv=Math.abs(z-1865)/835,ba=Math.atan2(z-1865,x+1250);
