@@ -11,7 +11,7 @@ The game is built with [Three.js](https://threejs.org/) and currently runs as a 
 ## What's in the game
 
 ### Explore the city
-- Eight districts to explore: Neon Beach downtown, Port Calusa docks, Palmetto Grove suburbs, Grassrun Bayou, Mount Orrin, Kestrel Keys, the North Outskirts, and the East Highway.
+- Eight districts to explore: Vice City downtown, Port Calusa docks, Palmetto Grove suburbs, Grassrun Bayou, Mount Orrin, Kestrel Keys, the North Outskirts, and the East Highway.
 - A downtown park with winding paths, a reflecting pond and fountain, a pavilion, benches, trees, and flower beds.
 - An airport with a runway, taxiways, airport buildings, a lightweight low-poly prop plane, and a small jet.
 - City traffic, pedestrians, parked vehicles, streetlights, traffic signals, and marked zebra crosswalks at city intersections.
