@@ -1961,8 +1961,15 @@ function* buildBaseMapGen(){
    const elev=clamp(h/55,0,1);
    r=.37+elev*.10;g=.59+elev*.12;b=.43+elev*.07;
    // Urban districts get a pale lavender-gray tint, while green spaces remain green.
-   const inDistrict=(wx>420&&wx<2110&&wz>-910&&wz<190)||
-    (wx>1670&&wx<2410&&wz>-190&&wz<1630);
+   // REFERENCE_CITY_FOOTPRINT_V2: irregular Vice City urban mass wraps north/east of VCIA.
+   // The airport's west and south approaches remain green/open; the city widens toward downtown and the bay.
+   const inNorth=(wx>430&&wx<1570&&wz>-920&&wz<120&&
+     wx>520+Math.max(0,-wz-500)*.18&&wx<1510-Math.max(0,-wz-600)*.12);
+   const inCore=(wx>1080&&wx<2110&&wz>-720&&wz<700);
+   const inEast=(wx>1640&&wx<2440&&wz>-250&&wz<1570&&
+     wx>1710+Math.max(0,wz-900)*.12);
+   const inSouthEast=(wx>1300&&wx<2070&&wz>680&&wz<1510);
+   const inDistrict=inNorth||inCore||inEast||inSouthEast;
    if(inDistrict){r=.61;g=.63;b=.75;}
   }
   const R=Math.min(255,r*300),Gc=Math.min(255,g*300),Bc=Math.min(255,b*300);
@@ -2047,7 +2054,7 @@ function* buildBaseMapGen(){
  }
  baseMap=c;
 }
-const REGIONS=[['LEONIDA WEST REGIONAL AIRPORT',4430,2450,5370,3150,0,0],['VICE CITY INTERNATIONAL AIRPORT',170,445,1130,1195,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',420,-910,2410,1630,1415,360],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['KEY LENTO',3680,430,4230,970,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
+const REGIONS=[['LEONIDA WEST REGIONAL AIRPORT',4430,2450,5370,3150,0,0],['VICE CITY INTERNATIONAL AIRPORT',170,445,1130,1195,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',430,-920,2440,1570,1510,315],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['KEY LENTO',3680,430,4230,970,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
 function zoneName(x,z){for(const r of REGIONS)if(x>r[1]&&x<r[3]&&z>r[2]&&z<r[4])return r[0];if(z<shoreZ(x))return'PALMERA GULF';return'PALMERA COUNTRYSIDE'}
 
 function clearStructureFootprint(x0,z0,x1,z1,margin=1.2){
