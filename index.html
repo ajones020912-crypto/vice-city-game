@@ -1520,6 +1520,8 @@ function makeParcels(){
  for(let i=0;i<CR_X.length-1;i++)for(let j=0;j<CR_Z.length-1;j++){if(rnd()<.08)continue;
   const a=CR_X[i]===380?15+3:7+2.9,b=CR_X[i+1]===380?15+3:7+2.9;
   lot(CR_X[i]+a,CR_Z[j]+7+2.9,CR_X[i+1]-b,CR_Z[j+1]-7-2.9,'low')}
+
+vcReserveMedicalBlock();
 }
 const SHOPS=[
  {k:'burger',name:"BENNY'S BURGER SHACK",col:'#ff9a2e',spots:[[-60,-100],[-180,150],[-840,640],[-30,590]]},
@@ -2072,6 +2074,8 @@ function buildDowntownPark(){
  }
 }
 function forceShopDoors(){
+buildHospitalExterior();
+
  // Guaranteed enterable storefronts so Gun Cove / shops always have an interior door
  const forced=[
   {k:'repair',name:'WRENCH WORKS',col:'#44c5d8',x:-380,z:-230},{k:'repair',name:'WRENCH WORKS',col:'#44c5d8',x:-880,z:360},{k:'repair',name:'WRENCH WORKS',col:'#44c5d8',x:330,z:280},
@@ -4846,25 +4850,23 @@ function buildMarkers(){
  // Pay 'n' Spray locations are now full enterable storefronts; remove the old floating garage markers.
 }
 G.spray=[{x:-770,z:665,ry:Math.PI/2},{x:90,z:600,ry:Math.PI/2}];
-const HOSP={x:-49.6,z:-60},PD={x:49.6,z:-120};
+const HOSP={x:90,z:198},PD={x:49.6,z:-120};
+// VC_GROUNDED_HOSPITAL_V2
+function vcReserveMedicalBlock(){for(let i=parcels.length-1;i>=0;i--){const p=parcels[i];if(p.x1>72&&p.x0<108&&p.z1>162&&p.z0<198)parcels.splice(i,1);}}
 function buildHospitalExterior(){
- const site=findClearStructureSite(HOSP.x,HOSP.z,11,9,120);if(site){HOSP.x=site.x;HOSP.z=site.z}
- const x=HOSP.x,z=HOSP.z,y=heightAt(x,z),wall=[.78,.86,.84],glass=[.34,.62,.65],trim=[.12,.57,.48],white=[.92,.96,.94];
- // Modern two-storey medical centre, with a clear central entrance.
- bakeG('plain',GEO.box,x,y+3.5,z-7.2,0,22,7,1.0,wall);
- bakeG('plain',GEO.box,x-10.5,y+3.5,z,0,1,7,14.4,wall);bakeG('plain',GEO.box,x+10.5,y+3.5,z,0,1,7,14.4,wall);
- bakeG('plain',GEO.box,x-6.5,y+3.5,z+7.2,0,9,7,1,wall);bakeG('plain',GEO.box,x+6.5,y+3.5,z+7.2,0,9,7,1,wall);
- bakeG('plain',GEO.box,x,y+7.15,z,0,22,.55,15.4,white);
- bakeG('plain',GEO.box,x,y+6.9,z+7.65,0,4,.35,.45,trim);
- bakeG('plain',GEO.box,x-7,y+4.5,z+7.78,0,5,2.7,.16,glass);bakeG('plain',GEO.box,x+7,y+4.5,z+7.78,0,5,2.7,.16,glass);
- bakeG('plain',GEO.box,x,y+2.1,z+7.82,0,3.4,4.1,.18,glass);
- bakeG('plain',GEO.box,x-2.25,y+2.1,z+7.82,0,.22,4.2,.24,white);bakeG('plain',GEO.box,x+2.25,y+2.1,z+7.82,0,.22,4.2,.24,white);
- bakeG('plain',GEO.box,x,y+.2,z+10.4,0,8,.25,5,[.78,.81,.8]);
- bakeG('plain',GEO.box,x,y+8.0,z+7.9,0,13,1.4,.3,trim);
- const sg=new T.Mesh(new T.PlaneGeometry(12,1.7),new T.MeshBasicMaterial({map:signTex('VICE CITY MEDICAL CENTER','#eafff8'),toneMapped:false,side:T.DoubleSide}));sg.position.set(x,y+8.0,z+8.08);world.add(sg);
- addCol(x-11,z-8,x+11,z-7,7,'hospital');addCol(x-11,z-7,x-10,z+7.5,7,'hospital');addCol(x+10,z-7,x+11,z+7.5,7,'hospital');addCol(x-11,z+7,x-4,z+7.5,7,'hospital');addCol(x+4,z+7,x+11,z+7.5,7,'hospital');
- doors.push({x,z:z+8.2,kind:'hospital',name:'Vice City Medical Center',col:'#38a98e',ret:{x,z:z+11.2}});
+ if(buildHospitalExterior.ready)return true;const cx=90,cz=180,p={x0:74,z0:166,x1:106,z1:194,cx,cz,H:14,style:'hospital',cityId:'dt',hospital:true};
+ if(!clearStructureFootprint(p.x0,p.z0,p.x1,p.z1,1)){G.hospitalExterior={ready:false,error:'Reserved medical block obstructed; no park fallback used'};return false;}
+ const heights=[];for(const x of [p.x0,cx,p.x1])for(const z of [p.z0,cz,p.z1])heights.push(heightAt(x,z));const floor=Math.max(...heights)+.08,foundationDepth=Math.max(.4,floor-Math.min(...heights)+.2);const g=new T.Group();g.name='grounded-vice-city-medical-center';g.position.set(cx,floor,cz);
+ const material=(color,extra={})=>new T.MeshStandardMaterial(Object.assign({color,roughness:.72},extra)),wall=material(0xdce5e1),glass=material(0x527f8b,{roughness:.23,metalness:.2}),trim=material(0x41988c),concrete=material(0x9aa6a4),cross=material(0xd84451,{emissive:0x6e1420,emissiveIntensity:.35});
+ function box(name,w,h,d,x,base,z,mat){const mesh=new T.Mesh(new T.BoxGeometry(w,h,d),mat);mesh.name=name;mesh.position.set(x,base+h/2,z);mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);return mesh;}
+ box('hospital-foundation',32.4,foundationDepth,28.4,0,-foundationDepth,0,concrete);box('hospital-grounded-body',32,10.8,28,0,0,0,wall);box('hospital-upper-wing',19,3,23,-5,10.8,-1,wall);box('hospital-roof',32.4,.3,28.4,0,10.8,0,concrete);box('hospital-upper-roof',19.4,.3,23.4,-5,13.8,-1,concrete);
+ for(const y of [1.3,4.6,7.8]){for(const x of [-12,-7,-2,3,8,13]){if(y<2&&Math.abs(x)<5)continue;box('hospital-window',3.2,1.8,.08,x,y,14.05,glass);box('hospital-window',3.2,1.8,.08,x,y,-14.05,glass);}for(const x of [-16.05,16.05])for(const z of [-10,-4,2,8])box('hospital-window',.08,1.8,3,x,y,z,glass);}
+ box('hospital-entry',5.5,3.2,.12,0,0,14.1,glass);box('hospital-door-divider',.1,3.2,.18,0,0,14.2,trim);box('hospital-canopy',18,.3,4,0,3.5,15.5,wall);for(const x of [-8,8])box('hospital-canopy-support',.3,3.5,.3,x,0,16.5,trim);box('hospital-cross',2.2,.6,.15,11,8.8,14.15,cross);box('hospital-cross',.6,2.2,.15,11,8,14.15,cross);box('hospital-entry-walk',8,.08,4,0,-.04,16.1,concrete);
+ function sign(text,x,y,z,w,h){const mesh=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({map:signTex(text,'#eafff8'),toneMapped:false}));mesh.name='hospital-sign';mesh.position.set(x,y,z);g.add(mesh);}sign('VICE CITY MEDICAL CENTER',-1,6.9,14.19,24,2);sign('EMERGENCY / PATIENT DROP-OFF',0,3.7,17.54,17,1.1);
+ world.add(g);addCol(p.x0,p.z0,p.x1,p.z1,14,'hospital');for(const x of [-8,8])addCol(cx+x-.2,cz+16.3,cx+x+.2,cz+16.7,3.5,'hospital');BLD.push(p);
+ HOSP.x=cx;HOSP.z=cz+18;doors.push({x:cx,z:cz+15,kind:'hospital',name:'Vice City Medical Center',col:'#38a98e',ret:{x:cx,z:cz+18}});if(!INTKINDS.includes('hospital'))INTKINDS.push('hospital');SHOP_NAMES.hospital='Vice City Medical Center';buildHospitalExterior.ready=true;G.hospitalExterior={ready:true,building:p,recovery:{x:HOSP.x,z:HOSP.z},floor,foundationDepth,parkFallbackDisabled:true};return true;
 }
+
 
 // ================= MISSIONS =================
 const ring=new T.Group();world.add(ring);
