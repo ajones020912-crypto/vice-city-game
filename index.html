@@ -1526,7 +1526,7 @@ function decorateRestaurantExterior(p,shop,fx,fz,face='s'){
  for(let i=0;i<5;i++)bakeG('plain',GEO.box,fx-width*.42+i*width*.21,0.4,fz+fwd*.42,0,.12,.7,.12,i%2?cfg.trim:cfg.wall);
  bakeG('plain',GEO.box,fx,3.95,fz+fwd*.28,0,width+.8,.25,.35,cfg.roof);
  for(const side of[-1,1])bakeG('plain',GEO.box,fx+side*(width*.48),0.2,fz+fwd*.1,0,.35,3.5,.35,cfg.trim);
- if(shop.k==='palmgrill'||shop.k==='bigwave')for(const side of[-1,1])bakeG('plain',GEO.cylinder,fx+side*5,0.3,fz+fwd*1.8,0,.25,2.6,.25,[.32,.55,.32]);
+ if(shop.k==='palmgrill'||shop.k==='bigwave')for(const side of[-1,1])bakeG('plain',GEO.cyl,fx+side*5,0.3,fz+fwd*1.8,0,.25,2.6,.25,[.32,.55,.32]);
  if(shop.k==='oceandiner'||shop.k==='flamingo')bakeG('neon',GEO.box,fx,4.7,fz+fwd*.25,0,4,.35,.2,cfg.trim);
  if(shop.k==='ricos'||shop.k==='havana')bakeG('plain',GEO.box,fx,1.1,fz+fwd*.5,0,3.2,.18,.2,cfg.trim);
 }
