@@ -2355,7 +2355,7 @@ function aiPlaneControl(c,dt){
  const steerTo=(x,z)=>{const desired=Math.atan2(x-c.x,z-c.z),err=wrapA(desired-c.h);a.steer=clamp(err*1.5,-.7,.7)};
  const vRef=flyCfg(c).vr;
  // in the air: turn toward (x,z), chase a target height above ground and a target airspeed
- const fly=(x,z,alt,spd,minVy=-7)=>{const desired=Math.atan2(x-c.x,z-c.z),h=c.y-heightAt(c.x,c.z)-.88,bankCap=h<60?.35:.8,track=Math.hypot(c.vx,c.vz)>5?Math.atan2(c.vx,c.vz):c.h;a.steer=clamp(wrapA(desired-track)*1.2,-bankCap,bankCap); /* steer by the actual track so any drift is corrected */const vyT=clamp((alt-h)*.12,minVy,5);a.pitch=clamp((vyT-(c.vy||0))*.08,-.5,.5);a.throttle=clamp(.45+(spd-(c.as||0))*.06,.12,1)};
+ const fly=(x,z,alt,spd,minVy=-7,gain=1.2)=>{const desired=Math.atan2(x-c.x,z-c.z),h=c.y-heightAt(c.x,c.z)-.88,bankCap=h<60?.35:.8,track=Math.hypot(c.vx,c.vz)>5?Math.atan2(c.vx,c.vz):c.h;a.steer=clamp(wrapA(desired-track)*gain,-bankCap,bankCap); /* steer by the actual track so any drift is corrected */const vyT=clamp((alt-h)*.12,minVy,5);a.pitch=clamp((vyT-(c.vy||0))*.08,-.5,.5);a.throttle=clamp(.45+(spd-(c.as||0))*.06,.12,1)};
  if(a.phase==='taxiOut'){
   steerTo(R.lineup.x,R.lineup.z);a.throttle=.34;if(Math.hypot(c.x-R.lineup.x,c.z-R.lineup.z)<16){a.phase='lineUp';a.t=0}
  }else if(a.phase==='lineUp'){
@@ -2378,7 +2378,7 @@ function aiPlaneControl(c,dt){
  }else if(a.phase==='final'){
   // glide path to a point 150 m past the threshold, flare low down, idle at the end
   const L=R.land,dist=c.z-L.z0,h=c.y-heightAt(c.x,c.z)-.88;let alt=Math.max(0,dist+150)*.055;
-  if(dist<0)alt=0;fly(L.x,Math.min(c.z-(h<80?300:500),L.z0),alt,vRef*.98,h<5?-2.4:dist<0?-4:-7);if(h<12&&dist<450){a.throttle=0;const vy=c.vy||0,ap=c.ap||0;a.pitch=vy>-1.4&&ap>-.1?-1:(vy<-2.8||ap<-.18?.7:0)} /* like a player holding nose-down: the landing assist then flares it */
+  if(dist<0)alt=0;fly(L.x,c.z-400,alt,vRef*.98,h<5?-2.4:dist<0?-4:-7,3); /* chase a point 400 m ahead on the centreline */if(h<12&&dist<450){a.throttle=0;const vy=c.vy||0,ap=c.ap||0;a.pitch=vy>-1.4&&ap>-.1?-1:(vy<-2.8||ap<-.18?.7:0)} /* like a player holding nose-down: the landing assist then flares it */
   // autoland: within 4 m of the runway, lined up and over the first 600 m, the AI airliner settles onto its wheels
   if(c.airborne&&h<4&&dist<0&&dist>-600&&Math.abs(c.x-L.x)<24&&Math.abs(wrapA(c.h-Math.PI))<.35){c.airborne=false;c.vy=0;c.ap=0;c.gam=0;c.bank=0;c.y=heightAt(c.x,c.z)+.88}
   if(!c.airborne){a.phase='rollout';a.t=0}
