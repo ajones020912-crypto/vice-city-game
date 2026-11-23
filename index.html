@@ -2355,7 +2355,7 @@ function aiPlaneControl(c,dt){
  const steerTo=(x,z)=>{const desired=Math.atan2(x-c.x,z-c.z),err=wrapA(desired-c.h);a.steer=clamp(err*1.5,-.7,.7)};
  const vRef=flyCfg(c).vr;
  // in the air: turn toward (x,z), chase a target height above ground and a target airspeed
- const fly=(x,z,alt,spd,minVy=-7)=>{const desired=Math.atan2(x-c.x,z-c.z),h=c.y-heightAt(c.x,c.z)-.88,bankCap=h<60?.35:.8;a.steer=clamp(wrapA(desired-c.h)*1.2,-bankCap,bankCap);const vyT=clamp((alt-h)*.12,minVy,5);a.pitch=clamp((vyT-(c.vy||0))*.08,-.5,.5);a.throttle=clamp(.45+(spd-(c.as||0))*.06,.12,1)};
+ const fly=(x,z,alt,spd,minVy=-7)=>{const desired=Math.atan2(x-c.x,z-c.z),h=c.y-heightAt(c.x,c.z)-.88,bankCap=h<60?.35:.8,track=Math.hypot(c.vx,c.vz)>5?Math.atan2(c.vx,c.vz):c.h;a.steer=clamp(wrapA(desired-track)*1.2,-bankCap,bankCap); /* steer by the actual track so any drift is corrected */const vyT=clamp((alt-h)*.12,minVy,5);a.pitch=clamp((vyT-(c.vy||0))*.08,-.5,.5);a.throttle=clamp(.45+(spd-(c.as||0))*.06,.12,1)};
  if(a.phase==='taxiOut'){
   steerTo(R.lineup.x,R.lineup.z);a.throttle=.34;if(Math.hypot(c.x-R.lineup.x,c.z-R.lineup.z)<16){a.phase='lineUp';a.t=0}
  }else if(a.phase==='lineUp'){
