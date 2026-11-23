@@ -1,0 +1,9 @@
+{
+  "passed": false,
+  "branch": "main",
+  "scope": "Sampled opposing leg swings and torso twists with posed body/briefs rear-occlusion rays. Does not establish live deployment or visually verify the complete game walking animation.",
+  "outputTail": "From https://github.com/ajones020912-crypto/vice-city-game\n * branch            main       -> FETCH_HEAD\n",
+  "error": "TypeError: Cannot set properties of undefined (setting 'localURL')",
+  "traceback": "Traceback (most recent call last):\n  File \"<stdin>\", line 34, in <module>\nRuntimeError: TypeError: Cannot set properties of undefined (setting 'localURL')\n",
+  "baselinePreserved": true
+}
