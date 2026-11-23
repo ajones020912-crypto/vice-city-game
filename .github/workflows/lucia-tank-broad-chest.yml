@@ -1,0 +1,53 @@
+name: Lucia tank broad chest with shallow center dip
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-tank-broad-chest.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  contour:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [main, lucia-outfits]
+    concurrency:
+      group: lucia-u-neck-${{ matrix.target }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    env:
+      TARGET_BRANCH: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.target }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-broad-chest" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Prepare tank-only broad front contour
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-broad-chest/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_TANK_BROAD_CHEST_V1'))process.exit(0);if(!s.includes('// LUCIA_MIDPOINT_U_NECK_V3'))throw Error('Midpoint tank required');fs.writeFileSync('/tmp/lucia-broad-before.js',s);function walk(n,f){f(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f);}else if(v&&typeof v.type==='string')walk(v,f);}}const nodes=[];walk(acorn.parse(s,{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='lucia')nodes.push(n);});if(nodes.length!==1)throw Error('Lucia builder changed');const node=nodes[0],helper=String.raw`
+           function shapeLuciaBroadTankFront(T,h){
+            const u=h.userData,body=h.getObjectByName('lucia-dark-grey-tank-top'),bra=h.getObjectByName('lucia-tailored-bra');if(!body||!bra)throw Error('Tank and retained bra required');h.updateMatrixWorld(true);const inverse=new T.Matrix4().copy(u.spine.matrixWorld).invert(),triangles=[],smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);},dent=x=>.003*Math.exp(-Math.pow(x/.025,2));function collect(mesh){const g=mesh.geometry,p=g.attributes.position,M=inverse.clone().multiply(mesh.matrixWorld),vertices=[];for(let i=0;i<p.count;i++)vertices.push(new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(M));for(let i=0,c=g.index?g.index.count:p.count;i<c;i+=3){const tri=[0,1,2].map(j=>vertices[g.index?g.index.getX(i+j):i+j]);if(Math.max(...tri.map(v=>v.y))>=.24&&Math.min(...tri.map(v=>v.y))<=.51&&Math.max(...tri.map(v=>v.z))>.025)triangles.push(tri);}}collect(body);bra.traverse(o=>{if(o.isMesh)collect(o);});for(const o of u.spine.children)if(o.isMesh&&o.material===u.m.skin)collect(o);const cache=new Map();function sectionBase(y){const key=Math.round(y*2000),level=key/2000;if(cache.has(key))return cache.get(key);let best=-Infinity;function add(v){if(Math.abs(v.x)<=.145&&v.z>.025)best=Math.max(best,v.z+.6*v.x*v.x+dent(v.x));}for(const tri of triangles){if(level<Math.min(...tri.map(v=>v.y))-1e-8||level>Math.max(...tri.map(v=>v.y))+1e-8)continue;const points=[];for(let k=0;k<3;k++){const a=tri[k],b=tri[(k+1)%3];if(Math.abs(a.y-level)<1e-8)points.push(a);if((a.y<level&&b.y>level)||(b.y<level&&a.y>level))points.push(a.clone().lerp(b,(level-a.y)/(b.y-a.y)));}for(const p of points)add(p);if(points.length>=2){const a=points[0],b=points[1],steps=Math.max(2,Math.ceil(a.distanceTo(b)/.008));for(let k=1;k<steps;k++)add(a.clone().lerp(b,k/steps));}}if(!Number.isFinite(best))throw Error('Chest section missing');cache.set(key,best);return best;}const g=body.geometry.clone(),p=g.attributes.position,M=inverse.clone().multiply(body.matrixWorld),back=M.clone().invert(),v=new T.Vector3();let changed=0,maxLift=0;for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(M);const weight=smooth((v.y-.245)/.045)*smooth((.505-v.y)/.045)*(1-smooth((Math.abs(v.x)-.130)/.045))*smooth((v.z-.005)/.025);if(weight<=0)continue;const target=sectionBase(v.y)+.006-.6*v.x*v.x-dent(v.x),lift=Math.max(0,target-v.z)*weight;if(lift<=1e-8)continue;v.z+=lift;maxLift=Math.max(maxLift,lift);v.applyMatrix4(back);p.setXYZ(i,v.x,v.y,v.z);changed++;}if(changed<20)throw Error('Insufficient broad chest shaping');p.needsUpdate=true;g.computeVertexNormals();const normals=g.attributes.normal,buckets=new Map();for(let i=0;i<p.count;i++){const key=[p.getX(i),p.getY(i),p.getZ(i)].map(x=>Math.round(x*1e5)).join(',');if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push(i);}for(const ids of buckets.values()){const n=new T.Vector3();for(const i of ids)n.add(new T.Vector3().fromBufferAttribute(normals,i));n.normalize();for(const i of ids)normals.setXYZ(i,n.x,n.y,n.z);}normals.needsUpdate=true;g.computeBoundingBox();g.computeBoundingSphere();body.geometry=g;u.luciaBroadTankChest={changedVertices:changed,maxForwardLift:maxLift,profile:'one broad rounded front with shallow central dip',dipParameter:.003,dipHalfScale:.025,curvature:.6,scope:'Outer tank geometry only; no body or base garment edits.'};
+           }
+          `;s=s.slice(0,node.body.end-1)+'\n shapeLuciaBroadTankFront(T,h);\n'+s.slice(node.body.end-1);s=s.slice(0,node.start)+helper+s.slice(node.start);s='// LUCIA_TANK_BROAD_CHEST_V1\n'+s;acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-broad-after.js',s);
+          JS
+      - name: Validate shallow top-down dip and unchanged base straps and neckline
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-broad-chest/node_modules/three');if(!fs.existsSync('/tmp/lucia-broad-after.js')){assert(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_TANK_BROAD_CHEST_V1'));process.exit(0);}function load(file){const c={window:{},console,Math};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}const old=load('/tmp/lucia-broad-before.js'),cur=load('/tmp/lucia-broad-after.js');function signature(h){const rows=[];h.traverse(o=>{if(o.name==='lucia-dark-grey-tank-top')return;const r=[o.type,o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()];if(o.isMesh)r.push(Object.keys(o.geometry.attributes).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.transparent,m.opacity]));rows.push(r);});return JSON.stringify(rows);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)),'Other character changed');const reports=[];let poses=0;for(const merge of [false,true]){const a=old.build(T,'luciaC',{merge}),h=cur.build(T,'luciaC',{merge}),u=h.userData,body=h.getObjectByName('lucia-dark-grey-tank-top'),before=a.getObjectByName('lucia-dark-grey-tank-top');assert(signature(a)===signature(h),'Body bra underwear rig straps or other clothing changed');assert.deepStrictEqual(JSON.parse(JSON.stringify(u.luciaTankUNeck)),JSON.parse(JSON.stringify(a.userData.luciaTankUNeck)),'Neckline changed');assert(u.luciaBroadTankChest&&u.luciaBroadTankChest.changedVertices>20);assert(body.material.color.getHex()===0x3b3d40&&body.material.bumpMap&&body.material.bumpScale===.00022&&!body.material.transparent&&body.material.opacity===1);assert(h.getObjectByName('lucia-dark-grey-tank-outfit').visible&&u.luciaTankVisible&&u.luciaOutfit===a.userData.luciaOutfit&&h.getObjectByName('lucia-tailored-bra').visible&&h.getObjectByName('lucia-fitted-black-briefs').visible);const p=body.geometry.attributes.position,q=before.geometry.attributes.position;assert(p.count===q.count);for(let i=0;i<p.count;i++){assert(Math.abs(p.getX(i)-q.getX(i))<1e-6&&Math.abs(p.getY(i)-q.getY(i))<1e-6,'Neckline or armhole silhouette changed');assert(p.getZ(i)>=q.getZ(i)-1e-6,'Tank moved inward');}h.updateMatrixWorld(true);const inverse=new T.Matrix4().copy(u.spine.matrixWorld).invert();function front(x,y){const origin=new T.Vector3(x,y,1).applyMatrix4(u.spine.matrixWorld),direction=new T.Vector3(0,0,-1).transformDirection(u.spine.matrixWorld);return new T.Raycaster(origin,direction,0,3).intersectObject(body,false).map(hit=>hit.point.clone().applyMatrix4(inverse)).find(v=>v.z>.025);}const profiles=[];for(const y of [.30,.34,.38,.40]){const xs=[-.08,-.035,0,.035,.08],points=xs.map(x=>front(x,y));if(points.some(p=>!p))continue;const z=points.map(p=>p.z),dip=Math.max(z[1],z[3])-z[2];assert(dip<=.005,'Two prominent cup peaks remain');assert(z[2]>=Math.max(z[0],z[4])-.005,'Broad front outline missing');profiles.push({y,x:xs,z,centreDip:dip});}assert(profiles.length>=2,'Insufficient top-down contour sections');reports.push({merge,profiles,fit:u.luciaBroadTankChest});for(const angle of [-.7,0,.7]){u.A[0].sh.rotation.x=angle;u.A[1].sh.rotation.x=-angle;h.updateMatrixWorld(true);h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh)for(const key of ['position','normal','uv'])if(o.geometry.attributes[key])assert(Array.from(o.geometry.attributes[key].array).every(Number.isFinite));});poses++;}}fs.copyFileSync('/tmp/lucia-broad-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-tank-broad-chest-check.json',JSON.stringify({passed:true,branch:process.env.TARGET_BRANCH,reports,poseChecks:poses,bodyUnderwearRigAndStrapsUnchanged:true,midpointNecklineRibbingAndOpacityPreserved:true,otherCharactersUnchanged:true,scope:'Numerical horizontal chest sections and finite pose checks. The top-down rendered appearance, all-pose clipping, shoulder-widening installation and earlier strap-correction installation are not certified by this report.'},null,2)+'\n');
+          JS
+      - name: Publish validated broad tank contour
+        run: |
+          git fetch origin "$TARGET_BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/"$TARGET_BRANCH")" || { echo 'Target branch changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-tank-broad-chest-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Give Lucia tank one broad rounded chest contour with a shallow center dip'
+          git push origin HEAD:"refs/heads/$TARGET_BRANCH"
