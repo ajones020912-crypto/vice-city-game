@@ -1269,13 +1269,17 @@ function defineRoads(){
   for(const [g0,g1] of cuts){if(g0>s0)addRoad(o,c,s0,g0,w,type,sig);s0=Math.max(s0,g1)}if(b>s0)addRoad(o,c,s0,b,w,type,sig)};
  for(const x of xr)seg('v',x,-330,420,18,'city',true);
  for(const z of zr){if(z===-330)seg('h',z,-900,1100,18,'city',true);else if(z===-30)seg('h',z,-640,380,18,'city',true);else seg('h',z,-300,380,18,'city',true)}
- addRoad('v',380,-980,1400,30,'hwy');
+ // Interstate bypass tunnel/loop around VCIA's east edge: no highway surface crosses the runway or apron.
+ addRoad('v',380,-980,300,30,'hwy');
+ addRoad('h',300,380,1500,30,'hwy');addRoad('v',1500,300,1340,30,'hwy');addRoad('h',1340,380,1500,30,'hwy');addRoad('v',380,1340,1400,30,'hwy');
  addRoad('v',380,-1090,-980,14,'city');          // causeway on to the Salton Memorial AFB gate          // Interstate 1 — longer causeway to the Keys
  addRoad('h',420,-1400,1500,28,'hwy');         // Gulf Expressway extended
  addRoad('h',-820,-420,1500,14,'city');        // Keys road extended
  for(let i=0;i<8;i++){addRoad('v',-1050+70*i,420,1010,16,'city',true);addRoad('h',490+70*i,-1060,-550,16,'city',true)}
- for(const x of[-270,-150,-30,90,210])addRoad('v',x,420,1100,14,'city');
- for(const z of[540,660,780,900,1020])addRoad('h',z,-330,380,14,'city');
+ // Streets bordering VCIA are shifted west so they do not run across the airfield.
+ for(const x of[-270,-210,-150,-90,-30])addRoad('v',x,420,1100,14,'city');
+ // East-west neighborhood streets stop at the western airport boundary.
+ for(const z of[540,660,780,900,1020])addRoad('h',z,-330,20,14,'city');
  // outer ring / expanded countryside roads
  addRoad('h',1200,-400,900,16,'city');
  addRoad('v',900,420,1300,16,'city');
@@ -1677,7 +1681,7 @@ function buildBaseMap(){
  // VCIA_SATELLITE_LAYOUT_V2: two runways, looping taxiways, broad aprons and terminal complex.
  {const ax=650,az=820,px=v=>(ax+v+WS)/MAPPX,pz=v=>(az+v+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w/MAPPX,h/MAPPX)};
   const path=(pts,color,width)=>{x.strokeStyle=color;x.lineWidth=width/MAPPX;x.lineCap='round';x.lineJoin='round';x.beginPath();pts.forEach((p,i)=>i?x.lineTo(px(p[0]),pz(p[1])):x.moveTo(px(p[0]),pz(p[1])));x.stroke()};
-  x.save();rect(0,0,900,650,'#a4a8a5');rect(0,0,870,620,'#858b89');
+  x.save();rect(0,0,820,580,'#a4a8a5');rect(0,0,790,550,'#858b89');
   rect(0,-220,760,56,'#c9cbc5');rect(0,-150,690,24,'#b8bcb7');path([[-350,-220],[350,-220]],'#e5e6df',2);
   for(let xx=-310;xx<=310;xx+=48)rect(xx,-220,22,7,'#969b98');
   path([[-340,245],[310,-80]],'#c9cbc5',56);path([[-340,245],[310,-80]],'#e7e7df',2.2);
@@ -1688,7 +1692,7 @@ function buildBaseMap(){
   rect(300,220,180,92,'#747e7c');rect(110,210,90,72,'#969d99');for(let zz=115;zz<=195;zz+=18)path([[155,zz],[205,zz]],'#e1e2d9',2);
   rect(-260,-70,115,80,'#929a98');rect(-260,-70,72,38,'#778381');rect(-120,185,120,74,'#9ba19d');rect(-115,185,90,46,'#75817e');rect(35,250,110,55,'#8f9692');rect(365,-5,65,120,'#8e9693');
   path([[-430,285],[-380,315],[-210,325],[0,315],[220,320],[430,270]],'#c4c7c0',7);path([[-420,-290],[-300,-310],[0,-315],[300,-300],[420,-260]],'#c4c7c0',7);
-  x.strokeStyle='#777f77';x.lineWidth=1.5/MAPPX;x.strokeRect(px(-450),pz(-325),900/MAPPX,650/MAPPX);x.restore();
+  x.strokeStyle='#777f77';x.lineWidth=1.5/MAPPX;x.strokeRect(px(-410),pz(-290),820/MAPPX,580/MAPPX);x.restore();
  }
  // LEONIDA_WEST_REGIONAL_AIRPORT_SATELLITE_V1
  {const ax=4900,az=2800,px=v=>(ax+v+WS)/MAPPX,pz=v=>(az+v+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w/MAPPX,h/MAPPX)};x.save();rect(0,0,900,620,'#53694a');rect(0,-45,560,48,'#343b3d');rect(0,35,470,22,'#454b4b');x.strokeStyle='#e3e4dc';x.lineWidth=1.2;x.setLineDash([5,4]);x.beginPath();x.moveTo(px(-245),pz(-45));x.lineTo(px(245),pz(-45));x.stroke();x.setLineDash([]);rect(-125,110,180,100,'#898d87');rect(195,125,125,105,'#858b85');rect(-310,220,175,90,'#454b4b');rect(0,155,112,44,'#46545a');rect(185,115,100,72,'#59645f');rect(10,155,20,18,'#68777a');x.strokeStyle='#9ba184';x.lineWidth=1;x.strokeRect(px(-430),pz(-285),860/MAPPX,570/MAPPX);x.restore();}
@@ -1862,7 +1866,7 @@ function buildAirport(){
  const cx=650,cz=820,ground=heightAt(cx,cz)+.65;
  // Surface support decks: runway, taxiway/connectors, apron and airport grounds.
  // Shortened airport apron shifted east so its western edge no longer spills into downtown.
- decks.push({x0:cx-525,x1:cx+675,z0:cz-487.5,z1:cz+487.5,y:ground});
+ decks.push({x0:cx-450,x1:cx+550,z0:cz-400,z1:cz+400,y:ground});
  // Raised collision-height support for the runway and main taxiway.
  decks.push({x0:cx-570,x1:cx+570,z0:cz-262,z1:cz-178,y:ground+.41});
  decks.push({x0:cx-517.5,x1:cx+517.5,z0:cz-237,z1:cz-213,y:ground+.40});
@@ -1880,7 +1884,7 @@ function buildAirport(){
  const batches=new Map();
  const box=(w,h,d,m,x,y,z,solid=false)=>{w*=SCALE;d*=SCALE;x*=SCALE;z*=SCALE;const lift=m===asphalt?.22:0;if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,cx+x,ground+y+lift,cz+z]);if(solid)addCol(cx+x-w/2,cz+z-d/2,cx+x+w/2,cz+z+d/2,ground+y+lift+h/2);};
  const paint=(w,d,m,x,z)=>box(w,.018,d,m,x,.455,z);
- box(800,.4,650,grass,50,-.21,0);
+ box(720,.4,570,grass,60,-.21,0);
  box(760,.18,56,asphalt,0,.10,-220);
  for(const z of [-249,-191])paint(748,.35,white,0,z);
  for(let x=-330;x<=330;x+=30)paint(13,.8,white,x,-220);
