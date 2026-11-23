@@ -2197,6 +2197,75 @@ function buildAirport(){
  for(const x of [hx-34,hx+34])box(1.8,.25,.6,warmLight,x,15,hz-44.4);
  box(35,5,20,white,82,2.6,155,true);box(29,2,.3,glass,82,3,144.7);
  for(const x of [-230,-25,115]){box(.3,9,.3,metal,x,4.6,120);box(2,.3,1,warmLight,x,9.2,120);}
+ // MIA_INSPIRED_VCIA_TERMINAL_V1: connected horseshoe terminal, six concourses, garages and elevated people mover.
+ // The broad landside terminal wraps around the central parking/transport court.
+ box(292,25,34,white,-153,13,150,true);
+ box(286,18,.9,glass,-153,14,132.2,true);
+ box(300,2,40,roof,-153,26,150,true);
+ box(35,23,118,white,-319,12,70,true);
+ box(35,23,118,white,13,12,70,true);
+ box(38,2,122,roof,-319,24,70,true);
+ box(38,2,122,roof,13,24,70,true);
+ // Concourse piers D, E, F, G, H and J extend from the terminal toward the aircraft apron.
+ const concourses=[
+  {id:'D',x:65,c:0x245b9a,len:214},
+  {id:'E',x:-5,c:0xb28a24,len:160},
+  {id:'F',x:-75,c:0xb28a24,len:160},
+  {id:'G',x:-145,c:0xb28a24,len:160},
+  {id:'H',x:-245,c:0x9a3838,len:150},
+  {id:'J',x:-315,c:0x9a3838,len:150}
+ ];
+ for(const q of concourses){
+  const mid=25-q.len/2;
+  box(27,15,q.len,white,q.x,8,mid,true);
+  box(29,1.2,q.len+4,roof,q.x,16,mid,true);
+  box(25,7,.8,glass,q.x,10,25-q.len,true);
+  // Repeated glazed gate bays and roof lights make each pier read as an airport concourse.
+  for(let zz=25-q.len+18;zz<25;zz+=27){
+   box(25,.22,1.1,metal,q.x,13.8,zz);
+   box(1.1,5,.7,glass,q.x-12.4,9.5,zz);
+   box(1.1,5,.7,glass,q.x+12.4,9.5,zz);
+  }
+  // Large color-coded concourse identifier at the pier entrance.
+  const cm=new T.MeshBasicMaterial({color:q.c});
+  box(18,4,2,cm,q.x,19,98);
+  // Two enclosed boarding bridges per concourse, with terminal-side supports.
+  for(const side of [-1,1]){
+   const bx=q.x+side*24,bz=-5;
+   box(17,6,9,white,bx,8,bz,true);
+   box(15,4,8,glass,bx,9,bz,true);
+   box(16,.7,10,roof,bx,11.5,bz,true);
+   box(2,5,2,metal,bx,2.5,bz,true);
+   box(6,.8,6,metal,bx,0.7,bz,true);
+  }
+ }
+ // Dolphin and Flamingo parking garages sit in the terminal's central landside court.
+ for(const [gx,label] of [[-235,'DOLPHIN GARAGE'],[-75,'FLAMINGO GARAGE']]){
+  box(66,35,56,concrete,gx,18,218,true);
+  for(let yy=5;yy<=34;yy+=7)box(64,.55,54,white,gx,yy,218);
+  for(let xx=-27;xx<=27;xx+=9)box(.65,27,.65,metal,gx+xx,18,190,true);
+  box(52,3,1.2,glass,gx,34,189,true);
+ }
+ // MIA Mover-inspired elevated people mover links the garage court to a rental-car/intermodal stop.
+ box(310,1.8,7,metal,-80,42,265,true);
+ box(310,.7,3,glass,-80,44,265,true);
+ for(let xx=-230;xx<=70;xx+=50)box(2,41,2,metal,xx,21,265,true);
+ box(28,9,12,white,95,45,265,true);
+ box(24,6,.8,glass,95,46,258.8,true);
+ box(30,1,14,roof,95,50,265,true);
+ // Landside terminal road and covered curbside drop-off loop.
+ box(310,.18,16,asphalt,-153,.1,194);
+ paint(290,.25,yellow,-153,194);
+ for(let xx=-285;xx<=-25;xx+=26){
+  box(1,7,1,metal,xx,3.5,180,true);
+  box(8,.3,1.2,warmLight,xx,7.2,180);
+ }
+ // Air-cargo apron and warehouse zone on the western edge of the airport.
+ box(130,.16,78,asphalt,365,.1,125);
+ box(116,16,56,white,365,8,125,true);
+ box(120,2,60,roof,365,17,125,true);
+ for(let xx=320;xx<=410;xx+=18)box(1,10,.7,glass,xx,8,96.8,true);
+ box(44,5,.8,blueLight,365,14,95,true);
  const geometry=new T.BoxGeometry(1,1,1),matrix=new T.Matrix4(),rotation=new T.Quaternion();
  for(const [material,items] of batches){const mesh=new T.InstancedMesh(geometry,material,items.length);for(let i=0;i<items.length;i++){const [w,h,d,x,y,z]=items[i];matrix.compose(new T.Vector3(x,y,z),rotation,new T.Vector3(w,h,d));mesh.setMatrixAt(i,matrix);}mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;mesh.receiveShadow=true;world.add(mesh);}
  const [signCanvas,signCtx]=cv(1024,160);signCtx.fillStyle='#102d40';signCtx.fillRect(0,0,1024,160);signCtx.strokeStyle='#d9b85c';signCtx.lineWidth=10;signCtx.strokeRect(8,8,1008,144);signCtx.fillStyle='#fff';signCtx.font='bold 58px Arial';signCtx.textAlign='center';signCtx.textBaseline='middle';signCtx.fillText('VICE CITY INTERNATIONAL AIRPORT',512,82);const signMat=new T.MeshStandardMaterial({map:mkTex(signCanvas),roughness:.75});box(146,4,1.2,signMat,-153,8.5,135,true);
