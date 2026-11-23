@@ -1861,8 +1861,8 @@ function buildAirport(){
  concrete.map=makeNoiseTex(256,205,18,[1,1,.98],6);
  const blueLight=new T.MeshBasicMaterial({color:0x668edb}),warmLight=new T.MeshBasicMaterial({color:0xffe2aa});
  const batches=new Map();
- const box=(w,h,d,m,x,y,z,solid=false)=>{w*=SCALE;d*=SCALE;x*=SCALE;z*=SCALE;if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,cx+x,ground+y,cz+z]);if(solid)addCol(cx+x-w/2,cz+z-d/2,cx+x+w/2,cz+z+d/2,ground+y+h/2);};
- const paint=(w,d,m,x,z)=>box(w,.018,d,m,x,.235,z);
+ const box=(w,h,d,m,x,y,z,solid=false)=>{w*=SCALE;d*=SCALE;x*=SCALE;z*=SCALE;const lift=m===asphalt?.22:0;if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,cx+x,ground+y+lift,cz+z]);if(solid)addCol(cx+x-w/2,cz+z-d/2,cx+x+w/2,cz+z+d/2,ground+y+lift+h/2);};
+ const paint=(w,d,m,x,z)=>box(w,.018,d,m,x,.455,z);
  box(560,.4,390,grass,0,-.21,0);
  box(500,.18,48,asphalt,0,.10,-45);
  for(const z of [-67,-23])paint(492,.35,white,0,z);
