@@ -1,0 +1,70 @@
+name: Fix aircraft unlock cancellation distance
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-aircraft-unlock-distance.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  repair:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [main, lucia-outfits]
+    concurrency:
+      group: lucia-u-neck-${{ matrix.target }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    env:
+      TARGET_BRANCH: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.target }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/aircraft-unlock-check" --no-package-lock --ignore-scripts acorn@8
+      - name: Inspect current code fix only mismatched distance and run behavioral regressions
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/aircraft-unlock-check/node_modules/acorn'),path='index.html',original=fs.readFileSync(path,'utf8'),status='status/aircraft-unlock-distance-check.json',report={passed:false,branch:process.env.TARGET_BRANCH,scope:'Current inline source inspection and isolated behavior tests. Live deployment, physical aircraft access, and in-browser gameplay are not verified.'};
+          function walk(n,f){f(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f);}else if(v&&typeof v.type==='string')walk(v,f);}}
+          try{
+           if(original.includes('// AIRCRAFT_UNLOCK_DISTANCE_V1')){assert(fs.existsSync(status)&&JSON.parse(fs.readFileSync(status,'utf8')).passed,'Existing marker lacks passing validation');report.passed=true;report.outcome='already installed';}
+           else{
+            const matches=[];for(const m of original.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].trim())continue;const ast=acorn.parse(m[1],{ecmaVersion:'latest'}),functions=[];walk(ast,n=>{if(n.type==='FunctionDeclaration'&&n.id)functions.push(n);});const nearest=functions.filter(n=>n.id.name==='nearestCar'),breaking=functions.filter(n=>m[1].slice(n.start,n.end).includes('Break-in cancelled'));if(nearest.length||breaking.length){assert(nearest.length===1&&breaking.length===1,'Vehicle interaction functions are ambiguous');matches.push({m,ast,near:nearest[0],br:breaking[0]});}}
+            assert(matches.length===1,'Could not uniquely locate current vehicle interaction script');const {m,near,br}=matches[0],code=m[1];assert(!code.includes('function vehicleUnlockDistance('),'Distance helper already exists');
+            function distanceNode(fn){const nodes=[];walk(fn.body,n=>{if(n.type==='VariableDeclarator'&&n.id.type==='Identifier'&&n.id.name==='d'&&n.init&&code.slice(n.init.start,n.init.end).includes('Math.hypot'))nodes.push(n.init);});assert(nodes.length===1,'Distance initializer changed in '+fn.id.name);return nodes[0];}
+            const nd=distanceNode(near),bd=distanceNode(br),oldNear=code.slice(near.start,near.end),oldBreak=code.slice(br.start,br.end),nearDistance=code.slice(nd.start,nd.end),breakDistance=code.slice(bd.start,bd.end);assert(nearDistance.includes('aircraft')&&nearDistance.includes('Math.max'),'Aircraft-aware selection was not found');assert(!breakDistance.includes('aircraft')&&!breakDistance.includes('vehicleUnlockDistance'),'Break-in distance no longer matches reported bug');const limits=[];walk(br.body,n=>{if(n.type==='BinaryExpression'&&n.operator==='>'&&n.left.type==='Identifier'&&n.left.name==='d'&&n.right.type==='Literal')limits.push(n.right.value);});assert(limits.length===1&&limits[0]===4.8,'Cancellation limit changed');assert(oldNear.includes('aiOnly'),'AI-only aircraft filtering missing');
+            const helper="// AIRCRAFT_UNLOCK_DISTANCE_V1\nfunction vehicleUnlockDistance(c){const distance=Math.hypot(c.x-pl.x,c.z-pl.z);return distance-(c.t.aircraft?Math.max(c.t.L,c.t.W)/2:0); }\n";let changed=code;for(const n of [nd,bd].sort((a,b)=>b.start-a.start))changed=changed.slice(0,n.start)+'vehicleUnlockDistance(c)'+changed.slice(n.end);changed=helper+changed;const candidateAst=acorn.parse(changed,{ecmaVersion:'latest'}),revised=[];walk(candidateAst,n=>{if(n.type==='FunctionDeclaration'&&n.id&&(n.id.name==='nearestCar'||n.id.name===br.id.name))revised.push(n);});const newNear=revised.find(n=>n.id.name==='nearestCar'),newBreak=revised.find(n=>n.id.name===br.id.name);assert(newNear&&newBreak);const fixedNear=changed.slice(newNear.start,newNear.end),fixedBreak=changed.slice(newBreak.start,newBreak.end);assert(oldNear.slice(0,nd.start-near.start)+'vehicleUnlockDistance(c)'+oldNear.slice(nd.end-near.start)===fixedNear,'Unexpected selection edit');assert(oldBreak.slice(0,bd.start-br.start)+'vehicleUnlockDistance(c)'+oldBreak.slice(bd.end-br.start)===fixedBreak,'Unexpected break-in edit');
+            function context(fixed){const events=[],box={Math,Number,console,G:{breakin:null,hudDirty:false,state:'play'},pl:{x:0,z:0,alive:true,car:null},cars:[],keys:{e:true,E:true,f:true,F:true},toast:(...a)=>events.push(['toast',...a]),startAlarm:c=>events.push(['alarm',c]),addWanted:(...a)=>events.push(['wanted',...a]),enterCar:c=>{events.push(['enter',c]);box.pl.car=c;}};vm.createContext(box);vm.runInContext((fixed?helper:'')+(fixed?fixedNear:oldNear)+'\n'+(fixed?fixedBreak:oldBreak),box);box.events=events;box.step=dt=>box[br.id.name](dt);return box;}
+            function car(aircraft=false){return {x:0,z:0,t:{aircraft,L:aircraft?14:4.5,W:aircraft?13:2},speed:0,dead:false,occ:null,lockRoll:0};}
+            function begin(box,c,extra={}){box.G.breakin=Object.assign({c,t:0,need:7,jack:false,alarm:false,rang:false},extra);box.pl.car=null;box.pl.alive=true;box.cars=[c];}
+            const tests=[];{const c=car(true),old=context(false),fixed=context(true);for(const b of [old,fixed]){b.pl.x=11.5;begin(b,c);assert(b.nearestCar()===c);b.step(.1);}assert(old.G.breakin===null,'Original mismatch did not reproduce');assert(fixed.G.breakin&&fixed.G.breakin.t===.1,'Plane unlock still cancels beside the aircraft');tests.push('Original selection-versus-continuation bug reproduced and corrected');}
+            for(const type of [{L:9.5,W:11.5},{L:14,W:13}]){const c=car(true);Object.assign(c.t,type);const r=Math.max(type.L,type.W)/2;for(const axis of ['x','z']){const b=context(true);b.pl[axis]=r+4.5;begin(b,c);assert(b.nearestCar()===c);b.step(.1);assert(b.G.breakin);b.pl[axis]=r+4.7;b.step(.1);assert(b.G.breakin,'Existing .2 distance margin lost');b.pl[axis]=r+4.9;b.step(.1);assert(b.G.breakin===null,'Walking away no longer cancels');}}tests.push('Prop plane and small jet start continue and cancel correctly on both horizontal axes');
+            for(const distance of [0,4.5,4.7,4.9]){const c=car(false),a=context(false),b=context(true);for(const box of [a,b]){box.pl.x=distance;begin(box,c);}assert(!!a.nearestCar()===!!b.nearestCar());a.step(.1);b.step(.1);assert(!!a.G.breakin===!!b.G.breakin);if(a.G.breakin)assert(a.G.breakin.t===b.G.breakin.t);}tests.push('Ordinary car selection and continuation thresholds unchanged');
+            {const b=context(true),c=car(true);c.t.aiOnly=true;b.cars=[c];assert(b.nearestCar()===null);tests.push('AI-only fighters remain excluded');}
+            for(const reason of ['deadAircraft','occupiedAircraft','deadPlayer','alreadyInVehicle']){const b=context(true),c=car(true);b.pl.x=8;begin(b,c);if(reason==='deadAircraft')c.dead=true;if(reason==='occupiedAircraft')c.occ='npc';if(reason==='deadPlayer')b.pl.alive=false;if(reason==='alreadyInVehicle')b.pl.car={};b.step(.1);assert(b.G.breakin===null,reason+' cancellation changed');}tests.push('Destroyed occupied and invalid-player cancellation rules preserved');
+            {const b=context(true),c=car(true);b.pl.x=8;begin(b,c,{alarm:true,alarmAt:.65});for(let i=0;i<6;i++){b.step(1);assert(b.pl.car===null,'Unlock timer was bypassed');}assert(b.events.filter(e=>e[0]==='alarm').length===1);assert(b.events.filter(e=>e[0]==='wanted').length===1);b.step(1);assert(b.pl.car===c&&b.G.breakin===null&&c.lockRoll===1);assert(b.events.filter(e=>e[0]==='enter').length===1);tests.push('Seven-second unlock completes once with one scheduled alarm and wanted event');}
+            {const a=context(false),b=context(true),ca=car(),cb=car();for(const [box,c]of [[a,ca],[b,cb]]){c.occ='npc';c.speed=5;begin(box,c,{jack:true,need:1.1});box.step(.1);assert(box.G.breakin===null);}tests.push('Moving-car carjack cancellation unchanged');}
+            const offset=m.index+m[0].indexOf(code),candidate=original.slice(0,offset)+changed+original.slice(offset+code.length);let scripts=0;for(const x of candidate.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(x[1].trim()){acorn.parse(x[1],{ecmaVersion:'latest'});scripts++;}assert(scripts>0);fs.writeFileSync(path,candidate);Object.assign(report,{passed:true,outcome:'aircraft-aware distance shared by selection and ongoing break-in checks',breakinFunction:br.id.name,originalSelectionDistance:nearDistance,originalBreakinDistance:breakDistance,continuationLimit:4.8,tests,inlineScriptsChecked:scripts,alarmTimerAndOtherBreakinLogicUnchanged:true,characterOutfitAndSkinCodeUnchanged:true});
+           }
+          }catch(error){fs.writeFileSync(path,original);Object.assign(report,{passed:false,error:String(error),stack:error.stack,baselinePreserved:true});}
+          fs.mkdirSync('status',{recursive:true});fs.writeFileSync(status,JSON.stringify(report,null,2)+'\n');
+          JS
+      - name: Publish only tested gameplay repair or diagnostic report
+        run: |
+          git fetch origin "$TARGET_BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/"$TARGET_BRANCH")" || { echo 'Branch changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/aircraft-unlock-distance-check.json
+          if node -e "process.exit(JSON.parse(require('fs').readFileSync('status/aircraft-unlock-distance-check.json','utf8')).passed?0:1)"; then git add -- index.html; fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Fix aircraft break-in cancellation by sharing aircraft-aware interaction distance or record validation error'
+            git push origin HEAD:"refs/heads/$TARGET_BRANCH"
+          fi
+          node -e "const r=JSON.parse(require('fs').readFileSync('status/aircraft-unlock-distance-check.json','utf8'));if(!r.passed){console.error(r.error);process.exit(1);}"
