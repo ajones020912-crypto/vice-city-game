@@ -1873,7 +1873,7 @@ function buildCityRivers(){
   for(let i=1;i<left.length;i++)sh.lineTo(left[i][0],left[i][1]);
   for(let i=right.length-1;i>=0;i--)sh.lineTo(right[i][0],right[i][1]);
   sh.closePath();
-  const g=new T.ShapeGeometry(sh,12);g.rotateX(-Math.PI/2);
+  const g=new T.ShapeGeometry(sh,12);g.rotateX(Math.PI/2);
   const mesh=new T.Mesh(g,water);mesh.position.y=.16;mesh.renderOrder=2;scene.add(mesh);
  };
  // Main north-south river through the central city, widening toward the southern waterfront.
