@@ -1,0 +1,88 @@
+name: Fix player pushed away from parked aircraft
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-parked-aircraft-player-push.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  repair:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [main, lucia-outfits]
+    concurrency:
+      group: lucia-u-neck-${{ matrix.target }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    env:
+      TARGET_BRANCH: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.target }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/aircraft-foot-check" --no-package-lock --ignore-scripts acorn@8
+      - name: Inspect actual pedestrian collision branch and validate a narrow bounded repair
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/aircraft-foot-check/node_modules/acorn'),file='index.html',original=fs.readFileSync(file,'utf8'),status='status/parked-aircraft-player-push-check.json',report={passed:false,branch:process.env.TARGET_BRANCH,scope:'Aircraft-shaped approximate pedestrian collision proxies and isolated collision/unlock tests. Exact visual mesh contact, browser movement, and live deployment remain unverified.'};
+          function walk(n,f){f(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f);}else if(v&&typeof v.type==='string')walk(v,f);}}
+          try{
+           assert(!original.includes('// AIRCRAFT_FOOT_COLLISION_V1'),'Repair already present; inspect its existing validation report');
+           const matches=[],diagnostics=[];
+           for(const m of original.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){const code=m[1];if(!code.trim())continue;const ast=acorn.parse(code,{ecmaVersion:'latest'});walk(ast,node=>{if(node.type!=='FunctionDeclaration'||!node.id)return;const loops=[];walk(node.body,n=>{if(n.type==='ForOfStatement'&&n.right.type==='Identifier'&&n.right.name==='cars')loops.push(n);});for(const loop of loops){const body=code.slice(loop.start,loop.end);if(!/\.W\b/.test(body))continue;const declaration=loop.left.type==='VariableDeclaration'&&loop.left.declarations[0];if(!declaration||declaration.id.type!=='Identifier')continue;const carName=declaration.id.name,ifs=[];walk(loop.body,n=>{if(n.type!=='IfStatement')return;let range=false;walk(n.test,t=>{if(t.type==='BinaryExpression'&&['<','<='].includes(t.operator)&&t.left.type==='Identifier'&&/^(d|dist|distance)$/.test(t.left.name))range=true;});if(!range)return;const writes=new Map();walk(n.consequent,t=>{if(t.type!=='AssignmentExpression'||t.left.type!=='MemberExpression'||t.left.computed||t.left.object.type!=='Identifier')return;const who=t.left.object.name,key=t.left.property.name;if(['x','z'].includes(key)){if(!writes.has(who))writes.set(who,new Set());writes.get(who).add(key);}});for(const [person,axes]of writes)if(axes.size===2&&(person==='pl'||node.params.some(p=>p.type==='Identifier'&&p.name===person)))ifs.push({n,person});});for(const item of ifs)if(!ifs.some(other=>other!==item&&other.n.start>item.n.start&&other.n.end<item.n.end))matches.push({m,code,ast,fn:node,loop,carName,...item});diagnostics.push({function:node.id.name,loop:body.slice(0,14000),matchingBranches:ifs.length});}});}
+           const unique=[...new Map(matches.map(x=>[x.m.index+':'+x.n.start,x])).values()];report.inspectedCollisionLoops=diagnostics;assert(unique.length===1,'Expected one unambiguous full-width player collision branch; no game edits made');const target=unique[0],{m,code,n,person,carName}=target;report.collisionFunction=target.fn.id.name;report.originalCollisionBranch=code.slice(n.start,n.end);
+           const helper=String.raw`// AIRCRAFT_FOOT_COLLISION_V1
+          function resolveParkedAircraftFoot(p,c){
+           if(!c||!c.t||!c.t.aircraft)return false;
+           if(!Number.isFinite(p.x+p.z+c.x+c.z))return false;
+           const py=Number.isFinite(p.y)?p.y:0,cy=Number.isFinite(c.y)?c.y:.88;
+           if(py+1.75<cy-1.2||py>cy+2.5)return true;
+           if(c.dead||c.airborne||Math.abs(c.speed||0)>1||Math.abs(c.as||0)>1||Math.hypot(c.vx||0,c.vz||0)>1)return false;
+           const h=c.h||0,sn=Math.sin(h),cs=Math.cos(h),dx=p.x-c.x,dz=p.z-c.z,startX=p.x,startZ=p.z,jet=c.tk==='smallJet',radius=.45,bodyRadius=jet?.85:.65,half=Math.max(.5,(Number(c.t.L)||9.5)/2-bodyRadius);
+           let lat=dx*cs-dz*sn,fw=dx*sn+dz*cs;
+           const close=Math.max(-half,Math.min(half,fw)),a=lat,b=fw-close,dist=Math.hypot(a,b),required=bodyRadius+radius;
+           if(dist<required){const nx=dist>1e-8?a/dist:1,nz=dist>1e-8?b/dist:0;lat+=nx*(required-dist);fw+=nz*(required-dist);}
+           const wingY=cy+(jet?-.09:1.10);
+           if(py+1.75>wingY-.12&&py<wingY+.12){const wx=Math.max(1,(Number(c.t.W)||11.5)/2),wz=.65,qx=Math.max(-wx,Math.min(wx,lat)),qz=Math.max(-wz,Math.min(wz,fw)),ex=lat-qx,ez=fw-qz,d=Math.hypot(ex,ez);
+            if(d>1e-8&&d<radius){lat+=ex/d*(radius-d);fw+=ez/d*(radius-d);}
+            else if(d<=1e-8){const px=wx-Math.abs(lat),pz=wz-Math.abs(fw);if(px<pz)lat+=(lat<0?-1:1)*(px+radius);else fw+=(fw<0?-1:1)*(pz+radius);}
+           }
+           let mx=c.x+lat*cs+fw*sn-startX,mz=c.z-lat*sn+fw*cs-startZ,length=Math.hypot(mx,mz);
+           if(length>.35){mx*=.35/length;mz*=.35/length;length=.35;}
+           if(length>1e-9){p.x=startX+mx;p.z=startZ+mz;if(Number.isFinite(p.vx)&&Number.isFinite(p.vz)){const nx=mx/length,nz=mz/length,into=p.vx*nx+p.vz*nz;if(into<0){p.vx-=into*nx;p.vz-=into*nz;}}}
+           return true;
+          }
+          `;
+           assert(!code.includes('function resolveParkedAircraftFoot('),'Helper name already exists');const oldTest=code.slice(n.test.start,n.test.end),newTest='!resolveParkedAircraftFoot('+person+','+carName+')&&('+oldTest+')';const revised=helper+code.slice(0,n.test.start)+newTest+code.slice(n.test.end);acorn.parse(revised,{ecmaVersion:'latest'});
+           const functions=[];walk(target.ast,x=>{if(x.type==='FunctionDeclaration'&&x.id&&['vehicleUnlockDistance','nearestCar','updateBreakin'].includes(x.id.name))functions.push(x);});assert(functions.length===3&&original.includes('// AIRCRAFT_UNLOCK_DISTANCE_V1'),'Verified unlock-distance repair required first');const unlockCode=functions.map(x=>code.slice(x.start,x.end)).join('\n');
+           const events=[],box={Math,Number,console,G:{breakin:null,hudDirty:false,state:'play'},pl:{x:0,y:0,z:0,vx:0,vz:0,alive:true,car:null},cars:[],keys:{e:true,f:true},toast:(...a)=>events.push(['toast',...a]),startAlarm:c=>events.push(['alarm',c]),addWanted:(...a)=>events.push(['wanted',...a]),enterCar:c=>{events.push(['enter',c]);box.pl.car=c;}};vm.createContext(box);vm.runInContext(helper+'\n'+unlockCode,box);
+           const makePlane=(jet=false,h=0)=>({tk:jet?'smallJet':'propPlane',x:0,z:0,y:.88,h,t:{aircraft:true,L:jet?14:9.5,W:jet?13:11.5},speed:0,vx:0,vz:0,as:0,airborne:false,dead:false,occ:null,lockRoll:0}),point=(lat,fw,c)=>({x:c.x+lat*Math.cos(c.h)+fw*Math.sin(c.h),z:c.z-lat*Math.sin(c.h)+fw*Math.cos(c.h),y:0,vx:0,vz:0}),tests=[];
+           for(const h of [0,Math.PI/2,-.7]){const c=makePlane(false,h),p=point(4,0,c),before=JSON.stringify(p);assert(box.resolveParkedAircraftFoot(p,c)===true&&JSON.stringify(p)===before,'Overhead prop-plane wing creates an invisible wide barrier');const cabin=point(1.3,2,c);assert(box.resolveParkedAircraftFoot(cabin,c)===true);assert(Math.hypot(cabin.x-point(1.3,2,c).x,cabin.z-point(1.3,2,c).z)<1e-8);const body=point(.9,2,c),old={...body};box.resolveParkedAircraftFoot(body,c);assert(Math.hypot(body.x-old.x,body.z-old.z)<=.350001&&Math.hypot(body.x-old.x,body.z-old.z)>.05);for(let i=0;i<12;i++)box.resolveParkedAircraftFoot(body,c);const dx=body.x-c.x,dz=body.z-c.z;assert(Math.abs(dx*Math.cos(h)-dz*Math.sin(h))>=1.09999,'Fuselage collision was disabled');}tests.push('Cabin approach and walking under high prop wings preserved at multiple headings; fuselage remains solid');
+           {const c=makePlane(true),p=point(4,0,c);let moved=0;for(let i=0;i<8;i++){const x=p.x,z=p.z;box.resolveParkedAircraftFoot(p,c);const step=Math.hypot(p.x-x,p.z-z);assert(step<=.350001);moved+=step;}assert(moved>.5&&Math.abs(p.z)>=1.099,'Low jet wing proxy missing');tests.push('Low jet wing uses a thin contact proxy with bounded corrections rather than a large circular push');}
+           {const c=makePlane(),p=point(0,0,c);for(let i=0;i<12;i++){const x=p.x,z=p.z;box.resolveParkedAircraftFoot(p,c);assert(Number.isFinite(p.x+p.z)&&Math.hypot(p.x-x,p.z-z)<=.350001);}tests.push('Center overlap resolves without NaN or multi-meter single-step displacement');}
+           {const c=makePlane(),p=point(0,0,c);c.y=30;c.airborne=true;const saved=JSON.stringify(p);assert(box.resolveParkedAircraftFoot(p,c)===true&&JSON.stringify(p)===saved);tests.push('Aircraft overhead do not push a ground-level pedestrian sideways');}
+           for(const kind of ['road','moving','lowFlying','wreck']){const c=makePlane(),p=point(.5,0,c),saved=JSON.stringify(p);if(kind==='road')c.t.aircraft=false;if(kind==='moving')c.speed=10;if(kind==='lowFlying')c.airborne=true;if(kind==='wreck')c.dead=true;assert(box.resolveParkedAircraftFoot(p,c)===false&&JSON.stringify(p)===saved,'Native collision delegation changed for '+kind);}tests.push('Ordinary vehicles moving aircraft low-flying aircraft and wrecks delegate to the original collision branch');
+           {const c=makePlane(),p=box.pl;Object.assign(p,point(2,2,c),{alive:true,car:null});box.cars=[c];box.G.breakin={c,t:0,need:7,jack:false,alarm:true,alarmAt:.65,rang:false};assert(box.nearestCar()===c);for(let frame=0;frame<430&&!p.car;frame++){p.x-=.005;box.resolveParkedAircraftFoot(p,c);assert(box.G.breakin,'Collision canceled a valid plane unlock');box.updateBreakin(1/60);}assert(p.car===c&&box.G.breakin===null);assert(events.filter(e=>e[0]==='enter').length===1&&events.filter(e=>e[0]==='alarm').length===1);tests.push('Approaching the fuselage during a seven-second unlock still completes entry once with its alarm');}
+           const offset=m.index+m[0].indexOf(code),candidate=original.slice(0,offset)+revised+original.slice(offset+code.length);let checked=0;for(const x of candidate.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(x[1].trim()){acorn.parse(x[1],{ecmaVersion:'latest'});checked++;}assert(checked>0);for(const f of functions)assert(candidate.includes(code.slice(f.start,f.end)),'Unlock function was altered');fs.writeFileSync(file,candidate);Object.assign(report,{passed:true,outcome:'Parked aircraft handled by bounded oriented fuselage and height-aware wing proxies',tests,inlineScriptsChecked:checked,maximumCorrectionPerAircraft:.35,nativeCollisionBodyAndConditionPreserved:true,unlockFunctionsUnchanged:true,flightPhysicsCharacterAndOutfitCodeUnchanged:true});
+          }catch(error){fs.writeFileSync(file,original);Object.assign(report,{passed:false,error:String(error),stack:error.stack,baselinePreserved:true});}
+          fs.mkdirSync('status',{recursive:true});fs.writeFileSync(status,JSON.stringify(report,null,2)+'\n');
+          JS
+      - name: Publish only tested player-collision repair or diagnostics
+        run: |
+          git fetch origin "$TARGET_BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/"$TARGET_BRANCH")" || { echo 'Branch changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/parked-aircraft-player-push-check.json
+          if node -e "process.exit(JSON.parse(require('fs').readFileSync('status/parked-aircraft-player-push-check.json','utf8')).passed?0:1)"; then git add -- index.html; fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Prevent broad parked aircraft collisions from pushing pedestrians away while preserving unlocking or record error'
+            git push origin HEAD:"refs/heads/$TARGET_BRANCH"
+          fi
+          node -e "const r=JSON.parse(require('fs').readFileSync('status/parked-aircraft-player-push-check.json','utf8'));if(!r.passed){console.error(r.error);process.exit(1);}"
