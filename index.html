@@ -87,7 +87,19 @@ canvas{display:block}
 #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .45s}
 #big{position:fixed;inset:0;display:none;place-items:center;pointer-events:none;font-size:64px;font-weight:bold;letter-spacing:6px;color:#ff3b4e;text-shadow:0 0 20px #000,0 4px 0 #000;background:#0006}
 #overlay,#pause,#shop,#mapfull{position:fixed;inset:0;background:#071426cc;display:grid;place-items:center}
-#pause,#shop,#mapfull{display:none}
+#pause{display:none;z-index:80;background:transparent;place-items:stretch;pointer-events:auto;overflow:hidden}
+#pause:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#02071166,#020711bb);backdrop-filter:blur(2px);animation:pauseShade .22s ease-out}
+#pause .pause-sidebar{position:absolute;inset:0 0 0 auto;width:min(390px,88vw);height:100%;box-sizing:border-box;padding:28px 24px 24px;background:linear-gradient(155deg,#122a43f7,#071426fa 72%);border-left:1px solid #ff83bd88;box-shadow:-18px 0 55px #0009;transform:translateX(0);animation:pauseSlide .28s cubic-bezier(.2,.8,.2,1);overflow-y:auto;overscroll-behavior:contain}
+#pause .card{max-width:none;margin:0;padding:0;background:transparent;border:0;border-radius:0;box-shadow:none;text-align:left}
+#pause .card h2{font:900 32px Impact,'Arial Black',sans-serif;letter-spacing:3px;color:#ff83bd;text-shadow:0 0 18px #ff3b9a55;margin:4px 0 26px!important;padding-bottom:15px;border-bottom:1px solid #ffffff24}
+#pause .card button{display:block;width:100%;min-height:46px;box-sizing:border-box;margin:9px 0;padding:12px 16px;text-align:left;letter-spacing:.5px}
+#pause .card br{display:none}
+#pause .card p{margin-top:22px;padding-top:15px;border-top:1px solid #ffffff20;line-height:1.6}
+#pause .card small{color:#a9c3d8}
+@keyframes pauseSlide{from{transform:translateX(105%)}to{transform:translateX(0)}}
+@keyframes pauseShade{from{opacity:0}to{opacity:1}}
+@media(max-width:520px){#pause .pause-sidebar{width:min(340px,92vw);padding:22px 18px}}
+#shop,#mapfull{display:none}
 #mapfull{background:#041020ee;cursor:grab;pointer-events:auto}
 #mapfull.dragging{cursor:grabbing}
 #mapfull canvas{border-radius:12px;box-shadow:0 0 40px #000a;max-width:92vw;max-height:82vh}
@@ -318,7 +330,7 @@ small{color:#b9cce0}
 <div id="toast"></div><div id="banner"><div id="bnT"></div><div id="bnS"></div></div><div id="radioName"></div><div id="prompt"></div><div id="cross"></div><div id="fade"></div><div id="big"><div id="bigt">WASTED</div></div>
 <div id="mapfull"><canvas id="mapc" width="900" height="900"></canvas><div id="legend">Drag to pan · Scroll to zoom · M to close · ◆ Mission<br>🍔 Food · 👕 Clothes · 🔫 Guns · 🏠 Safehouse · ⛽ Fuel · 🔧 Garage · 🚘 Dealer · 🏥 Hospital · 🚓 Police</div></div>
 <div id="shop"><div class="card" style="min-width:340px"><h2 id="shoptitle" style="margin:0 0 6px"></h2><div id="shopcash" style="color:#7fff9a;margin-bottom:6px"></div><div id="shopitems"></div><button class="alt" id="shopclose">Leave</button></div></div>
-<div id="pause"><div class="card"><h2 style="margin-top:0">PAUSED</h2><button id="pResume">Resume</button><br><button class="alt" id="pSave">Save game</button><button class="alt" id="pLoad">Load game</button><br><button class="alt" id="pQual">Quality: High</button><button class="alt" id="pNew">New game</button><p><small>Autosaves safely on foot every 30s outside jobs and missions. Saved story missions restart.</small></p></div></div>
+<div id="pause"><aside class="pause-sidebar" role="dialog" aria-modal="true" aria-label="Pause menu"><div class="card"><h2>PAUSED</h2><button id="pResume">Resume game</button><button class="alt" id="pSave">Save game</button><button class="alt" id="pLoad">Load game</button><button class="alt" id="pQual">Quality: High</button><button class="alt" id="pNew">New game</button><p><small>Autosaves safely on foot every 30s outside jobs and missions. Saved story missions restart.</small></p></div></aside></div>
 <div id="overlay"><div class="card home-card"><div class="home-logo-wrap"><object type="image/svg+xml" data="/assets/vc3d-logo.svg" class="home-logo-obj" width="1200" height="640" aria-label="Vice City 3D"><img src="/assets/vc3d-logo.svg" alt="Vice City 3D" width="1200" height="640" draggable="false"></object><div class="home-logo-fade"></div></div><div class="home-kicker">Welcome to the coast</div><h1 class="home-title">VICE CITY <span>3D</span></h1><p class="home-sub">A living neon coastal city.</p><div class="home-actions"><button id="start" class="home-btn">SINGLEPLAYER <small>Play your own save</small></button><button id="multiplayerOpen" class="home-btn alt multiplayer-soon" type="button" disabled aria-label="Multiplayer — Coming Soon">MULTIPLAYER <small>Online play is in development</small></button><button id="cont" class="home-btn continue-btn" style="display:none;grid-column:1 / -1;width:100%;height:38px;min-height:38px;padding:8px 12px;box-sizing:border-box;display:none;align-self:stretch;text-align:center;border-radius:8px;font-size:13px;line-height:20px">CONTINUE SAVED GAME</button></div><div id="loadmsg" class="home-status"><small>Generating Vice City…</small></div><div class="home-foot">WASD to move · Mouse to look · Desktop Chrome recommended</div></div></div>
 <div id="mpLobby" class="mp-screen" style="display:none"><div class="mp-card"><button id="mpBack" class="mp-back">← BACK</button><div class="home-kicker">ONLINE SESSION</div><h2>PLAY ONLINE</h2><label for="mpName">PLAYER NAME</label><input id="mpName" maxlength="16" value="Player" autocomplete="nickname"><div class="mp-actions"><button id="mpHost">JOIN WORLD</button></div><div id="mpOnline" class="mp-room" style="display:block">Players online: …</div><div id="mpStatus" class="mp-status">Everyone joins the same shared city. No codes needed.</div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -5009,7 +5021,7 @@ function updateHUD(dt){hudT-=dt;
   if(pl.car&&pl.car.fuel!=null&&!pl.car.t.boat){$('#fuelbar').style.display='block';$('#fuelb').style.width=Math.max(0,pl.car.fuel)+'%'}else $('#fuelbar').style.display='none'}
  if(pl.car)updateSpeedo(pl.car)}
 // ================= INPUT HANDLING =================
-function pauseGame(on){if(G.state==='play'&&on){G.state='paused';mouseDown=false;for(const k in keys)keys[k]=false;$('#pause').style.display='grid';$('#pQual').textContent='Quality: '+['Low','Medium','High','Ultra'][G.quality];if(mouseLocked)document.exitPointerLock?.()}else if(G.state==='paused'&&!on){G.state='play';$('#pause').style.display='none';requestGameMouseLock()}refreshMousePrompt()}
+function pauseGame(on){if(G.state==='play'&&on){G.state='paused';mouseDown=false;for(const k in keys)keys[k]=false;$('#pause').style.display='block';$('#pQual').textContent='Quality: '+['Low','Medium','High','Ultra'][G.quality];if(mouseLocked)document.exitPointerLock?.()}else if(G.state==='paused'&&!on){G.state='play';$('#pause').style.display='none';requestGameMouseLock()}refreshMousePrompt()}
 
 // ULTRA_DYNRES_V1: Ultra drops render resolution when the GPU can't hold the frame cap, so the camera stays responsive
 const ultraRes={max:1,cur:1,avg:33,t:0};
