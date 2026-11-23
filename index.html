@@ -349,7 +349,7 @@ const G={quality:2}; // global game state container (also exposed for debugging)
 window.__vc=G;
 
 // ---------- renderer / scene ----------
-const WS=8000,TS=12,TN=WS*2/TS,WL=-.35;
+const WS=8000,TS=16,TN=WS*2/TS,WL=-.35; // integer 1000x1000 terrain grid; prevents partial edge tiles and NaN vertices
 const scene=new T.Scene();
 const camera=new T.PerspectiveCamera(70,innerWidth/innerHeight,.25,2600);
 const renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
