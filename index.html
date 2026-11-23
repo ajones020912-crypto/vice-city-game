@@ -625,7 +625,7 @@ const flLerp=(pts,t)=>{if(t<=pts[0][0])return pts[0][1];for(let i=1;i<pts.length
 // BIG_MAP_V1: same cities, ~2.5x the land. West coast ~x-3600, east ~x+3500, the peninsula runs south to a tip near
 // z 5000, the Port Calusa bay is an inlet that opens to the Gulf through Calusa Pass, and the keys curl off the new tip.
 // MIAMI_LAYOUT_V1 (world axes: north=-x, south=+x, east=-z, west=+z; the map is drawn rotated to match).
-// Neon Beach sits on the Atlantic (east) coast like Miami; the Gulf coast is far to the west beyond the glades,
+// Vice City sits on the Atlantic (east) coast like Miami; the Gulf coast is far to the west beyond the glades,
 // the peninsula ends in a broad south coast below the farm country, and the keys curl away south-west.
 const flGulf=x=>flLerp([[-5500,5300],[-3000,5150],[-1000,4950],[500,4850],[1800,4600],[2700,4250],[3300,3800]],x);
 const flSouthC=z=>flLerp([[-400,3600],[1000,3590],[2000,3540],[3000,3440],[3600,3280],[4300,2900]],z);
@@ -1577,7 +1577,7 @@ function buildBaseMap(){
   if(r.o==='h'){x.moveTo((r.a+WS)/MAPPX,(r.c+WS)/MAPPX);x.lineTo((r.b+WS)/MAPPX,(r.c+WS)/MAPPX)}else{x.moveTo((r.c+WS)/MAPPX,(r.a+WS)/MAPPX);x.lineTo((r.c+WS)/MAPPX,(r.b+WS)/MAPPX)}x.stroke()}
  baseMap=c;
 }
-const REGIONS=[['NEON BEACH',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['SUNRISE FARMS',1600,600,3600,3150,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
+const REGIONS=[['VICE CITY',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['SUNRISE FARMS',1600,600,3600,3150,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
 function zoneName(x,z){for(const r of REGIONS)if(x>r[1]&&x<r[3]&&z>r[2]&&z<r[4])return r[0];if(z<shoreZ(x))return'PALMERA GULF';return'PALMERA COUNTRYSIDE'}
 
 function clearStructureFootprint(x0,z0,x1,z1,margin=1.2){
@@ -2410,7 +2410,7 @@ function makeOriginalHumanBeforeSimple(o){
 function randomHumanOpts(x=pl.x,z=pl.z){
  const district=zoneName(x,z);
  const palettes={
-  'NEON BEACH':{shirts:[0xff6b8a,0x20b6a4,0xf0c44d,0xf2f2f2,0x2e9cda,0xff8a3d],pants:[0xd9d2c3,0x8a7a62,0x26344f,0x3b3b44],role:'beachgoer'},
+  'VICE CITY':{shirts:[0xff6b8a,0x20b6a4,0xf0c44d,0xf2f2f2,0x2e9cda,0xff8a3d],pants:[0xd9d2c3,0x8a7a62,0x26344f,0x3b3b44],role:'beachgoer'},
   'KESTREL KEYS':{shirts:[0xf2f2f2,0x20b6a4,0x2e9cda,0xff8a3d,0xf0c44d],pants:[0xd9d2c3,0x8a7a62,0x26344f],role:'island local'},
   'PORT CALUSA':{shirts:[0x202936,0x6a2fb3,0xe94e68,0x2e9cda,0x20b6a4,0x3b4654],pants:[0x20242c,0x26344f,0x3b3b44,0x5a3b3b],role:'city local'},
   'SOUTH HIGHWAY':{shirts:[0x26344f,0xf2f2f2,0x52677c,0x8b9aa6,0x2a2f3a],pants:[0x20242c,0x3b3b44,0x26344f],role:'commuter'},
@@ -3838,7 +3838,7 @@ const MISSIONS=[
  {id:'m4',title:'Keys Run',giver:[-100,-340.4],reward:2000,rep:20,time:115,steps:()=>[{text:'Race to Kestrel Keys! Checkpoint 1/5',pos:[200,-330],r:7,car:true},{text:'Checkpoint 2/5',pos:[380,-330],r:8,car:true},{text:'Checkpoint 3/5 — the causeway',pos:[380,-600],r:8,car:true},{text:'Checkpoint 4/5',pos:[380,-820],r:8,car:true},{text:'Final checkpoint at the lighthouse!',pos:[960,-820],r:8,car:true}]},
  {id:'m5',title:'Gator Bait',giver:[850,40],reward:1800,rep:18,steps:()=>[{text:'Enter Grassrun Bayou. Stay off the main roads.',pos:[720,80],r:16},{text:'Survive the bayou — alligators are active. Reach the stilt shack.',pos:[1010,40],r:10}]},
  {id:'m6',title:'Heat Run',giver:[30,30],reward:2200,rep:22,steps:()=>[{text:'Raise at least 2 wanted stars, then lose the cops without dying.',type:'heatrun'}]},
- {id:'m7',title:"Smuggler's Run",req:20,giver:[-660,shoreZ(-660)+14],reward:2500,rep:15,steps:()=>{const w=findWater(150,-700)||[150,-700];return[{text:'Grab the speedboat waiting at the marina.',type:'inboat',tk:'speedboat',near:[-660,shoreZ(-660)-6]},{text:'Collect the floating package off the Keys.',pos:w,r:10,boat:true,onDone:()=>{addCrime(8);toast('📡 Coast guard radar picked you up!')}},{text:'Bring it to the Neon Beach pier.',pos:[-108,-420],r:10,boat:true}]}},
+ {id:'m7',title:"Smuggler's Run",req:20,giver:[-660,shoreZ(-660)+14],reward:2500,rep:15,steps:()=>{const w=findWater(150,-700)||[150,-700];return[{text:'Grab the speedboat waiting at the marina.',type:'inboat',tk:'speedboat',near:[-660,shoreZ(-660)-6]},{text:'Collect the floating package off the Keys.',pos:w,r:10,boat:true,onDone:()=>{addCrime(8);toast('📡 Coast guard radar picked you up!')}},{text:'Bring it to the Vice City pier.',pos:[-108,-420],r:10,boat:true}]}},
  {id:'m8',title:'Turf War',req:50,giver:[-830.6,525],reward:2800,rep:18,steps:()=>[{text:'Drive into Harbor Kings turf in Port Calusa.',pos:[-805,770],r:22},{text:'Take out the Harbor Kings',type:'gangclear',n:6}]},
  {id:'m9',title:'The Big Score',req:100,giver:[-19.6,120],reward:4000,rep:25,rel:10,steps:()=>[{text:'Get a gun, then rob any Burger Shack or Pastel Threads register.',type:'rob'},{text:'Lose the heat.',type:'heatrun'}]}
 ];
@@ -3987,7 +3987,7 @@ const MapView={zoom:1,cx:0,cz:0,drag:false,lx:0,ly:0,dirty:true};
 function focusMapOnPlayer(){MapView.cx=pl.x;MapView.cz=pl.z;MapView.zoom=1.2;MapView.dirty=true}
 function drawMap(){
  const S=900,k=(S/(WS*2))*MapView.zoom;
- // MAP_ROTATED_V1: north is world -x, east is world -z (Neon Beach faces the Atlantic like Miami Beach)
+ // MAP_ROTATED_V1: north is world -x, east is world -z (Vice City faces the Atlantic like Miami Beach)
  const worldToScreen=(wx,wz)=>[S/2-(wz-MapView.cz)*k,S/2+(wx-MapView.cx)*k];
  mapx.fillStyle='#0a2030';mapx.fillRect(0,0,S,S);
  const half=WS/MapView.zoom;
