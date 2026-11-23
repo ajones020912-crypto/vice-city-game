@@ -2134,105 +2134,98 @@ function buildAirport(){
  const batches=new Map();
  const box=(w,h,d,m,x,y,z,solid=false,angle=0)=>{w*=SCALE;d*=SCALE;x*=SCALE;z*=SCALE;const lift=m===asphalt?.22:0;if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,cx+x,ground+y+lift,cz+z,angle]);if(solid)addCol(cx+x-w/2,cz+z-d/2,cx+x+w/2,cz+z+d/2,ground+y+lift+h/2);};
  const paint=(w,d,m,x,z)=>box(w,.018,d,m,x,.455,z);
- // Entire VCIA airfield apron/ground is asphalt, not grass.
- box(720,.4,570,asphalt,60,-.21,0);
+ // MIA-style airfield footprint: broad northern runway, diagonal crossing runway,
+ // irregular southern apron, and terminal concentrated on the east side.
+ box(620,.4,360,asphalt,5,-.21,-35);
+ box(460,.4,250,asphalt,150,-.21,175);
+ box(260,.4,170,asphalt,-190,-.21,150);
+ // Northern runway and parallel taxiway.
  box(760,.18,56,asphalt,0,.10,-220);
  for(const z of [-249,-191])paint(748,.35,white,0,z);
  for(let x=-330;x<=330;x+=30)paint(13,.8,white,x,-220);
- for(const side of [-1,1]){
-  paint(1.2,44,white,side*243,-45);
-  for(const z of [-61,-56,-51,-39,-34,-29])paint(18,2,white,side*229,z);
-  for(const z of [-58,-32])paint(25,4,white,side*170,z);
+ // Second runway crosses the airfield diagonally, southwest to northeast.
+ box(620,.22,58,asphalt,-15,.12,178,true,.96);
+ box(604,.08,5,white,-15,.30,178,false,.96);
+ box(604,.08,5,white,-15,.30,178,false,.96);
+ for(let t=-270;t<=270;t+=30){
+  const px=-15+Math.sin(.96)*t,pz=178+Math.cos(.96)*t;
+  box(12,.08,1.1,white,px,.32,pz,false,.96);
  }
+ // Taxiways and broad connecting pavement link both runways to the terminal apron.
  box(690,.16,24,asphalt,0,.10,-150);
- for(const x of [-330,330]){box(24,.16,150,asphalt,x,.10,-160);paint(.35,150,yellow,x,-160);}
+ for(const x of[-330,330]){box(24,.16,150,asphalt,x,.10,-160);paint(.35,150,yellow,x,-160);}
  paint(680,.35,yellow,0,-150);
- box(190,.16,84,asphalt,-125,.10,94);
+ box(210,.16,100,asphalt,110,.10,38);
+ box(250,.16,110,asphalt,205,.10,125);
+ box(180,.16,90,asphalt,-125,.10,94);
  box(24,.16,65,asphalt,-125,.10,63);paint(.35,65,yellow,-125,63);
  box(120,.16,151,asphalt,200,.10,112);
  box(44,.16,55,asphalt,90,.10,62);
- for(const x of [-190,-135,-80]){paint(.35,47,yellow,x,91);paint(20,.35,yellow,x,112);}
- for(let x=-240;x<=240;x+=24)for(const z of [-71,-19])box(.35,.18,.35,warmLight,x,.34,z);
- for(let x=-210;x<=210;x+=30)for(const z of [21,49])box(.3,.18,.3,blueLight,x,.32,z);
-
- // VCIA MIA-STYLE REBUILD: one connected horseshoe terminal with six attached concourses.
- // The open side of the U faces the runway apron; rear hall and two wings are physically joined.
- box(270,28,48,white,0,14,190,true);
- box(250,18,1,glass,0,15,165,true);
- box(280,2,56,roof,0,29,190,true);
- box(46,25,128,white,-132,12,110,true);
- box(46,25,128,white,132,12,110,true);
- box(52,2,134,roof,-132,25,110,true);
- box(52,2,134,roof,132,25,110,true);
- box(58,25,48,white,-103,12,163,true);
- box(58,25,48,white,103,12,163,true);
- box(62,2,52,roof,-103,25,163,true);
- box(62,2,52,roof,103,25,163,true);
- box(210,7,2,glass,0,21,165,true);
- box(220,2,12,roof,0,31,190,true);
- // Color-coded terminal zones: North blue, Central yellow, South red.
- box(48,4,2,blueLight,143,29,105,true);
- box(82,4,2,yellow,0,30,211,true);
- box(48,4,2,blueLight,-143,29,105,true);
- // North Terminal D: long concourse with overhead Skytrain guideway.
- box(28,17,255,white,190,8.5,-43,true,2.82);
- box(32,2,263,roof,190,18,-43,true,2.82);
- box(.8,9,240,glass,177,10,-39,true,2.82);
- box(.8,9,240,glass,203,10,-47,true,2.82);
- box(7,1.8,270,metal,190,30,-43,true,2.82);
- // Central Terminal E, F and G.
- box(28,17,198,white,112,8.5,-27,true,2.94);
- box(32,2,206,roof,112,18,-27,true,2.94);
- box(.8,9,184,glass,98,10,-25,true,2.94);
- box(.8,9,184,glass,126,10,-29,true,2.94);
- box(28,17,180,white,38,8.5,-25,true,3.07);
- box(32,2,188,roof,38,18,-25,true,3.07);
- box(.8,9,166,glass,24,10,-24,true,3.07);
- box(.8,9,166,glass,52,10,-26,true,3.07);
- box(28,17,180,white,-40,8.5,-25,true,3.21);
- box(32,2,188,roof,-40,18,-25,true,3.21);
- box(.8,9,166,glass,-54,10,-26,true,3.21);
- box(.8,9,166,glass,-26,10,-24,true,3.21);
- // South Terminal H and J.
- box(28,17,198,white,-115,8.5,-27,true,3.34);
- box(32,2,206,roof,-115,18,-27,true,3.34);
- box(.8,9,184,glass,-128,10,-29,true,3.34);
- box(.8,9,184,glass,-102,10,-25,true,3.34);
- box(28,17,225,white,-194,8.5,-25,true,3.46);
- box(32,2,233,roof,-194,18,-25,true,3.46);
- box(.8,9,211,glass,-207,10,-21,true,3.46);
- box(.8,9,211,glass,-181,10,-29,true,3.46);
- // Enclosed passenger boarding bridges along both sides of the concourses.
- box(18,6,10,white,207,8,-28,true);box(16,4,8,glass,207,9,-28,true);box(20,.8,12,roof,207,11.5,-28,true);
- box(18,6,10,white,149,8,-76,true);box(16,4,8,glass,149,9,-76,true);box(20,.8,12,roof,149,11.5,-76,true);
- box(18,6,10,white,136,8,-28,true);box(16,4,8,glass,136,9,-28,true);box(20,.8,12,roof,136,11.5,-28,true);
- box(18,6,10,white,80,8,-76,true);box(16,4,8,glass,80,9,-76,true);box(20,.8,12,roof,80,11.5,-76,true);
- box(18,6,10,white,66,8,-28,true);box(16,4,8,glass,66,9,-28,true);box(20,.8,12,roof,66,11.5,-28,true);
- box(18,6,10,white,-66,8,-28,true);box(16,4,8,glass,-66,9,-28,true);box(20,.8,12,roof,-66,11.5,-28,true);
- box(18,6,10,white,-136,8,-28,true);box(16,4,8,glass,-136,9,-28,true);box(20,.8,12,roof,-136,11.5,-28,true);
- box(18,6,10,white,-80,8,-76,true);box(16,4,8,glass,-80,9,-76,true);box(20,.8,12,roof,-80,11.5,-76,true);
- box(18,6,10,white,-207,8,-28,true);box(16,4,8,glass,-207,9,-28,true);box(20,.8,12,roof,-207,11.5,-28,true);
- box(18,6,10,white,-149,8,-76,true);box(16,4,8,glass,-149,9,-76,true);box(20,.8,12,roof,-149,11.5,-76,true);
- // Separate E Satellite terminal and enclosed connector.
- box(50,14,74,white,70,7,-185,true);
- box(54,2,78,roof,70,15,-185,true);
- box(8,5,72,glass,61,10,-139,true);
- // Parking garages and elevated MIA Mover station on the landside.
- box(72,35,62,concrete,-96,18,294,true);
- box(70,2,60,roof,-96,36,294,true);
- box(72,35,62,concrete,96,18,294,true);
- box(70,2,60,roof,96,36,294,true);
- box(230,1.8,7,metal,0,44,365,true);
- box(230,.7,3,glass,0,46,365,true);
- box(32,10,14,white,132,47,365,true);
- box(28,6,.8,glass,132,48,357,true);
+ for(const x of[-190,-135,-80]){paint(.35,47,yellow,x,91);paint(20,.35,yellow,x,112);}
+ for(let x=-240;x<=240;x+=24)for(const z of[-71,-19])box(.35,.18,.35,warmLight,x,.34,z);
+ for(let x=-210;x<=210;x+=30)for(const z of[21,49])box(.3,.18,.3,blueLight,x,.32,z);
+ // Main terminal sits on the eastern edge of the apron, like the reference map.
+ box(154,27,66,white,222,14,72,true);
+ box(144,18,1,glass,222,15,38,true);
+ box(164,2,72,roof,222,29,72,true);
+ box(2,16,56,glass,145,13,72,true);
+ box(2,16,56,glass,299,13,72,true);
+ box(124,2,8,roof,222,31,34,true);
+ // Curved terminal-side concourse junction and central gate hall.
+ box(62,22,58,white,145,11,72,true);
+ box(68,2,64,roof,145,23,72,true);
+ box(54,14,44,glass,145,12,72,true);
+ // Six long, parallel concourses extend west from the central terminal like the map.
+ const concourses=[
+  {id:'D',x:105,z:-25,len:245},
+  {id:'E',x:105,z:18,len:205},
+  {id:'F',x:105,z:60,len:190},
+  {id:'G',x:105,z:102,len:190},
+  {id:'H',x:105,z:144,len:205},
+  {id:'J',x:105,z:187,len:225}
+ ];
+ for(const q of concourses){
+  const centerX=q.x-q.len/2;
+  box(q.len,17,27,white,centerX,8.5,q.z,true,-Math.PI/2);
+  box(q.len+8,2,31,roof,centerX,18,q.z,true,-Math.PI/2);
+  box(q.len-14,9,.8,glass,centerX,10,q.z-13.2,true,-Math.PI/2);
+  box(q.len-14,9,.8,glass,centerX,10,q.z+13.2,true,-Math.PI/2);
+  // Gate pods and jet-bridge connections on both sides of each finger.
+  for(let x=q.x-32;x>q.x-q.len+20;x-=42){
+   for(const side of[-1,1]){
+    const gx=x,gz=q.z+side*23;
+    box(10,6,17,white,gx,8,gz,true,-Math.PI/2);
+    box(8,4,14,glass,gx,9,gz,true,-Math.PI/2);
+    box(12,.8,19,roof,gx,11.5,gz,true,-Math.PI/2);
+   }
+  }
+  // Concourse letter marker.
+  const data=cv(192,128),canvas=data[0],ctx=data[1];
+  ctx.fillStyle='#102d40';ctx.fillRect(0,0,192,128);
+  ctx.fillStyle='#fff';ctx.font='bold 90px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(q.id,96,66);
+  const letterMat=new T.MeshBasicMaterial({map:mkTex(canvas)});
+  box(16,9,1,letterMat,q.x-7,23,q.z,true);
+ }
+ // Elevated people-mover corridor runs along the terminal frontage.
+ box(210,1.8,7,metal,218,42,72,true);
+ box(210,.7,3,glass,218,44,72,true);
+ for(let x=125;x<=310;x+=37)box(2,34,2,metal,x,20,72,true);
+ // E satellite and enclosed connector north of the main terminal.
+ box(66,14,74,white,245,7,-92,true);
+ box(70,2,78,roof,245,15,-92,true);
+ box(8,5,88,glass,205,10,-36,true);
+ // Parking garages at the landside/eastern entrance.
+ box(72,35,62,concrete,335,18,130,true);
+ box(70,2,60,roof,335,36,130,true);
+ box(72,35,62,concrete,335,18,220,true);
+ box(70,2,60,roof,335,36,220,true);
  // Separate western cargo apron and warehouse.
  box(150,.16,92,asphalt,-390,.1,105);
  box(132,17,70,white,-390,8.5,105,true);
  box(138,2,74,roof,-390,18,105,true);
- // Covered departures curb and airport sign.
- box(340,.16,16,asphalt,0,.1,238);
- paint(320,.25,yellow,0,238);
+ // Covered departures curb.
+ box(220,.16,16,asphalt,245,.1,265);
+ paint(210,.25,yellow,245,265);
  const geometry=new T.BoxGeometry(1,1,1),matrix=new T.Matrix4(),rotation=new T.Quaternion();
  for(const [material,items] of batches){const mesh=new T.InstancedMesh(geometry,material,items.length);for(let i=0;i<items.length;i++){const item=items[i];const w=item[0],h=item[1],d=item[2],x=item[3],y=item[4],z=item[5],angle=item[6]||0;rotation.setFromAxisAngle(new T.Vector3(0,1,0),angle);matrix.compose(new T.Vector3(x,y,z),rotation,new T.Vector3(w,h,d));mesh.setMatrixAt(i,matrix);}mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;mesh.receiveShadow=true;world.add(mesh);}
  const [signCanvas,signCtx]=cv(1024,160);signCtx.fillStyle='#102d40';signCtx.fillRect(0,0,1024,160);signCtx.strokeStyle='#d9b85c';signCtx.lineWidth=10;signCtx.strokeRect(8,8,1008,144);signCtx.fillStyle='#fff';signCtx.font='bold 58px Arial';signCtx.textAlign='center';signCtx.textBaseline='middle';signCtx.fillText('VICE CITY INTERNATIONAL AIRPORT',512,82);const signMat=new T.MeshStandardMaterial({map:mkTex(signCanvas),roughness:.75});box(146,4,1.2,signMat,-153,8.5,135,true);
