@@ -2300,7 +2300,10 @@ function buildAirport(){
   for(let i=0;i<items.length;i++){const [w,h,d,x,y,z,a]=items[i];rotation.setFromAxisAngle(up,a||0);matrix.compose(new T.Vector3(x,y,z),rotation,new T.Vector3(w,h,d));mesh.setMatrixAt(i,matrix)}
   mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;mesh.receiveShadow=true;world.add(mesh)}
  airport={x:cx,z:cz,ground:G0,box:{x0:X0,x1:X1,z0:Z0,z1:Z1},C,shapes,landside:{x0:P(0,225)[0],x1:P(0,470)[0],zMax:P(595,0)[1]},
-  ga:[{x:1215,z:540,h:0},{x:1215,z:590,h:0}],takeout:{x:1180,z:650,h:0},cargo:{x:1225,z:1210}};
+  ga:[{x:1215,z:540,h:0},{x:1215,z:590,h:0}],
+  // AI airline routes: taxi out along the north taxiway, take off west on the inner north runway, land eastbound from
+  // the open west side, park at a free D jet bridge (x = nose stop) or the north-apron stand
+  ai:{spawn:{x:405,z:545},lineup:{x:335,z:522},runEnd:{x:335,z:1285},land:{x:335,z0:1285},gates:[{x:550,z:1073},{x:597,z:960},{x:597,z:765},{x:535,z:650}]},takeout:{x:1180,z:650,h:0},cargo:{x:1225,z:1210}};
 }
 let airport=null;
 
@@ -2342,20 +2345,23 @@ function buildWestAirport(){
 const AIRTRAFFIC={planes:[],clock:0,next:18,serial:0};
 function aiPlaneSpawn(){
  if(!airport||AIRTRAFFIC.planes.filter(p=>cars.includes(p)&&!p.dead).length>=4)return;
- const A=airport,tk=['b737','a321neo','a330','b747'][AIRTRAFFIC.serial++%4],c=spawnCar(tk,A.x-70,A.z+310,Math.PI/2,'parked',CAR_TYPES[tk].colors[0]);
+ const A=airport,tk=['b737','a321neo','a330','b747','b757'][AIRTRAFFIC.serial++%5],c=spawnCar(tk,A.ai.spawn.x,A.ai.spawn.z,Math.PI,'parked',CAR_TYPES[tk].colors[0]);
  c.aiPilot={phase:'taxiOut',throttle:0,steer:0,pitch:0,t:0,gate:Math.floor(AIRTRAFFIC.serial%4),tk};
  c.aiAirline=true;c.keep=true;c.airportStatic=false;c.gear=1;c.thr=0;AIRTRAFFIC.planes.push(c);
 }
 function aiPlaneControl(c,dt){
  const a=c.aiPilot;if(!a||c.dead)return;a.t+=dt;
- const A=airport,runX=A.x-40,runZ=A.z+285,runEnd=runX+320,gateX=A.gateNoseX-({a330:31.9,a321neo:22.2,b737:19.8,b747:35.3}[c.tk]||20),gateZ=[600,730,860,1055][a.gate];
+ const A=airport,R=A.ai,stand=R.gates[a.gate%R.gates.length],gateX=stand.x-({a330:31.9,a321neo:22.2,b737:19.8,b747:35.3,b757:23.7}[c.tk]||20),gateZ=stand.z;
  const steerTo=(x,z)=>{const desired=Math.atan2(x-c.x,z-c.z),err=wrapA(desired-c.h);a.steer=clamp(err*1.5,-.7,.7)};
+ const vRef=flyCfg(c).vr;
+ // in the air: turn toward (x,z), chase a target height above ground and a target airspeed
+ const fly=(x,z,alt,spd,minVy=-7)=>{const desired=Math.atan2(x-c.x,z-c.z);a.steer=clamp(wrapA(desired-c.h)*.6,-.3,.3);const h=c.y-heightAt(c.x,c.z)-.88,vyT=clamp((alt-h)*.12,minVy,5);a.pitch=clamp((vyT-(c.vy||0))*.08,-.5,.5);a.throttle=clamp(.45+(spd-(c.as||0))*.06,.12,1)};
  if(a.phase==='taxiOut'){
-  steerTo(runX,runZ);a.throttle=.34;if(Math.hypot(c.x-runX,c.z-runZ)<16){a.phase='lineUp';a.t=0}
+  steerTo(R.lineup.x,R.lineup.z);a.throttle=.34;if(Math.hypot(c.x-R.lineup.x,c.z-R.lineup.z)<16){a.phase='lineUp';a.t=0}
  }else if(a.phase==='lineUp'){
-  steerTo(runEnd,runZ);a.throttle=.22;if(a.t>3){a.phase='takeoff';a.t=0}
+  steerTo(R.runEnd.x,R.runEnd.z);a.throttle=.22;if(a.t>3){a.phase='takeoff';a.t=0}
  }else if(a.phase==='takeoff'){
-  steerTo(runEnd,runZ);a.throttle=1;a.pitch=c.as>flyCfg(c).vr*.92?.22:0;
+  steerTo(R.runEnd.x,R.runEnd.z);a.throttle=1;a.pitch=c.as>flyCfg(c).vr*.92?.22:0;
   if(c.airborne){a.phase='climb';a.t=0}
  }else if(a.phase==='climb'){
   a.throttle=.88;a.pitch=.13;a.steer=clamp(Math.sin(a.t*.22)*.12,-.12,.12);
@@ -2364,17 +2370,22 @@ function aiPlaneControl(c,dt){
   a.throttle=.72;a.pitch=0;a.steer=.08;
   if(a.t>34){a.phase='approach';a.t=0}
  }else if(a.phase==='approach'){
-  const targetX=A.x-100,targetZ=A.z+310;
-  const desired=Math.atan2(targetX-c.x,targetZ-c.z);a.steer=clamp(wrapA(desired-c.h)*.5,-.22,.22);
-  a.throttle=.38;a.pitch=-.035;
-  if(a.t>32){a.phase='final';a.t=0}
+  // AI_APPROACH_V2: fly out to a point well west of the runway on its centreline, then to the final approach fix,
+  // so every arrival turns onto final already lined up and heading east, clear of the city on the other side.
+  const L=R.land,wp=a.wp?{x:L.x,z:L.z0+2400,alt:140}:{x:L.x,z:L.z0+3900,alt:380};fly(wp.x,wp.z,wp.alt,vRef*1.35);
+  if(Math.hypot(c.x-wp.x,c.z-wp.z)<(a.wp?260:420)){if(a.wp){a.phase='final';a.t=0}else a.wp=1}
+  if(a.t>240){a.phase='final';a.t=0}
  }else if(a.phase==='final'){
-  const targetX=A.x-40,targetZ=A.z+285,desired=Math.atan2(targetX-c.x,targetZ-c.z);
-  a.steer=clamp(wrapA(desired-c.h)*.45,-.16,.16);a.throttle=.25;a.pitch=-.015;
-  if(!c.airborne){a.phase='taxiGate';a.t=0}
+  // glide path to a point 150 m past the threshold, flare low down, idle at the end
+  const L=R.land,dist=c.z-L.z0,h=c.y-heightAt(c.x,c.z)-.88;let alt=Math.max(0,dist+150)*.055;
+  fly(L.x,Math.min(c.z-500,L.z0),alt,vRef*1.08,h<14?-1.6:-7);if(h<6)a.throttle=0;
+  if(!c.airborne){a.phase='rollout';a.t=0}
+ }else if(a.phase==='rollout'){
+  const L=R.land;a.throttle=0;a.pitch=0;a.brake=true;steerTo(L.x,c.z-150);
+  if(Math.hypot(c.vx,c.vz)<6||a.t>40){a.phase='taxiGate';a.t=0;a.brake=false}
  }else if(a.phase==='taxiGate'){
-  steerTo(gateX,gateZ);a.throttle=.16;
-  if(Math.hypot(c.x-gateX,c.z-gateZ)<8||a.t>48){a.phase='parked';a.throttle=0;a.steer=0;c.aiPilot=null;c.aiAirlineParked=true;c.vx=c.vz=c.vy=0;c.as=0;c.speed=0;c.airborne=false;c.thr=0;c.y=heightAt(c.x,c.z)+.88}
+  steerTo(gateX,gateZ);const sp=Math.hypot(c.vx,c.vz);a.throttle=sp<7?.16:0;a.brake=sp>9;
+  if(Math.hypot(c.x-gateX,c.z-gateZ)<8||a.t>48){a.phase='parked';a.throttle=0;a.steer=0;a.brake=false;c.aiPilot=null;c.aiAirlineParked=true;c.vx=c.vz=c.vy=0;c.as=0;c.speed=0;c.airborne=false;c.thr=0;c.y=heightAt(c.x,c.z)+.88}
  }else if(a.phase==='parked'){a.throttle=0}
 }
 function updateAirportTraffic(dt){
@@ -3689,7 +3700,7 @@ function stepAircraft(c,dt){
  c.thr??=0;c.ap??=0;c.bank??=0;c.gam??=0;c.gear??=1;c.rpm??=0;c.stallT??=0;
  if(!Number.isFinite(c.x+c.z+c.y+c.h+(c.as||0)+c.ap+c.bank+c.gam)){c.as=0;c.ap=c.bank=c.gam=0;c.vx=c.vz=c.vy=0;if(!Number.isFinite(c.y))c.y=heightAt(c.x||0,c.z||0)+.88}
  if(c.dead)return stepAircraftWreck(c,dt);
- const ctlP=mine?((keys[' ']?1:0)-(keys.shift?1:0)):(c.aiPilot?.pitch||0),ctlR=mine?inp.steer:(c.aiPilot?.steer||0),brake=mine&&inp.thr<0&&c.thr<=.01;
+ const ctlP=mine?((keys[' ']?1:0)-(keys.shift?1:0)):(c.aiPilot?.pitch||0),ctlR=mine?inp.steer:(c.aiPilot?.steer||0),brake=(mine&&inp.thr<0&&c.thr<=.01)||(!mine&&!!c.aiPilot?.brake&&c.thr<=.01);
  if(mine){if(inp.thr>0)c.thr=Math.min(1,c.thr+.55*dt);else if(inp.thr<0)c.thr=Math.max(0,c.thr-.85*dt)}
  else if(c.aiPilot)c.thr=clamp(c.aiPilot.throttle??0,0,1);else if(!c.occ)c.thr=Math.max(0,c.thr-dt);
  if(c.fuel<=0)c.thr=0;
