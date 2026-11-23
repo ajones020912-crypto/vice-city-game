@@ -1,0 +1,103 @@
+name: All-branch Vice City name and Lucia fabric bridge
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/vice-city-all-branches-tank-bridge.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  rename:
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        target: [air-collide, airport-map, bigger-map, building-textures, car-alarms, car-breakin, car-hit-player, car-lights, character-designs, character-detail, crash-fx, dev-code, dev-drive-fix, dev-mode, favicon, feature/jason-lucia-safehouse-scene, five-reds, flight-v2, fps-cap-30, hotfix-mouse-lock, hud-layout, jagged-coast, load-progress, lucia-outfits, main, miami-layout, opening-scene, organic-city, organize-files, original-leads, pinch-zoom, plane-models, plane-sounds, plaza-curb-fix, police-patrols, race-path-map, race-track, red-thresholds, remove-release-button, right-on-red, right-on-red-2, sign-hitbox, signal-cleanup, smooth-loadbar, smooth-loadbar-2, speedometer, supercar-spoiler, traffic-mix, ultra-camera, ultra-camera-lag, ultra-graphics, unlock-key, waypoint]
+    concurrency:
+      group: lucia-u-neck-${{ matrix.target }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    env:
+      TARGET_BRANCH: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.target }}
+          fetch-depth: 0
+      - name: Rename literal game and documentation text without merging branches
+        run: |
+          python3 <<'PY'
+          import json, os, pathlib, re, subprocess
+          pattern = re.compile(r'\bneon[ \t]+beach\b', re.I)
+          changed = []
+          for name in filter(None, subprocess.check_output(['git','ls-files','-z']).decode().split('\0')):
+              path = pathlib.Path(name)
+              if path.parts[0] in {'.github','status','node_modules'} or path.suffix.lower() not in {'.html','.htm','.js','.mjs','.css','.json','.md','.svg','.txt','.webmanifest'}:
+                  continue
+              try:
+                  before = path.read_bytes().decode('utf-8')
+              except (UnicodeDecodeError, OSError):
+                  continue
+              def replacement(match):
+                  value = match.group()
+                  return 'VICE CITY' if value.isupper() else 'vice city' if value.islower() else 'Vice City'
+              after, count = pattern.subn(replacement, before)
+              if count:
+                  assert not pattern.search(after)
+                  path.write_bytes(after.encode('utf-8'))
+                  changed.append({'path':name,'replacements':count})
+          report = pathlib.Path('status/vice-city-all-branches-name-check.json')
+          report.parent.mkdir(exist_ok=True)
+          report.write_text(json.dumps({'passed':True,'branch':os.environ['TARGET_BRANCH'],'changedFiles':changed,'replacements':sum(item['replacements'] for item in changed),'outcome':'renamed' if changed else 'no matching literal text found','scope':'Literal spaced name only; preserves case styling. Excludes historical workflows and reports. Does not certify image text, split markup, external content or live deployment; does not rename files, identifiers, repository or URLs.'},indent=2)+'\n')
+          PY
+      - name: Publish isolated branch rename
+        run: |
+          git fetch origin "$TARGET_BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/"$TARGET_BRANCH")" || { echo 'Branch changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -u
+          git add -- status/vice-city-all-branches-name-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Replace literal Neon Beach text with Vice City on this branch'
+          git push origin HEAD:"refs/heads/$TARGET_BRANCH"
+  tank-bridge:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [main, lucia-outfits]
+    concurrency:
+      group: lucia-u-neck-${{ matrix.target }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    env:
+      TARGET_BRANCH: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.target }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-bridge" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Flatten individual cup shaping and add a hanging fabric bridge
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-bridge/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_HANGING_TANK_BRIDGE_V2'))process.exit(0);if(!s.includes('// LUCIA_TANK_BROAD_CHEST_V1'))throw Error('Installed broad tank required');fs.writeFileSync('/tmp/lucia-bridge-before.js',s);function walk(n,f){f(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f);}else if(v&&typeof v.type==='string')walk(v,f);}}const nodes=[];walk(acorn.parse(s,{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='shapeLuciaBroadTankFront')nodes.push(n);});if(nodes.length!==1)throw Error('Broad-front helper changed');const node=nodes[0];let f=s.slice(node.start,node.end);function once(a,b){if(f.split(a).length!==2)throw Error('Reviewed bridge fragment changed: '+a);f=f.replace(a,b);}once('dent=x=>.003*Math.exp(-Math.pow(x/.025,2))','dent=x=>.001*Math.exp(-Math.pow(x/.035,2))');once('>=.24&&','>=Math.min(.100,u.luciaTankUNeck.hem)&&');if(f.split('.6*v.x*v.x').length!==3)throw Error('Curvature definitions changed');f=f.split('.6*v.x*v.x').join('.2*v.x*v.x');const loft="const bridgeHem=u.luciaTankUNeck.hem+.010;let bridgePeakY=.380,bridgePeakBase=-Infinity;for(let y=.300;y<=.445;y+=.005){const z=sectionBase(y);if(z>bridgePeakBase){bridgePeakBase=z;bridgePeakY=y;}}const bridgeHemBase=sectionBase(bridgeHem);function bridgeBase(y){const boundary=sectionBase(y);if(y<=bridgeHem||y>=bridgePeakY)return boundary;const t=(y-bridgeHem)/(bridgePeakY-bridgeHem);return Math.max(boundary,bridgeHemBase*(1-t)+bridgePeakBase*t);}";once('const g=body.geometry.clone(),',loft+'const g=body.geometry.clone(),');once('smooth((v.y-.245)/.045)','smooth((v.y-.205)/.045)');once('target=sectionBase(v.y)+.006','target=bridgeBase(v.y)+.006');once("profile:'one broad rounded front with shallow central dip'","profile:'continuous fabric bridge across chest with hanging front below it'");once('dipParameter:.003,dipHalfScale:.025,curvature:.6','dipParameter:.001,dipHalfScale:.035,curvature:.2,bridgePeakY,bridgeHem');s='// LUCIA_HANGING_TANK_BRIDGE_V2\n'+s.slice(0,node.start)+f+s.slice(node.end);acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-bridge-after.js',s);
+          JS
+      - name: Validate broader bridge unchanged base and preserved straps
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-bridge/node_modules/three');if(!fs.existsSync('/tmp/lucia-bridge-after.js')){assert(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_HANGING_TANK_BRIDGE_V2'));process.exit(0);}function load(file){const c={window:{},console,Math};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}const old=load('/tmp/lucia-bridge-before.js'),cur=load('/tmp/lucia-bridge-after.js');function signature(h){const rows=[];h.traverse(o=>{if(o.name==='lucia-dark-grey-tank-top')return;const row=[o.type,o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()];if(o.isMesh)row.push(Object.keys(o.geometry.attributes).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.transparent,m.opacity]));rows.push(row);});return JSON.stringify(rows);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)));const reports=[];for(const merge of [false,true]){const a=old.build(T,'luciaC',{merge}),h=cur.build(T,'luciaC',{merge}),u=h.userData,body=h.getObjectByName('lucia-dark-grey-tank-top'),before=a.getObjectByName('lucia-dark-grey-tank-top');assert(signature(a)===signature(h),'Body underwear rig straps or other clothing changed');assert.deepStrictEqual(JSON.parse(JSON.stringify(u.luciaTankUNeck)),JSON.parse(JSON.stringify(a.userData.luciaTankUNeck)),'Neckline changed');assert(u.luciaBroadTankChest.dipParameter===.001&&u.luciaBroadTankChest.curvature===.2);assert(body.material.color.getHex()===0x3b3d40&&body.material.bumpMap&&body.material.bumpScale===.00022&&!body.material.transparent&&body.material.opacity===1);assert(u.luciaTankVisible&&h.getObjectByName('lucia-dark-grey-tank-outfit').visible&&h.getObjectByName('lucia-tailored-bra').visible&&h.getObjectByName('lucia-fitted-black-briefs').visible);const p=body.geometry.attributes.position,q=before.geometry.attributes.position;assert(p.count===q.count);for(let i=0;i<p.count;i++)assert(Math.abs(p.getX(i)-q.getX(i))<1e-6&&Math.abs(p.getY(i)-q.getY(i))<1e-6,'Neckline or armhole coordinates changed');function front(human,mesh,x,y){human.updateMatrixWorld(true);const spine=human.userData.spine,inv=new T.Matrix4().copy(spine.matrixWorld).invert(),origin=new T.Vector3(x,y,1).applyMatrix4(spine.matrixWorld),direction=new T.Vector3(0,0,-1).transformDirection(spine.matrixWorld);return new T.Raycaster(origin,direction,0,3).intersectObject(mesh,false).map(hit=>hit.point.clone().applyMatrix4(inv)).find(v=>v.z>.025);}let belowChestLift=0;const profiles=[];for(const y of [.28,.30,.32,.34,.38,.40]){const xs=[-.08,-.035,0,.035,.08],points=xs.map(x=>front(h,body,x,y));if(points.some(p=>!p))continue;const z=points.map(p=>p.z);assert(Math.max(...z)-Math.min(...z)<.0045,'Chest still has prominent separate cup curves');profiles.push({y,x:xs,z});if(y<=.32){const oldPoint=front(a,before,0,y);if(oldPoint)belowChestLift=Math.max(belowChestLift,z[2]-oldPoint.z);}}assert(profiles.length>=3&&belowChestLift>.003,'Hanging fabric bridge not established');for(const angle of [-.7,0,.7]){u.A[0].sh.rotation.x=angle;u.A[1].sh.rotation.x=-angle;h.updateMatrixWorld(true);h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh)for(const key of ['position','normal','uv'])if(o.geometry.attributes[key])assert(Array.from(o.geometry.attributes[key].array).every(Number.isFinite));});}reports.push({merge,belowChestLift,profiles,fit:u.luciaBroadTankChest});}fs.copyFileSync('/tmp/lucia-bridge-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-hanging-tank-bridge-check.json',JSON.stringify({passed:true,branch:process.env.TARGET_BRANCH,reports,bodyUnderwearAndStrapsUnchanged:true,necklineAndRibbingPreserved:true,scope:'Tank-only chest envelope and hanging-front loft. Bra is used as a clearance boundary, not copied as cup surfaces. Numerical profile and finite-pose checks do not verify rendered fit, all-pose clipping or deployment.'},null,2)+'\n');
+          JS
+      - name: Publish validated fabric bridge
+        run: |
+          git fetch origin "$TARGET_BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/"$TARGET_BRANCH")" || { echo 'Branch changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-hanging-tank-bridge-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Bridge Lucia tank across chest rather than tracing bra cups'
+          git push origin HEAD:"refs/heads/$TARGET_BRANCH"
