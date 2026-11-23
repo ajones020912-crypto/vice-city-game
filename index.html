@@ -2380,15 +2380,17 @@ function aiPlaneControl(c,dt){
   const L=R.land,dist=c.z-L.z0,h=c.y-heightAt(c.x,c.z)-.88;let alt=Math.max(0,dist+150)*.055;
   if(dist<0)alt=0;fly(L.x,Math.min(c.z-500,L.z0),alt,vRef*.98,h<5?-2.4:dist<0?-4:-7);if(h<12&&dist<450){a.throttle=0;const vy=c.vy||0,ap=c.ap||0;a.pitch=vy>-1.4&&ap>-.1?-1:(vy<-2.8||ap<-.18?.7:0)} /* like a player holding nose-down: the landing assist then flares it */
   // autoland: within 4 m of the runway, lined up and over the first 600 m, the AI airliner settles onto its wheels
-  if(c.airborne&&h<4&&dist<0&&dist>-600&&Math.abs(c.x-L.x)<16&&Math.abs(wrapA(c.h-Math.PI))<.25){c.airborne=false;c.vy=0;c.ap=0;c.gam=0;c.bank=0;c.y=heightAt(c.x,c.z)+.88}
+  if(c.airborne&&h<4&&dist<0&&dist>-600&&Math.abs(c.x-L.x)<24&&Math.abs(wrapA(c.h-Math.PI))<.35){c.airborne=false;c.vy=0;c.ap=0;c.gam=0;c.bank=0;c.y=heightAt(c.x,c.z)+.88}
   if(!c.airborne){a.phase='rollout';a.t=0}
   else if(dist<-600){a.phase='approach';a.wp=0;a.t=0;a.throttle=1} /* not down in the first 600 m: go around */
  }else if(a.phase==='rollout'){
   const L=R.land;a.throttle=0;a.pitch=0;a.brake=true;steerTo(L.x,c.z-150);
   if(Math.hypot(c.vx,c.vz)<6||a.t>40){a.phase='taxiGate';a.t=0;a.brake=false}
  }else if(a.phase==='taxiGate'){
-  steerTo(gateX,gateZ);const sp=Math.hypot(c.vx,c.vz);a.throttle=sp<7?.16:0;a.brake=sp>9;
-  if(Math.hypot(c.x-gateX,c.z-gateZ)<8||a.t>48){a.phase='parked';a.throttle=0;a.steer=0;a.brake=false;c.aiPilot=null;c.aiAirlineParked=true;c.vx=c.vz=c.vy=0;c.as=0;c.airborne=false;c.thr=0;c.y=heightAt(c.x,c.z)+.88}
+  // taxi to a spot on the apron in front of the stand, then pull in nose-first (south) and stop on the mark
+  const pre=!a.atPre,tx=pre?gateX-55:gateX,tz=gateZ;steerTo(tx,tz);const sp=Math.hypot(c.vx,c.vz);a.throttle=sp<(pre?7:3)?.16:0;a.brake=sp>(pre?9:4);
+  if(pre&&Math.hypot(c.x-tx,c.z-tz)<12)a.atPre=1;
+  if((!pre&&Math.hypot(c.x-gateX,c.z-gateZ)<6)||a.t>120){a.phase='parked';a.throttle=0;a.steer=0;a.brake=false;c.aiPilot=null;c.aiAirlineParked=true;c.x=gateX;c.z=gateZ;c.h=Math.PI/2;c.vx=c.vz=c.vy=0;c.as=0;c.airborne=false;c.thr=0;c.y=heightAt(c.x,c.z)+.88;c.place&&c.place()}
  }else if(a.phase==='parked'){a.throttle=0}
 }
 function updateAirportTraffic(dt){
