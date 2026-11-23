@@ -1,0 +1,45 @@
+{
+  "passed": true,
+  "branch": "main",
+  "reports": [
+    {
+      "merge": false,
+      "rearBefore": -0.13504476145535743,
+      "rearAfter": -0.15698884105276534,
+      "widthBefore": 0.2129161573976327,
+      "widthAfter": 0.21720411517670396,
+      "minimumSideClearance": 0.005940696775085852,
+      "sideChecks": 100,
+      "coverageChecks": 18,
+      "fit": {
+        "changedVertices": 5258,
+        "maximumRearAddition": 0.021995072908874428,
+        "maximumSideAddition": 0.004258323147952654,
+        "maximumHipWidthFactor": 1.02,
+        "scope": "Continuous lower-body deformation including repaired pelvis bridge, followed by hip/thigh smoothing and existing seam blend; existing briefs fitter subsequently regenerates panels and side bands with unchanged coverage rules."
+      }
+    },
+    {
+      "merge": true,
+      "rearBefore": -0.13504476845264435,
+      "rearAfter": -0.15698884427547455,
+      "widthBefore": 0.21291615796089172,
+      "widthAfter": 0.21720411610603332,
+      "minimumSideClearance": 0.005940696775085852,
+      "sideChecks": 100,
+      "coverageChecks": 18,
+      "fit": {
+        "changedVertices": 5258,
+        "maximumRearAddition": 0.021995072908874428,
+        "maximumSideAddition": 0.004258323147952654,
+        "maximumHipWidthFactor": 1.02,
+        "scope": "Continuous lower-body deformation including repaired pelvis bridge, followed by hip/thigh smoothing and existing seam blend; existing briefs fitter subsequently regenerates panels and side bands with unchanged coverage rules."
+      }
+    }
+  ],
+  "pelvisRepairTopologyAndWeightsPreserved": true,
+  "existingHipThighSmoothingAndSeamBlendApplied": true,
+  "underwearCoverageTopologyAndOpacityPreserved": true,
+  "upperClothingRigAndSkinToneUnchanged": true,
+  "scope": "Fuller posterior and up to two-percent localized hip width, with existing briefs refitted including exterior side bands. Numerical coverage and side-clearance checks are neutral-pose checks. Finite skeletal poses do not prove rendered seam quality, all-pose clipping, alternate outfit fit or live deployment."
+}
