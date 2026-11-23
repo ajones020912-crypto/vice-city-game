@@ -1,0 +1,7 @@
+async function buildWorldStaged(after){const steps=worldSteps().concat(after),total=steps.reduce((a,s)=>a+s[1],0);let done=0,msPerW=140,spent=0;
+ for(const [label,w,f] of steps){const est=w*msPerW;setLoadProgress(done/total,label,(done+w*.92)/total,est*1.15);await nextPaint();const t0=performance.now();
+  if(typeof f==='function')f();
+  else{const list=f.each(),n=list.length||1,ch=Math.max(60,Math.round(f.chunk/2));for(let i=0;i<list.length;i+=ch){const c0=performance.now();for(let j=i;j<Math.min(list.length,i+ch);j++)f.fn(list[j]);
+    const a=(done+w*Math.min(1,(i+ch)/n))/total,b=(done+w*Math.min(1,(i+2*ch)/n))/total;setLoadProgress(a,label+' '+Math.min(list.length,i+ch)+'/'+list.length,b,(performance.now()-c0)*1.1);await nextPaint()}}
+  const dt=performance.now()-t0;spent+=dt;done+=w;msPerW=spent/done}
+ setLoadProgress(1,'Ready');await new Promise(r=>setTimeout(r,500))}

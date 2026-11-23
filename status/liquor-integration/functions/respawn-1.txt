@@ -1,0 +1,3 @@
+function respawn(spot,msg){fadeTo(1,500);setTimeout(()=>{if(pl.inside){pl.inside=null;world.visible=true;intGroup.visible=false;sun.visible=true;interiorLight.intensity=0;interiorFill.intensity=0;interiorAmb.intensity=0;skyDome.visible=true;scene.background=null}
+  if(pl.car)ejectPlayer();pl.x=spot.x;pl.z=spot.z;pl.y=heightAt(pl.x,pl.z);pl.hp=100;pl.alive=true;pl.vx=pl.vz=0;clearWanted();G.busted=false;G.state='play';$('#big').style.display='none';camInit=false;camYaw=Math.PI;fadeTo(0,600);toast(msg,4000);G.hudDirty=true;
+  for(const p of cops)if(p.active)p.state='walk'},700)}

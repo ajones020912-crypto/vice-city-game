@@ -1,0 +1,1 @@
+function openShop(kind){G.state='shop';G.shopKind=kind;document.exitPointerLock?.();$('#shop').style.display='grid';$('#shoptitle').textContent=G.shopTitle||SHOP_NAMES[kind];G.shopTitle=null;renderShop(kind)}

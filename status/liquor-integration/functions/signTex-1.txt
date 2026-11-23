@@ -1,0 +1,22 @@
+function signTex(text,fg,bg){
+ const k=text+fg;if(signCache[k])return signCache[k];
+ const[c,x]=cv(1024,256);
+ // dark panel with subtle gradient
+ const bgGrad=x.createLinearGradient(0,0,0,256);
+ bgGrad.addColorStop(0,bg||'#0c1018');bgGrad.addColorStop(1,'#06080e');
+ x.fillStyle=bgGrad;x.fillRect(0,0,1024,256);
+ // outer neon border glow
+ x.strokeStyle=fg;x.lineWidth=14;x.shadowColor=fg;x.shadowBlur=28;x.strokeRect(14,14,996,228);
+ x.shadowBlur=0;
+ // inner clean border
+ x.strokeStyle='#ffffff33';x.lineWidth=3;x.strokeRect(28,28,968,200);
+ // main text with strong glow
+ x.font='bold 110px Arial Black,Impact,Arial';x.textAlign='center';x.textBaseline='middle';
+ x.shadowColor=fg;x.shadowBlur=32;x.fillStyle='#fff';x.fillText(text,512,130);
+ x.globalCompositeOperation='lighter';x.fillStyle=fg;x.shadowBlur=18;x.fillText(text,512,130);
+ x.globalCompositeOperation='source-over';x.shadowBlur=0;
+ // subtle scanline / tube feel
+ x.fillStyle='rgba(0,0,0,.06)';
+ for(let y=0;y<256;y+=3)x.fillRect(0,y,1024,1);
+ const t=mkTex(c,false);t.anisotropy=8;return signCache[k]=t;
+}

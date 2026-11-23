@@ -1,0 +1,3 @@
+function assignShops(){
+ for(const s of SHOPS)for(const [sx,sz] of s.spots){let best=null,bd=1e9;for(const p of parcels){if(p.shop||(p.x1-p.x0)<14||(p.z1-p.z0)<14||(p.mode!=='house'&&!p.edgeS))continue;const d=Math.hypot(p.cx-sx,p.cz-sz);if(d<bd){bd=d;best=p}}
+  if(best&&bd<90){best.shop=s;if(best.mode!=='house'){best.H=Math.min(best.H,9+rnd()*3);best.style='deco'}}}}

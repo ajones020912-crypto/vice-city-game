@@ -1,0 +1,6 @@
+pl={x:11.2,z:36,y:0,h:0,vx:0,vz:0,vy:0,hp:100,armor:0,cash:500,rep:0,car:null,wanted:0,weapon:'fists',weapons:{fists:1},ammo:{pistol:0,smg:0,shot:0,rifle:0},fireT:0,punchT:0,swim:false,inside:null,alive:true,shirt:0x626a68,pants:0x6a593f,missions:{},stats:{kills:0,wrecks:0,distance:0},aim:0,walkSpd:0,lastHit:0,
+  // crime systems
+  char:'jason', // jason | lucia
+  crime:0,sightT:0,heat:{face:0,clothes:0,vehicle:0,weapon:0,partner:0,cctv:0},
+  profile:'Professional',profScore:0,focusT:0,rel:50 // relationship 0-100
+}

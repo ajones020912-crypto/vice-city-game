@@ -1,0 +1,17 @@
+function ensureSafeForcedShop(shop){
+ if(doors.some(d=>d.kind===shop.k&&Math.hypot(d.x-shop.x,d.z-shop.z)<24))return;
+ const candidates=BLD.filter(p=>p.style!=='house'&&!p.shop&&!p.extraShop&&p.H>=7&&p.x1-p.x0>=10&&p.z1-p.z0>=10&&!footprintHitsRoad(p.x0,p.z0,p.x1,p.z1,1.1)&&Math.hypot((p.x0+p.x1)/2-shop.x,(p.z0+p.z1)/2-shop.z)<100).sort((a,b)=>Math.hypot((a.x0+a.x1)/2-shop.x,(a.z0+a.z1)/2-shop.z)-Math.hypot((b.x0+b.x1)/2-shop.x,(b.z0+b.z1)/2-shop.z));
+ for(const p of candidates){const face=shopFaceFor(p);if(face&&attachSafeShopEntrance(p,shop,face))return}
+ // If no existing facade is usable, create an entire storefront on clear land.
+ // Reserve enough room for the walls, sign, doorway, and return point before drawing anything.
+ let site=null;
+ for(let r=0;r<=200&&!site;r+=8){const count=r===0?1:Math.max(12,Math.ceil(r*.7));for(let i=0;i<count;i++){
+  const a=i/count*TAU,x=shop.x+Math.cos(a)*r,z=shop.z+Math.sin(a)*r,p={x0:x-7,z0:z-6,x1:x+7,z1:z+1.5,H:9};
+  if(!clearStructureFootprint(p.x0,p.z0,p.x1,p.z1))continue;const face=shopFaceFor(p);if(face){site={p,face};break}
+ }}
+ if(!site){G.shopPlacementSkipped=(G.shopPlacementSkipped||0)+1;return}
+ const {p,face}=site;
+ for(const f of['s','n','e','w']){wallQ('f_store',f,p.x0,p.z0,p.x1,p.z1,0,4.5,[1,1,1],12,4.5);wallQ('f_deco',f,p.x0,p.z0,p.x1,p.z1,4.5,9,pick(PAL))}
+ B('roof',p.x0,p.z0).quad([p.x0,9,p.z1],[p.x1,9,p.z1],[p.x1,9,p.z0],[p.x0,9,p.z0],0,1,0,0,0,1,1,[.4,.4,.42]);
+ addCol(p.x0,p.z0,p.x1,p.z1,9,'building');p.cx=(p.x0+p.x1)/2;p.cz=(p.z0+p.z1)/2;p.style='deco';p.forcedShop=true;BLD.push(p);attachSafeShopEntrance(p,shop,face);
+}

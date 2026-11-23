@@ -1,0 +1,1 @@
+function restoreRobberyCooldowns(saved){G.robbery=null;G.robberyCooldowns={};for(const[k,v]of Object.entries(saved||{}))if(Number.isFinite(v)&&v>0)G.robberyCooldowns[k]=G.time+Math.min(300,v);hideActionProgress()}

@@ -1,0 +1,3123 @@
+{
+  "gameplayChanged": false,
+  "indexSHA256": "968875cbab8d2acd912ee638c7d893c75946cc45608f0ed9ee5b465b42e10dfd",
+  "syntax": [
+    {
+      "file": "index.html",
+      "inlineScript": 0,
+      "passed": true
+    },
+    {
+      "file": "js/characters.js",
+      "passed": true
+    },
+    {
+      "file": "js/gun-animation.js",
+      "passed": true
+    },
+    {
+      "file": "js/mp.js",
+      "passed": true
+    },
+    {
+      "file": "js/one-hand-hit.js",
+      "passed": true
+    },
+    {
+      "file": "js/punch-visual-fix.js",
+      "passed": true
+    },
+    {
+      "file": "js/reference-characters.js",
+      "passed": true
+    },
+    {
+      "file": "js/soundtrack.js",
+      "passed": true
+    },
+    {
+      "file": "js/supercar.js",
+      "passed": true
+    },
+    {
+      "file": "js/suv-details-live.js",
+      "passed": true
+    }
+  ],
+  "functions": [
+    {
+      "name": "vehicleUnlockDistance",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 138
+    },
+    {
+      "name": "resizePost",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 225
+    },
+    {
+      "name": "ultraMats",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 73
+    },
+    {
+      "name": "setUltraReflections",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 140
+    },
+    {
+      "name": "updateUltraReflections",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1044
+    },
+    {
+      "name": "renderFrame",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1023
+    },
+    {
+      "name": "makeCloudTexture",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 929
+    },
+    {
+      "name": "updateEnv",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 128
+    },
+    {
+      "name": "skyUpdate",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1108
+    },
+    {
+      "name": "hhIsle",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 195
+    },
+    {
+      "name": "flKeysD",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 233
+    },
+    {
+      "name": "afbIsle",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 233
+    },
+    {
+      "name": "buildAFB",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 4144
+    },
+    {
+      "name": "spawnAFBJets",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 268
+    },
+    {
+      "name": "seaD",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1389
+    },
+    {
+      "name": "rawH",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 538
+    },
+    {
+      "name": "heightAt",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 657
+    },
+    {
+      "name": "bakeTerrain",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 855
+    },
+    {
+      "name": "groundCol",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1136
+    },
+    {
+      "name": "makeNoiseTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1108
+    },
+    {
+      "name": "concreteTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 917
+    },
+    {
+      "name": "roofTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 567
+    },
+    {
+      "name": "buildTerrainMesh",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2059
+    },
+    {
+      "name": "defMat",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 75
+    },
+    {
+      "name": "B",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 164
+    },
+    {
+      "name": "bakeG",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 192
+    },
+    {
+      "name": "finalizeBatches",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 334
+    },
+    {
+      "name": "addCol",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 284,
+      "files": [
+        "functions/addCol-1.txt"
+      ]
+    },
+    {
+      "name": "queryCols",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 275,
+      "files": [
+        "functions/queryCols-1.txt"
+      ]
+    },
+    {
+      "name": "circleBox",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 415,
+      "files": [
+        "functions/circleBox-1.txt"
+      ]
+    },
+    {
+      "name": "roadTexture",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 4636
+    },
+    {
+      "name": "intersectionAsphaltTexture",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 707
+    },
+    {
+      "name": "facadeTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 10747
+    },
+    {
+      "name": "storeTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1624
+    },
+    {
+      "name": "signTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1075,
+      "files": [
+        "functions/signTex-1.txt"
+      ]
+    },
+    {
+      "name": "initMaterials",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 3297
+    },
+    {
+      "name": "addRoad",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 123,
+      "files": [
+        "functions/addRoad-1.txt"
+      ]
+    },
+    {
+      "name": "defineRoads",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 4609,
+      "files": [
+        "functions/defineRoads-1.txt"
+      ]
+    },
+    {
+      "name": "buildNodes",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 595
+    },
+    {
+      "name": "buildRoadMeshes",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2820
+    },
+    {
+      "name": "lamp",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 783
+    },
+    {
+      "name": "initPalm",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 877
+    },
+    {
+      "name": "palm",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 103
+    },
+    {
+      "name": "oak",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 295
+    },
+    {
+      "name": "cypress",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 495
+    },
+    {
+      "name": "pine",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 272
+    },
+    {
+      "name": "rock",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 140
+    },
+    {
+      "name": "wallQ",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 547
+    },
+    {
+      "name": "box3",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 235
+    },
+    {
+      "name": "rooftop",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 619
+    },
+    {
+      "name": "building",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1610
+    },
+    {
+      "name": "footprintHitsRoad",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 257,
+      "files": [
+        "functions/footprintHitsRoad-1.txt"
+      ]
+    },
+    {
+      "name": "filterRoadParcels",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 203
+    },
+    {
+      "name": "policeLineOfSight",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 318
+    },
+    {
+      "name": "safeDeliverySpot",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 420,
+      "files": [
+        "functions/safeDeliverySpot-1.txt"
+      ]
+    },
+    {
+      "name": "collideNearbyCars",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 336
+    },
+    {
+      "name": "makeParcels",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 3114
+    },
+    {
+      "name": "assignShops",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 370,
+      "files": [
+        "functions/assignShops-1.txt"
+      ]
+    },
+    {
+      "name": "placeShopDoor",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 596,
+      "files": [
+        "functions/placeShopDoor-1.txt"
+      ]
+    },
+    {
+      "name": "houses",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 765
+    },
+    {
+      "name": "buildHouse",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1491
+    },
+    {
+      "name": "portExtras",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1250
+    },
+    {
+      "name": "beachProps",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1346
+    },
+    {
+      "name": "swampProps",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1154
+    },
+    {
+      "name": "hillProps",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 875
+    },
+    {
+      "name": "bigMapProps",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1447
+    },
+    {
+      "name": "keysProps",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 826
+    },
+    {
+      "name": "nearRoad",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 191
+    },
+    {
+      "name": "streetProps",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1042
+    },
+    {
+      "name": "addOuterStreetlights",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 384
+    },
+    {
+      "name": "sigHeadNeeded",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 150
+    },
+    {
+      "name": "buildSignals",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2370
+    },
+    {
+      "name": "sigState",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 183
+    },
+    {
+      "name": "updateSignals",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 403
+    },
+    {
+      "name": "buildBaseMap",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 6244,
+      "files": [
+        "functions/buildBaseMap-1.txt"
+      ]
+    },
+    {
+      "name": "zoneName",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 156,
+      "files": [
+        "functions/zoneName-1.txt"
+      ]
+    },
+    {
+      "name": "clearStructureFootprint",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 350
+    },
+    {
+      "name": "findClearStructureSite",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 310
+    },
+    {
+      "name": "shopFaceFor",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 517,
+      "files": [
+        "functions/shopFaceFor-1.txt"
+      ]
+    },
+    {
+      "name": "attachSafeShopEntrance",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 762,
+      "files": [
+        "functions/attachSafeShopEntrance-1.txt"
+      ]
+    },
+    {
+      "name": "ensureSafeForcedShop",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1606,
+      "files": [
+        "functions/ensureSafeForcedShop-1.txt"
+      ]
+    },
+    {
+      "name": "promenadeHits",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 249
+    },
+    {
+      "name": "clearPromenadeParcels",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 150
+    },
+    {
+      "name": "buildPlazasAndPromenade",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 3270
+    },
+    {
+      "name": "buildDowntownPark",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1879
+    },
+    {
+      "name": "forceShopDoors",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 852,
+      "files": [
+        "functions/forceShopDoors-1.txt"
+      ]
+    },
+    {
+      "name": "buildAirport",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 8733
+    },
+    {
+      "name": "buildWestAirport",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 3766
+    },
+    {
+      "name": "spawnAirportPlanes",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 881
+    },
+    {
+      "name": "pgDistance",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 165
+    },
+    {
+      "name": "pgNear",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 129
+    },
+    {
+      "name": "pgHitsBox",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 252
+    },
+    {
+      "name": "buildPalmettoGrove",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 5193
+    },
+    {
+      "name": "material",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 136
+    },
+    {
+      "name": "box",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 142
+    },
+    {
+      "name": "ribbon",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 770
+    },
+    {
+      "name": "safe",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 477
+    },
+    {
+      "name": "plate",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 310
+    },
+    {
+      "name": "stop",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 708
+    },
+    {
+      "name": "worldSteps",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1356
+    },
+    {
+      "name": "buildWorld",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 122,
+      "files": [
+        "functions/buildWorld-1.txt"
+      ]
+    },
+    {
+      "name": "setLoadProgress",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2559
+    },
+    {
+      "name": "buildWorldStaged",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 885,
+      "files": [
+        "functions/buildWorldStaged-1.txt"
+      ]
+    },
+    {
+      "name": "emit",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 336
+    },
+    {
+      "name": "updateParticles",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 558
+    },
+    {
+      "name": "explosion",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 476
+    },
+    {
+      "name": "extrudeProfile",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 442
+    },
+    {
+      "name": "extrudeLowPolyProfile",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 399
+    },
+    {
+      "name": "lowPolyWheelGeo",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 419
+    },
+    {
+      "name": "wheelGeo",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 759
+    },
+    {
+      "name": "carPaintTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1366
+    },
+    {
+      "name": "tireTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 605
+    },
+    {
+      "name": "rimTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 735
+    },
+    {
+      "name": "carDark",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 92
+    },
+    {
+      "name": "carLightsOn",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 169
+    },
+    {
+      "name": "paintMat",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 284
+    },
+    {
+      "name": "carGeos",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1785
+    },
+    {
+      "name": "makeLowPolyPropPlaneVisual",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 4598
+    },
+    {
+      "name": "makeFighterVisual",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 3165
+    },
+    {
+      "name": "makeA321Visual",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 4843
+    },
+    {
+      "name": "makeB737Visual",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 4929
+    },
+    {
+      "name": "makeB747Visual",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 5269
+    },
+    {
+      "name": "makeA330Visual",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 4633
+    },
+    {
+      "name": "makeAircraftVisual",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 4835
+    },
+    {
+      "name": "makeCarVisual",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 4780
+    },
+    {
+      "name": "capsule",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 771
+    },
+    {
+      "name": "skinTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 251
+    },
+    {
+      "name": "fabricTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2404
+    },
+    {
+      "name": "hairTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 709
+    },
+    {
+      "name": "shoeTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 477
+    },
+    {
+      "name": "humanMat",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 180
+    },
+    {
+      "name": "addCharacterDetails",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2707
+    },
+    {
+      "name": "applyCharacterDetails",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 778
+    },
+    {
+      "name": "makeHuman",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1041,
+      "files": [
+        "functions/makeHuman-1.txt"
+      ]
+    },
+    {
+      "name": "makeOriginalHumanBeforeSimple",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 3572
+    },
+    {
+      "name": "randomHumanOpts",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2590
+    },
+    {
+      "name": "setHumanLook",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 611
+    },
+    {
+      "name": "designForOpts",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 138
+    },
+    {
+      "name": "adoptDesign",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 457
+    },
+    {
+      "name": "applyLeadLeanPunch",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1357
+    },
+    {
+      "name": "animHuman",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 3535,
+      "files": [
+        "functions/animHuman-1.txt"
+      ]
+    },
+    {
+      "name": "refreshMousePrompt",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 128
+    },
+    {
+      "name": "requestGameMouseLock",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 868
+    },
+    {
+      "name": "releaseGameMouse",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 240
+    },
+    {
+      "name": "switchChar",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 541,
+      "files": [
+        "functions/switchChar-1.txt"
+      ]
+    },
+    {
+      "name": "notificationPresentation",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 513
+    },
+    {
+      "name": "toast",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1174
+    },
+    {
+      "name": "spawnCar",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 150
+    },
+    {
+      "name": "removeCar",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 115
+    },
+    {
+      "name": "carCircles",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 167
+    },
+    {
+      "name": "flyCfg",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 801
+    },
+    {
+      "name": "stepAircraft",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 5878
+    },
+    {
+      "name": "aircraftHitWorld",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 826
+    },
+    {
+      "name": "aircraftCrash",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1618
+    },
+    {
+      "name": "aircraftCrumple",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1105
+    },
+    {
+      "name": "stepAircraftWreck",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1128
+    },
+    {
+      "name": "touchdownFx",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 277
+    },
+    {
+      "name": "animateAircraft",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1476
+    },
+    {
+      "name": "updateFlightHud",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1279
+    },
+    {
+      "name": "stepCar",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 4472,
+      "files": [
+        "functions/stepCar-1.txt"
+      ]
+    },
+    {
+      "name": "carImpact",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 424
+    },
+    {
+      "name": "damageCar",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 254
+    },
+    {
+      "name": "explodeCar",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 914
+    },
+    {
+      "name": "carCarCollide",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1424
+    },
+    {
+      "name": "hurtPlayer",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 192
+    },
+    {
+      "name": "lockInfo",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 117
+    },
+    {
+      "name": "carLocked",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 312
+    },
+    {
+      "name": "carEnterPrompt",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 229
+    },
+    {
+      "name": "carHasAlarm",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 167
+    },
+    {
+      "name": "alarmFlash",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 105
+    },
+    {
+      "name": "startAlarm",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 257
+    },
+    {
+      "name": "updateAlarms",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 588
+    },
+    {
+      "name": "muteAlarms",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 62
+    },
+    {
+      "name": "tryEnterCar",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 524
+    },
+    {
+      "name": "breakinPrompt",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 286
+    },
+    {
+      "name": "updateBreakin",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 632
+    },
+    {
+      "name": "enterCar",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 720
+    },
+    {
+      "name": "ejectPlayer",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 735
+    },
+    {
+      "name": "nearestCar",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 171
+    },
+    {
+      "name": "playerOnFoot",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1845,
+      "files": [
+        "functions/playerOnFoot-1.txt"
+      ]
+    },
+    {
+      "name": "resolveFoot",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 776
+    },
+    {
+      "name": "updateCamera",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 3119
+    },
+    {
+      "name": "mkPlaneVoices",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1606
+    },
+    {
+      "name": "planeTick",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1221
+    },
+    {
+      "name": "makeCombatPcm",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1553
+    },
+    {
+      "name": "combatPlay",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1327
+    },
+    {
+      "name": "addCrime",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 518
+    },
+    {
+      "name": "updateRedLights",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1812
+    },
+    {
+      "name": "addWanted",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 47
+    },
+    {
+      "name": "clearWanted",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 125
+    },
+    {
+      "name": "killCop",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 31
+    },
+    {
+      "name": "updateProfile",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 172
+    },
+    {
+      "name": "heatIcons",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 260
+    },
+    {
+      "name": "dropPickup",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 235
+    },
+    {
+      "name": "hurtPed",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 630
+    },
+    {
+      "name": "activatePed",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 215
+    },
+    {
+      "name": "pickSidewalk",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 733
+    },
+    {
+      "name": "updatePopulation",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1574
+    },
+    {
+      "name": "nextCross",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 172
+    },
+    {
+      "name": "pickTurn",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 874
+    },
+    {
+      "name": "extendRoute",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1745
+    },
+    {
+      "name": "astar",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 646
+    },
+    {
+      "name": "spawnTraffic",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1608
+    },
+    {
+      "name": "nearIntersections",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 177
+    },
+    {
+      "name": "spawnCopCar",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1006
+    },
+    {
+      "name": "controlAI",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 3405
+    },
+    {
+      "name": "tracer",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 186
+    },
+    {
+      "name": "raySphere",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 205
+    },
+    {
+      "name": "castRay",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1397
+    },
+    {
+      "name": "fireWeapon",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1988
+    },
+    {
+      "name": "punch",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 368
+    },
+    {
+      "name": "updatePickups",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 661
+    },
+    {
+      "name": "updateTracers",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 97
+    },
+    {
+      "name": "carHitPeds",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1396
+    },
+    {
+      "name": "checkerTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1233
+    },
+    {
+      "name": "woodTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1273
+    },
+    {
+      "name": "plasterTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 831
+    },
+    {
+      "name": "carpetTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 594
+    },
+    {
+      "name": "buildInterior",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 10671,
+      "files": [
+        "functions/buildInterior-1.txt"
+      ]
+    },
+    {
+      "name": "buildAllInteriors",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 73,
+      "files": [
+        "functions/buildAllInteriors-1.txt"
+      ]
+    },
+    {
+      "name": "openShop",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 208,
+      "files": [
+        "functions/openShop-1.txt"
+      ]
+    },
+    {
+      "name": "renderShop",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 590,
+      "files": [
+        "functions/renderShop-1.txt"
+      ]
+    },
+    {
+      "name": "closeShop",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 107,
+      "files": [
+        "functions/closeShop-1.txt"
+      ]
+    },
+    {
+      "name": "fadeTo",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 103
+    },
+    {
+      "name": "enterInterior",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 873,
+      "files": [
+        "functions/enterInterior-1.txt"
+      ]
+    },
+    {
+      "name": "exitInterior",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 438,
+      "files": [
+        "functions/exitInterior-1.txt"
+      ]
+    },
+    {
+      "name": "buildMarkers",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 996
+    },
+    {
+      "name": "setObjective",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 140
+    },
+    {
+      "name": "startMission",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 254
+    },
+    {
+      "name": "beginStep",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 948
+    },
+    {
+      "name": "completeMission",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 632
+    },
+    {
+      "name": "failMission",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 509
+    },
+    {
+      "name": "updateMission",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1850
+    },
+    {
+      "name": "setObjectiveWarn",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 30
+    },
+    {
+      "name": "buildGivers",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 521
+    },
+    {
+      "name": "refreshGivers",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 102
+    },
+    {
+      "name": "saveGame",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1095,
+      "files": [
+        "functions/saveGame-1.txt"
+      ]
+    },
+    {
+      "name": "readSave",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 149
+    },
+    {
+      "name": "applySave",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2345
+    },
+    {
+      "name": "newGame",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 946,
+      "files": [
+        "functions/newGame-1.txt"
+      ]
+    },
+    {
+      "name": "respawn",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 583,
+      "files": [
+        "functions/respawn-1.txt"
+      ]
+    },
+    {
+      "name": "playerDied",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 401
+    },
+    {
+      "name": "bustPlayer",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 481
+    },
+    {
+      "name": "drawMapGlyph",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2713,
+      "files": [
+        "functions/drawMapGlyph-1.txt"
+      ]
+    },
+    {
+      "name": "mapEmoji",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 298
+    },
+    {
+      "name": "setWaypoint",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 405
+    },
+    {
+      "name": "updateWaypoint",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 254
+    },
+    {
+      "name": "blips",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1348
+    },
+    {
+      "name": "prepareRadarMap",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 799
+    },
+    {
+      "name": "radarPoint",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 173
+    },
+    {
+      "name": "drawRacePath",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 542
+    },
+    {
+      "name": "drawMini",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 6814,
+      "files": [
+        "functions/drawMini-1.txt"
+      ]
+    },
+    {
+      "name": "focusMapOnPlayer",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 96
+    },
+    {
+      "name": "drawMap",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2082,
+      "files": [
+        "functions/drawMap-1.txt"
+      ]
+    },
+    {
+      "name": "bindMapControls",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2987
+    },
+    {
+      "name": "updateHUD",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1148
+    },
+    {
+      "name": "pauseGame",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 396
+    },
+    {
+      "name": "ultraAdapt",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 534
+    },
+    {
+      "name": "setQuality",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 572
+    },
+    {
+      "name": "nearestDoor",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 162,
+      "files": [
+        "functions/nearestDoor-1.txt"
+      ]
+    },
+    {
+      "name": "onKey",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2535
+    },
+    {
+      "name": "initRain",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 460
+    },
+    {
+      "name": "updateWeather",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1256
+    },
+    {
+      "name": "spawnGators",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 252
+    },
+    {
+      "name": "updateGators",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1292
+    },
+    {
+      "name": "showPrompt",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 119
+    },
+    {
+      "name": "simulate",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 5561,
+      "files": [
+        "functions/simulate-1.txt"
+      ]
+    },
+    {
+      "name": "envLighting",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1108
+    },
+    {
+      "name": "speedoScale",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 484
+    },
+    {
+      "name": "updateSpeedo",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1232
+    },
+    {
+      "name": "frame",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1643
+    },
+    {
+      "name": "maxHp",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 61
+    },
+    {
+      "name": "allPeds",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 50
+    },
+    {
+      "name": "ensurePl",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 438
+    },
+    {
+      "name": "tierOf",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 79
+    },
+    {
+      "name": "addRep",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 256
+    },
+    {
+      "name": "showBanner",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 473
+    },
+    {
+      "name": "showRadioName",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 229
+    },
+    {
+      "name": "cycleStation",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 168
+    },
+    {
+      "name": "updateFx",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 498
+    },
+    {
+      "name": "isWater",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 54
+    },
+    {
+      "name": "findWater",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 416
+    },
+    {
+      "name": "roadSpotNear",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 398,
+      "files": [
+        "functions/roadSpotNear-1.txt"
+      ]
+    },
+    {
+      "name": "curbPoint",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 498
+    },
+    {
+      "name": "freeSpot",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 291,
+      "files": [
+        "functions/freeSpot-1.txt"
+      ]
+    },
+    {
+      "name": "makeRing",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 487
+    },
+    {
+      "name": "placeRing",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 91
+    },
+    {
+      "name": "beaconAt",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 756
+    },
+    {
+      "name": "buildGasStation",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1644
+    },
+    {
+      "name": "updateFuelStations",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 640
+    },
+    {
+      "name": "buildDealer",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1257
+    },
+    {
+      "name": "upTxt",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 285
+    },
+    {
+      "name": "newGid",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 82
+    },
+    {
+      "name": "syncGarage",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 120
+    },
+    {
+      "name": "storeCar",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 220
+    },
+    {
+      "name": "takeOut",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1049
+    },
+    {
+      "name": "renderVehiclePanel",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 840
+    },
+    {
+      "name": "garageItems",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 767
+    },
+    {
+      "name": "buyVehicle",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 483
+    },
+    {
+      "name": "sprayNear",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 126
+    },
+    {
+      "name": "robberyKey",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 95,
+      "files": [
+        "functions/robberyKey-1.txt"
+      ]
+    },
+    {
+      "name": "robberyRemaining",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 114,
+      "files": [
+        "functions/robberyRemaining-1.txt"
+      ]
+    },
+    {
+      "name": "remainingRobberyCooldowns",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 145,
+      "files": [
+        "functions/remainingRobberyCooldowns-1.txt"
+      ]
+    },
+    {
+      "name": "restoreRobberyCooldowns",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 213,
+      "files": [
+        "functions/restoreRobberyCooldowns-1.txt"
+      ]
+    },
+    {
+      "name": "canRobStore",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 473
+    },
+    {
+      "name": "robItem",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 239
+    },
+    {
+      "name": "robStore",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 281
+    },
+    {
+      "name": "cancelStoreRobbery",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 120,
+      "files": [
+        "functions/cancelStoreRobbery-1.txt"
+      ]
+    },
+    {
+      "name": "updateStoreRobbery",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 859,
+      "files": [
+        "functions/updateStoreRobbery-1.txt"
+      ]
+    },
+    {
+      "name": "buildProps",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 144
+    },
+    {
+      "name": "refreshProps",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 166
+    },
+    {
+      "name": "nearSpot",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 362,
+      "files": [
+        "functions/nearSpot-1.txt"
+      ]
+    },
+    {
+      "name": "useSpot",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 126,
+      "files": [
+        "functions/useSpot-1.txt"
+      ]
+    },
+    {
+      "name": "newExport",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 179
+    },
+    {
+      "name": "updateExport",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 712
+    },
+    {
+      "name": "canStartJob",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 211
+    },
+    {
+      "name": "endJob",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 254
+    },
+    {
+      "name": "startTaxi",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 165
+    },
+    {
+      "name": "nextFare",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 225
+    },
+    {
+      "name": "cooldownLeft",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 161
+    },
+    {
+      "name": "configure",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 605
+    },
+    {
+      "name": "landCar",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 74
+    },
+    {
+      "name": "freeze",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 81
+    },
+    {
+      "name": "clearRivals",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 133
+    },
+    {
+      "name": "beginCoastal",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1656
+    },
+    {
+      "name": "advance",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 183
+    },
+    {
+      "name": "progress",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 248
+    },
+    {
+      "name": "position",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 136
+    },
+    {
+      "name": "result",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 752
+    },
+    {
+      "name": "raceNear",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 145
+    },
+    {
+      "name": "startRace",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 205
+    },
+    {
+      "name": "finishRace",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 549
+    },
+    {
+      "name": "startGatorHunt",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 229
+    },
+    {
+      "name": "onGatorKilled",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 169
+    },
+    {
+      "name": "onR",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 541
+    },
+    {
+      "name": "updateJob",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2789
+    },
+    {
+      "name": "activateGang",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 169
+    },
+    {
+      "name": "alertGang",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 104
+    },
+    {
+      "name": "onGangKill",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 193
+    },
+    {
+      "name": "gangPopulation",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 302
+    },
+    {
+      "name": "spawnGangSquad",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 298
+    },
+    {
+      "name": "buildHeli",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2447
+    },
+    {
+      "name": "heliHide",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 119
+    },
+    {
+      "name": "heliReset",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 64
+    },
+    {
+      "name": "heliSees",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 110
+    },
+    {
+      "name": "damageHeli",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 285
+    },
+    {
+      "name": "updateHeli",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2915
+    },
+    {
+      "name": "buildCCTV",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 726
+    },
+    {
+      "name": "cctvNear",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 94
+    },
+    {
+      "name": "buildStashes",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 604
+    },
+    {
+      "name": "refreshStashes",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 86
+    },
+    {
+      "name": "updateStashes",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 762
+    },
+    {
+      "name": "updateThreats",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 798
+    },
+    {
+      "name": "makeBoatVisual",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2885
+    },
+    {
+      "name": "stepBoat",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2651
+    },
+    {
+      "name": "spawnBoat",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 156
+    },
+    {
+      "name": "initBoatSpots",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 408,
+      "files": [
+        "functions/initBoatSpots-1.txt"
+      ]
+    },
+    {
+      "name": "updateBoats",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 217
+    },
+    {
+      "name": "gatorSpot",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 158,
+      "files": [
+        "functions/gatorSpot-1.txt"
+      ]
+    },
+    {
+      "name": "makeGator",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 769
+    },
+    {
+      "name": "hurtGator",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 165
+    },
+    {
+      "name": "onEnterVehicle",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 191
+    },
+    {
+      "name": "carPrompt",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 603
+    },
+    {
+      "name": "extraBlips",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1089
+    },
+    {
+      "name": "closePhoneExt",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 131
+    },
+    {
+      "name": "updateEconomy",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 765
+    },
+    {
+      "name": "setUltraCarLights",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 773
+    },
+    {
+      "name": "rearOf",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 118
+    },
+    {
+      "name": "updateUltraCarLights",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2046
+    },
+    {
+      "name": "updateCarLights",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 499
+    },
+    {
+      "name": "updateExtras",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 538
+    },
+    {
+      "name": "renderJobsApp",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1100
+    },
+    {
+      "name": "extraProfileRows",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 678
+    },
+    {
+      "name": "buildExtras",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 892
+    },
+    {
+      "name": "resetExtras",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 249
+    },
+    {
+      "name": "afterLoadReset",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 109
+    },
+    {
+      "name": "boot",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 13028
+    },
+    {
+      "name": "closePhone",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 128
+    },
+    {
+      "name": "phoneHome",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 119
+    },
+    {
+      "name": "phoneOpenApp",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 9831
+    },
+    {
+      "name": "begin",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 873
+    },
+    {
+      "name": "loadedFirearm",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 104
+    },
+    {
+      "name": "actionProgress",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 206
+    },
+    {
+      "name": "hideActionProgress",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 69
+    },
+    {
+      "name": "suitableCivilian",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 442
+    },
+    {
+      "name": "startMugging",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 523
+    },
+    {
+      "name": "cancelMugging",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 199
+    },
+    {
+      "name": "updateMugging",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 652
+    },
+    {
+      "name": "chooseWorkTarget",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 238
+    },
+    {
+      "name": "moveWorkMarker",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 344
+    },
+    {
+      "name": "endWork",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 234
+    },
+    {
+      "name": "startCityWork",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1244
+    },
+    {
+      "name": "restoreWork",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 426
+    },
+    {
+      "name": "completeWorkStop",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 703
+    },
+    {
+      "name": "interactWork",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 532
+    },
+    {
+      "name": "updateCityWork",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 808
+    },
+    {
+      "name": "workMenu",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 71
+    },
+    {
+      "name": "inSafehouse",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 213
+    },
+    {
+      "name": "safehouseRegen",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 304
+    },
+    {
+      "name": "regenerateHealth",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 233
+    },
+    {
+      "name": "updateLocalStreetlights",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 488
+    },
+    {
+      "name": "updateCityFeatures",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 258
+    },
+    {
+      "name": "cityHud",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 821
+    },
+    {
+      "name": "cityHash",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 161
+    },
+    {
+      "name": "cityNoise",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 274
+    },
+    {
+      "name": "cityHeight",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 767
+    },
+    {
+      "name": "cityDataTexture",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 261
+    },
+    {
+      "name": "citySurface",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 859
+    },
+    {
+      "name": "applyCitySurface",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 344
+    },
+    {
+      "name": "terrainCityTexture",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 306
+    },
+    {
+      "name": "mpMakeCar",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 659
+    },
+    {
+      "name": "mpMakeAvatar",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1291
+    },
+    {
+      "name": "mpUpsert",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 456
+    },
+    {
+      "name": "mpRemove",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 400
+    },
+    {
+      "name": "mpSetOnline",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 140
+    },
+    {
+      "name": "mpConnect",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1786
+    },
+    {
+      "name": "mpEntered",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 491
+    },
+    {
+      "name": "mpTick",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 621
+    },
+    {
+      "name": "crumpleParts",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1027
+    },
+    {
+      "name": "crumpleCrash",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1857
+    },
+    {
+      "name": "crashMat",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 232
+    },
+    {
+      "name": "crashFx",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1860
+    },
+    {
+      "name": "crashDebris",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 886
+    },
+    {
+      "name": "updateCrashFx",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1401
+    },
+    {
+      "name": "devFlightClearKeys",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 80
+    },
+    {
+      "name": "devFlightStop",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 381
+    },
+    {
+      "name": "devFlightReset",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 118
+    },
+    {
+      "name": "devFlightEnable",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 378
+    },
+    {
+      "name": "devFlightUnlock",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 929
+    },
+    {
+      "name": "mountDevFlightMenu",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 3925
+    },
+    {
+      "name": "devPerfTick",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 498
+    },
+    {
+      "name": "devPerfStats",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 466
+    },
+    {
+      "name": "refresh",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 398
+    },
+    {
+      "name": "metrics",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 295
+    },
+    {
+      "name": "preview",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 843
+    },
+    {
+      "name": "planRoadsideSpeedLimits",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1452
+    },
+    {
+      "name": "buildRoadsideSpeedLimits",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 3465
+    },
+    {
+      "name": "roadPostedSpeedLimit",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 73
+    },
+    {
+      "name": "speedingRoadAt",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 584
+    },
+    {
+      "name": "resetSpeedingEnforcement",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 192
+    },
+    {
+      "name": "speedingSecondsForStars",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 75
+    },
+    {
+      "name": "speedingCrimeThreshold",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 125
+    },
+    {
+      "name": "updateSpeedingEnforcement",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1409
+    },
+    {
+      "name": "rtTex",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 435
+    },
+    {
+      "name": "rtRoadHw",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 227
+    },
+    {
+      "name": "rtInside",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 114
+    },
+    {
+      "name": "rtRemoveCol",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 297
+    },
+    {
+      "name": "buildRaceTrack",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 2457
+    },
+    {
+      "name": "teardownRaceTrack",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 227
+    },
+    {
+      "name": "updateRaceTrack",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 640
+    },
+    {
+      "name": "fjTarget",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 100
+    },
+    {
+      "name": "spawnInterceptor",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 485
+    },
+    {
+      "name": "stepFighter",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 1978
+    },
+    {
+      "name": "removeInterceptor",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 118
+    },
+    {
+      "name": "updateInterceptors",
+      "occurrence": 1,
+      "inlineScript": 0,
+      "length": 395
+    }
+  ],
+  "declarations": [
+    {
+      "name": "G",
+      "inlineScript": 0,
+      "files": [
+        "data/G-0-1276.txt"
+      ]
+    },
+    {
+      "name": "WS",
+      "inlineScript": 0,
+      "files": [
+        "data/WS-0-1415.txt"
+      ]
+    },
+    {
+      "name": "WL",
+      "inlineScript": 0,
+      "files": [
+        "data/WL-0-1440.txt"
+      ]
+    },
+    {
+      "name": "scene",
+      "inlineScript": 0,
+      "files": [
+        "data/scene-0-1535.txt"
+      ]
+    },
+    {
+      "name": "renderer",
+      "inlineScript": 0,
+      "files": [
+        "data/renderer-0-1636.txt"
+      ]
+    },
+    {
+      "name": "world",
+      "inlineScript": 0,
+      "files": [
+        "data/world-0-10887.txt"
+      ]
+    },
+    {
+      "name": "roads",
+      "inlineScript": 0,
+      "files": [
+        "data/roads-0-31987.txt"
+      ]
+    },
+    {
+      "name": "roads",
+      "inlineScript": 0,
+      "files": [
+        "data/roads-0-73077.txt"
+      ]
+    },
+    {
+      "name": "pl",
+      "inlineScript": 0,
+      "files": [
+        "data/pl-0-78877.txt"
+      ]
+    },
+    {
+      "name": "parcels",
+      "inlineScript": 0,
+      "files": [
+        "data/parcels-0-80696.txt"
+      ]
+    },
+    {
+      "name": "doors",
+      "inlineScript": 0,
+      "files": [
+        "data/doors-0-80707.txt"
+      ]
+    },
+    {
+      "name": "BLD",
+      "inlineScript": 0,
+      "files": [
+        "data/BLD-0-80716.txt"
+      ]
+    },
+    {
+      "name": "MAPPX",
+      "inlineScript": 0,
+      "files": [
+        "data/MAPPX-0-104480.txt"
+      ]
+    },
+    {
+      "name": "baseMap",
+      "inlineScript": 0,
+      "files": [
+        "data/baseMap-0-104492.txt"
+      ]
+    },
+    {
+      "name": "doors",
+      "inlineScript": 0,
+      "files": [
+        "data/doors-0-194944.txt"
+      ]
+    },
+    {
+      "name": "pl",
+      "inlineScript": 0,
+      "files": [
+        "data/pl-0-236216.txt"
+      ]
+    },
+    {
+      "name": "INT",
+      "inlineScript": 0,
+      "files": [
+        "data/INT-0-331440.txt"
+      ]
+    },
+    {
+      "name": "intGroup",
+      "inlineScript": 0,
+      "files": [
+        "data/intGroup-0-331447.txt"
+      ]
+    },
+    {
+      "name": "SHOP_ITEMS",
+      "inlineScript": 0,
+      "files": [
+        "data/SHOP_ITEMS-0-346300.txt"
+      ]
+    },
+    {
+      "name": "SHOP_NAMES",
+      "inlineScript": 0,
+      "files": [
+        "data/SHOP_NAMES-0-348026.txt"
+      ]
+    },
+    {
+      "name": "doorMarks",
+      "inlineScript": 0,
+      "files": [
+        "data/doorMarks-0-350513.txt"
+      ]
+    },
+    {
+      "name": "SAVEKEY",
+      "inlineScript": 0,
+      "files": [
+        "data/SAVEKEY-0-360271.txt"
+      ]
+    },
+    {
+      "name": "scene",
+      "inlineScript": 0,
+      "files": [
+        "data/scene-0-543597.txt"
+      ]
+    },
+    {
+      "name": "renderer",
+      "inlineScript": 0,
+      "files": [
+        "data/renderer-0-544095.txt"
+      ]
+    },
+    {
+      "name": "spots",
+      "inlineScript": 0,
+      "files": [
+        "data/spots-0-548050.txt"
+      ]
+    }
+  ],
+  "events": [],
+  "externalScripts": [
+    "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
+    "js/characters.js",
+    "js/reference-characters.js",
+    "js/supercar.js",
+    "js/suv-details-live.js?v=2",
+    "js/punch-visual-fix.js?v=1",
+    "js/one-hand-hit.js?v=1",
+    "js/gun-animation.js?v=1",
+    "js/soundtrack.js"
+  ],
+  "tail0": [
+    "bootstrap/script-0-tail.txt"
+  ],
+  "passed": true,
+  "limitations": "Syntax and source inspection only; does not test browser execution, WebGL rendering, gameplay, or deployed files."
+}

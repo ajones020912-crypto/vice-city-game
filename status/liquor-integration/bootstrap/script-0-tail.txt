@@ -1,0 +1,110 @@
+return;if(stars>0)pl.sightT=0;if(stars>=6){state.seconds=0;state.warned=false;return;}
+ const required=speedingSecondsForStars(stars);state.seconds+=dt;if(!state.warned&&state.seconds>=required-5){state.warned=true;toast('Slow down: '+limit+' mph limit. Another wanted star after '+required+' seconds of speeding.',2600);}
+ if(state.seconds>required+1e-7){const target=stars+1,threshold=speedingCrimeThreshold(target);if(threshold===null)return;const crime=Number(pl.crime)||0,points=Math.max(0,threshold-crime);addCrime(points);state.seconds=0;state.warned=false;state.star=Math.max(0,Math.min(6,Math.floor(Number(pl.wanted)||0)));toast('Speeding reported: '+limit+' mph limit.',2600);}
+}
+const speedingNativeSimulate=simulate;simulate=function(dt){const result=speedingNativeSimulate.apply(this,arguments);updateSpeedingEnforcement(Number.isFinite(G.rdt)?G.rdt:dt);return result;};
+// RACE_TRACK_V1: while a race runs, side streets onto the route get black-and-yellow barricades (solid), traffic and
+// pedestrians are kept off the track, and speeding / red-light rules are suspended.
+const RT={race:null,rects:[],cols:[],meshes:[],clearT:0};
+const raceOn=()=>!!(SJ&&SJ.kind==='race'&&SJ.race);G.raceOn=raceOn;
+function rtTex(){if(rtTex.t)return rtTex.t;const c=document.createElement('canvas');c.width=128;c.height=32;const x=c.getContext('2d');x.fillStyle='#f5c400';x.fillRect(0,0,128,32);x.fillStyle='#111';
+ for(let i=-32;i<160;i+=32){x.beginPath();x.moveTo(i,0);x.lineTo(i+16,0);x.lineTo(i+48,32);x.lineTo(i+32,32);x.closePath();x.fill()}
+ const t=new T.CanvasTexture(c);t.wrapS=T.RepeatWrapping;t.encoding=T.sRGBEncoding;rtTex.t=t;return t}
+function rtRoadHw(x,z,horizontal){let best=9;for(const r of roads){if((r.o==='h')!==horizontal)continue;if(r.o==='h'?(Math.abs(z-r.c)<r.hw+3&&x>r.a-3&&x<r.b+3):(Math.abs(x-r.c)<r.hw+3&&z>r.a-3&&z<r.b+3))return r.hw}return best}
+function rtInside(x,z,m=0){for(const r of RT.rects)if(x>r.x0-m&&x<r.x1+m&&z>r.z0-m&&z<r.z1+m)return r;return null}
+function rtRemoveCol(c){const CGs=24;for(let gx=Math.floor(c.x0/CGs);gx<=Math.floor(c.x1/CGs);gx++)for(let gz=Math.floor(c.z0/CGs);gz<=Math.floor(c.z1/CGs);gz++){const a=colGrid.get(gx*4096+gz);if(a){const i=a.indexOf(c);if(i>=0)a.splice(i,1)}}const i=colAll.indexOf(c);if(i>=0)colAll.splice(i,1)}
+function buildRaceTrack(race){
+ teardownRaceTrack();RT.race=race;const pts=[race.start].concat(race.cps);
+ for(let i=1;i<pts.length;i++){const [ax,az]=pts[i-1],[bx,bz]=pts[i];const horiz=Math.abs(bx-ax)>=Math.abs(bz-az);const hw=rtRoadHw((ax+bx)/2,(az+bz)/2,horiz)+1.5;
+  RT.rects.push({x0:Math.min(ax,bx)-hw,x1:Math.max(ax,bx)+hw,z0:Math.min(az,bz)-hw,z1:Math.max(az,bz)+hw,horiz})}
+ // barricades wherever a street leaves the track at a junction
+ const legs=new Batch(),bars=new Batch(),lamps=new Batch(),m=new T.Matrix4(),q=new T.Quaternion(),up=new T.Vector3(0,1,0),v=new T.Vector3(),sc=new T.Vector3();
+ const put=(b,g,x,y,z,ry,sx,sy,sz,col)=>{q.setFromAxisAngle(up,ry);m.compose(v.set(x,y,z),q,sc.set(sx,sy,sz));b.geo(g,m,col)};
+ const beam=new T.BoxGeometry(1,1,1);
+ for(const nd of nodes){if(!rtInside(nd.x,nd.z,-2))continue;
+  for(const e of nd.edges){const dx=Math.sign(e.to.x-nd.x),dz=Math.sign(e.to.z-nd.z);if(!dx&&!dz)continue;
+   const cross=dx?nd.v.hw:nd.h.hw;if(rtInside(nd.x+dx*(cross+8),nd.z+dz*(cross+8)))continue; // the track continues this way
+   const road=e.road,d=cross+3,cx=nd.x+dx*d,cz=nd.z+dz*d,ry=dx?Math.PI/2:0,w=road.w,ax=dx?0:1,az=dx?1:0,n=Math.max(2,Math.round(w/3.2)),sw=w/n,y0=heightAt(cx,cz);
+   for(let k=0;k<n;k++){const o=-w/2+sw*(k+.5),px=cx+ax*o,pz=cz+az*o;
+    for(const s of[-1,1]){const lx=px+ax*s*(sw/2-.25),lz=pz+az*s*(sw/2-.25);put(legs,GEO.box,lx,y0,lz,ry,.08,1.15,.5,[.12,.12,.13])}
+    put(bars,beam,px,y0+1.0,pz,ry,sw-.15,.26,.06,[1,1,1]);put(bars,beam,px,y0+.62,pz,ry,sw-.15,.2,.06,[1,1,1]);
+    if(k===0||k===n-1)put(lamps,GEO.sph,px,y0+1.25,pz,0,.11,.11,.11,[1,.6,.1])}
+   const c=addCol(cx-(dz?w/2:.35),cz-(dx?w/2:.35),cx+(dz?w/2:.35),cz+(dx?w/2:.35),1.3,'raceBarrier');RT.cols.push(c)}}
+ const tex=rtTex();tex.repeat.set(1,1);
+ const mk=(b,mat)=>{if(!b.v)return;const mesh=new T.Mesh(b.toGeometry(),mat);mesh.castShadow=true;mesh.receiveShadow=true;world.add(mesh);RT.meshes.push(mesh)};
+ mk(legs,new T.MeshStandardMaterial({vertexColors:true,roughness:.7,metalness:.3}));
+ mk(bars,new T.MeshStandardMaterial({map:tex,roughness:.5,metalness:.05}));
+ const lampMat=new T.MeshStandardMaterial({color:0xffa020,emissive:0xff8a00,emissiveIntensity:1.6});RT.lampMat=lampMat;mk(lamps,lampMat);
+ // clear parked cars and traffic off the route right away
+ for(const c of cars.slice())if(c!==pl.car&&!c.keep&&!c.owned&&(c.mode==='traffic'||c.mode==='parked')&&c.occ!=='player'&&rtInside(c.x,c.z))removeCar(c);
+}
+function teardownRaceTrack(){for(const m of RT.meshes){world.remove(m);m.geometry.dispose();if(m.material!==RT.lampMat)m.material.dispose()}RT.meshes=[];for(const c of RT.cols)rtRemoveCol(c);RT.cols=[];RT.rects=[];RT.race=null}
+function updateRaceTrack(dt){
+ if(raceOn()){if(RT.race!==SJ.race)buildRaceTrack(SJ.race)}else if(RT.race){teardownRaceTrack();return}else return;
+ if(RT.lampMat)RT.lampMat.emissiveIntensity=((G.time*2.2)|0)%2?1.8:.2; // flashing amber lamps
+ // keep the track clear: traffic that wanders on is removed when nobody is looking closely
+ RT.clearT-=dt;if(RT.clearT<=0){RT.clearT=.5;for(const c of cars.slice()){if(c===pl.car||c.keep||c.owned||c.occ==='player'||c.mode==='racer'||c.mode==='cop')continue;
+  if((c.mode==='traffic'||c.mode==='parked')&&rtInside(c.x,c.z)&&Math.hypot(c.x-camera.position.x,c.z-camera.position.z)>45)removeCar(c)}}
+}
+// pedestrians (and foot cops) never step onto the track: pushed back to the curb and sent somewhere else
+{const pedUpdate=Ped.prototype.update;Ped.prototype.update=function(dt){const r=pedUpdate.apply(this,arguments);
+ if(RT.race&&!this.dead){const box=rtInside(this.x,this.z);if(box){if(box.horiz){const a=box.z0-.8,b=box.z1+.8;this.z=Math.abs(this.z-a)<Math.abs(this.z-b)?a:b}else{const a=box.x0-.8,b=box.x1+.8;this.x=Math.abs(this.x-a)<Math.abs(this.x-b)?a:b}
+  this.vx=this.vz=0;if(this.state==='walk'&&this.pick)this.pick();if(this.h)this.h.position.set(this.x,this.y,this.z)}}return r}}
+// no speeding tickets or red-light stars during a race
+{const speedOrig=updateSpeedingEnforcement;updateSpeedingEnforcement=function(){if(raceOn()){resetSpeedingEnforcement();return}return speedOrig.apply(this,arguments)}}
+{const redOrig=updateRedLights;updateRedLights=function(){if(raceOn()){RL.node=null;RL.runs=[];return}return redOrig.apply(this,arguments)}}
+{const simRT=simulate;simulate=function(dt){const r=simRT.apply(this,arguments);try{updateRaceTrack(Number.isFinite(dt)?dt:0)}catch(e){console.error('race track',e)}return r}}
+// INTERCEPTORS_V2 (AI only): at 5+ stars while you are flying, two fighters scramble from Salton Memorial AFB, chase
+// you with lead pursuit and shoot you down with their cannon (no missiles). They break off when you land,
+// leave the aircraft or drop below 5 stars.
+const FJ={list:[],missiles:[],warnT:0,spawnT:0,mGeo:null};
+function fjTarget(){const c=pl.car;return pl.wanted>=5&&c&&c.t.aircraft&&c.airborne&&!c.dead?c:null}
+function spawnInterceptor(i){const tgt=pl.car,ang=Math.atan2(AFB.cx-tgt.x,AFB.cz-tgt.z)+(i?.35:-.35),d=1600;
+ const x=tgt.x+Math.sin(ang)*d,z=tgt.z+Math.cos(ang)*d,c=spawnCar('fighterJet',x,z,ang+Math.PI,'fighter',CAR_TYPES.fighterJet.colors[i%2]);
+ c.keep=true;c.occ='ai';c.ai=null;c.airborne=true;c.y=Math.max(tgt.y+60,heightAt(x,z)+120);c.as=105;c.thr=1;c.rpm=1;c.gear=0;c.gam=0;c.ap=0;c.bank=0;
+ c.fighter={i,missileT:5+i*2.5,gunT:0,leave:false};c.place();FJ.list.push(c);return c}
+function stepFighter(c,dt){const F=c.fighter,tgt=fjTarget();if(!tgt)F.leave=true;
+ let tx,ty,tz,want;
+ if(!F.leave){const dd=Math.hypot(tgt.x-c.x,tgt.z-c.z),lead=Math.min(3,dd/Math.max(60,c.as)),side=(F.i?1:-1)*55*clamp((dd-450)/700,0,1); // spread out on approach, line up behind you to shoot
+  tx=tgt.x+tgt.vx*lead+Math.cos(tgt.h)*side;tz=tgt.z+tgt.vz*lead-Math.sin(tgt.h)*side;ty=tgt.y+(tgt.vy||0)*lead+8;
+  const d=Math.hypot(tgt.x-c.x,tgt.z-c.z);want=d<650?Math.max(55,(tgt.as||tgt.speed)+(d>250?18:4)):118}
+ else{tx=c.x+Math.sin(c.h)*500;tz=c.z+Math.cos(c.h)*500;ty=c.y+40;want=118}
+ const dh=wrapA(Math.atan2(tx-c.x,tz-c.z)-c.h),turn=.62;c.h+=clamp(dh,-turn*dt,turn*dt);
+ c.bank+=(clamp(-dh*1.8,-1.25,1.25)-c.bank)*Math.min(1,dt*3);
+ const floor=heightAt(c.x,c.z)+(F.leave?120:35);ty=Math.max(ty,floor);
+ const vy=clamp((ty-c.y)*.6,-30,30);c.as+=(want-c.as)*Math.min(1,dt*.8);
+ c.gam=Math.asin(clamp(vy/Math.max(30,c.as),-.6,.6));c.ap=c.gam;
+ const hv=c.as*Math.cos(c.gam);c.vx=Math.sin(c.h)*hv;c.vz=Math.cos(c.h)*hv;c.vy=c.as*Math.sin(c.gam);c.vf=hv;
+ c.x+=c.vx*dt;c.z+=c.vz*dt;c.y=Math.max(floor-20,c.y+c.vy*dt);c.pitch=-c.ap;c.roll=c.bank;c.thr=1;c.rpm=1;c.gear=0;
+ if(typeof animateAircraft==='function')animateAircraft(c,0,clamp(dh,-1,1),dt);
+ // contrails from the wingtips
+ if(Math.random()<dt*25){const sn=Math.sin(c.h),cs=Math.cos(c.h);for(const s of[-1,1])emit(c.x+cs*s*6.6,c.y+.2,c.z-sn*s*6.6,0,0,0,1.2,.25,.9,[.95,.97,1],[.85,.88,.92],0,.45)}
+ if(F.leave){if(!tgt&&Math.hypot(c.x-pl.x,c.z-pl.z)>2600)removeInterceptor(c);return}
+ // weapons
+ const dx=tgt.x-c.x,dy=tgt.y-c.y,dz=tgt.z-c.z,d=Math.hypot(dx,dy,dz),off=Math.abs(wrapA(Math.atan2(dx,dz)-c.h));
+ F.gunT-=dt;if(d<520&&off<.16&&F.gunT<=0){F.gunT=.09;const sn=Math.sin(c.h),cs=Math.cos(c.h);
+  emit(c.x+sn*9,c.y+.3,c.z+cs*9,dx/d*420+(Math.random()-.5)*20,dy/d*420,dz/d*420+(Math.random()-.5)*20,.5,.25,.15,[1,.85,.4],[1,.5,.2],0,1);
+  if(Math.random()<.3*(1-d/560))damageCar(tgt,6,'shot')}
+ c.age+=dt;
+}
+function removeInterceptor(c){const i=FJ.list.indexOf(c);if(i>=0)FJ.list.splice(i,1);if(cars.includes(c))removeCar(c)}
+function updateInterceptors(dt){
+ const tgt=fjTarget();FJ.spawnT-=dt;
+ if(tgt){const active=FJ.list.filter(c=>!c.fighter.leave).length;if(active<2&&FJ.spawnT<=0){if(!FJ.list.length)toast('✈ Fighter jets scrambled from Salton Memorial AFB!',2600);spawnInterceptor(FJ.list.length%2);FJ.spawnT=4}}
+ for(const c of FJ.list.slice())if(!cars.includes(c)||c.dead)FJ.list.splice(FJ.list.indexOf(c),1);
+}
+G.stepFighter=stepFighter;G.fighterSees=()=>!!pl.car&&FJ.list.some(c=>!c.fighter.leave&&Math.hypot(c.x-pl.car.x,c.z-pl.car.z)<1500);
+{const simFJ=simulate;simulate=function(dt){const r=simFJ.apply(this,arguments);try{updateInterceptors(Number.isFinite(dt)?dt:0)}catch(e){console.error('interceptors',e)}return r}}
+{const ngFJ=newGame;newGame=function(){for(const c of FJ.list.slice())removeInterceptor(c);return ngFJ.apply(this,arguments)}}
+const speedingNativeClearWanted=clearWanted;clearWanted=function(){resetSpeedingEnforcement();return speedingNativeClearWanted.apply(this,arguments);};
+const speedingNativeNewGame=newGame;newGame=function(){resetSpeedingEnforcement();return speedingNativeNewGame.apply(this,arguments);};
+
+boot().catch(err=>{console.error('boot failed',err);const sb=document.getElementById('start');if(sb){sb.disabled=false;if(/LOADING/.test(sb.textContent))sb.textContent='SINGLEPLAYER'}const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small style="color:#ff8">Boot error — check console.</small>'})}catch(err){console.error('boot failed',err);const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small style="color:#ff8">Boot error — check console. You can still try Singleplayer.</small>'}
+// Expose for menu handlers
+window.G=G;window.begin=begin;window.mpActive=typeof mpActive!=='undefined'?mpActive:false;
+window.__vcBegin=function(cont){try{const ov=document.getElementById('overlay');if(ov){ov.classList.add('home-hidden');ov.style.setProperty('display','none','important')}G.multiplayer=false;window.mpActive=false;begin(!!cont)}catch(e){console.error(e)}};
+document.getElementById('start')&&(document.getElementById('start').onclick=()=>window.__vcBegin(false));
+document.getElementById('cont')&&(document.getElementById('cont').onclick=()=>window.__vcBegin(true));
+})();
+
+

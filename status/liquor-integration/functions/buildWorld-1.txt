@@ -1,0 +1,1 @@
+function buildWorld(){for(const [,,f] of worldSteps()){if(typeof f==='function')f();else for(const p of f.each())f.fn(p)}}

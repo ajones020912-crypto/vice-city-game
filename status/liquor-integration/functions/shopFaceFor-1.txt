@@ -1,0 +1,6 @@
+function shopFaceFor(p){
+ const faces=[{x:(p.x0+p.x1)/2,z:p.z1,nx:0,nz:1},{x:(p.x0+p.x1)/2,z:p.z0,nx:0,nz:-1},{x:p.x1,z:(p.z0+p.z1)/2,nx:1,nz:0},{x:p.x0,z:(p.z0+p.z1)/2,nx:-1,nz:0}];
+ for(const f of faces){f.ex=f.x+f.nx*1.0;f.ez=f.z+f.nz*1.0;f.rx=f.x+f.nx*1.9;f.rz=f.z+f.nz*1.9;
+  f.clear=!footprintHitsRoad(f.rx-.38,f.rz-.38,f.rx+.38,f.rz+.38,.05)&&heightAt(f.rx,f.rz)>WL+.15&&!colAll.some(c=>c.tag!=='int'&&c.h>1&&f.rx+.38>c.x0&&f.rx-.38<c.x1&&f.rz+.38>c.z0&&f.rz-.38<c.z1);
+ }return faces.find(f=>f.clear)||null;
+}

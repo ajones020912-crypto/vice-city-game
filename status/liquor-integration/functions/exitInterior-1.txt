@@ -1,0 +1,2 @@
+function exitInterior(){if(!pl.inside||G.busy)return;G.busy=true;fadeTo(1);setTimeout(()=>{const d=pl.inside.door;pl.inside=null;world.visible=true;intGroup.visible=false;sun.visible=true;interiorLight.intensity=0;interiorFill.intensity=0;interiorAmb.intensity=0;skyDome.visible=true;scene.background=null;
+  pl.x=d.ret.x;pl.z=d.ret.z;pl.y=heightAt(pl.x,pl.z);pl.h=0;camYaw=Math.PI;camInit=false;fadeTo(0);G.busy=false;audio.door()},470)}

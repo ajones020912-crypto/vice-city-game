@@ -1,0 +1,1 @@
+function closeShop(){$('#shop').style.display='none';G.state='play';requestGameMouseLock();G.hudDirty=true}

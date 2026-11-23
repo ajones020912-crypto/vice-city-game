@@ -1,0 +1,1 @@
+function gatorSpot(){for(let k=0;k<300;k++){const x=rr(480,1400),z=rr(-250,420);if(swampMask(x,z)<.35||heightAt(x,z)>1.5)continue;return[x,z]}return[900,100]}

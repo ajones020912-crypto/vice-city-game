@@ -1,0 +1,4 @@
+function circleBox(p,r,c){const cx=clamp(p[0],c.x0,c.x1),cz=clamp(p[1],c.z0,c.z1);let dx=p[0]-cx,dz=p[1]-cz,d=Math.hypot(dx,dz);
+ if(d>=r)return null;if(d<1e-4){const l=p[0]-c.x0,rr_=c.x1-p[0],t=p[1]-c.z0,b=c.z1-p[1],m=Math.min(l,rr_,t,b);
+  if(m===l){dx=-1;dz=0;d=-l}else if(m===rr_){dx=1;dz=0;d=-rr_}else if(m===t){dx=0;dz=-1;d=-t}else{dx=0;dz=1;d=-b}return{nx:dx,nz:dz,pen:r-d}}
+ return{nx:dx/d,nz:dz/d,pen:r-d}}

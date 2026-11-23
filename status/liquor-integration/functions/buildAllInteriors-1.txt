@@ -1,0 +1,1 @@
+function buildAllInteriors(){INTKINDS.forEach((k,i)=>buildInterior(k,i))}

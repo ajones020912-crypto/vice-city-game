@@ -1,0 +1,1 @@
+renderer=new T.WebGLRenderer({antialias:true,powerPreference:'high-performance'})

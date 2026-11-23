@@ -1,0 +1,10 @@
+function attachSafeShopEntrance(p,shop,face){
+ const f=face||shopFaceFor(p);if(!f)return false;
+ const d={x:f.ex,z:f.ez,kind:shop.k,name:shop.name,col:shop.col,ret:{x:f.rx,z:f.rz}};doors.push(d);
+ const sg=new T.Mesh(new T.PlaneGeometry(Math.min(8,(f.nx?p.z1-p.z0:p.x1-p.x0)-1),2),new T.MeshBasicMaterial({map:signTex(shop.name,shop.col),toneMapped:false}));
+ sg.position.set(f.x+f.nx*.35,Math.min(6.2,p.H-.6),f.z+f.nz*.35);sg.rotation.y=Math.atan2(f.nx,f.nz);world.add(sg);
+ const tx=f.nz,tz=-f.nx;
+ bakeG('neon',GEO.box,f.x+f.nx*.12,3.5,f.z+f.nz*.12,0,f.nz?3.2:.28,.3,f.nx?3.2:.28,hexRGB(shop.col));
+ for(const side of[-1,1])bakeG('plain',GEO.box,f.x+f.nx*.12+tx*side*1.45,0,f.z+f.nz*.12+tz*side*1.45,0,.28,3.5,.28,[.9,.9,.9]);
+ p.extraShop=true;return true;
+}

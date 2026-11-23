@@ -1,0 +1,4 @@
+function nearSpot(){if(pl.car||pl.inside)return null;
+ if(hyp(pl.x,pl.z,DEALER.x,DEALER.z)<2.8)return{kind:'dealer',prompt:'[E] Browse Sunshine Autos'};
+ for(const p of PROPS)if(hyp(pl.x,pl.z,p.x,p.z)<2.8)return{kind:'prop',obj:p,prompt:pl.props[p.id]?'[E] Use '+p.name+' (save · sleep · garage)':'[E] Buy '+p.name+' — $'+p.price.toLocaleString()};
+ return null}

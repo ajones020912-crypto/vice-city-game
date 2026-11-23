@@ -1,0 +1,1 @@
+function freeSpot(x,z){if(!queryCols(x,z,1).some(c=>circleBox([x,z],.7,c)))return[x,z];for(let r=2;r<20;r+=2)for(let i=0;i<8;i++){const px=x+Math.cos(i/8*TAU)*r,pz=z+Math.sin(i/8*TAU)*r;if(!queryCols(px,pz,1).some(c=>circleBox([px,pz],.7,c))&&heightAt(px,pz)>WL+.1)return[px,pz]}return[x,z]}

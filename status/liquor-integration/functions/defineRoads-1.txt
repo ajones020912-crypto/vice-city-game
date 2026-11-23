@@ -1,0 +1,57 @@
+function defineRoads(){
+ const xr=[],zr=[];for(let i=-300;i<=300;i+=60)xr.push(i);for(let i=-330;i<=330;i+=60)zr.push(i);
+ G.xr=xr;G.zr=zr;
+ // Less of a grid: some street segments are left out, which makes plaza superblocks, long blocks and T-junctions.
+ // Race routes (x=±240, -180, 300; z=±270), the start area and the main avenues keep all their segments.
+ const seg=(o,c,a,b,w,type,sig)=>{const cuts=(CITY_CUTS[o][c]||[]).slice().sort((p,q)=>p[0]-q[0]);let s0=a;
+  for(const [g0,g1] of cuts){if(g0>s0)addRoad(o,c,s0,g0,w,type,sig);s0=Math.max(s0,g1)}if(b>s0)addRoad(o,c,s0,b,w,type,sig)};
+ for(const x of xr)seg('v',x,-330,420,18,'city',true);
+ for(const z of zr){if(z===-330)seg('h',z,-900,1100,18,'city',true);else if(z===-30)seg('h',z,-640,380,18,'city',true);else seg('h',z,-300,380,18,'city',true)}
+ // Interstate bypass tunnel/loop around VCIA's east edge: no highway surface crosses the runway or apron.
+ addRoad('v',380,-980,300,30,'hwy');
+ addRoad('h',300,380,1500,30,'hwy');addRoad('v',1500,300,1340,30,'hwy');addRoad('h',1340,380,1500,30,'hwy');addRoad('v',380,1340,1400,30,'hwy');
+ addRoad('v',380,-1090,-980,14,'city');          // causeway on to the Salton Memorial AFB gate          // Interstate 1 — longer causeway to the Keys
+ addRoad('h',340,-1400,1500,28,'hwy');         // Gulf Expressway extended
+ addRoad('h',-820,-420,1500,14,'city');        // Keys road extended
+ for(let i=0;i<8;i++){addRoad('v',-1050+70*i,420,1010,16,'city',true);addRoad('h',490+70*i,-1060,-550,16,'city',true)}
+ // Streets bordering VCIA are shifted west so they do not run across the airfield.
+ for(const x of[-270,-210,-150,-90,-30])addRoad('v',x,420,1100,14,'city');
+ // East-west neighborhood streets stop at the western airport boundary.
+ for(const z of[540,660,780,900,1020])addRoad('h',z,-330,20,14,'city');
+ // outer ring / expanded countryside roads
+ addRoad('h',1400,-400,900,16,'city');
+ addRoad('v',1360,420,1300,16,'city');
+ addRoad('v',-400,-330,900,18,'city',true);
+ addRoad('h',-500,-1200,500,18,'hwy');
+ addRoad('v',-800,-200,600,14,'city');
+ addRoad('h',1320,380,1500,12,'city');
+ addRoad('v',1400,-900,500,22,'hwy');
+ // dirt / rural
+ addRoad('h',60,380,1500,9,'dirt');addRoad('v',800,-260,500,8,'dirt');addRoad('h',300,380,1200,8,'dirt');addRoad('v',1000,60,400,8,'dirt');
+ addRoad('h',-100,1000,1600,8,'dirt');addRoad('v',1600,-400,400,8,'dirt');addRoad('v',-1300,-100,500,8,'dirt');
+ // SOUTH_EXPANSION_V1 (bottom of the map): Harbor Heights below Port Calusa, Coral Ridge below Palmetto Grove
+ for(const [o,c,a,b,w] of HH.roads)addRoad(o,c,a,b,w,'city');
+ // causeways: Port Calusa down to the island's north shore, and across the channel to Coral Ridge
+ {const v=HH.roads.filter(q=>q[0]==='v').sort((a,b)=>Math.abs(a[1]-1900)-Math.abs(b[1]-1900))[0];
+  const vx=v?v[1]:1900,shore=v?v[3]:-700;addRoad('v',vx,shore,-200,18,'city');addRoad('h',-200,1400,vx,16,'city')} // causeway to the mainland
+ for(const x of CR_X)if(x!==380)addRoad('v',x,1640,2400,14,'city',true);
+ for(const z of CR_Z)addRoad('h',z,-420,880,14,'city',true);
+ addRoad('v',380,1400,2480,30,'hwy');          // Interstate 1 continues south through Coral Ridge
+ addRoad('h',1520,-420,900,22,'hwy');          // Calusa Parkway along the top of Coral Ridge
+ addRoad('v',900,1300,1520,16,'city');
+ // BIG_MAP_V1 countryside roads
+ addRoad('h',420,-3300,-1400,28,'hwy');addRoad('h',420,1500,3200,28,'hwy');   // Gulf Expressway coast to coast
+ addRoad('v',380,2480,4550,30,'hwy');                                         // Interstate across the glades to the Gulf coast
+ addRoad('v',-2700,420,1750,18,'hwy');                                        // west highway through Orrin Wilds
+ addRoad('h',3200,-2300,2700,18,'hwy');                                       // Glades Trail across the south
+ addRoad('v',2600,-200,3200,18,'hwy');                                        // east coast highway
+ // KEY_LENTO_HIGHWAY_V1 — continuous causeway/highway from the east-coast route through Key Lento and the Keys to LWRA.
+ addRoad('h',3200,2600,3600,30,'hwy');
+ addRoad('v',3600,700,3200,30,'hwy');
+ addRoad('h',700,3600,4250,30,'hwy');
+ addRoad('v',4250,700,2800,30,'hwy');
+ addRoad('h',2800,4250,4900,30,'hwy');
+ addRoad('h',1520,900,2600,16,'city');                                        // parkway out to the coast
+ addRoad('h',2600,1000,2600,9,'dirt');addRoad('h',1900,1000,2600,9,'dirt');addRoad('v',1800,700,3200,9,'dirt');addRoad('v',2200,1520,3200,9,'dirt');
+ addRoad('h',4200,-1400,1600,9,'dirt');addRoad('v',-2300,2350,3200,9,'dirt');addRoad('h',1100,-3300,-2700,9,'dirt');addRoad('h',-150,-3300,-2700,9,'dirt');
+}

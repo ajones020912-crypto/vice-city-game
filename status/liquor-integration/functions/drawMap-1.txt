@@ -1,0 +1,29 @@
+function drawMap(){
+ const S=900,k=(S/(WS*2))*MapView.zoom;
+ // MAP_ROTATED_V1: north is world -x, east is world -z (Vice City faces the Atlantic like Miami Beach)
+ const worldToScreen=(wx,wz)=>[S/2-(wz-MapView.cz)*k,S/2+(wx-MapView.cx)*k];
+ mapx.fillStyle='#0a2030';mapx.fillRect(0,0,S,S);
+ const half=WS/MapView.zoom;
+ const x0=MapView.cx-half,z0=MapView.cz-half;
+ const sx=(x0+WS)/MAPPX,sy=(z0+WS)/MAPPX,sw=(half*2)/MAPPX,sh=(half*2)/MAPPX;
+ mapx.save();mapx.translate(S/2,S/2);mapx.rotate(Math.PI/2);try{mapx.drawImage(baseMap,sx,sy,sw,sh,-S/2,-S/2,S,S)}catch(e){mapx.drawImage(baseMap,-S/2,-S/2,S,S)}mapx.restore();
+ mapx.textAlign='center';mapx.textBaseline='middle';
+ mapx.font='bold 13px Arial';mapx.fillStyle='#ffffffcc';mapx.shadowColor='#000';mapx.shadowBlur=4;
+ for(const r of REGIONS){
+  const [sx1,sy1]=worldToScreen((r[1]+r[3])/2,(r[2]+r[4])/2);
+  if(sx1>-40&&sx1<S+40&&sy1>-20&&sy1<S+20)mapx.fillText(r[0],sx1,sy1);
+ }
+ mapx.shadowBlur=0;
+ if(G.raceOn&&G.raceOn())drawRacePath(mapx,worldToScreen,Math.max(3,k*10),SJ.i||0);
+ for(const b of blips()){
+  const [bx,by]=worldToScreen(b.x,b.z);
+  if(bx<-20||bx>S+20||by<-20||by>S+20)continue;
+  if(b.icon){mapEmoji(mapx,b.s,bx,by,18);if(MapView.zoom>=2.5&&b.label){mapx.save();mapx.font='bold 10px Arial';mapx.textAlign='center';mapx.fillStyle='#fff';mapx.shadowColor='#07131e';mapx.shadowBlur=4;mapx.fillText(b.label,bx,by+22,110);mapx.restore()}}else{mapx.fillStyle=b.c;mapx.font=(b.small?12:b.big?20:16)+'px Arial';mapx.fillText(b.s,bx,by);}
+ }
+ const ang=pl.car?pl.car.h:pl.h;
+ const [px,py]=worldToScreen(pl.x,pl.z);
+ mapx.save();mapx.translate(px,py);mapx.rotate(-ang-Math.PI/2);mapx.fillStyle='#fff';mapx.strokeStyle='#000';mapx.lineWidth=2;
+ mapx.beginPath();mapx.moveTo(0,-10);mapx.lineTo(7,8);mapx.lineTo(0,4);mapx.lineTo(-7,8);mapx.closePath();mapx.fill();mapx.stroke();mapx.restore();
+ mapx.fillStyle='#ffffff88';mapx.font='12px Arial';mapx.textAlign='left';mapx.fillText((MapView.zoom*100|0)+'% · drag / scroll · click twice quickly to set a waypoint · right-click to remove',12,S-14);
+ MapView.dirty=false;
+}

@@ -1,0 +1,1 @@
+function robberyKey(d){return d.kind+':'+Math.round(d.x??d.ret.x)+':'+Math.round(d.z??d.ret.z)}

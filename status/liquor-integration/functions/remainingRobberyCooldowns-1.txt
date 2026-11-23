@@ -1,0 +1,1 @@
+function remainingRobberyCooldowns(){const out={};for(const[k,v]of Object.entries(G.robberyCooldowns||{}))if(v>G.time)out[k]=v-G.time;return out}

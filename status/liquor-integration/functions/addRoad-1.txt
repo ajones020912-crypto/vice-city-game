@@ -1,0 +1,1 @@
+function addRoad(o,c,a,b,w,type,sig=false){const r={id:roadId++,o,c,a,b,w,hw:w/2,type,sig,cross:[]};roads.push(r);return r}

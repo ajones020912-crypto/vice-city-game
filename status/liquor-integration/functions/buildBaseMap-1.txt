@@ -1,0 +1,74 @@
+function buildBaseMap(){
+ const S=WS*2/MAPPX,[c,x]=cv(S,S),id=x.createImageData(S,S),o=[0,0,0],d=id.data;
+ for(let j=0;j<S;j+=2)for(let i=0;i<S;i+=2){const wx=-WS+i*MAPPX,wz=-WS+j*MAPPX,h=heightAt(wx,wz);groundCol(wx,wz,h,o);let r=o[0],g=o[1],b=o[2];
+  if(h<WL){const k=clamp((WL-h)/3.4,0,1);r=.2-.12*k;g=.55-.3*k;b=.7-.28*k}else if(h>6){const k=h/50;r+=k*.2;g+=k*.15;b+=k*.1}
+  const R=Math.min(255,r*300),Gc=Math.min(255,g*300),Bc=Math.min(255,b*300);
+  for(let dj=0;dj<2;dj++)for(let di=0;di<2;di++){const p=((j+dj)*S+i+di)*4;d[p]=R;d[p+1]=Gc;d[p+2]=Bc;d[p+3]=255}}
+ x.putImageData(id,0,0);
+ x.fillStyle='rgba(60,60,70,.55)';for(const b of colAll)if(b.h>6&&b.x1-b.x0>6)x.fillRect((b.x0+WS)/MAPPX,(b.z0+WS)/MAPPX,(b.x1-b.x0)/MAPPX,(b.z1-b.z0)/MAPPX);
+ for(const r of roads){x.strokeStyle=r.type==='hwy'?'#f2c14e':r.type==='dirt'?'#8a6c42':'#d8d8d8';x.lineWidth=Math.max(1.6,r.w/MAPPX*(r.type==='hwy'?.9:.8));x.beginPath();
+  if(r.o==='h'){x.moveTo((r.a+WS)/MAPPX,(r.c+WS)/MAPPX);x.lineTo((r.b+WS)/MAPPX,(r.c+WS)/MAPPX)}else{x.moveTo((r.c+WS)/MAPPX,(r.a+WS)/MAPPX);x.lineTo((r.c+WS)/MAPPX,(r.b+WS)/MAPPX)}x.stroke()}
+ // VCIA_SATELLITE_LAYOUT_V3: minimap drawn from the current expanded airport geometry.
+ {const ax=650,az=820,sc=1.5,px=v=>(ax+v*sc+WS)/MAPPX,pz=v=>(az+v*sc+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w*sc/MAPPX,h*sc/MAPPX)};
+  const path=(pts,color,width)=>{x.strokeStyle=color;x.lineWidth=width*sc/MAPPX;x.lineCap='round';x.lineJoin='round';x.beginPath();pts.forEach((p,i)=>i?x.lineTo(px(p[0]),pz(p[1])):x.moveTo(px(p[0]),pz(p[1])));x.stroke()};
+  x.save();
+  // Asphalt airport field: near-black pavement, with the runway and taxiways clearly separated.
+  rect(60,0,720,570,'#252a2c');
+  // Main runway remains the darkest, widest paved strip with bright edge markings.
+  rect(0,-220,760,56,'#171b1d');
+  path([[-374,-249],[374,-249]],'#e9e8dc',1.8);path([[-374,-191],[374,-191]],'#e9e8dc',1.8);
+  path([[-330,-150],[330,-150]],'#080b0d',32);
+  path([[-330,-150],[330,-150]],'#e2bd55',1.7);
+  // Parallel taxiway and runway connectors: wider charcoal lanes, yellow centerlines, pale edges.
+  path([[-374,-150],[374,-150]],'#111719',22);
+  path([[-374,-150],[374,-150]],'#e4c45f',1.8);
+  path([[-374,-164],[374,-164]],'#d9dedb',.9);path([[-374,-136],[374,-136]],'#d9dedb',.9);
+  for(const xx of[-330,330]){
+   path([[xx,-235],[xx,-85]],'#111719',30);
+   path([[xx,-235],[xx,-85]],'#e4c45f',1.7);
+  }
+  // Dark asphalt aprons with visible taxi lead-ins.
+  rect(-125,94,190,84,'#383e40');rect(200,112,120,151,'#383e40');rect(90,62,44,55,'#383e40');
+  path([[-125,63],[-125,94]],'#111719',30);path([[-125,63],[-125,94]],'#e4c45f',1.7);
+  for(const xx of[-190,-135,-80]){path([[xx,91],[xx,112]],'#111719',18);path([[xx,91],[xx,112]],'#e4c45f',1.5);}
+  rect(-153,158,270,104,'#34434a');rect(-153,105,258,2,'#315e70');
+  rect(-330,155,80,46,'#34434a');rect(24,155,80,46,'#34434a');
+  for(const xx of[-255,-185,-115,-45]){path([[xx,102],[xx,28]],'#315e70',8);rect(xx,18,15,17,'#34434a');}
+  path([[-420,192],[420,192]],'#454a4d',9);rect(-320,220,170,80,'#454a4d');
+  for(let xx=-400;xx<=-240;xx+=18)path([[xx,181],[xx,259]],'#e9e8dc',.7);
+  rect(205,140,108,86,'#34434a');rect(13,154,17,15,'#315e70');rect(82,155,35,20,'#b5b8b2');
+  x.strokeStyle='#777f77';x.lineWidth=1.5/MAPPX;x.strokeRect(px(-410),pz(-290),820*sc/MAPPX,580*sc/MAPPX);x.restore();
+ }
+ // LEONIDA_WEST_REGIONAL_AIRPORT_SATELLITE_V1
+ {const ax=4900,az=2800,px=v=>(ax+v+WS)/MAPPX,pz=v=>(az+v+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w/MAPPX,h/MAPPX)};x.save();rect(0,0,900,620,'#53694a');rect(0,-45,560,48,'#343b3d');rect(0,35,470,22,'#454b4b');x.strokeStyle='#e3e4dc';x.lineWidth=1.2;x.setLineDash([5,4]);x.beginPath();x.moveTo(px(-245),pz(-45));x.lineTo(px(245),pz(-45));x.stroke();x.setLineDash([]);rect(-125,110,180,100,'#898d87');rect(195,125,125,105,'#858b85');rect(-310,220,175,90,'#454b4b');rect(0,155,112,44,'#46545a');rect(185,115,100,72,'#59645f');rect(10,155,20,18,'#68777a');x.strokeStyle='#9ba184';x.lineWidth=1;x.strokeRect(px(-430),pz(-285),860/MAPPX,570/MAPPX);x.restore();}
+
+ // SALTON_AFB_SATELLITE_MAP_V1: draw the air force base footprint on the shared minimap/full-map canvas.
+ {const ax=650,az=-1180,px=v=>(ax+v+WS)/MAPPX,pz=v=>(az+v+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w/MAPPX,h/MAPPX)};
+  x.save();
+  // Base grounds and fenced compound
+  rect(0,-5,1160,390,'#53694a');
+  rect(0,-15,1080,350,'#657451');
+  // Main runway and threshold/centerline markings
+  rect(0,-70,920,46,'#343a3c');
+  x.strokeStyle='#e2e3dc';x.lineWidth=1.15;x.setLineDash([5,4]);x.beginPath();x.moveTo(px(-425),pz(-70));x.lineTo(px(425),pz(-70));x.stroke();x.setLineDash([]);
+  x.fillStyle='#e5e5dc';for(const end of [-1,1])for(let i=0;i<7;i++)x.fillRect(px(end*438)-1,pz(-70+i*5)-.7,2.2,2.1);
+  // Parallel taxiway, connectors and aircraft apron
+  rect(0,-5,700,20,'#454b4b');rect(0,-5,680,1.8,'#c5a75f');
+  for(const xx of [-330,0,330])rect(xx,-37,18,56,'#454b4b');
+  rect(-60,75,560,95,'#898d87');
+  x.strokeStyle='#e5e0c9';x.lineWidth=.85;for(const xx of [-300,-245,-190,-135,-80,-25,30,85,140]){x.beginPath();x.moveTo(px(xx),pz(48));x.lineTo(px(xx),pz(105));x.stroke()}
+  // Four hardened aircraft shelter roofs, aligned along the apron
+  for(let i=0;i<4;i++){const xx=-300+i*120;rect(xx,29,54,29,'#777c76');x.strokeStyle='#aeb1a8';x.lineWidth=.8;x.strokeRect(px(xx-27),pz(14),54/MAPPX,30/MAPPX);rect(xx,29,5,28,'#343a3b')}
+  // Operations buildings, hangar and control tower
+  rect(330,90,42,24,'#777f79');rect(365,76,34,35,'#606b68');rect(430,91,20,18,'#777f79');
+  rect(300,68,18,18,'#6e797b');rect(300,68,8,8,'#a7b8b7');
+  // Radar dome and service structures
+  x.fillStyle='#c2c6bd';x.beginPath();x.arc(px(370),pz(135),3.2,0,Math.PI*2);x.fill();
+  rect(-425,112,36,20,'#727d79');rect(-370,132,25,16,'#81877f');
+  // Perimeter fence and access road
+  x.strokeStyle='#9ba184';x.lineWidth=1.1;x.strokeRect(px(-560),pz(-180),1120/MAPPX,330/MAPPX);
+  x.strokeStyle='#b4b59a';x.lineWidth=1.4;x.beginPath();x.moveTo(px(560),pz(150));x.lineTo(px(590),pz(175));x.lineTo(px(630),pz(175));x.stroke();
+  x.restore();
+ }
+ baseMap=c;
+}

@@ -1,0 +1,1 @@
+SHOP_NAMES={burger:'Burger Shack',ammu:'Gun Cove',clothes:'Pastel Threads',safe:'Safehouse'}

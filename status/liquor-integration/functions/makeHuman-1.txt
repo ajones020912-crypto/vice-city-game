@@ -1,0 +1,18 @@
+function makeHuman(o){
+ const root=makeOriginalHumanBeforeSimple(o),u=root.userData;
+ const cache=makeHuman._simpleGeometryCache||(makeHuman._simpleGeometryCache=new WeakMap());
+ const weapons=new Set();for(const g of Object.values(u.guns||{})){if(g&&g.traverse)g.traverse(n=>weapons.add(n))}
+ let changed=0;
+ root.traverse(n=>{
+  if(!n.isMesh||n.isSkinnedMesh||weapons.has(n)||!n.geometry)return;
+  const old=n.geometry;if(old.type==='BoxGeometry'||old.type==='BoxBufferGeometry')return;
+  let box=cache.get(old);
+  if(!box){old.computeBoundingBox();const b=old.boundingBox;if(!b)return;const size=b.getSize(new T.Vector3()),center=b.getCenter(new T.Vector3());
+   if(![size.x,size.y,size.z,center.x,center.y,center.z].every(Number.isFinite))return;
+   box=new T.BoxGeometry(Math.max(.001,size.x),Math.max(.001,size.y),Math.max(.001,size.z));box.translate(center.x,center.y,center.z);cache.set(old,box)
+  }
+  n.geometry=box;changed++;
+ });
+ root.userData.simpleCharacterModels=true;root.userData.simplifiedMeshCount=changed;
+ return root;
+}

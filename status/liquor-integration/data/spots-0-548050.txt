@@ -1,0 +1,1 @@
+spots=planRoadsideSpeedLimits(roads,typeof BLD==='undefined'?[]:Array.from(BLD),heightAt)

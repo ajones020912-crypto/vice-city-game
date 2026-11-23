@@ -1,0 +1,12 @@
+function switchChar(){
+  if(pl.inside||G.busy||!pl.alive)return;
+  pl.char=pl.char==='jason'?'lucia':'jason';
+  const c=CHAR[pl.char];
+  pl.shirt=c.shirt;pl.pants=c.pants;
+  setHumanLook(plH,{skin:c.skin,shirt:c.shirt,pants:c.pants,hair:c.hair,glasses:c.glasses,shoe:c.shoe,longHair:c.longHair});
+  $('#char').textContent=c.name;
+  // switching can help lose heat (partner icon)
+  if(pl.wanted>0){pl.heat.partner=0;toast('Switched to '+c.name+' — partner heat reduced',2200)}
+  else toast('Now playing as '+c.name,1800);
+  G.hudDirty=true;
+}

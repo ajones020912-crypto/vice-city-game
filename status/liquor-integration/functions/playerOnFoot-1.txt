@@ -1,0 +1,32 @@
+function playerOnFoot(dt){
+ const f=(keys['w']||keys['arrowup']?1:0)-(keys['s']||keys['arrowdown']?1:0),sd=(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0);
+ const run=keys['shift'],aiming=pl.weapon!=='fists'&&(mouseDown||pl.aim>0);
+ let sp=run?7.6:3.7;if(pl.swim)sp=2.7;if(aiming&&!run)sp=3;
+ if(pl.inside)sp=Math.min(sp,4.2);
+ const fx=-Math.sin(camYaw),fz=-Math.cos(camYaw),rx=Math.cos(camYaw),rz=-Math.sin(camYaw);
+ let dx=fx*f+rx*sd,dz=fz*f+rz*sd;const dl=Math.hypot(dx,dz);if(dl>0){dx/=dl;dz/=dl}
+ const k=Math.min(1,dt*(pl.vy===0?12:3));pl.vx+=(dx*sp-pl.vx)*k;pl.vz+=(dz*sp-pl.vz)*k;
+ if(pl.inside){
+  // Flat interior floor at y=0 — never use outdoor heightAt / world clamp (interiors live at x≈6000+)
+  const gy=0,onG=pl.y<=gy+.08;
+  if(keys[' ']&&onG&&G.state==='play')pl.vy=5.2;
+  pl.vy-=17*dt;pl.y+=pl.vy*dt;if(pl.y<gy){pl.y=gy;pl.vy=0}
+  pl.swim=false;
+  pl.x+=pl.vx*dt;pl.z+=pl.vz*dt;
+  resolveFoot(pl,.38);
+  const o=pl.inside.o;pl.x=clamp(pl.x,o.cx-9.5,o.cx+9.5);pl.z=clamp(pl.z,o.cz-6.5,o.cz+6.5);
+ } else {
+  const gy=heightAt(pl.x,pl.z);const onG=pl.y<=gy+.05;
+  if(keys[' ']&&onG&&!pl.swim&&G.state==='play'){pl.vy=5.8}
+  pl.vy-=17*dt;pl.y+=pl.vy*dt;if(pl.y<gy){pl.y=gy;pl.vy=0}
+  pl.swim=gy<WL-1.05;if(pl.swim){pl.y=WL-.75;pl.vy=0}
+  pl.x+=pl.vx*dt;pl.z+=pl.vz*dt;
+  resolveFoot(pl,.38);
+  pl.x=clamp(pl.x,-WS+150,WS-150);pl.z=clamp(pl.z,-WS+150,WS-150);
+ }
+ const spd=Math.hypot(pl.vx,pl.vz);pl.walkSpd=spd;
+ if(aiming||pl.fireT>0&&pl.weapon!=='fists'){const ty=Math.atan2(-Math.sin(camYaw),-Math.cos(camYaw));pl.h+=wrapA(ty-pl.h)*Math.min(1,dt*14)}
+ else if(spd>.4){const ty=Math.atan2(pl.vx,pl.vz);pl.h+=wrapA(ty-pl.h)*Math.min(1,dt*12)}
+ pl.aim=aiming?1:Math.max(0,pl.aim-dt*4);
+ if(!pl.inside&&dl>0&&spd>4&&!pl.swim&&Math.random()<dt*14)emit(pl.x,pl.y+.05,pl.z,0,.2,0,.5,.15,.4,DUST,DUST,0,.25);
+}

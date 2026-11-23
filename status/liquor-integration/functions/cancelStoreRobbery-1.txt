@@ -1,0 +1,1 @@
+function cancelStoreRobbery(message){if(!G.robbery)return;G.robbery=null;hideActionProgress();if(message)toast(message)}

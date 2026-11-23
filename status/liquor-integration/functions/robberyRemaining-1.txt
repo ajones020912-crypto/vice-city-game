@@ -1,0 +1,1 @@
+function robberyRemaining(d){return Math.max(0,(G.robberyCooldowns&&G.robberyCooldowns[robberyKey(d)]||0)-G.time)}

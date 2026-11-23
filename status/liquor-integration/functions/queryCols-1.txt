@@ -1,0 +1,1 @@
+function queryCols(x,z,r){_qr.length=0;for(let gx=Math.floor((x-r)/CG);gx<=Math.floor((x+r)/CG);gx++)for(let gz=Math.floor((z-r)/CG);gz<=Math.floor((z+r)/CG);gz++){const a=colGrid.get(gx*4096+gz);if(a)for(const c of a)if(c._q!==_qid){c._q=_qid;_qr.push(c)}}_qid++;return _qr}

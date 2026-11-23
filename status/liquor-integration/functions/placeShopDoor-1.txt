@@ -1,0 +1,7 @@
+function placeShopDoor(p){
+ const s=p.shop;let face='s',dz=p.z1,dx=p.cx;const mid=(p.z0+p.z1)/2;
+ const fx=p.cx,fz=p.z1+1.2;doors.push({x:fx,z:fz,kind:s.k,name:s.name,col:s.col,ret:{x:fx,z:fz+2.5}});
+ const sg=new T.Mesh(new T.PlaneGeometry(9,2.25),new T.MeshBasicMaterial({map:signTex(s.name,s.col),toneMapped:false}));sg.position.set(fx,6.3,p.z1+.45);world.add(sg);
+ // door frame with colored lintel
+ bakeG('neon',GEO.box,fx,3.6,p.z1+.1,0,3.4,.35,.3,hexRGB(s.col));bakeG('plain',GEO.box,fx-1.5,0,p.z1+.1,0,.3,3.6,.3,[.9,.9,.9]);bakeG('plain',GEO.box,fx+1.5,0,p.z1+.1,0,.3,3.6,.3,[.9,.9,.9]);
+}

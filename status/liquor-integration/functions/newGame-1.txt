@@ -1,0 +1,6 @@
+function newGame(){
+ for(const c of cars.slice())removeCar(c);spawnAirportPlanes();G.mapMarks=[];setWaypoint(null);for(const p of allPeds())p.kill();if(pl.car)ejectPlayer();
+ Object.assign(pl,{x:11.2,z:36,h:Math.PI,hp:100,armor:0,cash:500,rep:0,wanted:0,crime:0,weapon:'fists',weapons:{fists:1},ammo:{pistol:0,smg:0,shot:0,rifle:0},shirt:0x626a68,pants:0x6a593f,missions:{},alive:true,stats:{kills:0,wrecks:0,distance:0},car:null,char:'jason',heat:{face:0,clothes:0,vehicle:0,weapon:0,partner:0,cctv:0},profile:'Professional',profScore:0,focusT:0,rel:50,sightT:0});
+ pl.y=heightAt(pl.x,pl.z);setHumanLook(plH,CHAR.jason);plH.visible=true;G.clock=8;MS.active=null;MS._heatGot=false;
+ const c=spawnCar('sports',7.9,34,Math.PI,'parked',CAR_TYPES.sports.colors[0]);c.owned=true;c.fuel=100;G.ownedCar=c;
+ camYaw=0;camPitch=.2;camInit=false;refreshGivers();startMission(MISSIONS[0]);G.hudDirty=true;$('#char').textContent=CHAR.jason.name;resetExtras()}

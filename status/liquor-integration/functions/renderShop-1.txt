@@ -1,0 +1,3 @@
+function renderShop(kind){$('#shopcash').textContent='Cash: $'+pl.cash;const box=$('#shopitems');box.innerHTML='';
+ for(const it of SHOP_ITEMS[kind]()){const r=document.createElement('div');r.className='row';r.innerHTML=`<div><b>${it.n}</b><br><small>${it.d}</small></div>`;const b=document.createElement('button');b.textContent=it.btn||(it.p?'$'+it.p.toLocaleString():'Use');b.disabled=it.p>pl.cash||!!it.locked;
+  b.onclick=()=>{if(pl.cash<it.p||it.locked)return;pl.cash-=it.p;it.f();audio.cash();G.hudDirty=true;if(G.state==='shop')renderShop(kind)};r.appendChild(b);box.appendChild(r)}}

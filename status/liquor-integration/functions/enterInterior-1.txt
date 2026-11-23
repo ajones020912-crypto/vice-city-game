@@ -1,0 +1,15 @@
+function enterInterior(door){if(pl.inside||G.busy)return;
+  const o=INT[door.kind];
+  if(!o){toast('This store is closed right now');return}
+  G.busy=true;fadeTo(1);setTimeout(()=>{
+  pl.inside={door,o};world.visible=false;intGroup.visible=true;
+  for(const k in INT)INT[k].group.visible=k===door.kind;
+  sun.visible=false;hemi.intensity=.35;
+  interiorLight.position.set(o.cx,3.4,o.cz-.5);interiorLight.intensity=1.6;interiorLight.distance=36;
+  interiorFill.position.set(o.cx,2.4,o.cz+3);interiorFill.intensity=.9;interiorFill.distance=28;
+  interiorAmb.intensity=.45;
+  scene.background=new T.Color(door.kind==='ammu'?0x12161e:door.kind==='burger'?0x1a1410:0x141820);skyDome.visible=false;
+  pl.x=o.cx;pl.z=o.cz+4.6;pl.y=0;pl.h=Math.PI;pl.vx=pl.vz=0;camYaw=0;camPitch=.18;camInit=false;
+  fadeTo(0);G.busy=false;audio.door();
+  toast(door.name||door.kind,1800);
+ },470)}

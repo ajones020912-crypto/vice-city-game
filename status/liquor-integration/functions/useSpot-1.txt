@@ -1,0 +1,1 @@
+function useSpot(sp){if(sp.kind==='dealer')openShop('dealer');else{G.curProp=sp.obj;G.shopTitle=sp.obj.name;openShop('prop')}}

@@ -1,0 +1,17 @@
+function forceShopDoors(){
+ // Guaranteed enterable storefronts so Gun Cove / shops always have an interior door
+ const forced=[
+  {k:'ammu',name:'GUN COVE',col:'#ff4d4d',x:60,z:-100},
+  {k:'ammu',name:'GUN COVE',col:'#ff4d4d',x:-250,z:30},
+  {k:'ammu',name:'GUN COVE',col:'#ff4d4d',x:-760,z:570},
+  {k:'burger',name:'BURGER SHACK',col:'#ff9a2e',x:-60,z:-100},
+  {k:'burger',name:'BURGER SHACK',col:'#ff9a2e',x:-180,z:150},
+  {k:'burger',name:'BURGER SHACK',col:'#ff9a2e',x:-840,z:640},
+  {k:'burger',name:'BURGER SHACK',col:'#ff9a2e',x:-30,z:590},
+  {k:'clothes',name:'PASTEL THREADS',col:'#b78bff',x:-120,z:30},
+  {k:'clothes',name:'PASTEL THREADS',col:'#b78bff',x:240,z:-90},
+  {k:'safe',name:'SAFEHOUSE',col:'#59ffa0',x:150,z:30},
+  {k:'safe',name:'SAFEHOUSE',col:'#59ffa0',x:-600,z:520},
+ ];
+ for(const shop of forced)ensureSafeForcedShop(shop);
+}
