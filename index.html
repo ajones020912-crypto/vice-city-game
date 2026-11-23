@@ -772,9 +772,11 @@ function heightAt(x,z){
  for(const d of decks)if(x>d.x0&&x<d.x1&&z>d.z0&&z<d.z1&&h<d.y)h=d.y;
  // Dedicated runway hitboxes are checked by the same ground-height system used by aircraft and vehicles.
  for(const d of runwayDecks)if(x>d.x0&&x<d.x1&&z>d.z0&&z<d.z1&&h<d.y)h=d.y;
+ // Dedicated paved-ground hitboxes cover airport taxiways, aprons and ramps.
+ for(const d of airportGroundDecks)if(x>d.x0&&x<d.x1&&z>d.z0&&z<d.z1&&h<d.y)h=d.y;
  return h;
 }
-const decks=[],runwayDecks=[];
+const decks=[],runwayDecks=[],airportGroundDecks=[];
 function bakeTerrain(){
  for(let iz=0;iz<=TN;iz++)for(let ix=0;ix<=TN;ix++)hg[iz*(TN+1)+ix]=rawH(-WS+ix*TS,-WS+iz*TS);
  // carve roads flat (causeways, swamp boardwalks) with soft shoulders
@@ -1867,8 +1869,18 @@ function buildAirport(){
  // Shortened airport apron shifted east so its western edge no longer spills into downtown.
  decks.push({x0:cx-450,x1:cx+550,z0:cz-400,z1:cz+400,y:ground});
  // Raised collision-height support for the runway and main taxiway.
- runwayDecks.push({x0:cx-570,x1:cx+570,z0:cz-262,z1:cz-178,y:ground+.41});
- decks.push({x0:cx-570,x1:cx+570,z0:cz-262,z1:cz-178,y:ground+.41});
+ // Main runway is centered at local z=-220 and scaled 1.5; match the actual pavement footprint.
+ runwayDecks.push({x0:cx-570,x1:cx+570,z0:cz-372,z1:cz-288,y:ground+.41});
+ decks.push({x0:cx-570,x1:cx+570,z0:cz-372,z1:cz-288,y:ground+.41});
+ // Paved airport ground: parallel taxiway, three runway connectors, and both terminal aprons.
+ airportGroundDecks.push({x0:cx-517.5,x1:cx+517.5,z0:cz-172.5,z1:cz-127.5,y:ground+.32});
+ // Taxiway connectors at local x=-330 and +330, plus the broad terminal-side apron pads.
+ for(const x of[cx-495,cx,cx+495])airportGroundDecks.push({x0:x-18,x1:x+18,z0:cz-270,z1:cz+15,y:ground+.30});
+ airportGroundDecks.push({x0:cx-285,x1:cx+285,z0:cz+23,z1:cz+149,y:ground+.22});
+ airportGroundDecks.push({x0:cx+120,x1:cx+420,z0:cz+74,z1:cz+282,y:ground+.22});
+ airportGroundDecks.push({x0:cx-427.5,x1:cx-172.5,z0:cz+258,z1:cz+342,y:ground+.30});
+ airportGroundDecks.push({x0:cx-450,x1:cx+550,z0:cz-400,z1:cz+400,y:ground+.02});
+ for(const x of[cx-495,x=>x]){}
  decks.push({x0:cx-517.5,x1:cx+517.5,z0:cz-237,z1:cz-213,y:ground+.40});
  decks.push({x0:cx-517.5,x1:cx+517.5,z0:cz-262.5,z1:cz-37.5,y:ground+.40});
  decks.push({x0:cx-375,x1:cx+375,z0:cz-103.5,z1:cz-31.5,y:ground+.41});
@@ -1995,6 +2007,9 @@ function buildWestAirport(){
  runwayDecks.push({x0:cx-290.25,x1:cx+290.25,z0:cz-92.475,z1:cz-27.675,y:ground+.41});
  decks.push({x0:cx-290.25,x1:cx+290.25,z0:cz-92.475,z1:cz-27.675,y:ground+.41});
  decks.push({x0:cx-263.25,x1:cx+263.25,z0:cz+32.175,z1:cz+61.875,y:ground+.40});
+ airportGroundDecks.push({x0:cx-263.25,x1:cx+263.25,z0:cz+20.175,z1:cz+49.875,y:ground+.32});
+ airportGroundDecks.push({x0:cx-249.75,x1:cx-7.5,z0:cz+70.875,z1:cz+205.875,y:ground+.22});
+ airportGroundDecks.push({x0:cx+33.75,x1:cx+222.75,z0:cz+14.85,z1:cz+155.25,y:ground+.22});
  for(const x of[cx-209.25,cx+209.25])decks.push({x0:x-13.5,x1:x+13.5,z0:cz-6.75,z1:cz+101.25,y:ground+.40});
  decks.push({x0:cx-249.75,x1:cx-7.5,z0:cz+70.875,z1:cz+205.875,y:ground+.18});
  decks.push({x0:cx+33.75,x1:cx+222.75,z0:cz+14.85,z1:cz+155.25,y:ground+.18});
