@@ -751,7 +751,7 @@ const gladesMask=(x,z)=>sstep(-2300,-2000,x)*(1-sstep(1300,1700,x))*sstep(3200,3
 const swampMask=(x,z)=>Math.max(gladesMask(x,z),swampMask0(x,z));
 const swampMask0=(x,z)=>sstep(440,520,x)*sstep(-300,-230,z)*sstep(520,380,z)*(1-sstep(1400,1600,x));
 // GTA_VI_REFERENCE_ALIGNMENT_V1: VCIA sits west/southwest of downtown, on the mainland.
-const airportMask=(x,z)=>(1-sstep(455,545,Math.abs(x-650)))*(1-sstep(325,415,Math.abs(z-820)));
+const airportMask=(x,z)=>(1-sstep(405,495,Math.abs(x-725)))*(1-sstep(325,415,Math.abs(z-820)));
 const westAirportMask=(x,z)=>(1-sstep(380,470,Math.abs(x-4900)))*(1-sstep(250,340,Math.abs(z-2800)));
 const hillMask=(x,z)=>Math.max(hillMask0(x,z),sstep(-1750,-2100,x)*sstep(-350,-120,z)*(1-sstep(800,1050,z))*sstep(-3600,-3300,x));
 const hillMask0=(x,z)=>sstep(-3700,-3300,x)*sstep(-640,-1100,x)*sstep(400,200,z)*sstep(-400,-280,z);
@@ -1861,7 +1861,12 @@ function buildAirport(){
  const SCALE=1.5;
  const cx=650,cz=820,ground=heightAt(cx,cz)+.65;
  // Surface support decks: runway, taxiway/connectors, apron and airport grounds.
- decks.push({x0:cx-450,x1:cx+450,z0:cz-325,z1:cz+325,y:ground});
+ // Shortened airport apron shifted east so its western edge no longer spills into downtown.
+ decks.push({x0:cx-525,x1:cx+675,z0:cz-487.5,z1:cz+487.5,y:ground});
+ // Raised collision-height support for the runway and main taxiway.
+ decks.push({x0:cx-570,x1:cx+570,z0:cz-262,z1:cz-178,y:ground+.41});
+ decks.push({x0:cx-517.5,x1:cx+517.5,z0:cz-237,z1:cz-213,y:ground+.40});
+ decks.push({x0:cx-517.5,x1:cx+517.5,z0:cz-262.5,z1:cz-37.5,y:ground+.40});
  decks.push({x0:cx-375,x1:cx+375,z0:cz-103.5,z1:cz-31.5,y:ground+.41});
  decks.push({x0:cx-330,x1:cx+330,z0:cz+36,z1:cz+69,y:ground+.40});
  for(const x of[cx-277.5,cx+262.5])decks.push({x0:x-16.5,x1:x+16.5,z0:cz-15,z1:cz+105,y:ground+.40});
@@ -1875,7 +1880,7 @@ function buildAirport(){
  const batches=new Map();
  const box=(w,h,d,m,x,y,z,solid=false)=>{w*=SCALE;d*=SCALE;x*=SCALE;z*=SCALE;const lift=m===asphalt?.22:0;if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,cx+x,ground+y+lift,cz+z]);if(solid)addCol(cx+x-w/2,cz+z-d/2,cx+x+w/2,cz+z+d/2,ground+y+lift+h/2);};
  const paint=(w,d,m,x,z)=>box(w,.018,d,m,x,.455,z);
- box(900,.4,650,grass,0,-.21,0);
+ box(800,.4,650,grass,50,-.21,0);
  box(760,.18,56,asphalt,0,.10,-220);
  for(const z of [-249,-191])paint(748,.35,white,0,z);
  for(let x=-330;x<=330;x+=30)paint(13,.8,white,x,-220);
@@ -1895,17 +1900,22 @@ function buildAirport(){
  for(let x=-240;x<=240;x+=24)for(const z of [-71,-19])box(.35,.18,.35,warmLight,x,.34,z);
  for(let x=-210;x<=210;x+=30)for(const z of [21,49])box(.3,.18,.3,blueLight,x,.32,z);
  // Expanded VCIA passenger terminal with a wider concourse and glazed departures frontage.
- box(176,13,52,white,-153,6.6,158,true);
- box(168,8,.7,glass,-153,6.1,131.3);
- box(184,1.2,58,roof,-153,13.7,158);
- box(184,.6,12,white,-153,7.1,126);
- for(let x=-235;x<=-71;x+=10){box(.35,8,.55,metal,x,5.8,131.0);box(.4,6,.4,metal,x,3.7,124.8)}
+ // Massive multi-level main passenger terminal with a wide glass frontage.
+ box(270,30,104,white,-153,15,158,true);
+ box(258,19,.9,glass,-153,15,105.3,true);
+ box(282,2,112,roof,-153,31,158,true);
+ box(280,1.2,22,white,-153,8.5,104,true);
+ for(let x=-285;x<=-21;x+=8){box(.5,18,.65,metal,x,14.5,105.0);box(.55,13,.45,metal,x,7.5,96.8)}
+ // Upper-level glass band and roof plant rooms.
+ box(244,5,.8,glass,-153,25,105.1,true);
+ box(38,7,28,roof,-153,35,158,true);
+ addCol(cx-153*SCALE-138*SCALE,cz+105*SCALE,cx-153*SCALE+138*SCALE,cz+211*SCALE,ground+33*SCALE,'building');
  // Two side concourses and enclosed passenger bridges connecting to aircraft stands.
- box(54,10,30,white,-255,5,155,true);box(56,.8,34,roof,-255,10.4,155);
- box(48,10,30,white,-51,5,155,true);box(50,.8,34,roof,-51,10.4,155);
+ box(78,15,42,white,-330,7.5,155,true);box(80,1,46,roof,-330,16,155,true);
+ box(78,15,42,white,24,7.5,155,true);box(80,1,46,roof,24,16,155,true);
  for(const x of[-205,-101]){box(34,4,8,white,x,4.5,102,true);box(32,3,.35,glass,x,4.5,98.0);box(36,.5,10,roof,x,6.8,102)}
  // Gate canopy and terminal curbside frontage.
- box(148,1.2,15,roof,-153,4.8,119);
+ box(250,2,22,roof,-153,7,94,true);
  for(let x=-220;x<=-86;x+=22){box(.5,4,.5,metal,x,2.5,119);box(1.8,.25,1.2,warmLight,x,4.7,119)}
  box(560,.16,9,asphalt,0,.10,192);paint(540,.2,yellow,0,192);
  // VCIA public parking lot beside the terminal, with a marked driveway connecting it to the main airport road.
