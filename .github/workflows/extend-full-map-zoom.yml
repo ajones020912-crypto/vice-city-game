@@ -1,0 +1,49 @@
+name: Extend full map zoom
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/extend-full-map-zoom.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  zoom:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/vc-map-zoom" --no-package-lock --ignore-scripts acorn@8
+      - name: Inspect current zoom handlers and extend only their maximum
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/vc-map-zoom/node_modules/acorn'),file='index.html',original=fs.readFileSync(file,'utf8'),status='status/full-map-zoom-check.json',report={passed:false,scope:'Current handler inspection, JavaScript syntax, clamp boundary regression, and actual full-map renderer execution against a mock canvas. Browser input and live deployment remain unverified.'};
+          function walk(n,f,parents=[]){f(n,parents);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f,parents.concat(n));}else if(v&&typeof v.type==='string')walk(v,f,parents.concat(n));}}
+          try{
+           assert(!original.includes('// VC_FULL_MAP_ZOOM_4X_V1'),'Zoom extension already present');const matches=[];for(const m of original.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)){if(!m[1].includes('MapView.zoom'))continue;const code=m[1],ast=acorn.parse(code,{ecmaVersion:'latest'}),limits=[],renderers={};
+            walk(ast,(n,parents)=>{if(n.type==='FunctionDeclaration'&&n.id&&['drawMap','drawMini'].includes(n.id.name))renderers[n.id.name]=code.slice(n.start,n.end);if(n.type!=='CallExpression'||n.callee.type!=='Identifier'||n.callee.name!=='clamp'||n.arguments.length!==3)return;const [value,min,max]=n.arguments;if(min.type!=='Literal'||max.type!=='Literal'||typeof min.value!=='number'||typeof max.value!=='number')return;const parent=parents[parents.length-1],direct=parent&&parent.type==='AssignmentExpression'&&parent.left.type==='MemberExpression'&&parent.left.object.name==='MapView'&&parent.left.property.name==='zoom';const owner=parents.slice().reverse().find(x=>['FunctionDeclaration','FunctionExpression','ArrowFunctionExpression'].includes(x.type)),body=owner?code.slice(owner.start,owner.end):'';if(!direct&&!(body.includes('MapView.zoom')&&body.includes('deltaY')))return;limits.push({start:max.start,end:max.end,min:min.value,max:max.value,expression:code.slice(n.start,n.end)});});if(limits.length)matches.push({m,code,limits,renderers});}
+           assert(matches.length===1,'Cannot uniquely resolve current full-map zoom limits');const target=matches[0],{m,code,limits,renderers}=target;assert(renderers.drawMap&&renderers.drawMini,'Map renderers missing');assert(new Set(limits.map(x=>x.max)).size===1,'Conflicting maximum zoom limits; no speculative changes');const oldMax=limits[0].max,newMax=oldMax*4;assert(oldMax>0&&oldMax<=32&&limits.every(x=>x.min>0&&x.min<oldMax),'Unexpected zoom bounds');let changed=code;for(const item of limits.sort((a,b)=>b.start-a.start))changed=changed.slice(0,item.start)+String(newMax)+changed.slice(item.end);changed='// VC_FULL_MAP_ZOOM_4X_V1\n'+changed;acorn.parse(changed,{ecmaVersion:'latest'});assert(changed.includes(renderers.drawMap)&&changed.includes(renderers.drawMini),'Renderer code unexpectedly modified');
+           const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));for(const item of limits){assert(clamp(-100,item.min,newMax)===item.min);assert(clamp(newMax*10,item.min,newMax)===newMax);for(const v of [item.min,(item.min+oldMax)/2,oldMax])assert(clamp(v,item.min,oldMax)===clamp(v,item.min,newMax));}assert(clamp(oldMax*2,limits[0].min,newMax)>oldMax,'Old cap still blocks closer zoom');
+           const crops=[],ctx=new Proxy({drawImage(...args){crops.push(args);}},{get(t,k){return k in t?t[k]:()=>{};},set(t,k,v){t[k]=v;return true;}}),box={mapx:ctx,MapView:{cx:0,cz:0,zoom:oldMax,dirty:true},WS:5200,MAPPX:5,baseMap:{},REGIONS:[],G:{raceOn:()=>false},SJ:{},pl:{x:0,z:0,h:0,car:null},blips:()=>[],mapEmoji(){},drawRacePath(){},window:{VCLiquor:{mapBlips:b=>b}}};vm.createContext(box);vm.runInContext(renderers.drawMap,box);box.drawMap();box.MapView.zoom=newMax;box.drawMap();assert(crops.length===2&&crops.every(a=>a.slice(1).every(Number.isFinite)));assert(crops[1][3]>0&&Math.abs(crops[1][3]*4-crops[0][3])<1e-8,'Extended zoom does not produce fourfold closer view');assert(box.MapView.dirty===false);
+           const offset=m.index+m[0].indexOf(code),candidate=original.slice(0,offset)+changed+original.slice(offset+code.length);for(const s of candidate.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(s[1].trim())acorn.parse(s[1],{ecmaVersion:'latest'});fs.writeFileSync(file,candidate);Object.assign(report,{passed:true,oldMaximum:oldMax,newMaximum:newMax,minimumsUnchanged:limits.map(x=>x.min),updatedLimits:limits,fullMapAndMinimapRenderersUnchanged:true,tests:['Inline JavaScript syntax','Zoom-out minimum retained','Existing zoom range retained','Values beyond former maximum accepted','New maximum enforced','Actual full-map renderer produces a fourfold narrower view with finite crop coordinates']});
+          }catch(error){fs.writeFileSync(file,original);Object.assign(report,{passed:false,error:String(error),stack:error.stack,baselinePreserved:true});}
+          fs.mkdirSync('status',{recursive:true});fs.writeFileSync(status,JSON.stringify(report,null,2)+'\n');
+          JS
+      - name: Publish tested zoom-limit change or diagnostics
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Branch changed; rerun.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/full-map-zoom-check.json
+          if node -e "if(!require('./status/full-map-zoom-check.json').passed)process.exit(1)"; then git add -- index.html; fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Extend full-map zoom maximum fourfold while retaining existing controls or record validation error'
+            git push origin HEAD:refs/heads/main
+          fi
+          node -e "if(!require('./status/full-map-zoom-check.json').passed)process.exit(1)"
