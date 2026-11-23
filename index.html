@@ -1860,10 +1860,20 @@ const MAPPX=4;let baseMap=null;
 function buildCityRivers(){
  // CITY_WATERWAYS_V1: branching tidal rivers divide the urban districts and feed the eastern bay.
  const water=new T.MeshBasicMaterial({color:0x087f9b,transparent:true,opacity:.94,side:T.DoubleSide,depthWrite:false});
- const make=(start,segments)=>{
-  const sh=new T.Shape();sh.moveTo(start[0],start[1]);
-  for(const q of segments)sh.bezierCurveTo(q[0],q[1],q[2],q[3],q[4],q[5]);
-  const g=new T.ShapeGeometry(sh,18);g.rotateX(-Math.PI/2);
+ const make=(start,segments,width)=>{
+  const curve=new T.CatmullRomCurve3([new T.Vector3(start[0],0,start[1]),...segments.map(q=>new T.Vector3(q[4],0,q[5]))]);
+  const pts=curve.getPoints(100),left=[],right=[];
+  for(let i=0;i<pts.length;i++){
+   const p=pts[i],a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
+   const dx=b.x-a.x,dz=b.z-a.z,len=Math.hypot(dx,dz)||1,nx=-dz/len,nz=dx/len;
+   const w=width*(.88+.12*Math.sin(i/pts.length*Math.PI));
+   left.push([p.x+nx*w/2,p.z+nz*w/2]);right.push([p.x-nx*w/2,p.z-nz*w/2]);
+  }
+  const sh=new T.Shape();sh.moveTo(left[0][0],left[0][1]);
+  for(let i=1;i<left.length;i++)sh.lineTo(left[i][0],left[i][1]);
+  for(let i=right.length-1;i>=0;i--)sh.lineTo(right[i][0],right[i][1]);
+  sh.closePath();
+  const g=new T.ShapeGeometry(sh,12);g.rotateX(-Math.PI/2);
   const mesh=new T.Mesh(g,water);mesh.position.y=.16;mesh.renderOrder=2;scene.add(mesh);
  };
  // Main north-south river through the central city, widening toward the southern waterfront.
@@ -1880,7 +1890,7 @@ function buildCityRivers(){
   [1410,430,1510,310,1470,130],
   [1500,-50,1370,-190,1390,-260],
   [1310,-300,1200,-290,1120,-260]
- ]);
+ ],72);
  // Western branch bends across the city toward the river.
  make([480,520],[
   [620,470,700,390,820,410],
@@ -1893,7 +1903,7 @@ function buildCityRivers(){
   [1300,465,1220,500,1100,470],
   [980,430,900,350,800,340],
   [670,320,550,405,480,520]
- ]);
+ ],54);
  // Southern canal/estuary opens the downtown waterfront toward the bay.
  make([1030,1120],[
   [900,1200,820,1320,850,1440],
@@ -1906,7 +1916,7 @@ function buildCityRivers(){
   [1390,1730,1250,1780,1090,1740],
   [920,1710,760,1610,760,1450],
   [750,1310,870,1190,1030,1120]
- ]);
+ ],46);
 }
 function buildBaseMap(){
  const S=WS*2/MAPPX,[c,x]=cv(S,S),id=x.createImageData(S,S),o=[0,0,0],d=id.data;
