@@ -1,0 +1,21 @@
+{
+  "passed": false,
+  "branch": "lucia-outfits",
+  "scope": "Angled ragged geometry, pale frayed-edge shader detail, official simplified photo asset, neutral rear coverage and finite-pose checks. Not rendered or all-animation verification.",
+  "phase": "fit-and-preserve-rear-coverage",
+  "error": "Error: Unexpected full-seat expansion: {\"point\":[-0.006888233125209808,0.12999999523162842,-0.01099297497421503],\"center\":[0,0.12999999523162842,0],\"radius\":0.012972788997395882,\"skin\":0.09230746314977552,\"delta\":0.09333467415237963,\"hit\":\"\"}",
+  "traceback": "Traceback (most recent call last):\n  File \"<stdin>\", line 45, in <module>\nRuntimeError: Error: Unexpected full-seat expansion: {\"point\":[-0.006888233125209808,0.12999999523162842,-0.01099297497421503],\"center\":[0,0.12999999523162842,0],\"radius\":0.012972788997395882,\"skin\":0.09230746314977552,\"delta\":0.09333467415237963,\"hit\":\"\"}\n",
+  "baselinePreserved": true,
+  "steps": [
+    {
+      "phase": "download",
+      "exitCode": 0,
+      "outputTail": ""
+    },
+    {
+      "phase": "fit-and-preserve-rear-coverage",
+      "exitCode": 0,
+      "outputTail": ""
+    }
+  ]
+}
