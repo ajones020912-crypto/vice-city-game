@@ -3615,7 +3615,9 @@ function updateBreakin(dt){const b=G.breakin;if(!b)return;const c=b.c;
  if(b.jack&&c.inp){c.inp.thr=0;c.inp.hb=1;c.vx*=.85;c.vz*=.85} // driver holds still while you grab the door
  b.t+=dt;
  if(b.alarm&&!b.rang&&b.t>b.need*(b.alarmAt||.4)){b.rang=true;startAlarm(c);addWanted(1,'alarm');toast('🚨 Car alarm!',1600);}
- if(b.t>=b.need){G.breakin=null;c.lockRoll=1;enterCar(c)}
+ if(b.t>=b.need){G.breakin=null;c.lockRoll=1;enterCar(c);
+  // PLANE_THEFT_STARS_V1: stealing a light plane is 2 stars, a commercial airliner is 4 (never lowers a higher level)
+  if(c.t.aircraft&&pl.car===c){const want=c.t.airliner?4:2;if((pl.wanted||0)<want){addCrime(Math.max(.1,WANTED_AT[want]-(pl.crime||0)));toast(c.t.airliner?'🚨 Stolen airliner: airport and city police are responding':'🚨 Stolen aircraft reported',2400)}}}
 }
 function enterCar(c){
  if(!c||pl.car||c.dead||c.t.aiOnly)return;
