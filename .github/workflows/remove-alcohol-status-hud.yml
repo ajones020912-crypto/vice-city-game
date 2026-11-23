@@ -1,0 +1,60 @@
+name: Remove explicit alcohol status HUD
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/remove-alcohol-status-hud.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  remove-status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/vc-hidden-alcohol" --no-package-lock --ignore-scripts acorn@8
+      - name: Remove status presentation and test hidden intoxication
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),crypto=require('crypto'),acorn=require(process.env.RUNNER_TEMP+'/vc-hidden-alcohol/node_modules/acorn');
+          const file='js/liquor-stores.js',original=fs.readFileSync(file,'utf8'),status='status/alcohol-hidden-status-check.json',report={passed:false,scope:'Syntax, presentation removal, unchanged gameplay source, and mocked DOM integration tests. Browser and deployment verification are separate.'};
+          function walk(n,f){f(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f);}else if(v&&typeof v.type==='string')walk(v,f);}}
+          function functions(code){const map={};walk(acorn.parse(code,{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id){assert(!map[n.id.name]);map[n.id.name]=n;}});return map;}
+          try{
+           assert(crypto.createHash('sha1').update('blob '+Buffer.byteLength(original)+'\0').update(original).digest('hex')==='ae76e36ffc9450940071eae9353ad7b735c4bede','Alcohol module changed since review');
+           const before=functions(original),replacements={
+            makeHUD:`function makeHUD(){if(document.getElementById('vcAlcoholHUD'))return;const box=document.createElement('div');box.id='vcAlcoholHUD';box.style.cssText='margin-top:7px;padding-top:4px';box.innerHTML='<button id="vcAlcoholBag" style="padding:4px 8px;font-size:10px;margin:0">Drinks inventory [I]</button>';document.getElementById('hud').appendChild(box);box.querySelector('button').onclick=openBag;const help=document.getElementById('help');if(help){const text=document.createElement('div');text.textContent='I: drinks inventory · Bottle map icon: LIQUOR STORE · E: enter / browse / cashier';help.appendChild(text);}}`,
+            syncHUD:`function syncHUD(){if(!api||typeof document==='undefined')return;const s=current(),el=api.renderer.domElement;if(!el.style.filter.includes('--vc-alcohol-blur'))el.style.filter=(el.style.filter?el.style.filter+' ':'')+'blur(var(--vc-alcohol-blur, 0px))';el.style.setProperty('--vc-alcohol-blur',(api.G.state==='play'&&!api.pl.alcohol.reducedFX?s.level*2.6:0).toFixed(2)+'px');}`
+           };let changed=original;for(const name of Object.keys(replacements).sort((a,b)=>before[b].start-before[a].start)){const n=before[name];assert(n);changed=changed.slice(0,n.start)+replacements[name]+changed.slice(n.end);}
+           function once(a,b){assert(changed.split(a).length===2,'Expected one reviewed message: '+a);changed=changed.replace(a,b);}
+           once("api.toast('Too intoxicated for another drink')","api.toast('Not right now.')");
+           once("api.toast(p.name+' consumed. Effects develop gradually.')","api.toast(p.name+' consumed.')");
+           once('Disables blur; gameplay impairment and status remain','Disables blur without changing gameplay');
+           const after=functions(changed),allowed=new Set(['makeHUD','syncHUD','consume','install']);for(const name of Object.keys(before)){assert(after[name]);if(!allowed.has(name))assert(original.slice(before[name].start,before[name].end)===changed.slice(after[name].start,after[name].end),'Unexpected gameplay edit: '+name);}
+           for(const text of ['vcAlcoholLabel','vcAlcoholMeter','vcAlcoholFill','Too intoxicated','Heavily intoxicated','Tipsy','handling impaired'])assert(!changed.includes(text),'Explicit status remains: '+text);
+           const nodes={},markup=[];function element(){return {style:{},appendChild(n){if(n.id)nodes[n.id]=n;},querySelector(){return this.button||(this.button={});},set innerHTML(value){markup.push(value);this.html=value;},get innerHTML(){return this.html;}};}nodes.hud=element();nodes.help=element();const style={filter:'',setProperty(k,v){this[k]=v;}};
+           const box={document:{getElementById:id=>nodes[id]||null,createElement:()=>element()},performance:{now:()=>10000},addEventListener(){}};box.window=box;vm.createContext(box);vm.runInContext(changed,box);const hooks={};for(const name of ['forceShopDoors','simulate','animHuman','stepCar','applySave','newGame','respawn'])hooks[name]=()=>{};const pl={char:'lucia',alive:true},G={state:'play'},shopItems={};box.VCLiquor.install({pl,G,renderer:{domElement:{style}},SHOP_NAMES:{},SHOP_ITEMS:shopItems,INTKINDS:[],hooks,openShop:k=>{G.shopKind=k;},getPlayer:()=>null});
+           const state=box.VCLiquor.normalize();state.levels.lucia={level:.8,pending:.1};box.VCLiquor.restore(state);assert(parseFloat(style['--vc-alcohol-blur'])>0,'Blur removed accidentally');assert(markup.length===1&&markup[0].includes('vcAlcoholBag')&&!/progressbar|aria-valuenow|Sober|Tipsy|Intoxicated/i.test(markup[0]));assert(box.VCLiquor.snapshot().levels.lucia.level===.8,'Internal intoxication changed');nodes.vcAlcoholHUD.querySelector('button').onclick();assert(G.shopKind==='liquorBag','Inventory access removed');assert(typeof shopItems.liquor==='function'&&typeof shopItems.liquorBag==='function');
+           fs.writeFileSync(file,changed);Object.assign(report,{passed:true,explicitStatusRemoved:true,inventoryRetained:true,internalIntoxicationAndBlurRetained:true,absorptionRecoveryMovementHandlingStoresAndSaveFunctionsUnchanged:true,tests:['JavaScript parses','No explicit status readout or accessibility meter','Inventory button opens native drinks inventory','Hidden intoxication remains saved','Blur remains active','All unrelated function source preserved']});
+          }catch(error){fs.writeFileSync(file,original);Object.assign(report,{passed:false,error:String(error),stack:error.stack,baselinePreserved:true});}
+          fs.mkdirSync('status',{recursive:true});fs.writeFileSync(status,JSON.stringify(report,null,2)+'\n');
+          JS
+      - name: Publish only the validated presentation change
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Branch changed; rerun.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/alcohol-hidden-status-check.json
+          if node -e "if(!require('./status/alcohol-hidden-status-check.json').passed)process.exit(1)"; then git add -- js/liquor-stores.js; fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Remove intoxication readout and explicit status messages without changing alcohol effects or record validation error'
+            git push origin HEAD:refs/heads/main
+          fi
+          node -e "if(!require('./status/alcohol-hidden-status-check.json').passed)process.exit(1)"
