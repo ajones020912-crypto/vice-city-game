@@ -1288,7 +1288,7 @@ const CITY_SUPER=[[-120,210],[180,-150],[-60,-210]];            // plaza centres
 const CITY_MERGE=[['v',60,210],['h',-90,-300],['v',-120,30],['v',180,150]]; // [orientation, street, start of the removed 60 m segment]
 const CITY_PROMENADE=[[60,30,0,-30],[180,150,300,270]];          // diagonal walkway legs through blocks (x0,z0,x1,z1)
 const CITY_CUTS=(()=>{const c={v:{},h:{}},add=(o,k,a,b)=>(c[o][k]=c[o][k]||[]).push([a,b]);
- add('v',120,30,150);add('h',90,60,180);                         // the downtown park
+ add('v',120,60,120);add('h',90,90,150);                         // the downtown park
  for(const [x,z] of CITY_SUPER){add('v',x,z-60,z+60);add('h',z,x-60,x+60)}
  for(const [o,k,a] of CITY_MERGE)add(o,k,a,a+60);return c})();
 function defineRoads(){
@@ -2112,7 +2112,10 @@ function buildPlazasAndPromenade(){
    for(const t of[-len/4,len/4]){const ux=mx+(x1-x0)/len*t,uz=mz+(z1-z0)/len*t;lampPost(ux+px*3.9,uz+pz*3.9);bench(ux-px*3.6,uz-pz*3.6,ry+Math.PI/2)}}}
 }
 function buildDowntownPark(){
- // A two-by-two downtown park replacing four city blocks and their internal crossing streets.
+ // Compact one-block spawn park, scaled uniformly from the previous oversized four-block footprint.
+ const parkScale=.56,parkBakeG=(...a)=>parkBakeG(a[0],a[1],120+(a[2]-120)*parkScale,a[3],90+(a[4]-90)*parkScale,a[5],a[6]*parkScale,a[7],a[8]*parkScale,...a.slice(9));
+ const parkAddCol=(x0,z0,x1,z1,h,...a)=>parkAddCol(120+(x0-120)*parkScale,90+(z0-90)*parkScale,120+(x1-120)*parkScale,90+(z1-90)*parkScale,h,...a);
+ const parkOak=(x,z,sc)=>parkOak(120+(x-120)*parkScale,90+(z-90)*parkScale,sc*parkScale);
  const x0=66,z0=36,x1=174,z1=144,cx=120,cz=90;
  bakeG('plain',GEO.box,cx,.02,cz,0,x1-x0,.16,z1-z0,[.24,.43,.25]);
  const path=(x,z,w,d,rot=0)=>bakeG('walk',GEO.box,x,.13,z,rot,w,.10,d,[.78,.75,.66]);
