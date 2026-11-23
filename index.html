@@ -877,13 +877,16 @@ function buildTerrainMesh(){
 // ---------- static geometry batching (chunked, merged, frustum-cullable) ----------
 const CH=180;
 class Batch{
- constructor(){this.p=[];this.n=[];this.u=[];this.c=[];this.i=[];this.v=0}
- quad(a,b,c,d,nx,ny,nz,u0,v0,u1,v1,col){const p=this.p;p.push(a[0],a[1],a[2],b[0],b[1],b[2],c[0],c[1],c[2],d[0],d[1],d[2]);
+ constructor(){this.p=[];this.n=[];this.u=[];this.c=[];this.i=[];this.v=0;this.bad=0}
+ quad(a,b,c,d,nx,ny,nz,u0,v0,u1,v1,col){const vals=[...a,...b,...c,...d,nx,ny,nz,u0,v0,u1,v1,...col];if(!vals.every(Number.isFinite)){this.bad++;return}const p=this.p;p.push(a[0],a[1],a[2],b[0],b[1],b[2],c[0],c[1],c[2],d[0],d[1],d[2]);
   for(let k=0;k<4;k++){this.n.push(nx,ny,nz);this.c.push(col[0],col[1],col[2])}
   this.u.push(u0,v0,u1,v0,u1,v1,u0,v1);const v=this.v;this.i.push(v,v+1,v+2,v,v+2,v+3);this.v+=4}
  geo(g,m,col,uvs){ // bake a BufferGeometry with matrix m
   const pa=g.attributes.position,na=g.attributes.normal,ua=g.attributes.uv,ix=g.index,e=m.elements;const base=this.v;
   const nm=new T.Matrix3().getNormalMatrix(m),v=new T.Vector3();
+  if(!pa||!na||!col||!Array.from(e).every(Number.isFinite)||!col.every(Number.isFinite)){this.bad++;return}
+  for(let k=0;k<pa.count;k++){v.fromBufferAttribute(pa,k).applyMatrix4(m);if(!Number.isFinite(v.x)||!Number.isFinite(v.y)||!Number.isFinite(v.z)){this.bad++;return}
+   v.fromBufferAttribute(na,k).applyMatrix3(nm).normalize();if(!Number.isFinite(v.x)||!Number.isFinite(v.y)||!Number.isFinite(v.z)){this.bad++;return}}
   for(let k=0;k<pa.count;k++){v.fromBufferAttribute(pa,k).applyMatrix4(m);this.p.push(v.x,v.y,v.z);
    v.fromBufferAttribute(na,k).applyMatrix3(nm).normalize();this.n.push(v.x,v.y,v.z);
    if(g.attributes.color){this.c.push(g.attributes.color.getX(k)*col[0],g.attributes.color.getY(k)*col[1],g.attributes.color.getZ(k)*col[2])}else this.c.push(col[0],col[1],col[2]);
@@ -901,7 +904,7 @@ let _yOff=0; // set while baking props that should sit on the terrain (see groun
 const grounded=(fn,x,z,s)=>{_yOff=heightAt(x,z);try{fn(x,z,s)}finally{_yOff=0}};
 function bakeG(key,g,x,y,z,ry,sx,sy,sz,col,rx=0,rz=0){_e.set(rx,ry,rz);_q.setFromEuler(_e);_m.compose(_p.set(x,y+_yOff,z),_q,_sc.set(sx,sy,sz));B(key,x,z).geo(g,_m,col)}
 function finalizeBatches(){
- for(const [k,b] of chunkMap){const d=MATS[b.key];if(!d||!b.v)continue;const m=new T.Mesh(b.toGeometry(),d.mat);m.castShadow=d.shadow;m.receiveShadow=d.recv;m.matrixAutoUpdate=false;world.add(m)}
+ for(const [k,b] of chunkMap){const d=MATS[b.key];if(b.bad)console.warn('[World geometry] skipped',b.bad,'invalid primitive(s) in chunk',k);if(!d||!b.v)continue;const m=new T.Mesh(b.toGeometry(),d.mat);m.castShadow=d.shadow;m.receiveShadow=d.recv;m.matrixAutoUpdate=false;world.add(m)}
  chunkMap.clear();
 }
 // shared unit primitives
