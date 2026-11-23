@@ -3917,7 +3917,7 @@ function applySave(d){
  const pending=MISSIONS.find(m=>m.id===d.missionId);if(pending){endWork();startMission(pending);toast('Saved mission restarted from the beginning',3500)}
 }
 function newGame(){
- for(const c of cars.slice())removeCar(c);spawnAirportPlanes();G.mapMarks=[];for(const p of allPeds())p.kill();if(pl.car)ejectPlayer();
+ for(const c of cars.slice())removeCar(c);spawnAirportPlanes();G.mapMarks=[];setWaypoint(null);for(const p of allPeds())p.kill();if(pl.car)ejectPlayer();
  Object.assign(pl,{x:11.2,z:36,h:Math.PI,hp:100,armor:0,cash:500,rep:0,wanted:0,crime:0,weapon:'fists',weapons:{fists:1},ammo:{pistol:0,smg:0,shot:0,rifle:0},shirt:0x626a68,pants:0x6a593f,missions:{},alive:true,stats:{kills:0,wrecks:0,distance:0},car:null,char:'jason',heat:{face:0,clothes:0,vehicle:0,weapon:0,partner:0,cctv:0},profile:'Professional',profScore:0,focusT:0,rel:50,sightT:0});
  pl.y=heightAt(pl.x,pl.z);setHumanLook(plH,CHAR.jason);plH.visible=true;G.clock=8;MS.active=null;MS._heatGot=false;
  const c=spawnCar('sports',7.9,34,Math.PI,'parked',CAR_TYPES.sports.colors[0]);c.owned=true;c.fuel=100;G.ownedCar=c;
@@ -3940,7 +3940,12 @@ function mapEmoji(ctx,icon,x,y,size=17){
  ctx.beginPath();ctx.arc(x,y,size*.64,0,TAU);ctx.fill();ctx.stroke();ctx.shadowBlur=0;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=size+'px '+MAP_EMOJI_FONT;ctx.fillStyle='#fff';ctx.fillText(icon,x,y+1);ctx.restore();
 }
 
-function blips(){const b=[];for(const m of(G.mapMarks||[]))b.push({x:m.x,z:m.z,c:'#ff83bd',s:'📍',icon:true,label:m.name||'Waypoint'});for(const q of givers)if(q.g.visible)b.push({x:q.m.giver[0],z:q.m.giver[1],c:'#ffe17a',s:'◆'});
+// world marker + auto-clear on arrival
+function setWaypoint(p){G.waypoint=p?{x:p.x,z:p.z}:null;if(!setWaypoint.beam){const m=new T.Mesh(new T.CylinderGeometry(1.6,1.6,140,16,1,true),new T.MeshBasicMaterial({color:0xc77dff,transparent:true,opacity:.35,depthWrite:false,side:T.DoubleSide}));m.renderOrder=3;m.visible=false;world.add(m);setWaypoint.beam=m}
+ const b=setWaypoint.beam;b.visible=!!p;if(p)b.position.set(p.x,heightAt(p.x,p.z)+70,p.z)}
+function updateWaypoint(){const w=G.waypoint;if(!w)return;const b=setWaypoint.beam;if(b)b.material.opacity=.25+.12*Math.sin(G.time*3);
+ if(Math.hypot(pl.x-w.x,pl.z-w.z)<20){setWaypoint(null);toast('📍 Waypoint reached',1400);audio.beep&&audio.beep(880)}}
+function blips(){const b=[];if(G.waypoint)b.push({x:G.waypoint.x,z:G.waypoint.z,c:'#c77dff',s:'📍',icon:true,edge:true,big:true,label:'Waypoint'});for(const m of(G.mapMarks||[]))b.push({x:m.x,z:m.z,c:'#ff83bd',s:'📍',icon:true,label:m.name||'Waypoint'});for(const q of givers)if(q.g.visible)b.push({x:q.m.giver[0],z:q.m.giver[1],c:'#ffe17a',s:'◆'});
  for(const d of doors)b.push({x:d.x,z:d.z,c:d.col,s:STORE_MAP_ICONS[d.kind]||'🛒',icon:true,label:d.name,kind:d.kind});for(const g of G.spray)b.push({x:g.x,z:g.z,c:'#b36bff',s:'🔧',icon:true,label:"Pay 'n' Spray"});
  b.push({x:HOSP.x,z:HOSP.z,c:'#ff5d6e',s:'🏥',icon:true,label:'Hospital'},{x:PD.x,z:PD.z,c:'#5aa0ff',s:'🚓',icon:true,label:'Police station'});extraBlips(b);
  const s=MS.steps[MS.i];if(MS.active&&s){if(s.type==='kill'&&MS.target&&!MS.target.dead)b.push({x:MS.target.x,z:MS.target.z,c:'#ff4d4d',s:'☠',big:1});else if((s.type==='getcar'||s.type==='inboat')&&MS.car&&!MS.car.dead)b.push({x:MS.car.x,z:MS.car.z,c:'#ffe17a',s:'●',big:1});else if(s.pos)b.push({x:s.pos[0],z:s.pos[1],c:'#ff4f9a',s:'●',big:1,edge:1})}
@@ -3988,7 +3993,7 @@ function drawMini(){
  // RACE_PATH_MAP_V1: the race route in yellow (driven part dimmer)
  if(G.raceOn&&G.raceOn())drawRacePath(ctx,project,Math.max(3,scale*9),SJ.i||0);
  if(pl.wanted>0&&G.lastSeen){const q=project(G.lastSeen.x,G.lastSeen.z);ctx.fillStyle='#f16e7c27';ctx.strokeStyle='#fa879477';ctx.lineWidth=1;ctx.beginPath();ctx.arc(q[0],q[1],70*scale,0,TAU);ctx.fill();ctx.stroke()}
- let target=G.work?G.work.target:null;if(!target&&MS.active){const step=MS.steps&&MS.steps[MS.i];if(step&&step.pos)target={x:step.pos[0],z:step.pos[1]};else if(MS.car)target=MS.car;else if(MS.target)target=MS.target}
+ let target=G.work?G.work.target:null;if(!target&&!MS.active&&G.waypoint)target=G.waypoint;if(!target&&MS.active){const step=MS.steps&&MS.steps[MS.i];if(step&&step.pos)target={x:step.pos[0],z:step.pos[1]};else if(MS.car)target=MS.car;else if(MS.target)target=MS.target}
  if(target){const q=project(target.x,target.z),dx=q[0]-cx,dy=q[1]-cy,k=Math.min(1,(cx-15)/Math.max(.01,Math.abs(dx)),((bottom-top)/2-14)/Math.max(.01,Math.abs(dy)));ctx.strokeStyle=G.work?'#6ee8f5aa':'#ffd978aa';ctx.lineWidth=1.5;ctx.setLineDash([3,5]);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+dx*k,cy+dy*k);ctx.stroke();ctx.setLineDash([])}
  const storeIcons={burger:'🍔',ammu:'🔫',clothes:'👕',safe:'🏠'},emojiFont='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',items=[];
  for(const b of blips()){
@@ -4041,7 +4046,7 @@ function drawMap(){
  const [px,py]=worldToScreen(pl.x,pl.z);
  mapx.save();mapx.translate(px,py);mapx.rotate(-ang-Math.PI/2);mapx.fillStyle='#fff';mapx.strokeStyle='#000';mapx.lineWidth=2;
  mapx.beginPath();mapx.moveTo(0,-10);mapx.lineTo(7,8);mapx.lineTo(0,4);mapx.lineTo(-7,8);mapx.closePath();mapx.fill();mapx.stroke();mapx.restore();
- mapx.fillStyle='#ffffff88';mapx.font='12px Arial';mapx.textAlign='left';mapx.fillText((MapView.zoom*100|0)+'% · drag / scroll · double-click to mark · right-click to remove',12,S-14);
+ mapx.fillStyle='#ffffff88';mapx.font='12px Arial';mapx.textAlign='left';mapx.fillText((MapView.zoom*100|0)+'% · drag / scroll · click twice quickly to set a waypoint · right-click to remove',12,S-14);
  MapView.dirty=false;
 }
 function bindMapControls(){
@@ -4057,8 +4062,18 @@ function bindMapControls(){
   MapView.cx=clamp(MapView.cx,-WS,WS);MapView.cz=clamp(MapView.cz,-WS,WS);
   drawMap();
  });
- cv.addEventListener('dblclick',e=>{if(!G.mapOpen)return;const rect=cv.getBoundingClientRect(),sx=(e.clientX-rect.left)/rect.width*900,sy=(e.clientY-rect.top)/rect.height*900,k=(900/(WS*2))*MapView.zoom,x=clamp(MapView.cx+(sy-450)/k,-WS,WS),z=clamp(MapView.cz-(sx-450)/k,-WS,WS);const name=window.prompt('Name this map marker:','Waypoint');if(name===null)return;G.mapMarks=G.mapMarks||[];G.mapMarks.push({x,z,name:name.trim().slice(0,28)||'Waypoint'});if(G.mapMarks.length>30)G.mapMarks.shift();drawMap();saveGame(false);toast('📍 Map marker added',1400)});
- cv.addEventListener('contextmenu',e=>{if(!G.mapOpen)return;e.preventDefault();const rect=cv.getBoundingClientRect(),sx=(e.clientX-rect.left)/rect.width*900,sy=(e.clientY-rect.top)/rect.height*900,k=(900/(WS*2))*MapView.zoom,x=MapView.cx+(sy-450)/k,z=MapView.cz-(sx-450)/k;let bi=-1,bd=28;for(let i=0;i<(G.mapMarks||[]).length;i++){const m=G.mapMarks[i],d=Math.hypot(m.x-x,m.z-z);if(d<bd){bd=d;bi=i}}if(bi>=0){const m=G.mapMarks.splice(bi,1)[0];drawMap();saveGame(false);toast('Removed '+m.name,1400)}});
+ // WAYPOINT_V1: click the same spot twice within 0.7 s to set a waypoint (again on it to clear). A drag is not a click.
+ const WP_CLICK={t:-1e9,sx:0,sy:0,downX:0,downY:0};
+ cv.addEventListener('mousedown',e=>{if(e.button===0){WP_CLICK.downX=e.clientX;WP_CLICK.downY=e.clientY}});
+ cv.addEventListener('mouseup',e=>{if(e.button!==0||!G.mapOpen)return;if(Math.hypot(e.clientX-WP_CLICK.downX,e.clientY-WP_CLICK.downY)>6)return;
+  const rect=cv.getBoundingClientRect(),sx=(e.clientX-rect.left)/rect.width*900,sy=(e.clientY-rect.top)/rect.height*900,now=performance.now();
+  if(now-WP_CLICK.t<=700&&Math.hypot(sx-WP_CLICK.sx,sy-WP_CLICK.sy)<=12){WP_CLICK.t=-1e9;
+   const k=(900/(WS*2))*MapView.zoom,x=clamp(MapView.cx+(sy-450)/k,-WS,WS),z=clamp(MapView.cz-(sx-450)/k,-WS,WS);
+   if(G.waypoint&&Math.hypot(G.waypoint.x-x,G.waypoint.z-z)<24/k*1.5+10){setWaypoint(null);toast('📍 Waypoint cleared',1200)}
+   else{setWaypoint({x,z});toast('📍 Waypoint set · '+Math.round(Math.hypot(x-pl.x,z-pl.z))+' m',1400)}
+   drawMap()}
+  else{WP_CLICK.t=now;WP_CLICK.sx=sx;WP_CLICK.sy=sy}});
+ cv.addEventListener('contextmenu',e=>{if(!G.mapOpen)return;e.preventDefault();const rect=cv.getBoundingClientRect(),sx=(e.clientX-rect.left)/rect.width*900,sy=(e.clientY-rect.top)/rect.height*900,k=(900/(WS*2))*MapView.zoom,x=MapView.cx+(sy-450)/k,z=MapView.cz-(sx-450)/k;if(G.waypoint&&Math.hypot(G.waypoint.x-x,G.waypoint.z-z)<40){setWaypoint(null);drawMap();toast('📍 Waypoint cleared',1200);return}let bi=-1,bd=28;for(let i=0;i<(G.mapMarks||[]).length;i++){const m=G.mapMarks[i],d=Math.hypot(m.x-x,m.z-z);if(d<bd){bd=d;bi=i}}if(bi>=0){const m=G.mapMarks.splice(bi,1)[0];drawMap();saveGame(false);toast('Removed '+m.name,1400)}});
  cv.addEventListener('wheel',e=>{
   if(!G.mapOpen)return;e.preventDefault();
   const old=MapView.zoom;
@@ -4190,7 +4205,7 @@ function updateGators(dt){
   for(const c of cars){if(c.speed<4||(c.y||0)-heightAt(a.x,a.z)>1.4)continue;if(Math.hypot(c.x-a.x,c.z-a.z)<2.3){hurtGator(a,c.speed*8,c.occ==='player');break}}
  }}
 function showPrompt(t){if(t!==lastPrompt){lastPrompt=t;promptEl.textContent=t;promptEl.style.display=t?'block':'none'}}
-function simulate(dt){updateBreakin(dt);updateFlightHud();updateAlarms();updateRedLights();
+function simulate(dt){updateWaypoint();updateBreakin(dt);updateFlightHud();updateAlarms();updateRedLights();
  G.time+=dt;updateEconomy(dt);G.clock=(G.clock+dt*.06)%24;
  const play=G.state==='play'&&pl.alive;
  if(!pl.inside){
