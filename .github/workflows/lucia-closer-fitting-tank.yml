@@ -1,0 +1,49 @@
+name: Lucia closer fitting tank preserving body and coverage
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-closer-fitting-tank.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fit:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [main, lucia-outfits]
+    concurrency:
+      group: lucia-u-neck-${{ matrix.target }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    env:
+      TARGET_BRANCH: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.target }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-close-tank" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Prepare and validate tank-only closer fit with explicit outcome report
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/lucia-close-tank/node_modules/acorn'),T=require(process.env.RUNNER_TEMP+'/lucia-close-tank/node_modules/three'),file='js/reference-characters.js',baseline=fs.readFileSync(file,'utf8'),status='status/lucia-closer-fitting-tank-check.json',report={passed:false,branch:process.env.TARGET_BRANCH,scope:'Tank-only neutral-pose clearance and finite-pose structural checks. Not a guarantee of rendered realism, all-pose clipping or live deployment.'};if(baseline.includes('// LUCIA_CLOSER_FITTING_TANK_V1')){assert(fs.existsSync(status)&&JSON.parse(fs.readFileSync(status,'utf8')).passed,'Existing closer-fit marker lacks passing report');process.exit(0);}try{report.phase='prepare';assert(baseline.includes('// LUCIA_BUST_TEN_LONGER_TANK_STOMACH_V1')&&baseline.includes('// LUCIA_HANGING_TANK_BRIDGE_V2'),'Current longer tank and chest bridge required');function walk(n,f){f(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f);}else if(v&&typeof v.type==='string')walk(v,f);}}const names=['refineLuciaTankUNeck','shapeLuciaBroadTankFront'],nodes=[];walk(acorn.parse(baseline,{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&names.includes(n.id.name))nodes.push(n);});assert(nodes.length===2&&new Set(nodes.map(n=>n.id.name)).size===2,'Reviewed tank helpers changed');let s=baseline;for(const node of nodes.sort((a,b)=>b.start-a.start)){let f=s.slice(node.start,node.end);function once(a,b){assert(f.split(a).length===2,'Reviewed tank fragment changed: '+a);f=f.replace(a,b);}if(node.id.name==='refineLuciaTankUNeck'){once('const p=q.p.clone().addScaledVector(q.n,.010);','const p=q.p.clone().addScaledVector(q.n,.010),fitT=Math.max(0,Math.min(1,(q.p.y-.260)/.060)),closer=.003*(1-fitT*fitT*(3-2*fitT));p.x-=q.n.x*closer;p.z-=q.n.z*closer;');}else{once('return Math.max(boundary,bridgeHemBase*(1-t)+bridgePeakBase*t);','return boundary+.35*Math.max(0,bridgeHemBase*(1-t)+bridgePeakBase*t-boundary);');once('target=bridgeBase(v.y)+.006','target=bridgeBase(v.y)+.004');}s=s.slice(0,node.start)+f+s.slice(node.end);}s='// LUCIA_CLOSER_FITTING_TANK_V1\n'+s;acorn.parse(s,{ecmaVersion:'latest'});report.phase='validate';function load(text){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(text,c);return c.window.VCCharacters;}const old=load(baseline),cur=load(s);function signature(h){const rows=[];h.traverse(o=>{if(o.name==='lucia-dark-grey-tank-top')return;const row=[o.type,o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()];if(o.isMesh)row.push(Object.keys(o.geometry.attributes).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.transparent,m.opacity]));rows.push(row);});return JSON.stringify(rows);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)),'Other character changed');const reports=[];for(const merge of [false,true]){const a=old.build(T,'luciaC',{merge}),h=cur.build(T,'luciaC',{merge}),u=h.userData,v=a.userData,body=h.getObjectByName('lucia-dark-grey-tank-top'),prior=a.getObjectByName('lucia-dark-grey-tank-top');assert(signature(a)===signature(h),'Body underwear shorts rig or straps changed');assert(JSON.stringify(u.luciaTankUNeck)===JSON.stringify(v.luciaTankUNeck),'Hem length neckline or strap settings changed');assert(u.luciaTankVisible&&body.visible&&h.getObjectByName('lucia-dark-grey-tank-outfit').visible&&u.luciaOutfit===v.luciaOutfit);assert(body.material.color.getHex()===0x3b3d40&&body.material.bumpMap&&body.material.bumpScale===.00022&&!body.material.transparent&&body.material.opacity===1);assert(u.luciaBroadTankChest.curvature===.2&&u.luciaBroadTankChest.dipParameter===.001);const p=body.geometry.attributes.position,q=prior.geometry.attributes.position;assert(p.count===q.count);let moved=0;for(let i=0;i<p.count;i++){assert(Math.abs(p.getY(i)-q.getY(i))<1e-6,'Tank length or opening height changed');if(Math.abs(p.getX(i)-q.getX(i))+Math.abs(p.getZ(i)-q.getZ(i))>1e-7)moved++;}assert(moved>20,'Insufficient fitting change');h.updateMatrixWorld(true);a.updateMatrixWorld(true);function hits(human,meshes,x,y){const spine=human.userData.spine,inverse=new T.Matrix4().copy(spine.matrixWorld).invert(),origin=new T.Vector3(x,y,1).applyMatrix4(spine.matrixWorld),direction=new T.Vector3(0,0,-1).transformDirection(spine.matrixWorld);return new T.Raycaster(origin,direction,0,3).intersectObjects(meshes,false).map(hit=>hit.point.clone().applyMatrix4(inverse)).filter(v=>v.z>.025);}const bra=h.getObjectByName('lucia-tailored-bra'),under=u.spine.children.filter(o=>o.isMesh&&o.material===u.m.skin);bra.traverse(o=>{if(o.isMesh)under.push(o);});let coverage=0,maxCloser=0,minClearance=Infinity;const profiles=[];for(const y of [u.luciaTankUNeck.hem+.020,.16,.20,.24,.28,.32,.36,.38,.40]){const xs=[-.07,0,.07],now=xs.map(x=>hits(h,[body],x,y)[0]);if(now.some(v=>!v))continue;for(let j=0;j<xs.length;j++){const below=hits(h,under,xs[j],y)[0];if(below){const gap=now[j].z-below.z;assert(gap>.001,'Tank intersects body or retained bra');minClearance=Math.min(minClearance,gap);coverage++;}const was=hits(a,[prior],xs[j],y)[0];if(was&&y<=.30)maxCloser=Math.max(maxCloser,was.z-now[j].z);}if(y>=.32)assert(Math.max(...now.map(v=>v.z))-Math.min(...now.map(v=>v.z))<.005,'Broad chest bridge lost');profiles.push({y,z:now.map(v=>v.z)});}assert(coverage>=12&&maxCloser>.002,'Closer waist and stomach fit not established');assert(h.getObjectByName('lucia-fitted-black-briefs').visible&&bra.visible);for(const angle of [-.7,0,.7]){u.A[0].sh.rotation.x=angle;u.A[1].sh.rotation.x=-angle;u.spine.rotation.y=angle*.15;h.updateMatrixWorld(true);h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh)for(const key of ['position','normal','uv'])if(o.geometry.attributes[key])assert(Array.from(o.geometry.attributes[key].array).every(Number.isFinite));});}reports.push({merge,movedVertices:moved,maximumMeasuredFrontRetreatBelowBust:maxCloser,minimumSampledClearance:minClearance,coverageChecks:coverage,profiles});}fs.writeFileSync(file,s);Object.assign(report,{passed:true,phase:'complete',reports,lowerPanelSideAndBackOffsetReduction:.003,hangingFrontLoftFactor:.35,broadFrontExtraClearance:.004,longerHemNecklineStrapsRibbingAndOpacityPreserved:true,underlyingBodyAndAllOtherGarmentsUnchanged:true});}catch(error){fs.writeFileSync(file,baseline);Object.assign(report,{passed:false,error:String(error),stack:error.stack,baselinePreserved:true});}fs.mkdirSync('status',{recursive:true});fs.writeFileSync(status,JSON.stringify(report,null,2)+'\n');
+          JS
+      - name: Publish checked fit or exact failure report
+        run: |
+          git fetch origin "$TARGET_BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/"$TARGET_BRANCH")" || { echo 'Branch changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/lucia-closer-fitting-tank-check.json
+          if node -e "process.exit(JSON.parse(require('fs').readFileSync('status/lucia-closer-fitting-tank-check.json','utf8')).passed?0:1)"; then
+            git add -- js/reference-characters.js
+          fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Fit Lucia tank closer at waist and stomach or record exact validation failure'
+            git push origin HEAD:"refs/heads/$TARGET_BRANCH"
+          fi
+          node -e "const r=JSON.parse(require('fs').readFileSync('status/lucia-closer-fitting-tank-check.json','utf8'));if(!r.passed){console.error(r.error);process.exit(1);}"
