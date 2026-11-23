@@ -635,25 +635,38 @@ const bigJ=(t,k)=>coastJ(t*.55,k)*1.6;
 const FL_KEYS=(()=>{const k=[];
  // the Florida Keys: from the south-east corner, curving south then west
  for(let i=0;i<20;i++){const t=i/19,x=3700+1050*Math.sin(t*1.45),z=60+2900*Math.pow(t,1.15)+30*Math.sin(i*2.3);k.push([x,z,75-28*t+12*Math.sin(i*1.7),30+8*Math.cos(i*2.1),1.2-.9*t])}
- // GULF_ARCHIPELAGO_V2: irregular southwest Florida-style island chains.
- // Staggered clusters, elongated barrier islands and narrow tidal channels; kept offshore of the Gulf shoreline.
+ // GULF_ARCHIPELAGO_V3: use the reference's scattered west-coast keys rather than one evenly spaced row.
+ // Several loose island groups sit offshore, with open water separating the clusters.
  const gulfIsles=[
-  [-2850,4740,115,42,-.38],[-2630,4935,72,48,.72],[-2450,4645,145,48,-.18],
-  [-2200,4890,88,54,.55],[-2020,4635,175,52,-.32],[-1770,4820,92,46,.35],
-  [-1530,4595,138,58,-.48],[-1320,4810,78,52,.62],[-1100,4540,190,58,-.22],
-  [-850,4745,108,55,.42],[-620,4490,165,48,-.4],[-390,4680,88,52,.68],
-  [-160,4435,150,55,-.28],[90,4605,105,48,.38],[330,4370,185,56,-.2],
-  [590,4525,95,52,.55],[830,4280,145,48,-.34],[1080,4410,82,50,.45],
-  [1310,4140,170,54,-.25],[1560,4270,95,46,.58],[1790,3990,145,52,-.42],
-  [2030,4100,80,48,.32]
+  [-3350,4250,92,42,-.45],[-3180,4520,68,38,.35],[-2960,4380,128,48,-.2],
+  [-2780,4780,82,44,.55],[-2530,4590,156,54,-.35],[-2350,4910,76,45,.4],
+  [-2110,4450,118,50,-.55],[-1920,4750,170,58,-.2],[-1690,4520,84,42,.65],
+  [-1480,4890,105,50,-.4],[-1260,4610,188,62,-.15],[-1030,4820,82,46,.5],
+  [-820,4480,145,52,-.35],[-590,4780,95,48,.4],[-360,4510,175,58,-.2],
+  [-120,4860,88,44,.55],[160,4560,130,50,-.4],[420,4800,75,42,.3],
+  [680,4470,165,56,-.25],[930,4740,92,46,.55],[1190,4380,138,52,-.35],
+  [1460,4650,78,42,.4],[1730,4300,152,54,-.2],[1990,4520,88,44,.5]
  ];
  for(const isle of gulfIsles)k.push(isle);
- // Smaller mangrove keys scattered in loose clusters behind the outer barrier chain.
- for(let i=0;i<24;i++){
-  const t=i/23,x=-2700+t*4650+105*Math.sin(i*2.17),z=4840-430*t+115*Math.sin(i*1.31+0.6);
-  const rx=28+((i*37)%48),rz=22+((i*19)%34),a=-.5+.9*Math.sin(i*1.73);
+ // Smaller mangrove keys form uneven pockets behind the larger barrier islands.
+ const gulfPockets=[
+  [-3240,4690],[-3070,4860],[-2870,4510],[-2660,4880],[-2440,4760],[-2220,4580],
+  [-2020,4930],[-1810,4690],[-1600,4770],[-1390,4460],[-1160,4900],[-950,4630],
+  [-730,4900],[-500,4640],[-280,4770],[-40,4630],[210,4910],[470,4630],
+  [720,4870],[970,4560],[1210,4820],[1490,4490],[1740,4800],[1970,4680]
+ ];
+ for(let i=0;i<gulfPockets.length;i++){
+  const [x,z]=gulfPockets[i],rx=24+(i*19)%34,rz=18+(i*13)%27,a=-.55+.9*Math.sin(i*1.7);
   k.push([x,z,rx,rz,a]);
  }
+ // SOUTHERN_ISLAND_GROUP_V1: a broader island cluster beyond the peninsula's south end.
+ // Kept south of the existing mainland/city footprints.
+ const southKeys=[
+  [4420,1050,205,105,-.25],[4630,1370,145,82,.5],[4780,1760,250,115,-.35],
+  [4550,2180,175,88,.25],[4900,2350,125,72,-.5],[5100,1950,92,58,.35],
+  [5050,1510,115,65,-.2],[4300,2490,105,60,.45]
+ ];
+ for(const isle of southKeys)k.push(isle);
  const isle=[[-1480,1180],[-1360,1290],[-1560,1360],[-1250,1150],[-640,1200],[-560,1330],[-1690,1600],[-1660,1880],[-1700,2150],[-1580,2420],[-1340,2520],[-620,2440],[-560,2250],[-1180,1300],[-1650,1080],[-2600,2050],[-2900,2080],[-3200,2010]];
  for(const [x,z] of isle)if(x>-2000)k.push([x,z,26+((x*7+z*3)%17+17)%17,18+((x+z)%9+9)%9,(x*z)%3]);
  // ATLANTIC_BARRIER_KEYS_V1: narrow offshore barrier islands, kept well outside every existing city.
