@@ -780,7 +780,7 @@ const gladesMask=(x,z)=>sstep(-2300,-2000,x)*(1-sstep(1300,1700,x))*sstep(3200,3
 const swampMask=(x,z)=>Math.max(gladesMask(x,z),swampMask0(x,z));
 const swampMask0=(x,z)=>sstep(440,520,x)*sstep(-300,-230,z)*sstep(520,380,z)*(1-sstep(1400,1600,x));
 // GTA_VI_REFERENCE_ALIGNMENT_V1: VCIA sits west/southwest of downtown, on the mainland.
-const airportMask=(x,z)=>(1-sstep(405,495,Math.abs(x-725)))*(1-sstep(325,415,Math.abs(z-820)));
+const airportMask=(x,z)=>(1-sstep(620,680,Math.abs(x-820)))*(1-sstep(425,470,Math.abs(z-895))); /* VCIA_MIA_LAYOUT_V1 footprint x 200..1440, z 470..1320 */
 const westAirportMask=(x,z)=>(1-sstep(380,470,Math.abs(x-4900)))*(1-sstep(250,340,Math.abs(z-2800)));
 const hillMask=(x,z)=>Math.max(hillMask0(x,z),sstep(-1750,-2100,x)*sstep(-350,-120,z)*(1-sstep(800,1050,z))*sstep(-3600,-3300,x));
 const hillMask0=(x,z)=>sstep(-3700,-3300,x)*sstep(-640,-1100,x)*sstep(400,200,z)*sstep(-400,-280,z);
@@ -1422,7 +1422,7 @@ function defineRoads(){
  }
  roads.length=0;roads.push(...clipped);
  // Short causeway from the mainland to the island's southwest shore.
- addRoad('h',az,ax,bx,18,'hwy');
+ {const ax=820,az=770,bx=930;addRoad('h',az,ax,bx,18,'hwy')} /* same causeway ends as seaD; they were out of scope here and crashed road setup */
 }
 const CR_X=[],CR_Z=[];
 // Harbor Heights street plan: recursive random splits of the island, so every street ends in a T or at the shore
@@ -1574,7 +1574,7 @@ function makeParcels(){
  // CITY_LAYOUT_REFERENCE_FIX_V3: dense urban footprint north and east of VCIA.
  const gx=[-1500,-1320,-1140,-960,-780,-600,-420,-240,-60,120,300,480,660,840,1020,1200,1380,1560];
  const gz=[-1380,-1200,-1020,-840,-660,-480,-300,-120,60,240,420,600,780,960,1140];
- const airportBox={x0:80,x1:1220,z0:380,z1:1260};
+ const airportBox={x0:80,x1:1460,z0:380,z1:1340};
  const addCityBlock=(x0,z0,x1,z1,mode='core')=>{
   if(x0<airportBox.x1&&x1>airportBox.x0&&z0<airportBox.z1&&z1>airportBox.z0)return;
   lot(x0+11.9,z0+11.9,x1-11.9,z1-11.9,mode);
@@ -2000,39 +2000,8 @@ function* buildBaseMapGen(){
  x.fillStyle='rgba(177,185,216,.62)';for(const b of colAll)if(b.h>6&&b.x1-b.x0>6)x.fillRect((b.x0+WS)/MAPPX,(b.z0+WS)/MAPPX,(b.x1-b.x0)/MAPPX,(b.z1-b.z0)/MAPPX);
  for(const r of roads){x.strokeStyle=r.type==='hwy'?'#f4d77a':r.type==='dirt'?'#b49a70':'#f0f0e8';x.lineWidth=Math.max(1.6,r.w/MAPPX*(r.type==='hwy'?.9:.8));x.beginPath();
   if(r.o==='h'){x.moveTo((r.a+WS)/MAPPX,(r.c+WS)/MAPPX);x.lineTo((r.b+WS)/MAPPX,(r.c+WS)/MAPPX)}else{x.moveTo((r.c+WS)/MAPPX,(r.a+WS)/MAPPX);x.lineTo((r.c+WS)/MAPPX,(r.b+WS)/MAPPX)}x.stroke()}
- // VCIA_SATELLITE_LAYOUT_V4: airport map matches the intersecting-runway footprint and east-side terminal.
- {const ax=650,az=820,sc=1.5,px=v=>(ax+v*sc+WS)/MAPPX,pz=v=>(az+v*sc+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w*sc/MAPPX,h*sc/MAPPX)};
-  const path=(pts,color,width)=>{x.strokeStyle=color;x.lineWidth=width*sc/MAPPX;x.lineCap='round';x.lineJoin='round';x.beginPath();pts.forEach((p,i)=>i?x.lineTo(px(p[0]),pz(p[1])):x.moveTo(px(p[0]),pz(p[1])));x.stroke()};
-  x.save();
-  // Irregular airfield/apron boundary.
-  rect(5,-35,930,540,'#343a3d');rect(150,175,690,330,'#3b4144');rect(-185,150,390,250,'#3b4144');
-  // Northern runway and parallel taxiway.
-  rect(0,-220,760,56,'#171b1d');
-  path([[-374,-249],[374,-249]],'#e9e8dc',1.8);path([[-374,-191],[374,-191]],'#e9e8dc',1.8);
-  path([[-330,-220],[330,-220]],'#e4c45f',1.3);
-  for(let xx=-330;xx<=330;xx+=30)path([[xx,-226],[xx,-214]],'#f0eee5',1.3);
-  rect(0,-150,700,22,'#252c2f');path([[-350,-150],[350,-150]],'#e4c45f',1.5);
-  for(const xx of[-330,330])path([[xx,-235],[xx,-80]],'#22292c',20);
-  // Diagonal southwest-to-northeast runway.
-  x.save();x.translate(px(-15),pz(178));x.rotate(Math.atan2(Math.cos(.96),Math.sin(.96)));
-  x.fillStyle='#171b1d';x.fillRect(-310*sc/MAPPX,-29*sc/MAPPX,620*sc/MAPPX,58*sc/MAPPX);
-  x.strokeStyle='#e9e8dc';x.lineWidth=1.5/MAPPX;x.strokeRect(-310*sc/MAPPX,-29*sc/MAPPX,620*sc/MAPPX,58*sc/MAPPX);
-  x.setLineDash([5/MAPPX,5/MAPPX]);x.strokeStyle='#e4c45f';x.lineWidth=1.2/MAPPX;x.beginPath();x.moveTo(-285*sc/MAPPX,0);x.lineTo(285*sc/MAPPX,0);x.stroke();x.setLineDash([]);x.restore();
-  // Main passenger terminal on the east side, with long concourses reaching west.
-  rect(222,72,164,76,'#596b70');rect(222,72,145,57,'#315e70');
-  for(const z of[-25,18,60,102,144,187]){
-   path([[150,z],[80,z],[-35,z]],'#46545a',20);
-   path([[150,z-12],[80,z-12],[-35,z-12]],'#78939a',2);
-   for(let xx=125;xx>-20;xx-=42){rect(xx,z,12,17,'#65777b');}
-  }
-  // Satellite concourse, terminal access and parking structures.
-  rect(245,-92,72,82,'#52676e');path([[205,-36],[145,-36],[145,45]],'#315e70',12);
-  rect(335,130,72,62,'#4c5558');rect(335,220,72,62,'#4c5558');
-  rect(-390,105,150,92,'#515a5c');rect(-390,105,132,70,'#68777a');
-  path([[245,260],[335,260],[390,310]],'#d6c47b',8);
-  x.strokeStyle='#777f77';x.lineWidth=1.5/MAPPX;x.strokeRect(px(-455),pz(-300),930*sc/MAPPX,610*sc/MAPPX);
-  x.restore();
- }
+ // VCIA_MIA_LAYOUT_V1: the airport is drawn from the same shapes its 3D buildings, runways and aprons were made from.
+ if(airport&&airport.shapes){for(const [wx,wz,len,wid,ang,col] of airport.shapes){x.save();x.translate((wx+WS)/MAPPX,(wz+WS)/MAPPX);x.rotate(ang);x.fillStyle=col;x.fillRect(-len/2/MAPPX,-wid/2/MAPPX,len/MAPPX,wid/MAPPX);x.restore()}}
  // LEONIDA_WEST_REGIONAL_AIRPORT_SATELLITE_V1
  {const ax=4900,az=2800,px=v=>(ax+v+WS)/MAPPX,pz=v=>(az+v+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w/MAPPX,h/MAPPX)};x.save();rect(0,0,900,620,'#53694a');rect(0,-45,560,48,'#343b3d');rect(0,35,470,22,'#454b4b');x.strokeStyle='#e3e4dc';x.lineWidth=1.2;x.setLineDash([5,4]);x.beginPath();x.moveTo(px(-245),pz(-45));x.lineTo(px(245),pz(-45));x.stroke();x.setLineDash([]);rect(-125,110,180,100,'#898d87');rect(195,125,125,105,'#858b85');rect(-310,220,175,90,'#454b4b');rect(0,155,112,44,'#46545a');rect(185,115,100,72,'#59645f');rect(10,155,20,18,'#68777a');x.strokeStyle='#9ba184';x.lineWidth=1;x.strokeRect(px(-430),pz(-285),860/MAPPX,570/MAPPX);x.restore();}
 
@@ -2066,7 +2035,7 @@ function* buildBaseMapGen(){
  }
  baseMap=c;
 }
-const REGIONS=[['LEONIDA WEST REGIONAL AIRPORT',4430,2450,5370,3150,0,0],['VICE CITY INTERNATIONAL AIRPORT',170,445,1130,1195,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',430,-920,2440,1570,1510,315],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['KEY LENTO',3680,430,4230,970,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
+const REGIONS=[['LEONIDA WEST REGIONAL AIRPORT',4430,2450,5370,3150,0,0],['VICE CITY INTERNATIONAL AIRPORT',200,470,1440,1320,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',430,-920,2440,1570,1510,315],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['KEY LENTO',3680,430,4230,970,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
 function zoneName(x,z){for(const r of REGIONS)if(x>r[1]&&x<r[3]&&z>r[2]&&z<r[4])return r[0];if(z<shoreZ(x))return'PALMERA GULF';return'PALMERA COUNTRYSIDE'}
 
 function clearStructureFootprint(x0,z0,x1,z1,margin=1.2){
@@ -2220,137 +2189,101 @@ buildHospitalExterior();
  for(const shop of forced)ensureSafeForcedShop(shop);
 }
 function buildAirport(){
- // VICE_CITY_INTERNATIONAL_AIRPORT_V1
- const SCALE=1.5;
- const cx=650,cz=820,ground=heightAt(cx,cz)+.65;
- // Surface support decks: runway, taxiway/connectors, apron and airport grounds.
- // Shortened airport apron shifted east so its western edge no longer spills into downtown.
- decks.push({x0:cx-450,x1:cx+550,z0:cz-400,z1:cz+400,y:ground});
- // Raised collision-height support for the runway and main taxiway.
- // Main runway is centered at local z=-220 and scaled 1.5; match the actual pavement footprint.
- runwayDecks.push({x0:cx-570,x1:cx+570,z0:cz-372,z1:cz-288,y:ground+.41});
- decks.push({x0:cx-570,x1:cx+570,z0:cz-372,z1:cz-288,y:ground+.41});
- // Paved airport ground: parallel taxiway, three runway connectors, and both terminal aprons.
- airportGroundDecks.push({x0:cx-517.5,x1:cx+517.5,z0:cz-243,z1:cz-207,y:ground+.32});
- // Taxiway connectors at local x=-330 and +330, plus the broad terminal-side apron pads.
- for(const x of[cx-495,cx,cx+495])airportGroundDecks.push({x0:x-18,x1:x+18,z0:cz-240,z1:cz-15,y:ground+.30});
- airportGroundDecks.push({x0:cx-330,x1:cx-45,z0:cz+78,z1:cz+204,y:ground+.22});
- airportGroundDecks.push({x0:cx+210,x1:cx+390,z0:cz+54.75,z1:cz+281.25,y:ground+.22});
- airportGroundDecks.push({x0:cx-427.5,x1:cx-172.5,z0:cz+258,z1:cz+342,y:ground+.30});
- airportGroundDecks.push({x0:cx-450,x1:cx+550,z0:cz-400,z1:cz+400,y:ground+.02});
-
- decks.push({x0:cx-517.5,x1:cx+517.5,z0:cz-237,z1:cz-213,y:ground+.40});
- decks.push({x0:cx-517.5,x1:cx+517.5,z0:cz-262.5,z1:cz-37.5,y:ground+.40});
- decks.push({x0:cx-375,x1:cx+375,z0:cz-103.5,z1:cz-31.5,y:ground+.41});
- decks.push({x0:cx-330,x1:cx+330,z0:cz+36,z1:cz+69,y:ground+.40});
- for(const x of[cx-277.5,cx+262.5])decks.push({x0:x-16.5,x1:x+16.5,z0:cz-15,z1:cz+105,y:ground+.40});
- decks.push({x0:cx-285,x1:cx-142.5,z0:cz+69,z1:cz+195,y:ground+.18});
- decks.push({x0:cx+120,x1:cx+280,z0:cz+91.5,z1:cz+195,y:ground+.18});
+ // VCIA_MIA_LAYOUT_V1: laid out like Miami International. North is world -x and west is world +z.
+ //  - two close parallel runways along the north edge (like 8L/26R and 8R/26L) with a parallel taxiway
+ //  - the longest runway along the south edge (like 9/27) with its own taxiway
+ //  - a diagonal crosswind runway in the north-west (like 12/30)
+ //  - a horseshoe terminal opening east, with the parking garages and hotel inside the horseshoe
+ //  - long concourse D running west along the north apron, and fingers E, F, G and J reaching out west and south
+ //  - cargo warehouses in the south-west corner and a control tower west of the terminal
+ const X0=200,X1=1440,Z0=470,Z1=1320,cx=(X0+X1)/2,cz=(Z0+Z1)/2,G0=heightAt(cx,cz)+.15,PAVE=G0+.12;
  const mat=(color,roughness=.9)=>new T.MeshStandardMaterial({color,roughness});
- const asphalt=mat(0x24282b),concrete=mat(0x292e31),grass=mat(0x68765a),white=mat(0xe9e8dc),yellow=mat(0xe5bd42),metal=mat(0x64747a),roof=mat(0x34434a),glass=mat(0x315e70,.28);
- asphalt.map=makeNoiseTex(256,76,22,[1,1.01,1.02],8);
- concrete.map=makeNoiseTex(256,82,18,[1,1,.98],6);
- const blueLight=new T.MeshBasicMaterial({color:0x668edb}),warmLight=new T.MeshBasicMaterial({color:0xffe2aa});
- const batches=new Map();
- const box=(w,h,d,m,x,y,z,solid=false,angle=0)=>{w*=SCALE;d*=SCALE;x*=SCALE;z*=SCALE;const lift=m===asphalt?.22:0;if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,cx+x,ground+y+lift,cz+z,angle]);if(solid)addCol(cx+x-w/2,cz+z-d/2,cx+x+w/2,cz+z+d/2,ground+y+lift+h/2);};
- const paint=(w,d,m,x,z)=>box(w,.018,d,m,x,.455,z);
- // MIA-style airfield footprint: broad northern runway, diagonal crossing runway,
- // irregular southern apron, and terminal concentrated on the east side.
- box(620,.4,360,asphalt,5,-.21,-35);
- box(460,.4,250,asphalt,150,-.21,175);
- box(260,.4,170,asphalt,-190,-.21,150);
- // Northern runway and parallel taxiway.
- box(760,.18,56,asphalt,0,.10,-220);
- for(const z of [-249,-191])paint(748,.35,white,0,z);
- for(let x=-330;x<=330;x+=30)paint(13,.8,white,x,-220);
- // Second runway crosses the airfield diagonally, southwest to northeast.
- box(620,.22,58,asphalt,-15,.12,178,true,.96);
- box(604,.08,5,white,-15,.30,178,false,.96);
- box(604,.08,5,white,-15,.30,178,false,.96);
- for(let t=-270;t<=270;t+=30){
-  const px=-15+Math.sin(.96)*t,pz=178+Math.cos(.96)*t;
-  box(12,.08,1.1,white,px,.32,pz,false,.96);
- }
- // Taxiways and broad connecting pavement link both runways to the terminal apron.
- box(690,.16,24,asphalt,0,.10,-150);
- for(const x of[-330,330]){box(24,.16,150,asphalt,x,.10,-160);paint(.35,150,yellow,x,-160);}
- paint(680,.35,yellow,0,-150);
- box(210,.16,100,asphalt,110,.10,38);
- box(250,.16,110,asphalt,205,.10,125);
- box(180,.16,90,asphalt,-125,.10,94);
- box(24,.16,65,asphalt,-125,.10,63);paint(.35,65,yellow,-125,63);
- box(120,.16,151,asphalt,200,.10,112);
- box(44,.16,55,asphalt,90,.10,62);
- for(const x of[-190,-135,-80]){paint(.35,47,yellow,x,91);paint(20,.35,yellow,x,112);}
- for(let x=-240;x<=240;x+=24)for(const z of[-71,-19])box(.35,.18,.35,warmLight,x,.34,z);
- for(let x=-210;x<=210;x+=30)for(const z of[21,49])box(.3,.18,.3,blueLight,x,.32,z);
- // Main terminal sits on the eastern edge of the apron, like the reference map.
- box(154,27,66,white,222,14,72,true);
- box(144,18,1,glass,222,15,38,true);
- box(164,2,72,roof,222,29,72,true);
- box(2,16,56,glass,145,13,72,true);
- box(2,16,56,glass,299,13,72,true);
- box(124,2,8,roof,222,31,34,true);
- // Curved terminal-side concourse junction and central gate hall.
- box(62,22,58,white,145,11,72,true);
- box(68,2,64,roof,145,23,72,true);
- box(54,14,44,glass,145,12,72,true);
- // Six long, parallel concourses extend west from the central terminal like the map.
- // VCIA_CONCOURSE_ALIGN_V1: drawn unrotated so the fingers and gate pods sit exactly on their collision boxes.
- const concourses=[
-  {id:'D',x:105,z:-25,len:245},
-  {id:'E',x:105,z:18,len:205},
-  {id:'F',x:105,z:60,len:190},
-  {id:'G',x:105,z:102,len:190},
-  {id:'H',x:105,z:144,len:205},
-  {id:'J',x:105,z:187,len:225}
- ];
- for(const q of concourses){
-  const centerX=q.x-q.len/2;
-  box(q.len,17,27,white,centerX,8.5,q.z,true);
-  box(q.len+8,2,31,roof,centerX,18,q.z,true);
-  box(q.len-14,9,.8,glass,centerX,10,q.z-13.2,true);
-  box(q.len-14,9,.8,glass,centerX,10,q.z+13.2,true);
-  // Gate pods and jet-bridge connections on both sides of each finger.
-  for(let x=q.x-32;x>q.x-q.len+20;x-=42){
-   for(const side of[-1,1]){
-    const gx=x,gz=q.z+side*23;
-    box(10,6,17,white,gx,8,gz,true);
-    box(8,4,14,glass,gx,9,gz,true);
-    box(12,.8,19,roof,gx,11.5,gz,true);
-   }
-  }
-  // Concourse letter marker.
-  const data=cv(192,128),canvas=data[0],ctx=data[1];
-  ctx.fillStyle='#102d40';ctx.fillRect(0,0,192,128);
-  ctx.fillStyle='#fff';ctx.font='bold 90px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(q.id,96,66);
-  const letterMat=new T.MeshBasicMaterial({map:mkTex(canvas)});
-  box(16,9,1,letterMat,q.x-7,23,q.z,true);
- }
- // Elevated people-mover corridor runs along the terminal frontage.
- box(210,1.8,7,metal,218,42,72,true);
- box(210,.7,3,glass,218,44,72,true);
- for(let x=125;x<=310;x+=37)box(2,34,2,metal,x,20,72,true);
- // E satellite and enclosed connector north of the main terminal.
- box(66,14,74,white,245,7,-92,true);
- box(70,2,78,roof,245,15,-92,true);
- box(8,5,88,glass,205,10,-36,true);
- // Parking garages at the landside/eastern entrance.
- box(72,35,62,concrete,335,18,130,true);
- box(70,2,60,roof,335,36,130,true);
- box(72,35,62,concrete,335,18,220,true);
- box(70,2,60,roof,335,36,220,true);
- // Separate western cargo apron and warehouse.
- box(150,.16,92,asphalt,-390,.1,105);
- box(132,17,70,white,-390,8.5,105,true);
- box(138,2,74,roof,-390,18,105,true);
- // Covered departures curb.
- box(220,.16,16,asphalt,245,.1,265);
- paint(210,.25,yellow,245,265);
- const geometry=new T.BoxGeometry(1,1,1),matrix=new T.Matrix4(),rotation=new T.Quaternion();
- for(const [material,items] of batches){const mesh=new T.InstancedMesh(geometry,material,items.length);for(let i=0;i<items.length;i++){const item=items[i];const w=item[0],h=item[1],d=item[2],x=item[3],y=item[4],z=item[5],angle=item[6]||0;rotation.setFromAxisAngle(new T.Vector3(0,1,0),angle);matrix.compose(new T.Vector3(x,y,z),rotation,new T.Vector3(w,h,d));mesh.setMatrixAt(i,matrix);}mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;mesh.receiveShadow=true;world.add(mesh);}
- const [signCanvas,signCtx]=cv(1024,160);signCtx.fillStyle='#102d40';signCtx.fillRect(0,0,1024,160);signCtx.strokeStyle='#d9b85c';signCtx.lineWidth=10;signCtx.strokeRect(8,8,1008,144);signCtx.fillStyle='#fff';signCtx.font='bold 58px Arial';signCtx.textAlign='center';signCtx.textBaseline='middle';signCtx.fillText('VICE CITY INTERNATIONAL AIRPORT',512,82);const signMat=new T.MeshStandardMaterial({map:mkTex(signCanvas),roughness:.75});box(146,4,1.2,signMat,-153,8.5,135,true);
- airport={x:cx,z:cz,ground};
+ const asphalt=mat(0x2b3033),apronM=mat(0x7d8283),grass=mat(0x6d7d58),white=mat(0xe9e8dc),yellow=mat(0xe5bd42),metal=mat(0x64747a),
+  roof=mat(0x3a4a52),glass=mat(0x3a6f86,.25),concrete=mat(0xb9bcb6),cargoM=mat(0xc9c2b0),blueLight=new T.MeshBasicMaterial({color:0x668edb}),warmLight=new T.MeshBasicMaterial({color:0xffe2aa});
+ asphalt.map=makeNoiseTex(256,76,22,[1,1.01,1.02],8);apronM.map=makeNoiseTex(256,150,18,[1,1,.98],6);
+ const batches=new Map(),shapes=[];
+ const put=(m,w,h,d,x,y,z,a=0)=>{if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,x,y,z,a])};
+ // map shape: centre, length along canvas angle, width (the map canvas uses world x horizontally and world z vertically)
+ const shape=(x,z,len,wid,ang,col)=>shapes.push([x,z,len,wid,ang,col]);
+ // axis-aligned solid block: w along x, d along z
+ const block=(m,x,z,w,d,h,col,y0=G0)=>{put(m,w,h,d,x,y0+h/2,z);addCol(x-w/2,z-d/2,x+w/2,z+d/2,y0+h);if(col)shape(x,z,w,d,0,col)};
+ // rotated solid slab along the unit heading (dx,dz); collision is a chain of small boxes along it
+ const slab=(m,x,z,len,wid,h,dx,dz,col,y0=G0)=>{put(m,len,h,wid,x,y0+h/2,z,Math.atan2(-dz,dx));const n=Math.max(1,Math.ceil(len/wid)),s=wid*.5;
+  for(let i=0;i<n;i++){const t=-len/2+(i+.5)*len/n,px=x+dx*t,pz=z+dz*t;addCol(px-s,pz-s,px+s,pz+s,y0+h)}if(col)shape(x,z,len,wid,Math.atan2(dz,dx),col)};
+ // pavement: runways sit 2 cm above taxiways, taxiways 1 cm above aprons, so nothing flickers where they overlap
+ const pave=(m,x0,x1,z0,z1,kind,off)=>{put(m,x1-x0,.2,z1-z0,(x0+x1)/2,PAVE+off-.1,(z0+z1)/2);
+  (kind==='rw'?runwayDecks:airportGroundDecks).push({x0,x1,z0,z1,y:PAVE+off});shape((x0+x1)/2,(z0+z1)/2,x1-x0,z1-z0,0,kind==='rw'?'#1c2022':kind==='tw'?'#2f3437':'#5d6264')};
+ const paint=(x0,x1,z0,z1,m=white)=>put(m,x1-x0,.02,z1-z0,(x0+x1)/2,PAVE+.04,(z0+z1)/2);
+
+ // grass infield (map only)
+ shape(cx,cz,X1-X0,Z1-Z0,0,'#6f8a5c'); /* the flattened terrain itself is the grass; this only tints the map */
+
+ // aprons
+ pave(apronM,418,625,500,1290,'ap',0);          // concourse D gate apron, facing the north runways
+ pave(apronM,625,1287,480,1110,'ap',0);         // terminal apron (landside roads inside the horseshoe share it)
+ pave(apronM,1100,1287,1110,1300,'ap',0);       // cargo apron
+ // taxiways
+ const taxi=(x0,x1,z0,z1)=>{pave(asphalt,x0,x1,z0,z1,'tw',.01);if(z1-z0>x1-x0)paint((x0+x1)/2-.3,(x0+x1)/2+.3,z0+2,z1-2,yellow);else paint(x0+2,x1-2,(z0+z1)/2-.3,(z0+z1)/2+.3,yellow);
+  const along=z1-z0>x1-x0;for(let t=0;t<=(along?z1-z0:x1-x0);t+=30)for(const e of[0,1]){if(along)put(blueLight,.4,.25,.4,e?x1-.6:x0+.6,PAVE+.14,z0+t);else put(blueLight,.4,.25,.4,x0+t,PAVE+.14,e?z1-.6:z0+.6)}};
+ taxi(392,418,490,1300);                                   // north parallel taxiway
+ for(const z of[520,760,1020,1270])taxi(361,392,z-13,z+13);  // to the outer north runway
+ for(const z of[610,1210])taxi(268,309,z-12,z+12);           // between the two north runways
+ taxi(1287,1313,490,1300);                                 // south parallel taxiway
+ for(const z of[520,900,1280])taxi(1313,1354,z-13,z+13);     // to the south runway
+
+ // runways (east-west, along z) with edge lines, centreline, threshold bars, touchdown marks and edge lights
+ const runway=(x,z0,z1,w)=>{pave(asphalt,x-w/2,x+w/2,z0,z1,'rw',.02);
+  paint(x-w/2+1,x-w/2+1.7,z0+4,z1-4);paint(x+w/2-1.7,x+w/2-1,z0+4,z1-4);
+  for(let z=z0+70;z<z1-70;z+=42)paint(x-.5,x+.5,z,z+22);
+  for(const zz of[z0+6,z1-36])for(let k=-w/2+5;k<w/2-5;k+=4)paint(x+k,x+k+2,zz,zz+30);
+  for(const zz of[z0+120,z1-150])for(const s of[-1,1])paint(x+s*9-3,x+s*9+3,zz,zz+30);
+  for(let z=z0;z<=z1;z+=30)for(const s of[-1,1])put(warmLight,.5,.3,.5,x+s*(w/2+1.5),PAVE+.15,z)};
+ runway(245,580,1240,46);    // north outer runway
+ runway(335,500,1290,52);    // north inner runway
+ runway(1380,480,1305,52);   // south runway, the longest
+ // diagonal crosswind runway running north-west to south-east
+ {const ax=500,az=1300,bx=840,bz=1070,L=Math.hypot(bx-ax,bz-az),dx=(bx-ax)/L,dz=(bz-az)/L,mx=(ax+bx)/2,mz=(az+bz)/2,w=46,a=Math.atan2(-dz,dx);
+  put(asphalt,L,.2,w,mx,PAVE+.02-.1,mz,a);shape(mx,mz,L,w,Math.atan2(dz,dx),'#1c2022');
+  for(let t=-L/2;t<=L/2;t+=8){const px=mx+dx*t,pz=mz+dz*t;runwayDecks.push({x0:px-16,x1:px+16,z0:pz-16,z1:pz+16,y:PAVE+.02})}
+  for(let t=-L/2+60;t<L/2-60;t+=42)put(white,22,.02,1,mx+dx*t,PAVE+.045,mz+dz*t,a);
+  for(const s of[-1,1]){put(white,L-8,.02,.7,mx-dz*s*(w/2-1.4),PAVE+.045,mz+dx*s*(w/2-1.4),a);
+   for(let t=-L/2;t<=L/2;t+=30)put(warmLight,.5,.3,.5,mx+dx*t-dz*s*(w/2+1.5),PAVE+.15,mz+dz*t+dx*s*(w/2+1.5))}}
+
+ const term='#cfd6de';
+ // concourse D: long and straight, running west along the north apron, gates on its north face
+ block(white,640,855,30,590,13,term);put(roof,34,1.2,594,640,G0+13.6,855);
+ for(const s of[-1,1])put(glass,.6,5,578,640+s*15.3,G0+8,855);
+ const gateZ=[600,665,730,795,860,925,990,1055,1120];
+ for(const g of gateZ){block(white,616,g,18,5,4.5,null,G0+3.2);put(glass,4,4.4,7,608,G0+5.4,g);put(metal,.8,3.2,.8,609,G0+1.6,g);paint(418,604,g-.3,g+.3,yellow)}
+ // horseshoe terminal, opening east around the landside
+ const C={x:810,z:575};
+ for(let th=0;th<=180.1;th+=7.5){const r=Math.PI/180*th,sx=Math.sin(r),cx2=Math.cos(r),px=C.x-157.5*cx2,pz=C.z+157.5*sx;
+  slab(white,px,pz,22,35,15,sx,cx2,term);put(roof,23,1.2,37,px,G0+15.6,pz,Math.atan2(-cx2,sx));
+  put(glass,21,6,.6,C.x-175.4*cx2,G0+9,C.z+175.4*sx,Math.atan2(-cx2,sx))}
+ // fingers reaching out from the horseshoe, gate pods on both sides
+ const letter=(id)=>{const [c,g]=cv(192,128);g.fillStyle='#102d40';g.fillRect(0,0,192,128);g.fillStyle='#fff';g.font='bold 90px Arial';g.textAlign='center';g.textBaseline='middle';g.fillText(id,96,66);return new T.MeshBasicMaterial({map:mkTex(c)})};
+ put(letter('D'),1,9,16,624,G0+19,575);
+ for(const [id,th,len] of[['E',75,140],['F',105,150],['G',135,140],['J',165,120]]){const r=Math.PI/180*th,dx=-Math.cos(r),dz=Math.sin(r),sx=C.x+dx*175,sz=C.z+dz*175,mx=sx+dx*len/2,mz=sz+dz*len/2,a=Math.atan2(-dz,dx);
+  slab(white,mx,mz,len,24,12,dx,dz,term);put(roof,len+4,1.2,28,mx,G0+12.6,mz,a);for(const s of[-1,1])put(glass,len-10,4.5,.6,mx-dz*s*12.3,G0+7.5,mz+dx*s*12.3,a);
+  for(let t=30;t<len-5;t+=40)for(const s of[-1,1]){const px=sx+dx*t-dz*s*21,pz=sz+dz*t+dx*s*21;slab(white,px,pz,18,5,4.5,-dz*s,dx*s,null,G0+3.2)}
+  put(letter(id),16,9,1,sx+dx*12,G0+18,sz+dz*12,a+Math.PI/2)}
+ // landside: two parking garages and the airport hotel inside the horseshoe
+ for(const gx of[760,860]){block(concrete,gx,520,45,70,22,'#a7adb5');put(roof,46,1,71,gx,G0+22.5,520)}
+ block(white,810,615,36,30,34,'#dfe5ec');for(const s of[-1,1])put(glass,37,24,.6,810,G0+20,615+s*15.3);
+ // control tower west of the terminal
+ block(concrete,770,985,8,8,52,'#dfe5ec');put(glass,16,7,16,770,G0+55.5,985);put(roof,18,1,18,770,G0+59.5,985);put(metal,.4,8,.4,770,G0+64,985);
+ // cargo warehouses in the south-west corner
+ for(const z of[1150,1265]){block(cargoM,1165,z,70,50,14,'#b8b19f');put(roof,72,1,52,1165,G0+14.5,z)}
+ // entrance sign facing the city to the east
+ {const [c,g]=cv(1024,160);g.fillStyle='#102d40';g.fillRect(0,0,1024,160);g.strokeStyle='#d9b85c';g.lineWidth=10;g.strokeRect(8,8,1008,144);g.fillStyle='#fff';g.font='bold 58px Arial';g.textAlign='center';g.textBaseline='middle';g.fillText('VICE CITY INTERNATIONAL AIRPORT',512,82);
+  put(new T.MeshStandardMaterial({map:mkTex(c),roughness:.75}),64,10,1.2,810,G0+9,482);for(const s of[-1,1])put(metal,1,8,1,810+s*28,G0+4,482)}
+
+ const geometry=new T.BoxGeometry(1,1,1),matrix=new T.Matrix4(),rotation=new T.Quaternion(),up=new T.Vector3(0,1,0);
+ for(const [material,items] of batches){const mesh=new T.InstancedMesh(geometry,material,items.length);
+  for(let i=0;i<items.length;i++){const [w,h,d,x,y,z,a]=items[i];rotation.setFromAxisAngle(up,a||0);matrix.compose(new T.Vector3(x,y,z),rotation,new T.Vector3(w,h,d));mesh.setMatrixAt(i,matrix)}
+  mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;mesh.receiveShadow=true;world.add(mesh)}
+ airport={x:cx,z:cz,ground:G0,box:{x0:X0,x1:X1,z0:Z0,z1:Z1},C,shapes,gateZ,gateNoseX:603,
+  ga:[{x:1215,z:540,h:0},{x:1215,z:590,h:0}],takeout:{x:1180,z:650,h:0},cargo:{x:1225,z:1210}};
 }
 let airport=null;
 
@@ -2388,12 +2321,14 @@ function buildWestAirport(){
  westAirport={x:cx,z:cz,ground};
 }
 
-function spawnAirportPlanes(){spawnAFBJets();for(const c of cars.slice())if(c.airportStatic)removeCar(c);if(airport){/* GA planes: on the open apron just west of the airliner gates (the old spots are inside the new terminal) */const a=spawnCar('propPlane',airport.x-265,airport.z-112,0,'parked',0xe8e5d8);a.airportStatic=true;a.keep=true;const j=spawnCar('smallJet',airport.x-222,airport.z-112,0,'parked',0xf1f3f5);j.airportStatic=true;j.keep=true;
- // AIRLINER_GATES_V2: the rebuilt VCIA's fingers are packed ~22 m apart, too tight for airliners, so the jets park
- // nose-in at the gate pods along the north (runway) side of concourse D. Pod faces sit 84.75 m north of the airport
- // centre; each nose stops ~3 m short of its pod. Wide-bodies take the two end gates, so neighbouring wings clear.
- for(const [tk,gx,nose] of[['b747',-142.5,35.3],['a321neo',-79.5,22.3],['b737',-16.5,19.8],['a330',109.5,31.9]]){
-  const g=spawnCar(tk,airport.x+gx,airport.z-88-nose,0,'parked',CAR_TYPES[tk].colors[0]);g.airportStatic=true;g.keep=true}}if(westAirport){const w=spawnCar('propPlane',westAirport.x+260,westAirport.z+155,Math.PI/2,'parked',0xf1f3f5);w.airportStatic=true;w.keep=true}}
+function spawnAirportPlanes(){spawnAFBJets();for(const c of cars.slice())if(c.airportStatic)removeCar(c);
+ if(airport){const A=airport;
+  for(const [tk,col,i] of[['propPlane',0xe8e5d8,0],['smallJet',0xf1f3f5,1]]){const g=A.ga[i],c=spawnCar(tk,g.x,g.z,g.h,'parked',col);c.airportStatic=true;c.keep=true}
+  // AIRLINER_GATES_V3: nose-in at concourse D's jet bridges facing the north runways; each nose stops ~4 m short of
+  // its bridge. Wide-bodies take gates with an empty or narrow-body neighbour so the wings clear.
+  for(const [tk,z,nose] of[['a330',600,31.9],['a321neo',730,22.3],['b737',860,19.8],['b747',1055,35.3]]){
+   const g=spawnCar(tk,A.gateNoseX-nose,z,Math.PI/2,'parked',CAR_TYPES[tk].colors[0]);g.airportStatic=true;g.keep=true}}
+ if(westAirport){const w=spawnCar('propPlane',westAirport.x+260,westAirport.z+155,Math.PI/2,'parked',0xf1f3f5);w.airportStatic=true;w.keep=true}}
 
 // PALMETTO_GROVE_V1
 const PG={paths:[],homes:[],signs:[]};
@@ -2404,7 +2339,11 @@ const pgOldDefineRoads=defineRoads;
 defineRoads=function(){
  pgOldDefineRoads();PG.paths=[];PG.homes=[];PG.signs=[];
  // Remove every road segment entering Palmetto Grove.
- const noRoadZones=[{x0:-345,x1:425,z0:445,z1:1115},{x0:170,x1:1130,z0:445,z1:1195}]; // Palmetto Grove and VCIA
+ const noRoadZones=[{x0:-345,x1:425,z0:445,z1:1115}]; // Palmetto Grove
+ // VCIA_MIA_LAYOUT_V1: roads that run into the airport are cut short at its fence; roads entirely inside it are dropped.
+ {const A={x0:200,x1:1440,z0:470,z1:1320},pad=6;for(let i=roads.length-1;i>=0;i--){const r=roads[i],hw=r.hw||r.w/2,lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),[c0,c1,a0,a1]=r.o==='h'?[A.z0,A.z1,A.x0,A.x1]:[A.x0,A.x1,A.z0,A.z1];
+  if(r.c<c0-hw||r.c>c1+hw||hi<a0-hw||lo>a1+hw)continue;const before=a0-hw-pad-lo,after=hi-(a1+hw+pad);
+  if(before<20&&after<20){roads.splice(i,1);continue}if(before>=after){r.a=lo;r.b=a0-hw-pad}else{r.a=a1+hw+pad;r.b=hi}}}
  for(let i=roads.length-1;i>=0;i--){const r=roads[i],lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),crosses=noRoadZones.some(zone=>r.o==='h'?(r.c>=zone.z0-r.hw&&r.c<=zone.z1+r.hw&&hi>=zone.x0-r.hw&&lo<=zone.x1+r.hw):(r.c>=zone.x0-r.hw&&r.c<=zone.x1+r.hw&&hi>=zone.z0-r.hw&&lo<=zone.z1+r.hw));if(crosses)roads.splice(i,1)}
 };
 const pgOldNearRoad=nearRoad;nearRoad=function(x,z,m=0){return pgOldNearRoad(x,z,m)||pgNear(x,z,m)};
@@ -5514,7 +5453,7 @@ function storeCar(c){
  if(G.ownedCar===c)G.ownedCar=null;removeCar(c);toast('🅿 Stored in your garage',1800)}
 function takeOut(e,at){
  const boat=CAR_TYPES[e.tk].boat,aircraft=CAR_TYPES[e.tk].aircraft;let c=cars.find(q=>q.gid===e.gid&&!q.dead),p,h=0;
- if(aircraft){if(!airport){toast('Airport unavailable');return}p=[airport.x-115,airport.z+132];h=Math.PI/2}
+ if(aircraft){if(!airport){toast('Airport unavailable');return}p=[airport.takeout.x,airport.takeout.z];h=airport.takeout.h}
  else if(boat){p=findWater(at.x,at.z,450);if(!p){toast('No water nearby — try a waterfront property',2400);return}}
  else{const rs=roadSpotNear(at.x,at.z);p=[rs.x,rs.z];h=rs.h}
  if(c){if(c===pl.car){toast("You're already in it");return}c.x=p[0];c.z=p[1];c.h=h;c.vx=c.vz=0;c.vy=0;c.airborne=false;c.inp={thr:0,steer:0,hb:0};c.mode='parked';c.y=boat?Math.max(WL-.08,heightAt(p[0],p[1])):heightAt(p[0],p[1]);c.place()}
@@ -6169,7 +6108,7 @@ function updateMugging(dt){const m=G.mugging;if(!m)return;const p=m.p;mouseDown=
 function chooseWorkTarget(){for(let i=0;i<24;i++){const p=curbPoint(120,850)||curbPoint(60,1500);if(!p)continue;const x=p.sx,z=p.sz;if(heightAt(x,z)<WL+.2||queryCols(x,z,.8).some(c=>circleBox([x,z],.6,c)))continue;return{x,z}}return null}
 function moveWorkMarker(){if(!G.work||!cityWorkRing)return;const t=G.work.target;cityWorkRing.visible=true;cityWorkRing.position.set(t.x,Math.max(WL,heightAt(t.x,t.z)),t.z);if(cityWorkProp){cityWorkProp.visible=true;cityWorkProp.position.copy(cityWorkRing.position);for(const c of cityWorkProp.children)c.visible=c.userData.kind===G.work.kind}}
 function endWork(message){G.work=null;if(cityWorkRing)cityWorkRing.visible=false;if(cityWorkProp)cityWorkProp.visible=false;hideActionProgress();if(!MS.active&&!SJ.kind)$('#goal').classList.remove('on');if(message)toast(message,3000)}
-function startCityWork(kind){const def=CITY_JOBS[kind];if(!def)return;if(G.work){toast('Finish or cancel your current work first.');return}if(SJ.kind||G.mugging||G.robbery){toast('Finish your current activity first.');return}if(pl.wanted>0){toast('Lose the police before starting paid work.');return}if((G.workCooldown||0)>G.time){toast('New contracts in '+Math.ceil(G.workCooldown-G.time)+' seconds.');return}if(!canStartJob())return;let route=null,target;if(kind==='cargo'){if(!airport||!westAirport){toast('Airport cargo service is unavailable.');return}const v={x:airport.x+410,z:airport.z+275,label:'VCIA cargo depot'},w={x:westAirport.x+350,z:westAirport.z+250,label:'Leonida West cargo depot'};route=cargoReverse?[w,v]:[v,w];cargoReverse=!cargoReverse;target=route[0]}else target=chooseWorkTarget();if(!target){toast('No accessible work location found. Move closer to town.');return}if(G.state==='shop')closeShop();if(G.phoneOpen)closePhoneExt();G.work={kind,target,route,done:0,time:def.limit,total:0,servicing:0};moveWorkMarker();showBanner(def.name.toUpperCase(),kind==='cargo'?'Drive to the marked cargo depot, load the shipment, then deliver it to the other airport.':'Follow the blue marker. Press R at each stop.','#79e5ff',3000)}
+function startCityWork(kind){const def=CITY_JOBS[kind];if(!def)return;if(G.work){toast('Finish or cancel your current work first.');return}if(SJ.kind||G.mugging||G.robbery){toast('Finish your current activity first.');return}if(pl.wanted>0){toast('Lose the police before starting paid work.');return}if((G.workCooldown||0)>G.time){toast('New contracts in '+Math.ceil(G.workCooldown-G.time)+' seconds.');return}if(!canStartJob())return;let route=null,target;if(kind==='cargo'){if(!airport||!westAirport){toast('Airport cargo service is unavailable.');return}const v={x:airport.cargo.x,z:airport.cargo.z,label:'VCIA cargo depot'},w={x:westAirport.x+350,z:westAirport.z+250,label:'Leonida West cargo depot'};route=cargoReverse?[w,v]:[v,w];cargoReverse=!cargoReverse;target=route[0]}else target=chooseWorkTarget();if(!target){toast('No accessible work location found. Move closer to town.');return}if(G.state==='shop')closeShop();if(G.phoneOpen)closePhoneExt();G.work={kind,target,route,done:0,time:def.limit,total:0,servicing:0};moveWorkMarker();showBanner(def.name.toUpperCase(),kind==='cargo'?'Drive to the marked cargo depot, load the shipment, then deliver it to the other airport.':'Follow the blue marker. Press R at each stop.','#79e5ff',3000)}
 function restoreWork(saved){endWork();if(saved&&CITY_JOBS[saved.kind]&&saved.target&&Number.isFinite(saved.target.x)&&Number.isFinite(saved.target.z)&&saved.done>=0&&saved.done<CITY_JOBS[saved.kind].stops){G.work={kind:saved.kind,target:saved.target,route:Array.isArray(saved.route)?saved.route:null,done:Math.floor(saved.done),time:clamp(saved.time||120,1,720),total:Math.max(0,saved.total||0),servicing:0};moveWorkMarker()}}
 function completeWorkStop(){const w=G.work;if(!w)return;const def=CITY_JOBS[w.kind];w.done++;w.servicing=0;pl.cash+=def.pay;w.total+=def.pay;G.hudDirty=true;audio.cash();toast('Stop complete +$'+def.pay);if(w.done>=def.stops){pl.cash+=def.bonus;pl.stats.cityJobs=(pl.stats.cityJobs||0)+1;addRep(3);G.hudDirty=true;G.workCooldown=G.time+30;showBanner('CONTRACT COMPLETE',def.name+' finished. $'+def.bonus+' completion bonus awarded.','#79e5ff',3600);endWork('Contract complete!');return}if(w.kind==='cargo'&&w.route&&w.route[w.done]){w.target=w.route[w.done]}else{const next=chooseWorkTarget();if(!next){endWork('Contract ended. No accessible next stop was found.');return}w.target=next}moveWorkMarker()}
 function interactWork(){const w=G.work;if(!w)return false;if(w.kind==='cargo'&&!pl.car){toast('Use a vehicle to load and deliver airport cargo.');return true}if(pl.inside||Math.hypot(pl.x-w.target.x,pl.z-w.target.z)>8){toast('Follow the blue work marker, then press R.');return true}if(pl.car&&pl.car.speed>2){toast('Stop your vehicle first.');return true}if(w.kind==='repair'){if(pl.car){toast('Exit your vehicle to repair the roadside unit.');return true}if(!w.servicing)w.servicing=.01;return true}completeWorkStop();return true}
@@ -6727,14 +6666,14 @@ G.stepFighter=stepFighter;G.fighterSees=()=>!!pl.car&&FJ.list.some(c=>!c.fighter
 // apron) is restricted: linger there outside an aircraft and you get a star. They respond to wanted players at the
 // airport: at one star they only come for you on foot (and arrest), from two stars they chase anything on the ground.
 const APOL={cars:[],feet:[],trespassT:0,warned:false,near:false};
-function apolAirside(x,z){if(!airport)return false;const dx=x-airport.x,dz=z-airport.z;return dx>-380&&dx<380&&dz>-262&&dz<100}
+function apolAirside(x,z){if(!airport)return false;const b=airport.box;if(x<b.x0+150||x>b.x1||z<b.z0||z>b.z1)return false;/* landside: inside the horseshoe and the garages east of it */if(Math.hypot(x-airport.C.x,z-airport.C.z)<140||(x>640&&x<980&&z<575))return false;return true}
 function apolNear(){return airport&&Math.hypot(pl.x-airport.x,pl.z-airport.z)<900}
 function apolSpawn(){if(!airport)return;const A=airport,R=(x,z)=>[A.x+x,A.z+z];
- /* patrol loop runs behind the parked airliners' tails, clear of the gates and the taxiway */const loops=[[R(-360,-172),R(300,-172),R(300,-194),R(-360,-194)],[R(300,-194),R(-360,-194),R(-360,-172),R(300,-172)],[R(-440,-300),R(500,-300),R(500,-320),R(-440,-320)]];
+ /* patrol loop runs behind the parked airliners' tails, clear of the gates and the taxiway *//* VCIA_MIA_LAYOUT_V1: patrol loops behind the parked airliners and along the south apron */const L=(pts)=>pts.map(([x,z])=>[x,z]),loops=[L([[470,520],[470,1260],[450,1260],[450,520]]),L([[450,1260],[450,520],[470,520],[470,1260]]),L([[1250,520],[1250,1100],[1235,1100],[1235,520]])];
  for(const wps of loops){const [x,z]=wps[0],[nx,nz]=wps[1],h=Math.atan2(nx-x,nz-z);
   const c=spawnCarSafe('airportPolice',x,z,h);if(!c)continue;c.mode='cop';c.occ='cop';c.cops=2;c.keep=true;c.apol=true;
   c.ai={airport:true,wps,i:1,offduty:true,unloaded:false};APOL.cars.push(c)}
- for(const [x,z] of[[-190,-92],[175,-92]]){const p=activatePed(A.x+x,A.z+z,true);if(p){p.state='walk';p.speed=1.3;p.apol=true;APOL.feet.push(p)}}}
+ for(const [x,z] of[[590,520],[590,1185]]){const p=activatePed(x,z,true);if(p){p.state='walk';p.speed=1.3;p.apol=true;APOL.feet.push(p)}}}
 function spawnCarSafe(tk,x,z,h){try{return spawnCar(tk,x,z,h,'cop')}catch(e){console.error(e);return null}}
 function apolClear(){for(const c of APOL.cars)if(cars.includes(c))removeCar(c);APOL.cars=[];for(const p of APOL.feet)if(p.active&&!p.dead&&p.kill)p.kill();APOL.feet=[]}
 function apolDrive(c,dt){const ai=c.ai,inp=c.inp;if(c.dead)return;
