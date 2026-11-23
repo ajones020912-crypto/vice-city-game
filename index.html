@@ -2378,14 +2378,15 @@ function aiPlaneControl(c,dt){
  }else if(a.phase==='final'){
   // glide path to a point 150 m past the threshold, flare low down, idle at the end
   const L=R.land,dist=c.z-L.z0,h=c.y-heightAt(c.x,c.z)-.88;let alt=Math.max(0,dist+150)*.055;
-  fly(L.x,Math.min(c.z-500,L.z0),alt,vRef*1.08,h<14?-1.6:-7);if(h<6)a.throttle=0;
+  if(dist<0)alt=0;fly(L.x,Math.min(c.z-500,L.z0),alt,vRef*.98,h<5?-2.4:dist<0?-4:-7);if(h<10)a.throttle=0;
   if(!c.airborne){a.phase='rollout';a.t=0}
+  else if(dist<-600){a.phase='approach';a.wp=0;a.t=0;a.throttle=1} /* not down in the first 600 m: go around */
  }else if(a.phase==='rollout'){
   const L=R.land;a.throttle=0;a.pitch=0;a.brake=true;steerTo(L.x,c.z-150);
   if(Math.hypot(c.vx,c.vz)<6||a.t>40){a.phase='taxiGate';a.t=0;a.brake=false}
  }else if(a.phase==='taxiGate'){
   steerTo(gateX,gateZ);const sp=Math.hypot(c.vx,c.vz);a.throttle=sp<7?.16:0;a.brake=sp>9;
-  if(Math.hypot(c.x-gateX,c.z-gateZ)<8||a.t>48){a.phase='parked';a.throttle=0;a.steer=0;a.brake=false;c.aiPilot=null;c.aiAirlineParked=true;c.vx=c.vz=c.vy=0;c.as=0;c.speed=0;c.airborne=false;c.thr=0;c.y=heightAt(c.x,c.z)+.88}
+  if(Math.hypot(c.x-gateX,c.z-gateZ)<8||a.t>48){a.phase='parked';a.throttle=0;a.steer=0;a.brake=false;c.aiPilot=null;c.aiAirlineParked=true;c.vx=c.vz=c.vy=0;c.as=0;c.airborne=false;c.thr=0;c.y=heightAt(c.x,c.z)+.88}
  }else if(a.phase==='parked'){a.throttle=0}
 }
 function updateAirportTraffic(dt){
