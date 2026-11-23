@@ -1,0 +1,49 @@
+name: Increase Lucia tank coverage over retained bra
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-tank-bra-coverage.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  coverage:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [main, lucia-outfits]
+    concurrency:
+      group: lucia-u-neck-${{ matrix.target }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    env:
+      TARGET_BRANCH: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.target }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-coverage" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Raise neckline and underarms and widen tank shoulder straps
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-coverage/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_TANK_BRA_COVERAGE_V2'))process.exit(0);if(!s.includes('// LUCIA_U_NECK_STRAPS_V1'))throw Error('Installed U-neck tank required');fs.writeFileSync('/tmp/lucia-coverage-before.js',s);function walk(n,f){f(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f);}else if(v&&typeof v.type==='string')walk(v,f);}}const found=[];walk(acorn.parse(s,{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id&&n.id.name==='refineLuciaTankUNeck')found.push(n);});if(found.length!==1)throw Error('Tank shaping implementation changed');const node=found[0];let f=s.slice(node.start,node.end);function once(a,b){if(f.split(a).length!==2)throw Error('Reviewed tank fragment changed: '+a);f=f.replace(a,b);}once('hem=oldBox.min.y,','braCoverageTop=(()=>{let max=-Infinity;const bra=h.getObjectByName("lucia-tailored-bra");assertFit(!!bra,"Base bra missing");bra.traverse(o=>{if(!o.isMesh||/strap|front-|underwire|neckline/.test(o.name))return;const M=inverse.clone().multiply(o.matrixWorld),p=o.geometry.attributes.position,v=new T.Vector3();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(M);if(v.z>.02)max=Math.max(max,v.y);}});assertFit(Number.isFinite(max),"Bra cup outline missing");return max;})(),hem=oldBox.min.y,');once('neckHalf=.085,neckBase=shoulderY-.155,neckDepth=.135','neckHalf=.075,neckBase=Math.max(shoulderY-.085,braCoverageTop+.012),neckDepth=.100');once('halfWidth=.013','halfWidth=.023');once('top>neckBase+.1','top>neckBase+.035');if(f.split('shoulderY-.130').length!==4)throw Error('Armhole definitions changed');f=f.split('shoulderY-.130').join('shoulderY-.080');once('shoulderY-.085,.120','shoulderY-.055,.120');s='// LUCIA_TANK_BRA_COVERAGE_V2\n'+s.slice(0,node.start)+f+s.slice(node.end);acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-coverage-after.js',s);
+          JS
+      - name: Validate higher U-neck bra panel coverage and unchanged base garments
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-coverage/node_modules/three');if(!fs.existsSync('/tmp/lucia-coverage-after.js')){assert(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_TANK_BRA_COVERAGE_V2'));process.exit(0);}function load(file){const c={window:{},console,Math};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}const old=load('/tmp/lucia-coverage-before.js'),cur=load('/tmp/lucia-coverage-after.js');function signature(h){const rows=[];h.traverse(o=>{if(o.userData.luciaOuterTank)return;const row=[o.type,o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()];if(o.isMesh)row.push(Object.keys(o.geometry.attributes).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.metalness,m.transparent,m.opacity,m.skinning]));rows.push(row);});return JSON.stringify(rows);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)),'Other character changed');let poses=0,coverageSamples=0,coveredSamples=0,minimumCoverage=1;for(const merge of [false,true]){const a=old.build(T,'luciaC',{merge}),h=cur.build(T,'luciaC',{merge}),u=h.userData,fit=u.luciaTankUNeck,previous=a.userData.luciaTankUNeck,group=h.getObjectByName('lucia-dark-grey-tank-outfit'),body=h.getObjectByName('lucia-dark-grey-tank-top'),bra=h.getObjectByName('lucia-tailored-bra');assert(signature(a)===signature(h),'Body bra underwear swimsuit or rig changed');assert(fit.neckBase>previous.neckBase+.025&&fit.neckHalf<previous.neckHalf&&fit.strapWidth>previous.strapWidth*1.5);assert(group.visible&&u.luciaTankVisible&&bra.visible&&h.getObjectByName('lucia-fitted-black-briefs').visible&&u.luciaOutfit===a.userData.luciaOutfit);h.updateMatrixWorld(true);const inverse=new T.Matrix4().copy(u.spine.matrixWorld).invert();function frontHits(x,y){const origin=new T.Vector3(x,y,1).applyMatrix4(u.spine.matrixWorld),direction=new T.Vector3(0,0,-1).transformDirection(u.spine.matrixWorld);return new T.Raycaster(origin,direction,0,2).intersectObject(body,false).filter(hit=>hit.point.clone().applyMatrix4(inverse).z>.02);}assert(frontHits(0,fit.neckBase-.020).length>0);assert(frontHits(0,fit.neckBase+.020).length===0,'Rounded neckline centre must stay open');assert(frontHits(.060,fit.neckBase+.020).length>0,'U-neck must rise at sides');let tested=0,covered=0;bra.traverse(o=>{if(!o.isMesh||/strap|front-|underwire|neckline/.test(o.name))return;const g=o.geometry,p=g.attributes.position,n=g.attributes.normal,M=inverse.clone().multiply(o.matrixWorld),N=new T.Matrix3().getNormalMatrix(M),count=g.index?g.index.count:p.count,stride=Math.max(1,Math.ceil(count/3/96));for(let face=0;face<count/3;face+=stride){const q=new T.Vector3(),normal=new T.Vector3();for(let j=0;j<3;j++){const k=g.index?g.index.getX(face*3+j):face*3+j;q.add(new T.Vector3().fromBufferAttribute(p,k).applyMatrix4(M));normal.add(new T.Vector3().fromBufferAttribute(n,k).applyMatrix3(N));}q.multiplyScalar(1/3);normal.normalize();if(q.y<.25||q.y>fit.shoulderY-.050||normal.lengthSq()<.5)continue;const origin=q.clone().addScaledVector(normal,.12).applyMatrix4(u.spine.matrixWorld),direction=normal.clone().negate().transformDirection(u.spine.matrixWorld),hits=new T.Raycaster(origin,direction,0,.121).intersectObject(group,true);tested++;if(hits.some(hit=>hit.distance<.119))covered++;}});assert(tested>=20,'Insufficient bra panel coverage samples');assert(covered/tested>=.97,'Tank still exposes too much sampled bra panel area');coverageSamples+=tested;coveredSamples+=covered;minimumCoverage=Math.min(minimumCoverage,covered/tested);group.traverse(o=>{if(o.isMesh)assert(o.material.color.getHex()===0x3b3d40&&!o.material.transparent&&o.material.opacity===1&&o.material.bumpMap&&o.material.bumpScale===.00022);});for(const angle of [-.7,0,.7]){u.spine.rotation.y=angle*.2;u.A[0].sh.rotation.x=angle;u.A[1].sh.rotation.x=-angle;h.updateMatrixWorld(true);h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh)for(const k of ['position','normal'])if(o.geometry.attributes[k])assert(Array.from(o.geometry.attributes[k].array).every(Number.isFinite));});poses++;}}fs.copyFileSync('/tmp/lucia-coverage-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});const report={passed:true,branch:process.env.TARGET_BRANCH,neckline:'higher narrower rounded U-neck',strapWidth:.046,underarmEdgesRaised:true,coverageSamples,coveredSamples,minimumRestPoseBraPanelCoverage:minimumCoverage,poseChecks:poses,braNotRemovedOrHidden:true,defaultDarkGreyRibbedTankPreserved:true,bodySkinToneBaseGarmentsAndRigUnchanged:true,otherCharactersUnchanged:true,scope:'Coverage samples exclude bra shoulder straps and decorative edging. Rest-pose panel ray checks and finite-pose checks do not guarantee coverage from every camera angle, all-pose clipping, rendered appearance or live deployment.'};fs.writeFileSync('status/lucia-tank-bra-coverage-check.json',JSON.stringify(report,null,2)+'\n');
+          JS
+      - name: Publish validated coverage revision to selected branch
+        run: |
+          git fetch origin "$TARGET_BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/"$TARGET_BRANCH")" || { echo 'Target branch changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-tank-bra-coverage-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Raise Lucia tank U-neck and underarm edges and widen straps to cover retained bra'
+          git push origin HEAD:"refs/heads/$TARGET_BRANCH"
