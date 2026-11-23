@@ -2277,6 +2277,7 @@ function buildAirport(){
  box(68,2,64,roof,145,23,72,true);
  box(54,14,44,glass,145,12,72,true);
  // Six long, parallel concourses extend west from the central terminal like the map.
+ // VCIA_CONCOURSE_ALIGN_V1: drawn unrotated so the fingers and gate pods sit exactly on their collision boxes.
  const concourses=[
   {id:'D',x:105,z:-25,len:245},
   {id:'E',x:105,z:18,len:205},
@@ -2287,17 +2288,17 @@ function buildAirport(){
  ];
  for(const q of concourses){
   const centerX=q.x-q.len/2;
-  box(q.len,17,27,white,centerX,8.5,q.z,true,-Math.PI/2);
-  box(q.len+8,2,31,roof,centerX,18,q.z,true,-Math.PI/2);
-  box(q.len-14,9,.8,glass,centerX,10,q.z-13.2,true,-Math.PI/2);
-  box(q.len-14,9,.8,glass,centerX,10,q.z+13.2,true,-Math.PI/2);
+  box(q.len,17,27,white,centerX,8.5,q.z,true);
+  box(q.len+8,2,31,roof,centerX,18,q.z,true);
+  box(q.len-14,9,.8,glass,centerX,10,q.z-13.2,true);
+  box(q.len-14,9,.8,glass,centerX,10,q.z+13.2,true);
   // Gate pods and jet-bridge connections on both sides of each finger.
   for(let x=q.x-32;x>q.x-q.len+20;x-=42){
    for(const side of[-1,1]){
     const gx=x,gz=q.z+side*23;
-    box(10,6,17,white,gx,8,gz,true,-Math.PI/2);
-    box(8,4,14,glass,gx,9,gz,true,-Math.PI/2);
-    box(12,.8,19,roof,gx,11.5,gz,true,-Math.PI/2);
+    box(10,6,17,white,gx,8,gz,true);
+    box(8,4,14,glass,gx,9,gz,true);
+    box(12,.8,19,roof,gx,11.5,gz,true);
    }
   }
   // Concourse letter marker.
@@ -2368,10 +2369,12 @@ function buildWestAirport(){
  westAirport={x:cx,z:cz,ground};
 }
 
-function spawnAirportPlanes(){spawnAFBJets();for(const c of cars.slice())if(c.airportStatic)removeCar(c);if(airport){const a=spawnCar('propPlane',airport.x+205,airport.z+152,Math.PI/2,'parked',0xe8e5d8);a.airportStatic=true;a.keep=true;const j=spawnCar('smallJet',airport.x+225,airport.z+85,Math.PI/2,'parked',0xf1f3f5);j.airportStatic=true;j.keep=true;
- // AIRLINER_GATES_V1: one airliner nose-in at each VCIA jet bridge, front-left door at the bridge head (wide-bodies at the ends)
- for(const [tk,gx,dz,R] of[['b747',-255,-6.35,3.2],['a321neo',-185,.4,1.98],['b737',-115,2.4,1.88],['a330',-45,-7.6,2.82]]){
-  const g=spawnCar(tk,airport.x+gx-7.5-R-.05,airport.z+dz,0,'parked',CAR_TYPES[tk].colors[0]);g.airportStatic=true;g.keep=true}}if(westAirport){const w=spawnCar('propPlane',westAirport.x+260,westAirport.z+155,Math.PI/2,'parked',0xf1f3f5);w.airportStatic=true;w.keep=true}}
+function spawnAirportPlanes(){spawnAFBJets();for(const c of cars.slice())if(c.airportStatic)removeCar(c);if(airport){/* GA planes: on the open apron just west of the airliner gates (the old spots are inside the new terminal) */const a=spawnCar('propPlane',airport.x-265,airport.z-112,0,'parked',0xe8e5d8);a.airportStatic=true;a.keep=true;const j=spawnCar('smallJet',airport.x-222,airport.z-112,0,'parked',0xf1f3f5);j.airportStatic=true;j.keep=true;
+ // AIRLINER_GATES_V2: the rebuilt VCIA's fingers are packed ~22 m apart, too tight for airliners, so the jets park
+ // nose-in at the gate pods along the north (runway) side of concourse D. Pod faces sit 84.75 m north of the airport
+ // centre; each nose stops ~3 m short of its pod. Wide-bodies take the two end gates, so neighbouring wings clear.
+ for(const [tk,gx,nose] of[['b747',-142.5,35.3],['a321neo',-79.5,22.3],['b737',-16.5,19.8],['a330',109.5,31.9]]){
+  const g=spawnCar(tk,airport.x+gx,airport.z-88-nose,0,'parked',CAR_TYPES[tk].colors[0]);g.airportStatic=true;g.keep=true}}if(westAirport){const w=spawnCar('propPlane',westAirport.x+260,westAirport.z+155,Math.PI/2,'parked',0xf1f3f5);w.airportStatic=true;w.keep=true}}
 
 // PALMETTO_GROVE_V1
 const PG={paths:[],homes:[],signs:[]};
@@ -6692,11 +6695,11 @@ const APOL={cars:[],feet:[],trespassT:0,warned:false,near:false};
 function apolAirside(x,z){if(!airport)return false;const dx=x-airport.x,dz=z-airport.z;return dx>-380&&dx<380&&dz>-262&&dz<100}
 function apolNear(){return airport&&Math.hypot(pl.x-airport.x,pl.z-airport.z)<900}
 function apolSpawn(){if(!airport)return;const A=airport,R=(x,z)=>[A.x+x,A.z+z];
- const loops=[[R(-360,-60),R(300,-60),R(300,-120),R(-360,-120)],[R(300,-120),R(-360,-120),R(-360,-60),R(300,-60)],[R(-440,-300),R(500,-300),R(500,-320),R(-440,-320)]];
+ /* patrol loop runs behind the parked airliners' tails, clear of the gates and the taxiway */const loops=[[R(-360,-172),R(300,-172),R(300,-194),R(-360,-194)],[R(300,-194),R(-360,-194),R(-360,-172),R(300,-172)],[R(-440,-300),R(500,-300),R(500,-320),R(-440,-320)]];
  for(const wps of loops){const [x,z]=wps[0],[nx,nz]=wps[1],h=Math.atan2(nx-x,nz-z);
   const c=spawnCarSafe('airportPolice',x,z,h);if(!c)continue;c.mode='cop';c.occ='cop';c.cops=2;c.keep=true;c.apol=true;
   c.ai={airport:true,wps,i:1,offduty:true,unloaded:false};APOL.cars.push(c)}
- for(const [x,z] of[[-230,214],[-90,214]]){const p=activatePed(A.x+x,A.z+z,true);if(p){p.state='walk';p.speed=1.3;p.apol=true;APOL.feet.push(p)}}}
+ for(const [x,z] of[[-190,-92],[175,-92]]){const p=activatePed(A.x+x,A.z+z,true);if(p){p.state='walk';p.speed=1.3;p.apol=true;APOL.feet.push(p)}}}
 function spawnCarSafe(tk,x,z,h){try{return spawnCar(tk,x,z,h,'cop')}catch(e){console.error(e);return null}}
 function apolClear(){for(const c of APOL.cars)if(cars.includes(c))removeCar(c);APOL.cars=[];for(const p of APOL.feet)if(p.active&&!p.dead&&p.kill)p.kill();APOL.feet=[]}
 function apolDrive(c,dt){const ai=c.ai,inp=c.inp;if(c.dead)return;
