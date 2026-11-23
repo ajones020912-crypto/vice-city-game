@@ -1,0 +1,20 @@
+{
+  "passed": false,
+  "branch": "main",
+  "scope": "Aircraft-shaped approximate pedestrian collision proxies and isolated collision/unlock tests. Exact visual mesh contact, browser movement, and live deployment remain unverified.",
+  "inspectedCollisionLoops": [
+    {
+      "function": "resolveFoot",
+      "loop": "for(const c of cars){const dx=o.x-c.x;if(Math.abs(dx)>4||Math.abs(o.z-c.z)>4)continue;const sn=Math.sin(c.h),cs=Math.cos(c.h),dz=o.z-c.z;\n  const lf=dx*sn+dz*cs,ll=dx*cs-dz*sn,hl=c.t.L/2+.1,hw=c.t.W/2+.1;\n  if(Math.abs(lf)<hl+r&&Math.abs(ll)<hw+r&&o.y<c.y+1.3&&o.y>c.y-1.8){ // push out the shortest way\n   const pf=hl+r-Math.abs(lf),pw=hw+r-Math.abs(ll);if(pf<pw){const s=Math.sign(lf)||1;_fp[0]+=sn*s*pf;_fp[1]+=cs*s*pf}else{const s=Math.sign(ll)||1;_fp[0]+=cs*s*pw;_fp[1]-=sn*s*pw}}}",
+      "matchingBranches": 0
+    },
+    {
+      "function": "controlAI",
+      "loop": "for(const o of cars)if(o!==c)chk(o.x,o.z,o.t.L/2,o.t.W/2);",
+      "matchingBranches": 0
+    }
+  ],
+  "error": "AssertionError [ERR_ASSERTION]: Expected one unambiguous full-width player collision branch; no game edits made",
+  "stack": "AssertionError [ERR_ASSERTION]: Expected one unambiguous full-width player collision branch; no game edits made\n    at [stdin]:7:125\n    at runScriptInThisContext (node:internal/vm:209:10)\n    at node:internal/process/execution:118:14\n    at [stdin]-wrapper:6:24\n    at runScript (node:internal/process/execution:101:62)\n    at evalScript (node:internal/process/execution:133:3)\n    at node:internal/main/eval_stdin:32:5\n    at Socket.<anonymous> (node:internal/process/execution:234:5)\n    at Socket.emit (node:events:536:35)\n    at endReadableNT (node:internal/streams/readable:1698:12)",
+  "baselinePreserved": true
+}
