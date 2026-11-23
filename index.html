@@ -1587,10 +1587,67 @@ function portExtras(){
 function beachProps(){
  for(let x=-1200;x<1600;x+=12+rnd()*10){const z=shoreZ(x)+rr(8,28);if(rnd()<.5)palm(x,z,rr(.8,1.1));if(rnd()<.35){const c=pick([[1,.3,.4],[.2,.7,1],[1,.85,.2],[.3,.9,.6],[1,1,1]]);bakeG('plain',GEO.cyl6,x+3,0,z+3,0,.05,2.4,.05,[.9,.9,.9]);bakeG('plain',GEO.cone,x+3,2.2,z+3,0,1.9,.6,1.9,c);bakeG('plain',GEO.box,x+3.8,.05,z+4.5,0,1.1,.06,2,pick([[1,.4,.5],[.3,.6,1],[1,.9,.3]]))}
   if(rnd()<.04){bakeG('plain',GEO.box,x,0,z,0,2.2,3.2,2.2,[.95,.95,.9]);bakeG('plain',GEO.box,x,3.2,z,0,3,.3,3,[1,.25,.25]);bakeG('plain',GEO.box,x,0,z-1.2,0,.2,4,.2,[.9,.9,.9]);addCol(x-1,z-1,x+1,z+1,3)}}
- // boardwalk + piers
- for(const [x0,x1] of[[-880,1090]])bakeG('plain',GEO.box,(x0+x1)/2,0,-346,0,x1-x0,.22,4,[.62,.46,.3]);
+ // VICE BEACH BOARDWALK: a continuous timber promenade with piers, kiosks, seating and a lit Ferris wheel.
+ const bwx0=-880,bwx1=1090,bwz=-346;
+ bakeG('plain',GEO.box,(bwx0+bwx1)/2,-.02,bwz,0,bwx1-bwx0,.28,15,[.48,.31,.18]);
+ bakeG('plain',GEO.box,(bwx0+bwx1)/2,.14,bwz,0,bwx1-bwx0,.06,14,[.69,.49,.29]);
+ // Decorative boardwalk plank seams and edge rails.
+ for(let x=bwx0+5;x<bwx1;x+=5)bakeG('plain',GEO.box,x,.19,bwz,0,.055,.025,13,[.32,.2,.12]);
+ for(const side of[-1,1]){
+  const rz=bwz+side*7;
+  bakeG('plain',GEO.box,(bwx0+bwx1)/2,.72,rz,0,bwx1-bwx0,.18,.22,[.34,.23,.15]);
+  for(let x=bwx0+8;x<bwx1;x+=16){bakeG('plain',GEO.box,x,.42,rz,0,.22,.85,.22,[.3,.2,.13]);addCol(x-.16,rz-.16,x+.16,rz+.16,1.1,'boardwalk-rail-post')}
+  addCol(bwx0,rz-.18,bwx1,rz+.18,1.05,'boardwalk-rail');
+ }
+ // Warm globe lamps and ocean-facing benches.
+ for(let x=bwx0+22;x<bwx1;x+=44){
+  bakeG('plain',GEO.cyl6,x,1.8,bwz-5.2,0,.11,3.6,.11,[.16,.16,.17]);
+  bakeG('lamp',GEO.sph,x,3.72,bwz-5.2,0,.34,.34,.34,[1,.78,.48]);
+  addCol(x-.22,bwz-5.42,x+.22,bwz-4.98,4.2,'boardwalk-lamp');
+ }
+ for(const x of[-790,-570,-350,-130,90,310,530,930]){
+  bakeG('plain',GEO.box,x,.58,bwz+3.2,0,3.2,.16,.75,[.48,.27,.13]);
+  bakeG('plain',GEO.box,x,.92,bwz+2.82,0,3.2,.55,.12,[.48,.27,.13]);
+  for(const dx of[-1.25,1.25])bakeG('plain',GEO.box,x+dx,.3,bwz+3.2,0,.12,.56,.65,[.22,.22,.24]);
+  addCol(x-1.65,bwz+2.78,x+1.65,bwz+3.62,1.25,'boardwalk-bench');
+ }
+ // Colorful food, souvenir and arcade kiosks along the landward edge.
+ const kiosks=[
+  [-700,'SUNSET SNACKS',[.9,.35,.18]],[-470,'TIDE & TREAT',[.15,.55,.72]],
+  [-240,'BOARDWALK BITES',[.95,.68,.2]],[0,'VICE BEACH GIFTS',[.78,.28,.48]],
+  [240,'SHELL SHACK',[.2,.62,.48]],[470,'NEON ARCADE',[.35,.28,.78]],
+  [930,'ICE CREAM CO.',[.9,.45,.65]]
+ ];
+ for(const [x,name,col] of kiosks){
+  const z=bwz-13,w=name==='NEON ARCADE'?13:10,d=8;
+  bakeG('plain',GEO.box,x,1.8,z,0,w,3.6,d,[.86,.78,.62]);
+  bakeG('plain',GEO.box,x,3.72,z,0,w+1,.35,d+.7,col);
+  bakeG('plain',GEO.box,x,.95,z+d/2+.12,0,w*.72,.9,.28,[.42,.25,.15]);
+  for(const side of[-1,1])bakeG('plain',GEO.box,x+side*(w/2-.3),1.8,z+d/2,0,.28,3.4,.3,col);
+  const sign=new T.Mesh(new T.PlaneGeometry(w*.88,1.35),new T.MeshBasicMaterial({map:signTex(name,'#fff2d6',null,'generic'),toneMapped:false}));
+  sign.position.set(x,4.65,z+d/2+.2);world.add(sign);
+  addCol(x-w/2,z-d/2,x+w/2,z+d/2,4.2,'boardwalk-kiosk');
+ }
+ // Entrance arch and a clear landmark sign.
+ for(const x of[-80,80]){bakeG('plain',GEO.box,x,3.3,bwz-13,0,.65,6.6,.65,[.25,.18,.13]);addCol(x-.35,bwz-13.35,x+.35,bwz-12.65,7,'boardwalk-arch')}
+ bakeG('neon',GEO.box,0,6.8,bwz-13,0,17,.55,.55,[1,.42,.22]);
+ const bwSign=new T.Mesh(new T.PlaneGeometry(15,2.3),new T.MeshBasicMaterial({map:signTex('VICE BEACH BOARDWALK','#ffe5a8',null,'generic'),toneMapped:false}));
+ bwSign.position.set(0,6.8,bwz-12.68);world.add(bwSign);
+ // Ferris wheel at the eastern end of the promenade.
+ const wheelX=700,wheelY=15,wheelZ=bwz-15;
+ const wheelMat=new T.MeshStandardMaterial({color:0x7bd5e8,metalness:.55,roughness:.35,emissive:0x123344,emissiveIntensity:.35});
+ const wheel=new T.Mesh(new T.TorusGeometry(12,.48,8,48),wheelMat);wheel.position.set(wheelX,wheelY,wheelZ);world.add(wheel);
+ for(let i=0;i<12;i++){const a=i*Math.PI/6;
+  const spoke=new T.Mesh(new T.BoxGeometry(.22,12,.22),wheelMat);spoke.position.set(wheelX+Math.cos(a)*6,wheelY+Math.sin(a)*6,wheelZ);spoke.rotation.z=a;world.add(spoke);
+  const gondola=new T.Mesh(new T.BoxGeometry(1.45,1.15,1.25),new T.MeshStandardMaterial({color:[0xff6b83,0xffd166,0x6bd6b8,0x8c83ff][i%4],roughness:.65}));
+  gondola.position.set(wheelX+Math.cos(a)*12,wheelY+Math.sin(a)*12,wheelZ);world.add(gondola);
+ }
+ for(const x of[-5,5]){bakeG('plain',GEO.box,wheelX+x,4,wheelZ,0,.65,8,.65,[.34,.31,.3]);}
+ addCol(wheelX-14,wheelZ-1.4,wheelX+14,wheelZ+1.4,30,'boardwalk-ferris-wheel');
+ // Existing piers extend from the boardwalk out over the water.
  for(const px of[-120,210]){decks.push({x0:px-3,x1:px+3,z0:-428,z1:-350,y:.6});bakeG('plain',GEO.box,px,.1,-384,0,6,.55,68,[.58,.42,.28]);for(let z=-415;z<-352;z+=6)for(const sx of[-3,3])bakeG('plain',GEO.cyl6,px+sx,-2.5,z,0,.18,3.4,.18,[.35,.26,.18]);
-  bakeG('plain',GEO.box,px,.65,-423,0,10,3,6,pick(PAL));bakeG('plain',GEO.box,px,3.65,-423,0,11,.4,7,[.9,.3,.4])}
+  bakeG('plain',GEO.box,px,.65,-423,0,10,3,6,pick(PAL));bakeG('plain',GEO.box,px,3.65,-423,0,11,.4,7,[.9,.3,.4]);
+  addCol(px-3.1,-428,px+3.1,-350,1.2,'boardwalk-pier');}
  // beached boats at the marina
  for(let i=0;i<8;i++){const x=-760+i*14,z=shoreZ(x)-14;bakeG('plain',GEO.box,x,-.3,z,rr(-.3,.3),2.4,.8,6.5,pick([[.95,.95,.95],[.3,.5,.9],[.9,.3,.3]]));bakeG('plain',GEO.box,x,.4,z-.5,0,1.6,.8,2.6,[.85,.88,.9])}
 }
