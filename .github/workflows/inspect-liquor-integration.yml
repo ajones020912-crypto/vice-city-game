@@ -1,0 +1,38 @@
+name: Inspect liquor store integration points
+on:
+  push:
+    branches: [main]
+    paths: ['scripts/inspect-liquor-integration.cjs', '.github/workflows/inspect-liquor-integration.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: vice-city-liquor-inspection
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/vc-liquor-audit" --no-package-lock --ignore-scripts acorn@8
+      - name: Read gameplay source and check syntax without editing game files
+        run: node scripts/inspect-liquor-integration.cjs
+      - name: Publish source inspection only
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Source changed; rerun the audit.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/liquor-integration
+          if ! git diff --cached --quiet; then
+            git commit -m 'Record actual gameplay interfaces and baseline syntax for additive liquor stores'
+            git push origin HEAD:refs/heads/main
+          fi
+          node -e "const r=require('./status/liquor-integration/manifest.json');if(!r.passed)process.exit(1)"
