@@ -1503,10 +1503,10 @@ function swampProps(){
  decks.push({x0:880,x1:890,z0:50,z1:75,y:.4});bakeG('plain',GEO.box,885,.15,62,0,10,.4,25,[.55,.42,.28]);
 }
 function hillProps(){
- for(let i=0;i<520;i++){const x=rr(-1550,-650),z=rr(-400,350);if(hillMask(x,z)<.15)continue;const h=heightAt(x,z);if(h<-.3||nearRoad(x,z,10))continue;grounded(rnd()<.8?pine:rock,x,z,rr(.8,1.5))}
+ for(let i=0;i<520;i++){const x=rr(-1550,-650),z=rr(-400,350);if(hillMask(x,z)<.15||airportMask(x,z)>.02)continue;/* nothing growing on the airfield */const h=heightAt(x,z);if(h<-.3||nearRoad(x,z,10))continue;grounded(rnd()<.8?pine:rock,x,z,rr(.8,1.5))}
  // cabin + radio tower on the ridge
  const cabin=findClearStructureSite(-800,-20,7,6,160);if(cabin){const bx=cabin.x,bz=cabin.z,bh=heightAt(bx,bz);box3('f_apt',bx-6,bz-5,bx+6,bz+5,bh,bh+3.6,[.7,.5,.35],[.3,.22,.18],8);bakeG('plain',GEO.cone4,bx,bh+3.6,bz,0,8.5,2.5,7,[.35,.27,.22]);addCol(bx-6,bz-5,bx+6,bz+5,6,'building');G.cabinPosition={x:bx,z:bz}}
- let tx=-905,tz=-120,th=heightAt(tx,tz);bakeG('plain',GEO.cone,tx,th,tz,0,2.5,44,2.5,[.7,.7,.72]);bakeG('glow',GEO.sph,tx,th+44,tz,0,.6,.6,.6,[1,.1,.1]);addCol(tx-1.5,tz-1.5,tx+1.5,tz+1.5,40);
+ let tx=-1190,tz=-150,th=heightAt(tx,tz); // radio tower up on the hill, clear of the runwaybakeG('plain',GEO.cone,tx,th,tz,0,2.5,44,2.5,[.7,.7,.72]);bakeG('glow',GEO.sph,tx,th+44,tz,0,.6,.6,.6,[1,.1,.1]);addCol(tx-1.5,tz-1.5,tx+1.5,tz+1.5,40);
 }
 // BIG_MAP_V1 scenery: countryside trees, pine forest on the western hills, cypress and reeds in the glades,
 // a few farmsteads, palms on the new keys. No new towns.
@@ -1531,6 +1531,8 @@ function bigMapProps(){
  // palms on the new keys and islets
  for(let i=0;i<700;i++){const [cx,cz,rx,rz]=pick(FL_KEYS),a=rnd()*TAU,r=Math.sqrt(rnd())*.55,x=cx+Math.cos(a)*r*rx,z=cz+Math.sin(a)*r*rz;if(!land(x,z,4)||nearRoad(x,z,8))continue;grounded(palm,x,z,rr(.8,1.2))}
 }
+// AIRFIELD_CLEAR_V1: nothing grows or stands on the airfield (trees, lamps) so planes can land
+{const clearOf=fn=>function(x,z){if(airportMask(x,z)>.02)return;return fn.apply(this,arguments)};palm=clearOf(palm);oak=clearOf(oak);pine=clearOf(pine);rock=clearOf(rock);if(typeof lamp==='function')lamp=clearOf(lamp)}
 function keysProps(){
  for(let i=0;i<380;i++){const[cx,cz,rx,rz]=pick(ISL),a=rnd()*TAU,r=Math.sqrt(rnd())*.58,x=cx+Math.cos(a)*r*rx,z=cz+Math.sin(a)*r*rz;if(nearRoad(x,z,10))continue;palm(x,z,rr(.8,1.2))}
  // pastel resort hotels, marina, lighthouse
@@ -2852,6 +2854,13 @@ function stepAircraft(c,dt){
   c.gam=clamp(c.gam,-1.25,.85);
   v+=(c.thr*F.acc-k*v*v-g*Math.sin(c.gam))*dt;v=Math.max(4,v);
   if(c.y>700&&c.gam>0)c.gam*=.9;
+  // LANDING_V2: close to the ground the plane flares by itself (unless you hold Shift to dive): the sink rate is eased
+  // down to ~2 m/s at touchdown and the nose comes up; wings level faster when you let go of A/D
+  const altNow=c.y-(heightAt(c.x,c.z)+.88),controlled=-(c.vy||0)<9; // the assist only helps a controlled descent, not a dive
+  if(controlled&&altNow<12&&ctlP===0&&c.thr<.6){const maxSink=1.5+Math.max(0,altNow)*.35,g0=-Math.asin(clamp(maxSink/Math.max(v,1),0,.5));c.gam+=(g0-c.gam)*Math.min(1,dt*3);c.ap+=((g0+.06)-c.ap)*Math.min(1,dt*3)}
+  else if(controlled&&altNow<12&&ctlP<0){const g1=-Math.asin(clamp((2+Math.max(0,altNow)*.6)/Math.max(v,1),0,.5));if(c.gam<g1)c.gam+=(g1-c.gam)*Math.min(1,dt*4);c.ap=Math.max(c.ap,-.1-Math.max(0,altNow)*.05)}
+  if(altNow<15&&!ctlR)c.bank+=(0-c.bank)*Math.min(1,dt*2.5);
+  if(altNow<10){const lim=.3+Math.max(0,altNow)*.04;c.bank=clamp(c.bank,-lim,lim)} // landing assist: no wingtip into the runway
  }
  const hv=v*Math.cos(c.gam);c.vy=c.airborne?v*Math.sin(c.gam):0;
  c.vx=Math.sin(c.h)*hv;c.vz=Math.cos(c.h)*hv;c.vf=hv;c.vl=0;c.as=v;c.braking=brake;
@@ -2862,18 +2871,21 @@ function stepAircraft(c,dt){
  if(c.dead)return;
  // ---- ground contact
  if(!c.airborne)c.y=gnd;
- else{const tipDrop=Math.abs(Math.sin(c.bank))*F.half,noseDrop=Math.max(0,Math.sin(-c.ap))*F.len;
-  if(c.y-Math.max(tipDrop,noseDrop)<=gnd){
-   const sink=-c.vy,gearOK=!F.retract||c.gear>.9;
-   if(c.y>gnd+.05&&(tipDrop>noseDrop)&&tipDrop>.9){aircraftCrash(c,{x:c.x+Math.cos(c.h)*F.half*Math.sign(-c.bank||1),z:c.z-Math.sin(c.h)*F.half*Math.sign(-c.bank||1),y:gnd},Math.max(sink,6)+hv*.25,'wing');}
-   else if(sink<4.5&&Math.abs(c.bank)<.32&&c.ap>-.14&&gearOK&&heightAt(c.x,c.z)>WL-.1){
-    if(sink>2.6){damageCar(c,(sink-2.6)*10,'crash');aircraftCrumple(c,0,-.9,F.len*.15,0,1,0,.25);G.shake=Math.max(G.shake||0,.4);audio.thud(.6)}
-    c.airborne=false;c.y=gnd;c.gam=0;c.vy=0;c.ap=Math.max(0,c.ap*.5);touchdownFx(c,sink)}
-   else aircraftCrash(c,{x:c.x+Math.sin(c.h)*F.len*.8,z:c.z+Math.cos(c.h)*F.len*.8,y:gnd},sink+hv*(c.ap<-.14?.6:.3),gearOK?'nose':'belly');
-   if(!c.dead&&c.airborne){c.y=gnd+Math.max(tipDrop,noseDrop)+.05}
+ else{const alt0=c.y-gnd,wingY=c.tk==='propPlane'?1.1:.15;
+  // clearance of the lower wingtip and the nose above the terrain (the wheels sit .88 below the origin)
+  const tipClear=alt0+.88+wingY-Math.abs(Math.sin(c.bank))*F.half,noseClear=alt0+.88+.35-Math.max(0,Math.sin(-c.ap))*F.len;
+  if(tipClear<=0||noseClear<=0||alt0<=0){
+   const sink=-c.vy,gearOK=!F.retract||c.gear>.9,onLand=heightAt(c.x,c.z)>WL-.1;
+   if(tipClear<=0&&tipClear<noseClear){aircraftCrash(c,{x:c.x+Math.cos(c.h)*F.half*Math.sign(-c.bank||1),z:c.z-Math.sin(c.h)*F.half*Math.sign(-c.bank||1),y:gnd},Math.max(sink,4)+hv*.2,'wing');}
+   else if(noseClear<=0&&alt0>0){aircraftCrash(c,{x:c.x+Math.sin(c.h)*F.len*.8,z:c.z+Math.cos(c.h)*F.len*.8,y:gnd},sink+hv*.5,'nose')}
+   else if(sink<7&&Math.abs(c.bank)<.5&&c.ap>-.3&&gearOK&&onLand){
+    if(sink>4){damageCar(c,(sink-4)*8,'crash');aircraftCrumple(c,0,-.9,F.len*.15,0,1,0,.2);G.shake=Math.max(G.shake||0,.4);audio.thud(.6)}
+    c.airborne=false;c.y=gnd;c.gam=0;c.vy=0;c.ap=Math.max(0,c.ap*.5);c.bank=0;touchdownFx(c,sink)}
+   else aircraftCrash(c,{x:c.x+Math.sin(c.h)*F.len*.8,z:c.z+Math.cos(c.h)*F.len*.8,y:gnd},sink+hv*(c.ap<-.3?.5:.25),gearOK?'nose':'belly');
+   if(!c.dead&&c.airborne){c.y=Math.max(c.y,gnd+.05)}
   }}
  // ---- landing gear (jet retracts above 25 m), control surfaces, prop, vapour trails
- const alt=c.y-gnd;c.gear+=((F.retract&&c.airborne&&alt>25?0:1)-c.gear)*Math.min(1,dt*.8);
+ const alt=c.y-gnd;c.gear+=((F.retract&&c.airborne&&alt>25?0:1)-c.gear)*Math.min(1,dt*(alt<40?2.2:.8));
  animateAircraft(c,ctlP,ctlR,dt);
  if(c.airborne&&v>F.vs*1.4&&(Math.abs(c.bank)>.75||c.ap>.45)&&Math.random()<dt*30){const sn=Math.sin(c.h),cs=Math.cos(c.h);
   for(const s of[-1,1]){const x=c.x+cs*s*F.half*Math.cos(c.bank),z=c.z-sn*s*F.half*Math.cos(c.bank),y=c.y+.3+s*Math.sin(c.bank)*F.half;emit(x,y,z,-c.vx*.05,0,-c.vz*.05,.7,.12,.5,[.95,.97,1],[.8,.85,.9],0,.55)}}
