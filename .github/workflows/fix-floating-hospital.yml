@@ -1,0 +1,63 @@
+name: Fix floating hospital exterior
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-floating-hospital.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/vc-ground-hospital" --no-package-lock --ignore-scripts acorn@8
+      - name: Replace actual exterior builder and verify grounding and entrance
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/vc-ground-hospital/node_modules/acorn'),file='index.html',original=fs.readFileSync(file,'utf8'),report={passed:false,scope:'Actual exterior replacement, JavaScript parsing, geometry bounds, marker/door/return coordinates, reservation and idempotence tests using mocked Three.js. Live visuals and gameplay remain unverified.'};
+          function walk(n,f){f(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f);}else if(v&&typeof v.type==='string')walk(v,f);}}
+          try{
+           assert(!original.includes('// VC_GROUNDED_HOSPITAL_V2'),'Hospital repair already installed');const matches=[...original.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].filter(m=>m[1].includes('function buildHospitalExterior('));assert(matches.length===1,'Actual hospital exterior not uniquely resolved');const m=matches[0],code=m[1],ast=acorn.parse(code,{ecmaVersion:'latest'}),named={},hospital=[];walk(ast,n=>{if(n.type==='FunctionDeclaration'&&n.id){if(['buildHospitalExterior','makeParcels','forceShopDoors','buildDowntownPark','buildInterior','respawn','enterInterior','exitInterior','blips','playerDied'].includes(n.id.name)){assert(!named[n.id.name]);named[n.id.name]=n;}}if(n.type==='VariableDeclarator'&&n.id.name==='HOSP')hospital.push(n);});for(const k of ['buildHospitalExterior','makeParcels','forceShopDoors','buildDowntownPark','buildInterior','respawn','enterInterior','exitInterior','blips','playerDied'])assert(named[k],k+' missing');assert(hospital.length===1&&hospital[0].init.type==='ObjectExpression');const old=code.slice(named.buildHospitalExterior.start,named.buildHospitalExterior.end);report.previousExterior=old;assert(old.includes('findClearStructureSite')&&old.includes("kind:'hospital'")&&old.includes('bakeG('),'Hospital exterior changed; review rather than overwrite');assert(!code.includes('function vcBuildDedicatedHospital('),'Earlier relocation already integrated; review before duplicating');
+           const replacement=String.raw`// VC_GROUNDED_HOSPITAL_V2
+          function vcReserveMedicalBlock(){for(let i=parcels.length-1;i>=0;i--){const p=parcels[i];if(p.x1>72&&p.x0<108&&p.z1>162&&p.z0<198)parcels.splice(i,1);}}
+          function buildHospitalExterior(){
+           if(buildHospitalExterior.ready)return true;const cx=90,cz=180,p={x0:74,z0:166,x1:106,z1:194,cx,cz,H:14,style:'hospital',cityId:'dt',hospital:true};
+           if(!clearStructureFootprint(p.x0,p.z0,p.x1,p.z1,1)){G.hospitalExterior={ready:false,error:'Reserved medical block obstructed; no park fallback used'};return false;}
+           const heights=[];for(const x of [p.x0,cx,p.x1])for(const z of [p.z0,cz,p.z1])heights.push(heightAt(x,z));const floor=Math.max(...heights)+.08,foundationDepth=Math.max(.4,floor-Math.min(...heights)+.2);const g=new T.Group();g.name='grounded-vice-city-medical-center';g.position.set(cx,floor,cz);
+           const material=(color,extra={})=>new T.MeshStandardMaterial(Object.assign({color,roughness:.72},extra)),wall=material(0xdce5e1),glass=material(0x527f8b,{roughness:.23,metalness:.2}),trim=material(0x41988c),concrete=material(0x9aa6a4),cross=material(0xd84451,{emissive:0x6e1420,emissiveIntensity:.35});
+           function box(name,w,h,d,x,base,z,mat){const mesh=new T.Mesh(new T.BoxGeometry(w,h,d),mat);mesh.name=name;mesh.position.set(x,base+h/2,z);mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);return mesh;}
+           box('hospital-foundation',32.4,foundationDepth,28.4,0,-foundationDepth,0,concrete);box('hospital-grounded-body',32,10.8,28,0,0,0,wall);box('hospital-upper-wing',19,3,23,-5,10.8,-1,wall);box('hospital-roof',32.4,.3,28.4,0,10.8,0,concrete);box('hospital-upper-roof',19.4,.3,23.4,-5,13.8,-1,concrete);
+           for(const y of [1.3,4.6,7.8]){for(const x of [-12,-7,-2,3,8,13]){if(y<2&&Math.abs(x)<5)continue;box('hospital-window',3.2,1.8,.08,x,y,14.05,glass);box('hospital-window',3.2,1.8,.08,x,y,-14.05,glass);}for(const x of [-16.05,16.05])for(const z of [-10,-4,2,8])box('hospital-window',.08,1.8,3,x,y,z,glass);}
+           box('hospital-entry',5.5,3.2,.12,0,0,14.1,glass);box('hospital-door-divider',.1,3.2,.18,0,0,14.2,trim);box('hospital-canopy',18,.3,4,0,3.5,15.5,wall);for(const x of [-8,8])box('hospital-canopy-support',.3,3.5,.3,x,0,16.5,trim);box('hospital-cross',2.2,.6,.15,11,8.8,14.15,cross);box('hospital-cross',.6,2.2,.15,11,8,14.15,cross);box('hospital-entry-walk',8,.08,4,0,-.04,16.1,concrete);
+           function sign(text,x,y,z,w,h){const mesh=new T.Mesh(new T.PlaneGeometry(w,h),new T.MeshBasicMaterial({map:signTex(text,'#eafff8'),toneMapped:false}));mesh.name='hospital-sign';mesh.position.set(x,y,z);g.add(mesh);}sign('VICE CITY MEDICAL CENTER',-1,6.9,14.19,24,2);sign('EMERGENCY / PATIENT DROP-OFF',0,3.7,17.54,17,1.1);
+           world.add(g);addCol(p.x0,p.z0,p.x1,p.z1,14,'hospital');for(const x of [-8,8])addCol(cx+x-.2,cz+16.3,cx+x+.2,cz+16.7,3.5,'hospital');BLD.push(p);
+           HOSP.x=cx;HOSP.z=cz+18;doors.push({x:cx,z:cz+15,kind:'hospital',name:'Vice City Medical Center',col:'#38a98e',ret:{x:cx,z:cz+18}});if(!INTKINDS.includes('hospital'))INTKINDS.push('hospital');SHOP_NAMES.hospital='Vice City Medical Center';buildHospitalExterior.ready=true;G.hospitalExterior={ready:true,building:p,recovery:{x:HOSP.x,z:HOSP.z},floor,foundationDepth,parkFallbackDisabled:true};return true;
+          }
+          `;
+           const props=hospital[0].init.properties,hx=props.find(p=>(p.key.name||p.key.value)==='x'),hz=props.find(p=>(p.key.name||p.key.value)==='z');assert(hx&&hz);const edits=[{start:named.buildHospitalExterior.start,end:named.buildHospitalExterior.end,text:replacement},{start:named.makeParcels.body.end-1,end:named.makeParcels.body.end-1,text:'\nvcReserveMedicalBlock();\n'},{start:named.forceShopDoors.body.start+1,end:named.forceShopDoors.body.start+1,text:'\nbuildHospitalExterior();\n'},{start:hx.value.start,end:hx.value.end,text:'90'},{start:hz.value.start,end:hz.value.end,text:'198'}];let changed=code;for(const e of edits.sort((a,b)=>b.start-a.start))changed=changed.slice(0,e.start)+e.text+changed.slice(e.end);acorn.parse(changed,{ecmaVersion:'latest'});for(const name of ['buildDowntownPark','buildInterior','respawn','enterInterior','exitInterior','blips','playerDied'])assert(changed.includes(code.slice(named[name].start,named[name].end)),'Unrelated native behavior changed: '+name);
+           const groups=[],collisions=[];class Vec{set(x,y,z){this.x=x;this.y=y;this.z=z;}}class Group{constructor(){this.position=new Vec();this.children=[];}add(m){this.children.push(m);}}class Geometry{constructor(w,h,d){this.w=w;this.h=h;this.d=d;}}class Mesh{constructor(geometry,material){this.geometry=geometry;this.material=material;this.position=new Vec();}}const sandbox={T:{Group,Mesh,BoxGeometry:Geometry,PlaneGeometry:Geometry,MeshStandardMaterial:class{},MeshBasicMaterial:class{}},G:{},HOSP:{x:-49.6,z:-60},INTKINDS:[],SHOP_NAMES:{},BLD:[],doors:[],parcels:[{x0:75,x1:105,z0:165,z1:195},{x0:75,x1:105,z0:75,z1:105}],world:{add(g){groups.push(g);}},heightAt:(x,z)=>.001*(x-74),clearStructureFootprint:()=>true,signTex:()=>({}),addCol(x0,z0,x1,z1,h,tag){collisions.push({x0,z0,x1,z1,h,tag});}};vm.createContext(sandbox);vm.runInContext(replacement,sandbox);sandbox.vcReserveMedicalBlock();assert(sandbox.parcels.length===1&&sandbox.parcels[0].z0===75,'Park parcel removed');assert(sandbox.buildHospitalExterior()&&sandbox.buildHospitalExterior());assert(groups.length===1&&sandbox.doors.length===1&&sandbox.BLD.length===1);const g=groups[0],body=g.children.find(n=>n.name==='hospital-grounded-body'),foundation=g.children.find(n=>n.name==='hospital-foundation');assert(Math.abs(body.position.y-body.geometry.h/2)<1e-9,'Walls float above local foundation');assert(foundation.position.y-foundation.geometry.h/2+g.position.y<0,'Foundation fails to extend below terrain');assert(Math.abs(foundation.position.y+foundation.geometry.h/2)<1e-9,'Foundation does not meet walls');const blocked=(x,z)=>collisions.some(c=>x+.45>c.x0&&x-.45<c.x1&&z+.45>c.z0&&z-.45<c.z1);const d=sandbox.doors[0];assert(!blocked(d.x,d.z)&&!blocked(d.ret.x,d.ret.z));assert(d.ret.x===sandbox.HOSP.x&&d.ret.z===sandbox.HOSP.z&&Math.hypot(d.x-d.ret.x,d.z-d.ret.z)<3.6);assert(sandbox.INTKINDS.includes('hospital'));for(const c of collisions)assert(c.z0>150,'Hospital collision remains in park');const fail={...sandbox,G:{},world:{add(){throw Error('Invalid lot generated hospital geometry');}},clearStructureFootprint:()=>false};vm.createContext(fail);vm.runInContext(replacement,fail);assert(fail.buildHospitalExterior()===false&&fail.G.hospitalExterior.ready===false);
+           const offset=m.index+m[0].indexOf(code),candidate=original.slice(0,offset)+changed+original.slice(offset+code.length);for(const s of candidate.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(s[1].trim())acorn.parse(s[1],{ecmaVersion:'latest'});fs.writeFileSync(file,candidate);Object.assign(report,{passed:true,buildingCenter:{x:90,z:180},entrance:{x:90,z:195},recovery:{x:90,z:198},oldExteriorEntirelyReplaced:true,automaticParkPlacementRemoved:true,nativeHospitalInteriorAndTreatmentSourcePreserved:true,tests:['Original floating exterior function replaced, not supplemented','No baked primitive dependence or late batch generation','Solid walls meet a terrain-spanning foundation','Dedicated lot reservation leaves park untouched','Entrance and return points clear collisions and remain in interaction range','Native marker and recovery share hospital coordinates','Single building and door despite repeated boot calls','Obstructed lot fails safely without park fallback','All inline JavaScript parses']});
+          }catch(error){fs.writeFileSync(file,original);Object.assign(report,{passed:false,error:String(error),stack:error.stack,baselinePreserved:true});}
+          fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/grounded-hospital-check.json',JSON.stringify(report,null,2)+'\n');
+          JS
+      - name: Publish tested exterior replacement or diagnostics
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Branch changed; rerun.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/grounded-hospital-check.json
+          if node -e "if(!require('./status/grounded-hospital-check.json').passed)process.exit(1)"; then git add -- index.html; fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Replace floating hospital with grounded medical center and aligned entrance or record validation error'
+            git push origin HEAD:refs/heads/main
+          fi
+          node -e "if(!require('./status/grounded-hospital-check.json').passed)process.exit(1)"

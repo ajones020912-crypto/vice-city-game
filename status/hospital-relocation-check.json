@@ -1,0 +1,7 @@
+{
+  "passed": false,
+  "scope": "Guarded source integration, road/park clearance, mocked building construction and collision tests. Visual appearance and live deployment require in-game verification.",
+  "error": "Error: Hospital coordinates are reassigned; inspect before relocating",
+  "stack": "Error: Hospital coordinates are reassigned; inspect before relocating\n    at [stdin]:4:594\n    at walk ([stdin]:2:31)\n    at walk ([stdin]:2:211)\n    at walk ([stdin]:2:146)\n    at walk ([stdin]:2:211)\n    at walk ([stdin]:2:146)\n    at walk ([stdin]:2:211)\n    at walk ([stdin]:2:146)\n    at walk ([stdin]:2:211)\n    at walk ([stdin]:2:211)",
+  "baselinePreserved": true
+}

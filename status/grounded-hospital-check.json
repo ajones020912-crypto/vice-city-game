@@ -1,0 +1,31 @@
+{
+  "passed": true,
+  "scope": "Actual exterior replacement, JavaScript parsing, geometry bounds, marker/door/return coordinates, reservation and idempotence tests using mocked Three.js. Live visuals and gameplay remain unverified.",
+  "previousExterior": "function buildHospitalExterior(){\n const site=findClearStructureSite(HOSP.x,HOSP.z,11,9,120);if(site){HOSP.x=site.x;HOSP.z=site.z}\n const x=HOSP.x,z=HOSP.z,y=heightAt(x,z),wall=[.78,.86,.84],glass=[.34,.62,.65],trim=[.12,.57,.48],white=[.92,.96,.94];\n // Modern two-storey medical centre, with a clear central entrance.\n bakeG('plain',GEO.box,x,y+3.5,z-7.2,0,22,7,1.0,wall);\n bakeG('plain',GEO.box,x-10.5,y+3.5,z,0,1,7,14.4,wall);bakeG('plain',GEO.box,x+10.5,y+3.5,z,0,1,7,14.4,wall);\n bakeG('plain',GEO.box,x-6.5,y+3.5,z+7.2,0,9,7,1,wall);bakeG('plain',GEO.box,x+6.5,y+3.5,z+7.2,0,9,7,1,wall);\n bakeG('plain',GEO.box,x,y+7.15,z,0,22,.55,15.4,white);\n bakeG('plain',GEO.box,x,y+6.9,z+7.65,0,4,.35,.45,trim);\n bakeG('plain',GEO.box,x-7,y+4.5,z+7.78,0,5,2.7,.16,glass);bakeG('plain',GEO.box,x+7,y+4.5,z+7.78,0,5,2.7,.16,glass);\n bakeG('plain',GEO.box,x,y+2.1,z+7.82,0,3.4,4.1,.18,glass);\n bakeG('plain',GEO.box,x-2.25,y+2.1,z+7.82,0,.22,4.2,.24,white);bakeG('plain',GEO.box,x+2.25,y+2.1,z+7.82,0,.22,4.2,.24,white);\n bakeG('plain',GEO.box,x,y+.2,z+10.4,0,8,.25,5,[.78,.81,.8]);\n bakeG('plain',GEO.box,x,y+8.0,z+7.9,0,13,1.4,.3,trim);\n const sg=new T.Mesh(new T.PlaneGeometry(12,1.7),new T.MeshBasicMaterial({map:signTex('VICE CITY MEDICAL CENTER','#eafff8'),toneMapped:false,side:T.DoubleSide}));sg.position.set(x,y+8.0,z+8.08);world.add(sg);\n addCol(x-11,z-8,x+11,z-7,7,'hospital');addCol(x-11,z-7,x-10,z+7.5,7,'hospital');addCol(x+10,z-7,x+11,z+7.5,7,'hospital');addCol(x-11,z+7,x-4,z+7.5,7,'hospital');addCol(x+4,z+7,x+11,z+7.5,7,'hospital');\n doors.push({x,z:z+8.2,kind:'hospital',name:'Vice City Medical Center',col:'#38a98e',ret:{x,z:z+11.2}});\n}",
+  "buildingCenter": {
+    "x": 90,
+    "z": 180
+  },
+  "entrance": {
+    "x": 90,
+    "z": 195
+  },
+  "recovery": {
+    "x": 90,
+    "z": 198
+  },
+  "oldExteriorEntirelyReplaced": true,
+  "automaticParkPlacementRemoved": true,
+  "nativeHospitalInteriorAndTreatmentSourcePreserved": true,
+  "tests": [
+    "Original floating exterior function replaced, not supplemented",
+    "No baked primitive dependence or late batch generation",
+    "Solid walls meet a terrain-spanning foundation",
+    "Dedicated lot reservation leaves park untouched",
+    "Entrance and return points clear collisions and remain in interaction range",
+    "Native marker and recovery share hospital coordinates",
+    "Single building and door despite repeated boot calls",
+    "Obstructed lot fails safely without park fallback",
+    "All inline JavaScript parses"
+  ]
+}
