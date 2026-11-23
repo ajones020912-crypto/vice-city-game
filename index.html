@@ -1311,6 +1311,28 @@ function defineRoads(){
  for(const z of[1320,1440,1560,1680])addRoad('h',z,900,2100,15,'city',true);
  for(const x of[1500,1620,1740,1860,1980,2100])addRoad('v',x,-120,1680,16,'city',true);
  for(const x of[540,660,780,900,1020,1140,1260,1380]){addRoad('v',x,-120,360,13,'city');addRoad('v',x,1320,1680,13,'city')}
+
+ // VCIA_CITY_REALIGN_V2: remove the old downtown grid from the airport's west/south
+ // and build the main city only north and east of the airport.
+ for(let i=roads.length-1;i>=0;i--){
+  const r=roads[i];if(r.type!=='city')continue;
+  const minX=r.o==='h'?r.a:r.c-r.hw,maxX=r.o==='h'?r.b:r.c+r.hw;
+  const minZ=r.o==='h'?r.c-r.hw:r.a,maxZ=r.o==='h'?r.c+r.hw:r.b;
+  const overlapsAirport=minX<1580&&maxX>-280&&minZ<1360&&maxZ>280;
+  const legacyWest=minX<420&&maxX<1580&&minZ<1100&&maxZ>-900;
+  if(overlapsAirport||legacyWest)roads.splice(i,1);
+ }
+ // North city: a dense urban grid above the runway/apron.
+ const northX=[420,540,660,780,900,1020,1140,1260,1380,1500,1620,1740,1860,1980,2100];
+ const northZ=[-900,-780,-660,-540,-420,-300,-180,-60,60,180];
+ for(const z of northZ)addRoad('h',z,420,2100,16,'city',true);
+ for(const x of northX)addRoad('v',x,-900,180,15,'city',true);
+ // East city: a deeper urban corridor down the airport's eastern edge.
+ const eastX=[1680,1800,1920,2040,2160,2280,2400];
+ const eastZ=[-180,-60,60,180,300,420,540,660,780,900,1020,1140,1260,1380,1500,1620];
+ for(const z of eastZ)addRoad('h',z,1680,2400,15,'city',true);
+ for(const x of eastX)addRoad('v',x,-180,1620,15,'city',true);
+ // Preserve the bypass as a perimeter route; it skirts the city and airport rather than cutting across either.
  // outer ring / expanded countryside roads
  addRoad('h',1400,-400,900,16,'city');
  addRoad('v',1360,420,1300,16,'city');
@@ -1492,22 +1514,22 @@ function makeParcels(){
    else{H=7+rnd()*14;style=pick(['deco','apt','mission','brick'])}
    const natural=style==='brick'||style==='concrete';
    parcels.push({x0:a,z0:b,x1:c,z1:e,cx,cz,H,style,col:natural?[1-rnd()*.06,1-rnd()*.07,1-rnd()*.08]:undefined,mode,edgeS:j===nz-1,cityId:mode==='port'?'port':'dt'})}};
- const xr=G.xr,zr=G.zr.concat([420]);
+ const xr=[],zr=[];
  const used=new Set(),K=(x,z)=>x+','+z;G.plazas=[];
- for(const [cx,cz] of CITY_SUPER){for(const x of[cx-60,cx])for(const z of[cz-60,cz])used.add(K(x,z));
-  const X0=cx-60+11.9,X1=cx+60-11.9,Z0=cz-60+11.9,Z1=cz+60-11.9,g=13;
-  lot(X0,Z0,cx-g,cz-g,'core');lot(cx+g,Z0,X1,cz-g,'core');lot(X0,cz+g,cx-g,Z1,'core');lot(cx+g,cz+g,X1,Z1,'core');
-  G.plazas.push({cx,cz,X0,X1,Z0,Z1,g})}
- for(const [o,c,a] of CITY_MERGE){if(o==='v'){used.add(K(c-60,a));used.add(K(c,a));lot(c-60+11.9,a+11.9,c+60-11.9,a+60-11.9,'core')}
-  else{used.add(K(a,c-60));used.add(K(a,c));lot(a+11.9,c-60+11.9,a+60-11.9,c+60-11.9,'core')}}
- for(let i=0;i<xr.length-1;i++)for(let j=0;j<zr.length-1;j++){if(used.has(K(xr[i],zr[j])))continue;const hz0=zr[j]===-330?9:9,hz1=zr[j+1]===420?14:9;
-  const x0=xr[i]+9+2.9,x1=xr[i+1]-9-2.9,z0=zr[j]+9+2.9,z1=zr[j+1]-hz1-2.9;
-  lot(x0,z0,x1,z1,zr[j+1]===420?'low':'core')}
- // port blocks
- const px=[],pz=[];for(let i=0;i<8;i++){px.push(-1050+70*i);pz.push(490+70*i)}
- for(let i=0;i<7;i++)for(let j=0;j<7;j++)lot(px[i]+8+2.9,pz[j]+8+2.9,px[i+1]-8-2.9,pz[j+1]-8-2.9,'port');
- // row between expressway and first port street
- for(let i=0;i<7;i++)lot(px[i]+8+2.9,420+14+3,px[i+1]-8-2.9,490-8-2.9,'port');
+ // The airport's west and south sides stay mostly open; build parcels in an L-shaped north/east city.
+ const northGX=[420,540,660,780,900,1020,1140,1260,1380,1500,1620,1740,1860,1980,2100];
+ const northGZ=[-900,-780,-660,-540,-420,-300,-180,-60,60,180];
+ for(let i=0;i<northGX.length-1;i++)for(let j=0;j<northGZ.length-1;j++){
+  const x0=northGX[i]+11.9,x1=northGX[i+1]-11.9,z0=northGZ[j]+11.9,z1=northGZ[j+1]-11.9;
+  lot(x0,z0,x1,z1,'core');
+ }
+ const eastGX=[1680,1800,1920,2040,2160,2280,2400];
+ const eastGZ=[-180,-60,60,180,300,420,540,660,780,900,1020,1140,1260,1380,1500,1620];
+ for(let i=0;i<eastGX.length-1;i++)for(let j=0;j<eastGZ.length-1;j++){
+  const x0=eastGX[i]+11.9,x1=eastGX[i+1]-11.9,z0=eastGZ[j]+11.9,z1=eastGZ[j+1]-11.9;
+  lot(x0,z0,x1,z1,'core');
+ }
+ // Former west-side port parcel grid removed to leave the airport's west/south approaches open.
  // Airport-side city blocks: dense development east of VCIA, with neighborhoods on its north and south edges.
  const vx=[420,540,660,780,900,1020,1140,1260,1380,1500,1620,1740,1860,1980,2100];
  const nz=[-120,0,120,240,360];
@@ -1585,15 +1607,19 @@ function placeShopDoor(p){
 }
 const hexRGB=h=>{const c=new T.Color(h);return[c.r,c.g,c.b]};
 function houses(){
- const xs=[-270,-150,-30,90,210],zs=[540,660,780,900,1020];
- const xa=[-330].concat(xs.map(x=>x)),ex=[380];
- // blocks between suburb roads
- const X=[-270,-150,-30,90,210,380],Z=[420,540,660,780,900,1020,1100];
- for(let i=0;i<X.length-1;i++)for(let j=0;j<Z.length-1;j++){
-  const x0=X[i]+7+3,x1=X[i+1]-(i===X.length-2?15:7)-3,z0=Z[j]+(j===0?14:7)+3,z1=Z[j+1]-7-3;if(z1-z0<20)continue;
-  const nh=Math.floor((x1-x0)/24);const w=(x1-x0)/nh;
-  for(let k=0;k<nh;k++)for(const row of[0,1]){const hx0=x0+k*w+3,hx1=x0+(k+1)*w-3,hd=Math.min(15,(z1-z0)/2-3),hz0=row?z1-hd-1:z0+1,hz1=row?z1-1:z0+hd+1;
-   const H=rr(5.5,8);const p={x0:hx0,z0:hz0,x1:hx1,z1:hz1,cx:(hx0+hx1)/2,cz:(hz0+hz1)/2,H,style:'house',row,mode:'house',cityId:'sub'};parcels.push(p)}}
+ // Suburban neighborhoods now sit north and east of VCIA, outside the runway and apron.
+ const blocks=[];
+ for(let x=420;x<1500;x+=120)for(let z=-1020;z<-900;z+=120)blocks.push([x,z,x+120,z+120]);
+ for(let x=2400;x<2640;x+=120)for(let z=-180;z<1500;z+=120)blocks.push([x,z,x+120,z+120]);
+ for(const [x0,z0,x1,z1] of blocks){
+  const nx=4,w=(x1-x0)/nx,depth=22;
+  for(let k=0;k<nx;k++)for(const row of[0,1]){
+   const hx0=x0+k*w+4,hx1=x0+(k+1)*w-4,hd=depth;
+   const hz0=row?z1-hd-2:z0+2,hz1=row?z1-2:z0+hd+2;
+   const H=rr(5.5,8),p={x0:hx0,z0:hz0,x1:hx1,z1:hz1,cx:(hx0+hx1)/2,cz:(hz0+hz1)/2,H,style:'house',row,mode:'house',cityId:'north-east'};
+   parcels.push(p);
+  }
+ }
 }
 function buildHouse(p){
  if(footprintHitsRoad(p.x0,p.z0,p.x1,p.z1,1.1))return false;
@@ -1860,6 +1886,68 @@ function updateSignals(t){
 
 // --- base map canvas (used by minimap + full map)
 const MAPPX=4;let baseMap=null;
+
+function buildCityRivers(){
+ // CITY_WATERWAYS_V1: branching tidal rivers divide the urban districts and feed the eastern bay.
+ const water=new T.MeshBasicMaterial({color:0x087f9b,transparent:true,opacity:.94,side:T.DoubleSide,depthWrite:false});
+ const make=(start,segments,width)=>{
+  const curve=new T.CatmullRomCurve3([new T.Vector3(start[0]+700,0,start[1]-700),...segments.map(q=>new T.Vector3(q[4]+700,0,q[5]-700))]);
+  const pts=curve.getPoints(100),left=[],right=[];
+  for(let i=0;i<pts.length;i++){
+   const p=pts[i],a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
+   const dx=b.x-a.x,dz=b.z-a.z,len=Math.hypot(dx,dz)||1,nx=-dz/len,nz=dx/len;
+   const w=width*(.88+.12*Math.sin(i/pts.length*Math.PI));
+   left.push([p.x+nx*w/2,p.z+nz*w/2]);right.push([p.x-nx*w/2,p.z-nz*w/2]);
+  }
+  const sh=new T.Shape();sh.moveTo(left[0][0],left[0][1]);
+  for(let i=1;i<left.length;i++)sh.lineTo(left[i][0],left[i][1]);
+  for(let i=right.length-1;i>=0;i--)sh.lineTo(right[i][0],right[i][1]);
+  sh.closePath();
+  const g=new T.ShapeGeometry(sh,12);g.rotateX(Math.PI/2);
+  const mesh=new T.Mesh(g,water);mesh.position.y=.16;mesh.renderOrder=2;scene.add(mesh);
+ };
+ // Main north-south river through the central city, widening toward the southern waterfront.
+ make([1120,-260],[
+  [1060,-80,1190,80,1135,250],
+  [1080,390,930,470,990,650],
+  [1050,820,1190,900,1150,1080],
+  [1090,1260,1010,1410,1080,1580],
+  [1110,1690,1270,1780,1390,1830],
+  [1450,1850,1560,1830,1660,1810],
+  [1640,1740,1510,1660,1510,1540],
+  [1490,1370,1590,1210,1540,1040],
+  [1500,860,1350,770,1390,600],
+  [1410,430,1510,310,1470,130],
+  [1500,-50,1370,-190,1390,-260],
+  [1310,-300,1200,-290,1120,-260]
+ ],72);
+ // Western branch bends across the city toward the river.
+ make([480,520],[
+  [620,470,700,390,820,410],
+  [930,425,1010,520,1110,550],
+  [1220,590,1310,560,1420,590],
+  [1540,625,1660,690,1810,700],
+  [1910,710,2020,650,2130,620],
+  [2100,570,1990,545,1870,555],
+  [1690,570,1580,500,1440,490],
+  [1300,465,1220,500,1100,470],
+  [980,430,900,350,800,340],
+  [670,320,550,405,480,520]
+ ],54);
+ // Southern canal/estuary opens the downtown waterfront toward the bay.
+ make([1030,1120],[
+  [900,1200,820,1320,850,1440],
+  [870,1570,1010,1640,1160,1660],
+  [1310,1690,1440,1630,1530,1540],
+  [1610,1450,1710,1410,1840,1430],
+  [1930,1460,2010,1540,2110,1570],
+  [2070,1620,1950,1640,1840,1580],
+  [1690,1510,1600,1510,1510,1600],
+  [1390,1730,1250,1780,1090,1740],
+  [920,1710,760,1610,760,1450],
+  [750,1310,870,1190,1030,1120]
+ ],46);
+}
 function buildBaseMap(){if(LOADPRE.map){LOADPRE.map=false;return}for(const _ of buildBaseMapGen());}
 function* buildBaseMapGen(){
  const S=WS*2/MAPPX,[c,x]=cv(S,S),id=x.createImageData(S,S),o=[0,0,0],d=id.data;
@@ -1873,16 +1961,22 @@ function* buildBaseMapGen(){
    const elev=clamp(h/55,0,1);
    r=.37+elev*.10;g=.59+elev*.12;b=.43+elev*.07;
    // Urban districts get a pale lavender-gray tint, while green spaces remain green.
-   const inDistrict=(wx>-360&&wx<440&&wz>-360&&wz<1130)||
-    (wx>-1120&&wx<-505&&wz>385&&wz<1055)||
-    (wx>-440&&wx<900&&wz>1620&&wz<2420)||
-    (wx>410&&wx<2140&&wz>-140&&wz<1710)||
-    (wx>240&&wx<1120&&wz>420&&wz<1220);
+   const inDistrict=(wx>420&&wx<2110&&wz>-910&&wz<190)||
+    (wx>1670&&wx<2410&&wz>-190&&wz<1630);
    if(inDistrict){r=.61;g=.63;b=.75;}
   }
   const R=Math.min(255,r*300),Gc=Math.min(255,g*300),Bc=Math.min(255,b*300);
   for(let dj=0;dj<2;dj++)for(let di=0;di<2;di++){const p=((j+dj)*S+i+di)*4;d[p]=R;d[p+1]=Gc;d[p+2]=Bc;d[p+3]=255}}}
  x.putImageData(id,0,0);
+
+ // Draw the same river network into the satellite map so waterways read clearly at every zoom.
+ {const river=(pts,width)=>{x.strokeStyle='#087f9b';x.lineWidth=width/MAPPX;x.lineCap='round';x.lineJoin='round';x.beginPath();pts.forEach((p,i)=>x[i?'lineTo':'moveTo']((p[0]+700+WS)/MAPPX,(p[1]-700+WS)/MAPPX));x.stroke();};
+  x.save();
+  river([[1120,-260],[1060,-80],[1190,80],[1135,250],[1080,390],[930,470],[990,650],[1050,820],[1190,900],[1150,1080],[1090,1260],[1010,1410],[1080,1580],[1110,1690],[1270,1780],[1390,1830]],76);
+  river([[480,520],[620,470],[700,390],[820,410],[930,425],[1010,520],[1110,550],[1220,590],[1310,560],[1420,590],[1540,625],[1660,690],[1810,700],[1910,710],[2020,650],[2130,620]],56);
+  river([[1030,1120],[900,1200],[820,1320],[850,1440],[870,1570],[1010,1640],[1160,1660],[1310,1690],[1440,1630],[1530,1540],[1610,1450],[1710,1410],[1840,1430],[1930,1460],[2010,1540],[2110,1570]],48);
+  x.restore();
+ }
  // Buildings and developed blocks: soft slate-lavender, like the reference map.
  x.fillStyle='rgba(177,185,216,.62)';for(const b of colAll)if(b.h>6&&b.x1-b.x0>6)x.fillRect((b.x0+WS)/MAPPX,(b.z0+WS)/MAPPX,(b.x1-b.x0)/MAPPX,(b.z1-b.z0)/MAPPX);
  for(const r of roads){x.strokeStyle=r.type==='hwy'?'#f4d77a':r.type==='dirt'?'#b49a70':'#f0f0e8';x.lineWidth=Math.max(1.6,r.w/MAPPX*(r.type==='hwy'?.9:.8));x.beginPath();
@@ -2331,6 +2425,7 @@ function worldSteps(){const buildOne=p=>{if(p.style==='house')buildHouse(p);else
   ['Planting the countryside',8,()=>bigMapProps()],
   ['Traffic lights, airports and air base',4,()=>{buildSignals();buildAirport();buildWestAirport();buildAFB();spawnAirportPlanes()}],
   ['Palmetto Grove cleared',4,()=>{PG.paths=[];PG.homes=[];PG.signs=[];}],
+  ['Carving city rivers',2,()=>buildCityRivers()],
   ['Drawing the map',7,{gen:function*(){yield* buildBaseMapGen();LOADPRE.map=true;buildBaseMap()}}]]}
 function buildWorld(){for(const [,,f] of worldSteps()){if(typeof f==='function')f();else if(f.gen){for(const _ of f.gen());}else for(const p of f.each())f.fn(p)}}
 const nextPaint=()=>new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
