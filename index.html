@@ -2039,9 +2039,17 @@ function* buildBaseMapGen(){
   if(r.o==='h'){x.moveTo((r.a+WS)/MAPPX,(r.c+WS)/MAPPX);x.lineTo((r.b+WS)/MAPPX,(r.c+WS)/MAPPX)}else{x.moveTo((r.c+WS)/MAPPX,(r.a+WS)/MAPPX);x.lineTo((r.c+WS)/MAPPX,(r.b+WS)/MAPPX)}x.stroke()}
  // VCIA_MIA_LAYOUT_V1: the airport is drawn from the same shapes its 3D buildings, runways and aprons were made from.
  if(airport&&airport.shapes){for(const [wx,wz,len,wid,ang,col] of airport.shapes){x.save();x.translate((wx+WS)/MAPPX,(wz+WS)/MAPPX);x.rotate(ang);x.fillStyle=col;x.fillRect(-len/2/MAPPX,-wid/2/MAPPX,len/MAPPX,wid/MAPPX);x.restore()}}
- // LEONIDA_WEST_REGIONAL_AIRPORT_SATELLITE_V1
- {const ax=4900,az=2800,px=v=>(ax+v+WS)/MAPPX,pz=v=>(az+v+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w/MAPPX,h/MAPPX)};x.save();rect(0,0,900,620,'#53694a');rect(0,-45,560,48,'#343b3d');rect(0,35,470,22,'#454b4b');x.strokeStyle='#e3e4dc';x.lineWidth=1.2;x.setLineDash([5,4]);x.beginPath();x.moveTo(px(-245),pz(-45));x.lineTo(px(245),pz(-45));x.stroke();x.setLineDash([]);rect(-125,110,180,100,'#898d87');rect(195,125,125,105,'#858b85');rect(-310,220,175,90,'#454b4b');rect(0,155,112,44,'#46545a');rect(185,115,100,72,'#59645f');rect(10,155,20,18,'#68777a');x.strokeStyle='#9ba184';x.lineWidth=1;x.strokeRect(px(-430),pz(-285),860/MAPPX,570/MAPPX);x.restore();}
-
+ // LEONIDA_WEST_REGIONAL_AIRPORT_SATELLITE_V2 — matching island outline and crossed runway layout.
+ {const ax=4900,az=2800,px=v=>(ax+v+WS)/MAPPX,pz=v=>(az+v+WS)/MAPPX,poly=(pts,color)=>{x.fillStyle=color;x.beginPath();pts.forEach(([xx,zz],i)=>i?x.lineTo(px(xx),pz(zz)):x.moveTo(px(xx),pz(zz)));x.closePath();x.fill()},rect=(xx,zz,w,h,color,ang=0)=>{x.save();x.translate(px(xx),pz(zz));x.rotate(ang);x.fillStyle=color;x.fillRect(-w/(2*MAPPX),-h/(2*MAPPX),w/MAPPX,h/MAPPX);x.restore()};x.save();
+ poly([[-80,-535],[175,-500],[345,-390],[405,-190],[415,110],[360,365],[210,500],[-80,535],[-300,450],[-405,250],[-425,-30],[-340,-330],[-205,-475]],'#6c865f');
+ poly([[-315,-365],[80,-440],[285,-300],[330,-80],[335,180],[255,365],[80,430],[-205,360],[-350,150],[-365,-110]],'#858b87');
+ // Intersecting runways, broad aprons and taxiways.
+ rect(-5,-70,610,48,'#343b3d',-.58);rect(5,38,535,44,'#343b3d',.62);
+ rect(0,-4,560,19,'#454b4b');rect(0,205,500,18,'#454b4b');
+ rect(205,85,260,180,'#aeb1ac');rect(235,230,150,95,'#858b85');
+ rect(-235,205,105,78,'#858b85');rect(-235,95,100,70,'#858b85');rect(-245,-25,88,65,'#858b85');rect(-235,-155,100,72,'#858b85');
+ x.strokeStyle='#e3e4dc';x.lineWidth=1.2;x.setLineDash([5,4]);x.beginPath();x.moveTo(px(-270),pz(-80));x.lineTo(px(270),pz(-80));x.moveTo(px(-250),pz(45));x.lineTo(px(260),pz(45));x.stroke();x.setLineDash([]);
+ x.strokeStyle='#9ba184';x.lineWidth=1;x.beginPath();x.moveTo(px(-405),pz(-440));x.quadraticCurveTo(px(-460),pz(-160),px(-380),pz(160));x.quadraticCurveTo(px(-330),pz(430),px(-70),pz(500));x.quadraticCurveTo(px(260),pz(545),px(405),pz(300));x.quadraticCurveTo(px(470),pz(0),px(405),pz(-360));x.stroke();x.restore();}
  // SALTON_AFB_SATELLITE_MAP_V1: draw the air force base footprint on the shared minimap/full-map canvas.
  {const ax=650,az=-1180,px=v=>(ax+v+WS)/MAPPX,pz=v=>(az+v+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w/MAPPX,h/MAPPX)};
   x.save();
