@@ -2427,6 +2427,22 @@ function buildPalmettoGrove(){
 }
 const pgOldBaseMap=buildBaseMap;buildBaseMap=function(){pgOldBaseMap();const ctx=baseMap.getContext('2d');ctx.save();ctx.strokeStyle='#d8d8d8';ctx.lineCap='round';ctx.lineJoin='round';for(const path of PG.paths){ctx.lineWidth=Math.max(1.6,path.width/MAPPX*.8);ctx.beginPath();path.points.forEach((p,i)=>ctx[i?'lineTo':'moveTo']((p.x+WS)/MAPPX,(p.z+WS)/MAPPX));ctx.stroke()}ctx.restore()};
 
+// MAP_CACHE_V1: the finished map image is saved in the browser (IndexedDB) after the first load and reused on later
+// loads, skipping the slowest loading step. The save is tagged with a fingerprint of the game's code, so any update to
+// the game (new roads, airport changes, map colours...) automatically draws a fresh map once and saves that instead.
+const MAPCACHE={key:null};
+function mapCacheKey(){if(MAPCACHE.key)return MAPCACHE.key;let h=2166136261>>>0;
+ const src=[...document.querySelectorAll('script:not([src])')].map(e=>e.textContent).join('\n')+'|'+WS+'|'+MAPPX;
+ for(let i=0;i<src.length;i++){h^=src.charCodeAt(i);h=Math.imul(h,16777619)>>>0}return MAPCACHE.key=h.toString(36)+'-'+src.length}
+function mapIDB(){return new Promise((res,rej)=>{const r=indexedDB.open('vc-map-cache',1);r.onupgradeneeded=()=>r.result.createObjectStore('maps');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);r.onblocked=()=>rej(new Error('blocked'))})}
+async function mapCacheLoad(){try{if(!window.indexedDB||!window.createImageBitmap)return false;const key=mapCacheKey(),db=await mapIDB();
+  const rec=await new Promise(res=>{const q=db.transaction('maps').objectStore('maps').get('base');q.onsuccess=()=>res(q.result);q.onerror=()=>res(null)});db.close();
+  const S=WS*2/MAPPX;if(!rec||rec.key!==key||!rec.blob)return false;
+  const bmp=await createImageBitmap(rec.blob,{colorSpaceConversion:'none',premultiplyAlpha:'none'});if(bmp.width!==S||bmp.height!==S){bmp.close&&bmp.close();return false}
+  const [c,x]=cv(S,S);x.drawImage(bmp,0,0);bmp.close&&bmp.close();baseMap=c;MAPCACHE.hit=true;return true}catch(e){console.warn('map cache read failed',e);return false}}
+function mapCacheSave(){try{if(!window.indexedDB||!baseMap||!baseMap.toBlob)return;const key=mapCacheKey(),c=baseMap;
+  c.toBlob(async blob=>{if(!blob)return;try{const db=await mapIDB(),tx=db.transaction('maps','readwrite');tx.objectStore('maps').put({key,blob,saved:Date.now()},'base');tx.oncomplete=()=>{db.close();MAPCACHE.saved=true};tx.onerror=()=>db.close()}catch(e){console.warn('map cache save failed',e)}},'image/png')}catch(e){}}
+
 // LOAD_PROGRESS_V1: world generation as weighted stages so the home screen can show real progress
 function worldSteps(){const buildOne=p=>{if(p.style==='house')buildHouse(p);else{const built=building(p);if(built!==false&&p.shop)placeShopDoor(p)}};
  return[
@@ -2446,7 +2462,7 @@ function worldSteps(){const buildOne=p=>{if(p.style==='house')buildHouse(p);else
   ['Traffic lights, airports and air base',4,()=>{buildSignals();buildAirport();buildWestAirport();buildAFB();spawnAirportPlanes()}],
   ['Palmetto Grove cleared',4,()=>{PG.paths=[];PG.homes=[];PG.signs=[];}],
   ['Carving city rivers',2,()=>buildCityRivers()],
-  ['Drawing the map',7,{gen:function*(){yield* buildBaseMapGen();LOADPRE.map=true;buildBaseMap()}}]]}
+  ['Drawing the map',7,{pre:mapCacheLoad,post:mapCacheSave,gen:function*(){yield* buildBaseMapGen();LOADPRE.map=true;buildBaseMap()}}]]}
 function buildWorld(){for(const [,,f] of worldSteps()){if(typeof f==='function')f();else if(f.gen){for(const _ of f.gen());}else for(const p of f.each())f.fn(p)}}
 const nextPaint=()=>new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
 // SMOOTH_LOADBAR_V1: the fill uses transform:scaleX with a transition, which the browser animates on the compositor even
@@ -2471,7 +2487,7 @@ function setLoadProgress(frac,label,toFrac,ms){const lm=document.getElementById(
 async function buildWorldStaged(after){const steps=worldSteps().concat(after),total=steps.reduce((a,s)=>a+s[1],0);let done=0,msPerW=140,spent=0;
  for(const [label,w,f] of steps){const est=w*msPerW;setLoadProgress(done/total,label,(done+w*.92)/total,est*1.15);await nextPaint();const t0=performance.now();
   if(typeof f==='function')f();
-  else if(f.gen){let c0=performance.now(),n=0;for(const _ of f.gen()){if(++n%4===0&&performance.now()-c0>40){await nextPaint();c0=performance.now()}}}
+  else if(f.gen){if(!(f.pre&&await f.pre())){let c0=performance.now(),n=0;for(const _ of f.gen()){if(++n%4===0&&performance.now()-c0>40){await nextPaint();c0=performance.now()}}if(f.post)f.post()}}
   else{const list=f.each(),n=list.length||1,ch=Math.max(60,Math.round(f.chunk/2));for(let i=0;i<list.length;i+=ch){const c0=performance.now();for(let j=i;j<Math.min(list.length,i+ch);j++)f.fn(list[j]);
     const a=(done+w*Math.min(1,(i+ch)/n))/total,b=(done+w*Math.min(1,(i+2*ch)/n))/total;setLoadProgress(a,label+' '+Math.min(list.length,i+ch)+'/'+list.length,b,(performance.now()-c0)*1.1);await nextPaint()}}
   const dt=performance.now()-t0;spent+=dt;done+=w;msPerW=spent/done}
