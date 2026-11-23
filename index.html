@@ -2023,8 +2023,8 @@ const pgOldDefineRoads=defineRoads;
 defineRoads=function(){
  pgOldDefineRoads();PG.paths=[];PG.homes=[];PG.signs=[];
  // Remove every road segment entering Palmetto Grove.
- const zone={x0:-345,x1:425,z0:445,z1:1115};
- for(let i=roads.length-1;i>=0;i--){const r=roads[i],lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),crosses=r.o==='h'?(r.c>=zone.z0-r.hw&&r.c<=zone.z1+r.hw&&hi>=zone.x0-r.hw&&lo<=zone.x1+r.hw):(r.c>=zone.x0-r.hw&&r.c<=zone.x1+r.hw&&hi>=zone.z0-r.hw&&lo<=zone.z1+r.hw);if(crosses)roads.splice(i,1)}
+ const noRoadZones=[{x0:-345,x1:425,z0:445,z1:1115},{x0:170,x1:1130,z0:445,z1:1195}]; // Palmetto Grove and VCIA
+ for(let i=roads.length-1;i>=0;i--){const r=roads[i],lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),crosses=noRoadZones.some(zone=>r.o==='h'?(r.c>=zone.z0-r.hw&&r.c<=zone.z1+r.hw&&hi>=zone.x0-r.hw&&lo<=zone.x1+r.hw):(r.c>=zone.x0-r.hw&&r.c<=zone.x1+r.hw&&hi>=zone.z0-r.hw&&lo<=zone.z1+r.hw));if(crosses)roads.splice(i,1)}
 };
 const pgOldNearRoad=nearRoad;nearRoad=function(x,z,m=0){return pgOldNearRoad(x,z,m)||pgNear(x,z,m)};
 const pgOldFootprint=footprintHitsRoad;footprintHitsRoad=function(x0,z0,x1,z1,m=.8){return pgOldFootprint(x0,z0,x1,z1,m)||pgHitsBox(x0,z0,x1,z1,m)};
