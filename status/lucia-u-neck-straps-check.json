@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "branch": "lucia-outfits",
+  "neckline": "rounded U-neck",
+  "shoulderStraps": 2,
+  "strapStyle": "flat front-to-back shoulder ribbons",
+  "neckOpeningChecks": 6,
+  "poseChecks": 6,
+  "defaultTankEnabled": true,
+  "darkGreyRibbingPreserved": true,
+  "baseGarmentsBodySkinToneAndRigUnchanged": true,
+  "otherCharactersUnchanged": true,
+  "scope": "Fitted torso panels with front U-neck and arm openings plus two shoulder ribbons. Structural and ray tests do not prove rendered realism, seamless attachment in every pose, GPU appearance or live deployment."
+}
