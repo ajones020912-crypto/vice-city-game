@@ -4629,7 +4629,28 @@ function buildInterior(kind,idx){
  else { // new specialty businesses
   const dark=kind==='nightclub'||kind==='bar',accent=kind==='jewelry'?0xe9c65a:kind==='pharmacy'?0x5bd18a:kind==='repair'?0x44c5d8:kind==='spray'?0xb36bff:kind==='gym'?0xa5e04d:kind==='bar'?0x36b8c8:0xdf67ef;
   const shelf=M(dark?0x28243a:0xd8dadd),glass=M(0x9acbdc,{transparent:true,opacity:.38,metalness:.2,roughness:.15}),trim=M(accent,{emissive:accent,emissiveIntensity:dark?1.1:.12});
-  if(kind==='spray'){
+  if(kind==='hospital'){
+    plane(11,8,0,.04,0,M(0xd8eee8));
+    // Reception desk and check-in screens.
+    bx(9.5,1.05,1.25,0,0,-4.75,M(0xe8f1ee));bx(9.7,.13,1.4,0,1.05,-4.75,trim);col(9.5,1.25,0,-4.75,1.3);
+    for(const x of[-2.8,0,2.8]){bx(1.15,.8,.08,x,1.18,-5.35,glass,false);bx(1.2,.06,.12,x,2.0,-5.35,trim,false)}
+    // Waiting area with connected seating and side tables.
+    for(let i=0;i<4;i++){const x=-7+i*4.6;bx(2.4,.42,.72,x,.38,2.25,M(0x4b8790));bx(2.45,.1,.78,x,.82,2.25,M(0xeaf3f0));col(2.5,1.0,x,2.25,1.3)}
+    bx(1.1,.55,1.1,-8,.05,-.1,M(0xe2ece8));bx(1.1,.55,1.1,8,.05,-.1,M(0xe2ece8));
+    // Two examination bays with beds, privacy screens and monitors.
+    for(const x of[-5,5]){
+      bx(3.2,.32,1.2,x,.72,-1.9,M(0xf8fbfa));bx(3.35,.12,1.3,x,.58,-1.9,M(0x4f7377));
+      bx(.22,.95,.22,x-1.25,.05,-1.9,metal);bx(.22,.95,.22,x+1.25,.05,-1.9,metal);
+      bx(.12,1.9,2.8,x-2.0,.05,-1.9,glass,false);bx(1.1,.08,.8,x+1.0,2.15,-2.5,trim,false);
+      bx(.75,.9,.16,x+1.0,1.25,-2.95,M(0x344d55));bx(.52,.55,.08,x+1.0,1.38,-2.84,M(0x8de2d0));
+      col(3.6,3.4,x,-1.8,2.5);
+    }
+    // Wall-mounted wayfinding, supply cabinets and medical cross.
+    for(const x of[-8.4,8.4]){bx(.8,2.6,.65,x,.2,-5.8,M(0xe6f0ed));bx(.55,.08,.7,x,2.4,-5.8,trim)}
+    bx(.08,1.25,.08,0,2.0,-6.65,M(0xffffff));bx(.9,.08,.08,0,2.55,-6.65,M(0xffffff));
+    sign('VICE CITY MEDICAL CENTER','#eafff8',0,3.15,-6.82,8);sign('EMERGENCY · CHECK-IN · PATIENT CARE','#d8fff1',0,2.4,-6.82,8);
+    clerk.position.set(0,0,-4.0);o.counter={x:cx,z:cz-4.75};
+   }else if(kind==='spray'){
    plane(11,8,0,.04,0,M(0x20252c));bx(12,1.0,3,0,0,-3.8,M(0x3d4651));bx(12,.12,3,0,1.0,-3.8,trim);for(const x of[-6,0,6]){bx(.18,3.0,.18,x,.1,-5.7,trim);bx(2.2,.15,.3,x,2.8,-5.7,shelf)}sign("PAY 'N' SPRAY",'#d8b8ff',0,3.1,-6.82,7);sign('AUTO BODY · CUSTOM PAINT','#e5d7ff',0,2.35,-6.82,7);o.counter={x:cx,z:cz-3.8};
   }else if(kind==='bar'){
    const wood=M(0x684b38),metal=M(0x59636b,{metalness:.55}),table=M(0xc49a68),seat=M(0x245b64);
@@ -4678,7 +4699,8 @@ const SHOP_ITEMS={
  repair:()=>[{n:'Repair vehicle',p:180,locked:!(pl.inside&&pl.inside.door.serviceCar&&!pl.inside.door.serviceCar.dead),d:'Restore the vehicle parked outside',f:()=>{const c=pl.inside&&pl.inside.door.serviceCar;if(!c||c.dead){toast('Park a vehicle outside Wrench Works before entering');return}c.hp=maxHp(c);toast('Vehicle repaired')}},{n:'Refuel vehicle',p:65,locked:!(pl.inside&&pl.inside.door.serviceCar&&!pl.inside.door.serviceCar.dead),d:'Fill the vehicle fuel tank',f:()=>{const c=pl.inside&&pl.inside.door.serviceCar;if(!c||c.dead){toast('Park a vehicle outside Wrench Works before entering');return}c.fuel=100;toast('Fuel tank filled')}}],
  jewelry:()=>[['Silver Chain',85],['Gold Watch',220],['Diamond Studs',350],['Ocean Sapphire Ring',480]].map(([n,p])=>({n,p,d:'Adds this piece to your jewelry collection',locked:pl.jewelry.includes(n),f:()=>{pl.jewelry.push(n);toast(n+' added to your collection')}})).concat([{n:'View collection',p:0,d:pl.jewelry.length?pl.jewelry.join(' · '):'No jewelry owned yet',btn:'View',stay:true,f:()=>toast(pl.jewelry.length?pl.jewelry.join(' · '):'Your jewelry collection is empty')}]),
  pharmacy:()=>[{n:'First-aid kit',p:45,d:'Adds one kit to your inventory',f:()=>{pl.medkits++;toast('First-aid kit added · '+pl.medkits+' in inventory')}},{n:'Use first-aid kit',p:0,d:'Restore up to 35 health · '+pl.medkits+' available',locked:pl.medkits<1||pl.hp>=100,btn:'Use',f:()=>{if(pl.medkits<1||pl.hp>=100)return;pl.medkits--;pl.hp=Math.min(100,pl.hp+35);toast('First-aid kit used')}}],
- nightclub:()=>[{n:'Entry',p:15,d:'Enter The Afterglow music venue',f:()=>{pl.rel=Math.min(100,pl.rel+2);toast('Welcome to The Afterglow')}},{n:'Dance floor session',p:0,d:'Join the music and earn a little reputation',btn:'Dance',f:()=>{addRep(2);pl.rel=Math.min(100,pl.rel+1);toast('Dance session complete · +2 reputation')}}]};
+ nightclub:()=>[{n:'Entry',p:15,d:'Enter The Afterglow music venue',f:()=>{pl.rel=Math.min(100,pl.rel+2);toast('Welcome to The Afterglow')}},{n:'Dance floor session',p:0,d:'Join the music and earn a little reputation',btn:'Dance',f:()=>{addRep(2);pl.rel=Math.min(100,pl.rel+1);toast('Dance session complete · +2 reputation')}}],
+  hospital:()=>[{n:'Full medical treatment',p:150,d:'Restore health to 100',locked:pl.hp>=100,f:()=>{pl.hp=100;pl.lastHit=0;toast('Treatment complete · health fully restored')}},{n:'First-aid kit',p:45,d:'Add one first-aid kit to your inventory',f:()=>{pl.medkits++;toast('First-aid kit added · '+pl.medkits+' in inventory')}},{n:'Medical check-in',p:0,d:'Review your current health and recovery status',btn:'Check',stay:true,f:()=>toast('Health: '+Math.ceil(pl.hp)+' / 100 · Armor: '+Math.ceil(pl.armor)+' / 100')} ]};
 for(const [kind,menu] of Object.entries(RESTAURANT_MENUS))SHOP_ITEMS[kind]=()=>menu.map(([n,p,heal])=>({n,p,d:'Signature house dish · +'+heal+' health',f:()=>{pl.hp=Math.min(100,pl.hp+heal)}}));
 const SHOP_NAMES={palmgrill:'Palm Paradise Grill',oceandiner:'Ocean View Diner',havana:'Little Havana Café',bigwave:'Big Wave Seafood',sunsetsteak:'Sunset Steakhouse',flamingo:'Flamingo Pizza',ricos:"Rico's Tacos",goldenfry:'The Golden Fry',baysidebbq:'Bayside BBQ',burger:'Benny\'s Burger Shack',ammu:'Leonida Tactical Supply',clothes:'Vice Threads',safe:'Safehouse',repair:'Wrench Works',spray:"Pay 'n' Spray",bar:'The Blue Pelican Lounge',gym:'Vice Fitness Club',jewelry:'Golden Hour Jewelers',pharmacy:'PalmCare Pharmacy',nightclub:'The Afterglow'};
 function openShop(kind){G.state='shop';G.shopKind=kind;document.exitPointerLock?.();$('#shop').style.display='grid';$('#shoptitle').textContent=G.shopTitle||SHOP_NAMES[kind];G.shopTitle=null;renderShop(kind)}
@@ -4715,6 +4737,25 @@ function buildMarkers(){
 }
 G.spray=[{x:-770,z:665,ry:Math.PI/2},{x:90,z:600,ry:Math.PI/2}];
 const HOSP={x:-49.6,z:-60},PD={x:49.6,z:-120};
+function buildHospitalExterior(){
+ const site=findClearStructureSite(HOSP.x,HOSP.z,11,9,120);if(site){HOSP.x=site.x;HOSP.z=site.z}
+ const x=HOSP.x,z=HOSP.z,y=heightAt(x,z),wall=[.78,.86,.84],glass=[.34,.62,.65],trim=[.12,.57,.48],white=[.92,.96,.94];
+ // Modern two-storey medical centre, with a clear central entrance.
+ bakeG('plain',GEO.box,x,y+3.5,z-7.2,0,22,7,1.0,wall);
+ bakeG('plain',GEO.box,x-10.5,y+3.5,z,0,1,7,14.4,wall);bakeG('plain',GEO.box,x+10.5,y+3.5,z,0,1,7,14.4,wall);
+ bakeG('plain',GEO.box,x-6.5,y+3.5,z+7.2,0,9,7,1,wall);bakeG('plain',GEO.box,x+6.5,y+3.5,z+7.2,0,9,7,1,wall);
+ bakeG('plain',GEO.box,x,y+7.15,z,0,22,.55,15.4,white);
+ bakeG('plain',GEO.box,x,y+6.9,z+7.65,0,4,.35,.45,trim);
+ bakeG('plain',GEO.box,x-7,y+4.5,z+7.78,0,5,2.7,.16,glass);bakeG('plain',GEO.box,x+7,y+4.5,z+7.78,0,5,2.7,.16,glass);
+ bakeG('plain',GEO.box,x,y+2.1,z+7.82,0,3.4,4.1,.18,glass);
+ bakeG('plain',GEO.box,x-2.25,y+2.1,z+7.82,0,.22,4.2,.24,white);bakeG('plain',GEO.box,x+2.25,y+2.1,z+7.82,0,.22,4.2,.24,white);
+ bakeG('plain',GEO.box,x,y+.2,z+10.4,0,8,.25,5,[.78,.81,.8]);
+ bakeG('plain',GEO.box,x,y+8.0,z+7.9,0,13,1.4,.3,trim);
+ const sg=new T.Mesh(new T.PlaneGeometry(12,1.7),new T.MeshBasicMaterial({map:signTex('VICE CITY MEDICAL CENTER','#eafff8'),toneMapped:false,side:T.DoubleSide}));sg.position.set(x,y+8.0,z+8.08);world.add(sg);
+ addCol(x-11,z-8,x+11,z-7,7,'hospital');addCol(x-11,z-7,x-10,z+7.5,7,'hospital');addCol(x+10,z-7,x+11,z+7.5,7,'hospital');addCol(x-11,z+7,x-4,z+7.5,7,'hospital');addCol(x+4,z+7,x+11,z+7.5,7,'hospital');
+ doors.push({x,z:z+8.2,kind:'hospital',name:'Vice City Medical Center',col:'#38a98e',ret:{x,z:z+11.2}});
+}
+
 // ================= MISSIONS =================
 const ring=new T.Group();world.add(ring);
 {const r=new T.Mesh(new T.TorusGeometry(3.4,.28,10,36),new T.MeshStandardMaterial({color:0xff4f9a,roughness:.3,metalness:.1,emissive:0xff2d88,emissiveIntensity:.9}));r.rotation.x=Math.PI/2;r.position.y=1.4;ring.add(r);
@@ -4814,7 +4855,7 @@ function setWaypoint(p){G.waypoint=p?{x:p.x,z:p.z}:null;if(!setWaypoint.beam){co
 function updateWaypoint(){const w=G.waypoint;if(!w)return;const b=setWaypoint.beam;if(b)b.material.opacity=.25+.12*Math.sin(G.time*3);
  if(Math.hypot(pl.x-w.x,pl.z-w.z)<20){setWaypoint(null);toast('📍 Waypoint reached',1400);audio.beep&&audio.beep(880)}}
 function blips(){const b=[];if(G.waypoint)b.push({x:G.waypoint.x,z:G.waypoint.z,c:'#c77dff',s:'waypoint',icon:true,edge:true,big:true,label:'Waypoint'});for(const m of(G.mapMarks||[]))b.push({x:m.x,z:m.z,c:'#ff83bd',s:'waypoint',icon:true,label:m.name||'Waypoint'});for(const q of givers)if(q.g.visible)b.push({x:q.m.giver[0],z:q.m.giver[1],c:'#ffe17a',s:'◆'});
- for(const d of doors)b.push({x:d.x,z:d.z,c:d.col,s:STORE_MAP_ICONS[d.kind]||'🛒',icon:true,label:d.name,kind:d.kind});for(const g of G.spray)b.push({x:g.x,z:g.z,c:'#b36bff',s:'garage',icon:true,label:"Pay 'n' Spray"});
+ for(const d of doors)if(d.kind!=='hospital')b.push({x:d.x,z:d.z,c:d.col,s:STORE_MAP_ICONS[d.kind]||'🛒',icon:true,label:d.name,kind:d.kind});for(const g of G.spray)b.push({x:g.x,z:g.z,c:'#b36bff',s:'garage',icon:true,label:"Pay 'n' Spray"});
  b.push({x:HOSP.x,z:HOSP.z,c:'#ff5d6e',s:'hospital',icon:true,label:'Hospital'},{x:PD.x,z:PD.z,c:'#5aa0ff',s:'police',icon:true,label:'Police station'});extraBlips(b);
  const s=MS.steps[MS.i];if(MS.active&&s){if(s.type==='kill'&&MS.target&&!MS.target.dead)b.push({x:MS.target.x,z:MS.target.z,c:'#ff4d4d',s:'☠',big:1});else if((s.type==='getcar'||s.type==='inboat')&&MS.car&&!MS.car.dead)b.push({x:MS.car.x,z:MS.car.z,c:'#ffe17a',s:'●',big:1});else if(s.pos)b.push({x:s.pos[0],z:s.pos[1],c:'#ff4f9a',s:'●',big:1,edge:1})}
  if(pl.wanted>0){for(const c of cars)if(c.mode==='cop'&&!c.dead)b.push({x:c.x,z:c.z,c:Math.floor(G.time*3)%2?'#ff3b3b':'#3b6bff',s:'●',small:1});for(const p of cops)if(p.active&&!p.dead)b.push({x:p.x,z:p.z,c:'#7aa0ff',s:'•',small:1})}
@@ -5795,7 +5836,7 @@ const EXT={heli,gangs,gators,stashes,GAS,PROPS,RACES,BOAT_SPOTS,cctv,DEALER,get 
 // ================= BOOT =================
 async function boot(){
  const startBtn=$('#start'),startHTML=startBtn&&startBtn.innerHTML;if(startBtn){startBtn.disabled=true;startBtn.textContent='LOADING…'}
- try{await buildWorldStaged([['Interiors, shops and missions',4,()=>{buildAllInteriors();buildMarkers();buildGivers()}],['Wildlife, weather and extras',4,()=>{initRain();spawnGators();buildExtras();initBoatSpots()}]]);
+ try{await buildWorldStaged([['Interiors, shops and missions',4,()=>{buildAllInteriors();buildHospitalExterior();buildMarkers();buildGivers()}],['Wildlife, weather and extras',4,()=>{initRain();spawnGators();buildExtras();initBoatSpots()}]]);
  G.stats={nodes:nodes.length,roads:roads.length};
  skyUpdate(8);updateEnv();setQuality(1);resizePost();bindMapControls();
  const sv=readSave();if(sv){$('#cont').style.display='block'}
