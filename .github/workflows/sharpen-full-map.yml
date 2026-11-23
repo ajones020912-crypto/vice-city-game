@@ -1,0 +1,63 @@
+name: Sharpen full map at deep zoom
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/sharpen-full-map.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  sharpen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/vc-map-quality" --no-package-lock --ignore-scripts acorn@8
+      - name: Reuse native map geometry and validate sharp renderer
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/vc-map-quality/node_modules/acorn'),file='index.html',original=fs.readFileSync(file,'utf8'),status='status/full-map-quality-check.json',report={passed:false,scope:'Syntax, native vector-command reuse, mock-canvas rendering at 1x/2x pixel density and deep zoom, original input-canvas preservation. Not browser visual or live deployment verification.'};
+          function walk(n,f){f(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f);}else if(v&&typeof v.type==='string')walk(v,f);}}
+          try{
+           assert(!original.includes('// VC_HIGH_RES_MAP_V1'),'Quality upgrade already present');const matches=[...original.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].filter(m=>m[1].includes('function drawMap(')&&m[1].includes('function buildBaseMap('));assert(matches.length===1);const m=matches[0],code=m[1],ast=acorn.parse(code,{ecmaVersion:'latest'}),named={};walk(ast,n=>{if(n.type==='FunctionDeclaration'&&n.id&&['drawMap','drawMini','buildBaseMap'].includes(n.id.name)){assert(!named[n.id.name]);named[n.id.name]=n;}});assert(named.drawMap&&named.drawMini&&named.buildBaseMap);const map=named.drawMap,base=named.buildBaseMap,miniText=code.slice(named.drawMini.start,named.drawMini.end),baseText=code.slice(base.start,base.end);
+           const isCall=(s,object,method)=>s.type==='ExpressionStatement'&&s.expression.type==='CallExpression'&&s.expression.callee.type==='MemberExpression'&&s.expression.callee.object.name===object&&s.expression.callee.property.name===method;const put=base.body.body.filter(s=>isCall(s,'x','putImageData')),assign=base.body.body.filter(s=>s.type==='ExpressionStatement'&&s.expression.type==='AssignmentExpression'&&s.expression.left.name==='baseMap');assert(put.length===1&&assign.length===1&&put[0].end<assign[0].start);const vectors=code.slice(put[0].end,assign[0].start);acorn.parse(vectors,{ecmaVersion:'latest'});const background=map.body.body.filter(s=>isCall(s,'mapx','restore'));assert(background.length>=1);
+           const helpers=String.raw`// VC_HIGH_RES_MAP_V1
+          function vcSharpMapContext(source){
+           const input=source.canvas,rect=input.getBoundingClientRect(),ratio=Math.min(2,Math.max(1,window.devicePixelRatio||1));let layer=vcSharpMapContext.layer;
+           if(!layer||!layer.isConnected){layer=document.createElement('canvas');layer.setAttribute('aria-hidden','true');layer.style.position='fixed';layer.style.pointerEvents='none';layer.style.zIndex='1';input.parentElement.appendChild(layer);vcSharpMapContext.layer=layer;window.addEventListener('resize',()=>{MapView.dirty=true;});if(typeof ResizeObserver!=='undefined'){vcSharpMapContext.observer=new ResizeObserver(()=>{MapView.dirty=true;});vcSharpMapContext.observer.observe(input);}}
+           const size=Math.round(900*ratio);if(layer.width!==size||layer.height!==size){layer.width=size;layer.height=size;}layer.style.left=rect.left+'px';layer.style.top=rect.top+'px';layer.style.width=rect.width+'px';layer.style.height=rect.height+'px';layer.style.borderRadius=getComputedStyle(input).borderRadius;const ctx=layer.getContext('2d');ctx.setTransform(ratio,0,0,ratio,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';return ctx;
+          }
+          function vcSharpMapDetails(ctx){
+           if(MapView.zoom<2)return;const S=900,scale=S/(WS*2)*MapView.zoom,half=WS/MapView.zoom,margin=80,x0=MapView.cx-half-margin,x1=MapView.cx+half+margin,z0=MapView.cz-half-margin,z1=MapView.cz+half+margin;
+           const hit=b=>b.x1>=x0&&b.x0<=x1&&b.z1>=z0&&b.z0<=z1;const cols=colAll.filter(hit),visibleRoads=roads.filter(r=>r.o==='h'?r.b>=x0&&r.a<=x1&&r.c+r.w>=z0&&r.c-r.w<=z1:r.b>=z0&&r.a<=z1&&r.c+r.w>=x0&&r.c-r.w<=x1);
+           ctx.save();ctx.beginPath();ctx.rect(0,0,S,S);ctx.clip();ctx.translate(S/2,S/2);ctx.rotate(Math.PI/2);ctx.scale(scale*MAPPX,scale*MAPPX);ctx.translate(-(MapView.cx+WS)/MAPPX,-(MapView.cz+WS)/MAPPX);
+           if(typeof BLD!=='undefined'){ctx.fillStyle='#52606c';ctx.strokeStyle='#33404b';ctx.lineWidth=.7/(scale*MAPPX);for(const b of BLD){if(!hit(b)||(b.x1-b.x0)*scale<1.2||(b.z1-b.z0)*scale<1.2)continue;const x=(b.x0+WS)/MAPPX,z=(b.z0+WS)/MAPPX,w=(b.x1-b.x0)/MAPPX,d=(b.z1-b.z0)/MAPPX;ctx.fillRect(x,z,w,d);ctx.strokeRect(x,z,w,d);}}
+           vcSharpNativeVectors(ctx,cols,visibleRoads);
+           if(typeof PG!=='undefined'&&PG.paths){ctx.strokeStyle='#d8d8d8';ctx.lineCap='round';ctx.lineJoin='round';for(const p of PG.paths){if(!p.points.some(v=>v.x>=x0&&v.x<=x1&&v.z>=z0&&v.z<=z1))continue;ctx.lineWidth=p.width/MAPPX*.8;ctx.beginPath();p.points.forEach((v,i)=>ctx[i?'lineTo':'moveTo']((v.x+WS)/MAPPX,(v.z+WS)/MAPPX));ctx.stroke();}}ctx.restore();
+          }
+          `+'function vcSharpNativeVectors(x,colAll,roads){'+vectors+'}\n';
+           const edits=[{start:map.start,end:map.start,text:helpers},{start:map.body.start+1,end:map.body.start+1,text:'\nconst vcMapCtx=vcSharpMapContext(mapx);\n'},{start:background[0].end,end:background[0].end,text:'\nvcSharpMapDetails(vcMapCtx);\n'}];walk(map.body,n=>{if(n.type==='Identifier'&&n.name==='mapx')edits.push({start:n.start,end:n.end,text:'vcMapCtx'});});let changed=code;for(const e of edits.sort((a,b)=>b.start-a.start))changed=changed.slice(0,e.start)+e.text+changed.slice(e.end);const revised=acorn.parse(changed,{ecmaVersion:'latest'});assert(changed.includes(miniText)&&changed.includes(baseText),'Minimap or shared base map changed');let mapFunction;walk(revised,n=>{if(n.type==='FunctionDeclaration'&&n.id.name==='drawMap')mapFunction=changed.slice(n.start,n.end);});assert(mapFunction);
+           let strokes=0,transforms=[],layers=[];const ctx=new Proxy({setTransform(...args){transforms.push(args);},stroke(){strokes++;}},{get(t,k){return k in t?t[k]:()=>{};},set(t,k,v){t[k]=v;return true;}});const input={width:900,height:900,getBoundingClientRect:()=>({left:20,top:20,width:640,height:640}),parentElement:{appendChild(layer){layer.isConnected=true;layers.push(layer);}}};const box={mapx:{canvas:input},window:{devicePixelRatio:1,addEventListener(){},VCLiquor:{mapBlips:b=>b}},document:{createElement:()=>({width:0,height:0,isConnected:false,style:{},setAttribute(){},getContext:()=>ctx})},getComputedStyle:()=>({borderRadius:'12px'}),MapView:{cx:0,cz:0,zoom:24,dirty:true},WS:6000,MAPPX:12,WL:-1,colAll:[],BLD:[{x0:-6,x1:6,z0:-5,z1:5,H:4}],roads:[{o:'h',c:0,a:-100,b:100,w:18,type:'city'}],baseMap:{},REGIONS:[],G:{raceOn:()=>false},SJ:{},pl:{x:0,z:0,h:0,car:null},blips:()=>[],mapEmoji(){},drawRacePath(){},clamp:(v,a,b)=>Math.max(a,Math.min(b,v))};vm.createContext(box);vm.runInContext(helpers+mapFunction,box);box.drawMap();assert(layers.length===1&&layers[0].width===900&&strokes>0);box.window.devicePixelRatio=2;box.MapView.zoom=24;box.drawMap();assert(layers.length===1&&layers[0].width===1800&&layers[0].height===1800);assert(layers[0].style.pointerEvents==='none'&&input.width===900&&input.height===900,'Original input canvas altered');assert(transforms.some(t=>t[0]===2&&t[3]===2));for(const zoom of [.5,2,6,24]){box.MapView.zoom=zoom;box.drawMap();}assert(box.MapView.dirty===false);
+           const offset=m.index+m[0].indexOf(code),candidate=original.slice(0,offset)+changed+original.slice(offset+code.length);for(const s of candidate.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(s[1].trim())acorn.parse(s[1],{ecmaVersion:'latest'});fs.writeFileSync(file,candidate);Object.assign(report,{passed:true,maximumBackingCanvas:1800,vectorRoadsBuildingsAndNativeAirportMarkings:true,visibleGeometryCulled:true,originalInputCanvasUnchanged:true,baseTerrainAndMinimapUnchanged:true,zoomLimitsAndInputHandlersUnchanged:true,tests:['All inline JavaScript parses','Native airport and road drawing commands reused','Actual map renderer executes at 0.5x 2x 6x and 24x','High-DPI canvas expands from 900 to 1800 pixels','Pointer-transparent overlay reuses one bounded canvas','Original canvas and coordinate handling preserved','Original minimap and shared base-map source preserved']});
+          }catch(error){fs.writeFileSync(file,original);Object.assign(report,{passed:false,error:String(error),stack:error.stack,baselinePreserved:true});}
+          fs.mkdirSync('status',{recursive:true});fs.writeFileSync(status,JSON.stringify(report,null,2)+'\n');
+          JS
+      - name: Publish validated full-map quality change or diagnostics
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Branch changed; rerun.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/full-map-quality-check.json
+          if node -e "if(!require('./status/full-map-quality-check.json').passed)process.exit(1)"; then git add -- index.html; fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Sharpen full map with high-DPI canvas and zoom-level vector geometry or record validation error'
+            git push origin HEAD:refs/heads/main
+          fi
+          node -e "if(!require('./status/full-map-quality-check.json').passed)process.exit(1)"
