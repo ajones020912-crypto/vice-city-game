@@ -1,0 +1,63 @@
+{
+  "passed": true,
+  "branch": "main",
+  "reports": [
+    {
+      "merge": false,
+      "poses": 3,
+      "hipSpaceBounds": {
+        "min": [
+          -0.22214816510677338,
+          -0.3449999988079071,
+          -0.16293694078922272
+        ],
+        "max": [
+          0.22285287082195282,
+          0.12999999523162842,
+          0.1303952932357788
+        ]
+      },
+      "fit": {
+        "textureSize": 512,
+        "textureMethod": "generated diagonal denim weave with wash, height and roughness maps; not a photograph",
+        "bodyFitSamples": 681,
+        "expandedVertices": 542,
+        "maxExpansion": 0.04342627313169144,
+        "restPoseRadialClearance": 0.008,
+        "originalSkinWeightsUVsTopologyAndPocketCuffShaderPreserved": true,
+        "permanentBriefsRetained": true
+      }
+    },
+    {
+      "merge": true,
+      "poses": 3,
+      "hipSpaceBounds": {
+        "min": [
+          -0.22214816510677338,
+          -0.3449999988079071,
+          -0.16293694078922272
+        ],
+        "max": [
+          0.22285287082195282,
+          0.12999999523162842,
+          0.1303952932357788
+        ]
+      },
+      "fit": {
+        "textureSize": 512,
+        "textureMethod": "generated diagonal denim weave with wash, height and roughness maps; not a photograph",
+        "bodyFitSamples": 681,
+        "expandedVertices": 542,
+        "maxExpansion": 0.04342627313169144,
+        "restPoseRadialClearance": 0.008,
+        "originalSkinWeightsUVsTopologyAndPocketCuffShaderPreserved": true,
+        "permanentBriefsRetained": true
+      }
+    }
+  ],
+  "generatedDenimColorHeightAndRoughnessMaps": true,
+  "pocketsAndCuffsRetained": true,
+  "permanentUnderwearAndBodyUnchanged": true,
+  "tankAndBustStateUnchanged": true,
+  "scope": "Restored existing animated shorts with generated woven-denim maps and outward-only neutral-pose radial fitting around body and briefs. Structural and shader-template checks do not establish rendered fabric realism, complete garment clearance, all-animation clipping or live deployment. Texture is generated, not photographic."
+}
