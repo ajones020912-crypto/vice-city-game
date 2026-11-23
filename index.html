@@ -641,7 +641,7 @@ function flKeysD(x,z){let d=1e9;for(const [cx,cz,rx,rz,a] of FL_KEYS){const c=Ma
  const e=Math.hypot(u,v);if(e<3)d=Math.min(d,(e-1)*Math.min(rx,rz))}return d}
 // SALTON_AFB_V1: Salton Memorial Island (the southern Kestrel Key, enlarged) carries an air force base:
 // runway, taxiway, apron, hardened aircraft shelters, control tower, radar dome, perimeter fence and parked fighters.
-const AFB={cx:650,cz:-1180,rx:600,rz:205,runZ:-1250,taxiZ:-1185,apronZ:-1105};
+const AFB={cx:650,cz:-1180,rx:600,rz:205,runZ:-1250,taxiZ:-1185,apronZ:-1105,hasZ:-1097,hasR:11,hasL:26};
 function afbIsle(x,z){const dx=(x-AFB.cx)/AFB.rx,dz=(z-AFB.cz)/AFB.rz,a=Math.atan2(dz,dx);
  const wob=.025*Math.sin(a*5+.4)+.02*Math.sin(a*11+1.3);return (Math.pow(Math.pow(Math.abs(dx),4)+Math.pow(Math.abs(dz),4),.25)-1-wob)*AFB.rz}
 function buildAFB(){
@@ -657,9 +657,19 @@ function buildAFB(){
  box(C.cx,.18,C.taxiZ,700,.1,20,ASPH);for(let k=-6;k<=6;k++)box(C.cx+k*55,.24,C.taxiZ,20,.02,.4,YEL);
  for(const x of[C.cx-330,C.cx,C.cx+330])box(x,.17,(C.runZ+C.taxiZ)/2,22,.1,C.taxiZ-C.runZ-20,ASPH);
  box(C.cx-60,.16,C.apronZ,560,.1,95,CON);
- // hardened aircraft shelters (half-buried concrete vaults with dark doors)
- for(let i=0;i<4;i++){const x=C.cx-300+i*120,z=C.apronZ+22;bakeG('plain',GEO.cyl,x,0,z+11,0,10,22,10,[.6,.6,.57],Math.PI/2);
-  box(x,0,z-0.2,18,7.5,.5,[.18,.2,.22]);addCol(x-10,z-.5,x+10,z+22,9)}
+ // hardened aircraft shelters: hollow concrete vaults, open at the front (facing the taxiway) so you can go inside
+ const shellMat=new T.MeshStandardMaterial({color:0x777872,roughness:.85}),innerMat=new T.MeshStandardMaterial({color:0x34352f,roughness:.95,side:T.BackSide}),backMat=new T.MeshStandardMaterial({color:0x2c2d29,roughness:.95,side:T.DoubleSide}),R=AFB.hasR,Ln=AFB.hasL;
+ const shellGeo=new T.CylinderGeometry(R,R,Ln,28,1,true,-Math.PI/2,Math.PI);shellGeo.rotateX(-Math.PI/2); // half-tube along z, arch over the top
+ const backGeo=new T.CircleGeometry(R,28,0,Math.PI);
+ for(let i=0;i<4;i++){const x=C.cx-300+i*120,z0=AFB.hasZ,zc=z0+Ln/2;
+  const shell=new T.Mesh(shellGeo,shellMat);shell.position.set(x,0,zc);shell.castShadow=shell.receiveShadow=true;world.add(shell);
+  const inner=new T.Mesh(shellGeo,innerMat);inner.position.set(x,0,zc);inner.receiveShadow=true;world.add(inner);
+  const back=new T.Mesh(backGeo,backMat);back.position.set(x,0,z0+Ln);world.add(back);
+  // concrete apron floor inside + a dark doorway frame around the opening
+  box(x,.17,zc,2*R,.1,Ln,[.36,.36,.34]);
+  const arch=new T.Mesh(new T.TorusGeometry(R+.25,.45,8,28,Math.PI),new T.MeshStandardMaterial({color:0x5a5c5e,roughness:.8}));arch.position.set(x,0,z0);world.add(arch);
+  // walls are solid, the front is open
+  addCol(x-R-.6,z0,x-R+.9,z0+Ln,8);addCol(x+R-.9,z0,x+R+.6,z0+Ln,8);addCol(x-R,z0+Ln-.6,x+R,z0+Ln+.4,9)}
  // control tower, ops building, radar dome
  const tx=C.cx+300,tz=C.apronZ+15;box(tx,0,tz,7,20,7,[.85,.84,.8],0,true);box(tx,20,tz,10,4,10,[.2,.35,.42]);box(tx,24,tz,11,.6,11,[.3,.3,.32]);
  box(tx+28,0,tz+8,34,8,16,[.75,.74,.7],0,true);
@@ -673,7 +683,7 @@ function buildAFB(){
  for(const s of[-1,1])box(380+s*15,1.2,fz1,.3,.3,12,[.9,.2,.2]);                  // gate arms
 }
 function spawnAFBJets(){for(const c of cars.slice())if(c.afbStatic)removeCar(c);
- for(let i=0;i<3;i++){const x=AFB.cx-300+i*120,z=AFB.apronZ-8;const j=spawnCar('fighterJet',x,z,Math.PI,'parked',CAR_TYPES.fighterJet.colors[i%2]);j.afbStatic=true;j.keep=true}}
+ for(let i=0;i<3;i++){const x=AFB.cx-300+i*120,z=AFB.hasZ+AFB.hasL/2+.5;const j=spawnCar('fighterJet',x,z,Math.PI,'parked',CAR_TYPES.fighterJet.colors[i%2]);j.afbStatic=true;j.keep=true}} // parked inside the shelters, nose to the door
 function seaD(x,z){ // signed metres into the sea (>0 sea, <0 land)
  const n=shoreZ(x)-z;let isl=1e9;
  for(const [cx,cz,rx,rz] of ISL){const d=Math.hypot((x-cx)/rx,(z-cz)/rz);isl=Math.min(isl,(d-.62)*Math.min(rx,rz))}
@@ -1939,7 +1949,7 @@ const CAR_TYPES={
 for(const k of['taxi','police']){const b=CAR_TYPES[CAR_TYPES[k].base];CAR_TYPES[k]=Object.assign({},b,CAR_TYPES[k])}
 CAR_TYPES.propPlane={name:'Prop plane',aircraft:true,L:9.5,W:11.5,wb:3,wr:.2,mass:1800,power:1,top:48,grip:2,steer:.55,hp:180,colors:[0xe8e5d8,0x2e6fa8,0xd94b45]};
 CAR_TYPES.smallJet={name:'Small jet',aircraft:true,L:14,W:13,wb:4,wr:.2,mass:4200,power:1,top:72,grip:2,steer:.42,hp:240,colors:[0xf1f3f5,0x26384d,0xb8c7d8]};
-CAR_TYPES.fighterJet={name:'Fighter jet',aircraft:true,L:19,W:13.6,wb:5,wr:.3,mass:19000,power:1,top:125,grip:2,steer:.6,hp:320,colors:[0x7c858d,0x6f777e]};
+CAR_TYPES.fighterJet={name:'Fighter jet',aircraft:true,aiOnly:true,L:19,W:13.6,wb:5,wr:.3,mass:19000,power:1,top:125,grip:2,steer:.6,hp:320,colors:[0x7c858d,0x6f777e]};
 CAR_TYPES.speedboat={name:'Speedboat',boat:true,L:6.2,W:2.3,wb:3,wr:.3,mass:1300,power:11,top:42,grip:2.6,steer:.55,hp:120,colors:[0xffffff,0xff4f9a,0x2ec4e8,0xf0c44d,0x20252d]};
 CAR_TYPES.airboat={name:'Airboat',boat:true,airboat:true,L:4.8,W:2.4,wb:2.6,wr:.3,mass:900,power:9,top:32,grip:2.2,steer:.6,hp:100,colors:[0x5d8a5e,0x6b4a35,0x3d5a45,0xc9a24a]};
 function extrudeProfile(pts,depth,bevel){
@@ -3054,7 +3064,9 @@ function hurtPlayer(d){if(!pl.alive)return;if(pl.armor>0){const a=Math.min(pl.ar
 const LOCK={sedan:[.7,3.5,.35],suv:[.8,4,.4],van:[.6,3,.3],taxi:[.5,3,.3],sports:[.95,6,.85],police:[1,5,1]}; // [chance locked, seconds, alarm chance]
 function lockInfo(c){const t=c.t;if(t.aircraft)return[1,7,.6];if(t.boat)return[.5,3,.2];return LOCK[c.tk]||[.7,4,.4]}
 function carLocked(c){
- if(c.occ||c.owned||c.keep||c.missionCar||c===G.ownedCar||c.mode==='player')return false;
+ if(c.occ||c.owned||c===G.ownedCar||c.mode==='player')return false;
+ if(c.t.aircraft)return true; // PLANE_THEFT_V1: every plane that isn't yours has to be stolen
+ if(c.keep||c.missionCar)return false;
  if(c.lockRoll===undefined)c.lockRoll=Math.random();return c.lockRoll<lockInfo(c)[0];
 }
 function carEnterPrompt(c){
@@ -3079,12 +3091,12 @@ function updateAlarms(){if(G.state!=='play'){muteAlarms();return}const now=perfo
 function muteAlarms(){for(const a of ALARMS)a.h&&a.h.set(0,0)}
 {const pauseBeforeAlarms=pauseGame;pauseGame=function(){const r=pauseBeforeAlarms.apply(this,arguments);if(G.state!=='play')muteAlarms();return r}}
 function tryEnterCar(c){
- if(!c||c.dead||pl.car)return;
+ if(!c||c.dead||pl.car||c.t.aiOnly)return;
  if(G.breakin){if(G.breakin.c===c)return;G.breakin=null}
  if(c.occ&&c.occ!=='player'){if(c.speed>4){toast('Too fast: you can only carjack a stopped car',1600);return}
   G.breakin={c,t:0,need:1.1,jack:true,alarm:false,rang:false};return}
  if(!carLocked(c)){enterCar(c);return}
- const [,need,alarm]=lockInfo(c);G.breakin={c,t:0,need,jack:false,alarm:Math.random()<alarm,rang:false};pl.vx=pl.vz=0;
+ const [,need,alarm]=lockInfo(c),air=!!c.t.aircraft;G.breakin={c,t:0,need,jack:false,alarm:air||Math.random()<alarm,alarmAt:air?.5+Math.random()*.25:.4,rang:false};pl.vx=pl.vz=0;
 }
 function breakinPrompt(){const b=G.breakin,pc=Math.min(99,Math.floor(b.t/b.need*100));
  const bar='▮'.repeat(Math.round(pc/10))+'▯'.repeat(10-Math.round(pc/10));
@@ -3095,11 +3107,11 @@ function updateBreakin(dt){const b=G.breakin;if(!b)return;const c=b.c;
  if(pl.car||!pl.alive||c.dead||d>4.8||(b.jack?c.speed>4:!!c.occ)){G.breakin=null;G.hudDirty=true;if(!pl.car&&pl.alive&&!c.dead)toast(b.jack?'Carjack failed':'Break-in cancelled',1200);return}
  if(b.jack&&c.inp){c.inp.thr=0;c.inp.hb=1;c.vx*=.85;c.vz*=.85} // driver holds still while you grab the door
  b.t+=dt;
- if(b.alarm&&!b.rang&&b.t>b.need*.4){b.rang=true;startAlarm(c);addWanted(1,'alarm');toast('🚨 Car alarm!',1600);}
+ if(b.alarm&&!b.rang&&b.t>b.need*(b.alarmAt||.4)){b.rang=true;startAlarm(c);addWanted(1,'alarm');toast('🚨 Car alarm!',1600);}
  if(b.t>=b.need){G.breakin=null;c.lockRoll=1;enterCar(c)}
 }
 function enterCar(c){
- if(!c||pl.car||c.dead)return;
+ if(!c||pl.car||c.dead||c.t.aiOnly)return;
  if(c.occ&&c.occ!=='player'){ // carjack
   if(c.cops>0)addWanted(2,'jack');else addWanted(c.mode==='parked'?0:1,'jack');
   const p=activatePed(c.x+Math.cos(c.h)*2.4,c.z-Math.sin(c.h)*2.4);if(p){p.flee(c.x,c.z,10)}toast('Carjacked!');
@@ -3113,7 +3125,7 @@ function ejectPlayer(force){const c=pl.car;if(!c)return;const sn=Math.sin(c.h),c
  pl.y=heightAt(pl.x,pl.z)+(force?.5:0);pl.vx=c.vx*(force?1:0);pl.vz=c.vz*(force?1:0);pl.vy=force?4:0;
  c.occ=null;if(c.mode==='player'){c.mode=c.dead?'wreck':'parked'}c.inp.thr=0;c.inp.steer=0;c.inp.hb=0;pl.car=null;plH.visible=true;
  $('#vehicle').textContent='On foot';$('#speedo').style.display='none';audio.door();G.hudDirty=true;camYaw=c.h+Math.PI;}
-function nearestCar(maxD=4.6){let best=null,bd=maxD;for(const c of cars){if(c.dead)continue;const d=Math.hypot(c.x-pl.x,c.z-pl.z);if(d<bd){bd=d;best=c}}return best}
+function nearestCar(maxD=4.6){let best=null,bd=maxD;for(const c of cars){if(c.dead||c.t.aiOnly)continue;const d=Math.hypot(c.x-pl.x,c.z-pl.z)-(c.t.aircraft?Math.max(c.t.L,c.t.W)/2:0);if(d<bd){bd=d;best=c}}return best}
 function playerOnFoot(dt){
  const f=(keys['w']||keys['arrowup']?1:0)-(keys['s']||keys['arrowdown']?1:0),sd=(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0);
  const run=keys['shift'],aiming=pl.weapon!=='fists'&&(mouseDown||pl.aim>0);
@@ -4343,7 +4355,7 @@ function simulate(dt){updateWaypoint();updateBreakin(dt);updateFlightHud();updat
   if(pl.focusT>0)pl.focusT-=G.rdt||dt;
   // wanted decay
   if(pl.wanted>0){let seen=false;for(const c of cars)if(c.mode==='cop'&&!c.dead&&Math.hypot(c.x-pl.x,c.z-pl.z)<70&&policeLineOfSight(c.x,c.y+1.4,c.z))seen=true;for(const p of cops)if(p.active&&!p.dead&&Math.hypot(p.x-pl.x,p.z-pl.z)<60&&policeLineOfSight(p.x,p.y+1.6,p.z))seen=true;
-   if(heliSees()||(!pl.inside&&cctvNear()))seen=true;if(seen){pl.sightT=0;G.lastSeen={x:pl.x,z:pl.z}}else pl.sightT+=dt;if(pl.sightT>((pl.heat.cctv?20:14)-(!pl.heat.clothes?3:0)-(!pl.heat.partner?2:0))){pl.sightT=8;pl.crime=Math.max(0,pl.crime-(pl.crime>=22?8:pl.crime>=14?6:4));const w=starsFor(pl.crime);if(w<pl.wanted){pl.wanted=w;G.hudDirty=true;toast(w?'Wanted level dropped: '+'★'.repeat(w):'You lost the cops!')}}}
+   if((G.fighterSees&&G.fighterSees())||heliSees()||(!pl.inside&&cctvNear()))seen=true;if(seen){pl.sightT=0;G.lastSeen={x:pl.x,z:pl.z}}else pl.sightT+=dt;if(pl.sightT>((pl.heat.cctv?20:14)-(!pl.heat.clothes?3:0)-(!pl.heat.partner?2:0))){pl.sightT=8;pl.crime=Math.max(0,pl.crime-(pl.crime>=22?8:pl.crime>=14?6:4));const w=starsFor(pl.crime);if(w<pl.wanted){pl.wanted=w;G.hudDirty=true;toast(w?'Wanted level dropped: '+'★'.repeat(w):'You lost the cops!')}}}
   // Pay 'n' Spray
   if(pl.car&&!G.busy){for(const g of G.spray){if(Math.hypot(pl.car.x-g.x,pl.car.z-g.z)<4.5&&!pl.car.t.boat&&(pl.wanted>0||pl.car.hp<maxHp(pl.car)*.8)){if(pl.cash<75){if(!(G.sprayWarn>G.time)){toast('Pay \'n\' Spray costs $75');G.sprayWarn=G.time+4}continue}G.busy=true;pl.cash-=75;fadeTo(1,350);const car=pl.car;setTimeout(()=>{car.hp=maxHp(car);if(car._crumple)car._crumple.repairRequested=true;car.fire=0;car.dead=false;clearWanted();{const nc=pick2(car.t.colors||[0xffffff]);car.color=nc;car.v.body.material=paintMat(nc)}fadeTo(0,350);G.busy=false;toast('Resprayed & repaired — heat cleared');G.hudDirty=true;for(const c of cars)if(c.mode==='cop')c.parkedCop=false},500)}}}
   updateMission(dt);
@@ -5703,8 +5715,8 @@ function updateRaceTrack(dt){
 {const speedOrig=updateSpeedingEnforcement;updateSpeedingEnforcement=function(){if(raceOn()){resetSpeedingEnforcement();return}return speedOrig.apply(this,arguments)}}
 {const redOrig=updateRedLights;updateRedLights=function(){if(raceOn()){RL.node=null;RL.runs=[];return}return redOrig.apply(this,arguments)}}
 {const simRT=simulate;simulate=function(dt){const r=simRT.apply(this,arguments);try{updateRaceTrack(Number.isFinite(dt)?dt:0)}catch(e){console.error('race track',e)}return r}}
-// INTERCEPTORS_V1: at 5+ stars while you are flying, two fighters scramble from Salton Memorial AFB, chase you with
-// lead pursuit, fire homing missiles (with a lock warning) and use the cannon up close. They break off when you land,
+// INTERCEPTORS_V2 (AI only): at 5+ stars while you are flying, two fighters scramble from Salton Memorial AFB, chase
+// you with lead pursuit and shoot you down with their cannon (no missiles). They break off when you land,
 // leave the aircraft or drop below 5 stars.
 const FJ={list:[],missiles:[],warnT:0,spawnT:0,mGeo:null};
 function fjTarget(){const c=pl.car;return pl.wanted>=5&&c&&c.t.aircraft&&c.airborne&&!c.dead?c:null}
@@ -5714,9 +5726,9 @@ function spawnInterceptor(i){const tgt=pl.car,ang=Math.atan2(AFB.cx-tgt.x,AFB.cz
  c.fighter={i,missileT:5+i*2.5,gunT:0,leave:false};c.place();FJ.list.push(c);return c}
 function stepFighter(c,dt){const F=c.fighter,tgt=fjTarget();if(!tgt)F.leave=true;
  let tx,ty,tz,want;
- if(!F.leave){const lead=Math.min(3,Math.hypot(tgt.x-c.x,tgt.z-c.z)/Math.max(60,c.as)),side=(F.i?1:-1)*55;
+ if(!F.leave){const dd=Math.hypot(tgt.x-c.x,tgt.z-c.z),lead=Math.min(3,dd/Math.max(60,c.as)),side=(F.i?1:-1)*55*clamp((dd-450)/700,0,1); // spread out on approach, line up behind you to shoot
   tx=tgt.x+tgt.vx*lead+Math.cos(tgt.h)*side;tz=tgt.z+tgt.vz*lead-Math.sin(tgt.h)*side;ty=tgt.y+(tgt.vy||0)*lead+8;
-  const d=Math.hypot(tgt.x-c.x,tgt.z-c.z);want=d<300?Math.max(55,(tgt.as||tgt.speed)+6):118}
+  const d=Math.hypot(tgt.x-c.x,tgt.z-c.z);want=d<650?Math.max(55,(tgt.as||tgt.speed)+(d>250?18:4)):118}
  else{tx=c.x+Math.sin(c.h)*500;tz=c.z+Math.cos(c.h)*500;ty=c.y+40;want=118}
  const dh=wrapA(Math.atan2(tx-c.x,tz-c.z)-c.h),turn=.62;c.h+=clamp(dh,-turn*dt,turn*dt);
  c.bank+=(clamp(-dh*1.8,-1.25,1.25)-c.bank)*Math.min(1,dt*3);
@@ -5731,43 +5743,20 @@ function stepFighter(c,dt){const F=c.fighter,tgt=fjTarget();if(!tgt)F.leave=true
  if(F.leave){if(!tgt&&Math.hypot(c.x-pl.x,c.z-pl.z)>2600)removeInterceptor(c);return}
  // weapons
  const dx=tgt.x-c.x,dy=tgt.y-c.y,dz=tgt.z-c.z,d=Math.hypot(dx,dy,dz),off=Math.abs(wrapA(Math.atan2(dx,dz)-c.h));
- F.missileT-=dt;if(F.missileT<=0&&d<1300&&d>150&&off<.4){F.missileT=7+Math.random()*3;launchMissile(c,tgt)}
- F.gunT-=dt;if(d<420&&off<.14&&F.gunT<=0){F.gunT=.09;const sn=Math.sin(c.h),cs=Math.cos(c.h);
+ F.gunT-=dt;if(d<520&&off<.16&&F.gunT<=0){F.gunT=.09;const sn=Math.sin(c.h),cs=Math.cos(c.h);
   emit(c.x+sn*9,c.y+.3,c.z+cs*9,dx/d*420+(Math.random()-.5)*20,dy/d*420,dz/d*420+(Math.random()-.5)*20,.5,.25,.15,[1,.85,.4],[1,.5,.2],0,1);
-  if(Math.random()<.22*(1-d/460))damageCar(tgt,5,'shot')}
+  if(Math.random()<.3*(1-d/560))damageCar(tgt,6,'shot')}
  c.age+=dt;
 }
 function removeInterceptor(c){const i=FJ.list.indexOf(c);if(i>=0)FJ.list.splice(i,1);if(cars.includes(c))removeCar(c)}
-function launchMissile(from,tgt){
- if(!FJ.mGeo){FJ.mGeo=new T.CylinderGeometry(.14,.14,3,8);FJ.mGeo.rotateX(Math.PI/2);FJ.mMat=new T.MeshStandardMaterial({color:0xeeeeee,roughness:.5,metalness:.3});FJ.fMat=new T.MeshBasicMaterial({color:0xffb040})}
- const g=new T.Group(),body=new T.Mesh(FJ.mGeo,FJ.mMat),flame=new T.Mesh(new T.SphereGeometry(.35,8,6),FJ.fMat);flame.position.z=-1.8;flame.scale.set(1,1,2.2);g.add(body,flame);world.add(g);
- const sn=Math.sin(from.h),cs=Math.cos(from.h),sp=from.as+40;
- FJ.missiles.push({g,x:from.x+sn*3,y:from.y-.6,z:from.z+cs*3,vx:sn*sp,vy:0,vz:cs*sp,t:0,tgt});
- if(tgt===pl.car){toast('⚠ MISSILE LAUNCH — break hard!',1800);G.shake=Math.max(G.shake||0,.15)}
-}
-function updateMissiles(dt){
- for(let i=FJ.missiles.length-1;i>=0;i--){const m=FJ.missiles[i],t=m.tgt;m.t+=dt;
-  let vx=m.vx,vy=m.vy,vz=m.vz;const sp=Math.min(210,Math.hypot(vx,vy,vz)+60*dt);
-  if(t&&!t.dead){let ax=t.x-m.x,ay=t.y-m.y,az=t.z-m.z;const ad=Math.hypot(ax,ay,az)||1;ax/=ad;ay/=ad;az/=ad;const l=Math.hypot(vx,vy,vz)||1;let ux=vx/l,uy=vy/l,uz=vz/l;
-   const turn=Math.min(1,1.5*dt/Math.max(.05,Math.acos(clamp(ux*ax+uy*ay+uz*az,-1,1))));ux+=(ax-ux)*turn;uy+=(ay-uy)*turn;uz+=(az-uz)*turn;const k=Math.hypot(ux,uy,uz)||1;vx=ux/k*sp;vy=uy/k*sp;vz=uz/k*sp;
-   if(ad<10){explosion(m.x,m.y,m.z,1.1);audio.boom();if(t===pl.car){G.shake=1;toast('💥 Missile hit!',1400)}damageCar(t,135,'shot');kill(i);continue}}
-  m.vx=vx;m.vy=vy;m.vz=vz;m.x+=vx*dt;m.y+=vy*dt;m.z+=vz*dt;m.g.position.set(m.x,m.y,m.z);m.g.lookAt(m.x+vx,m.y+vy,m.z+vz);
-  emit(m.x,m.y,m.z,(Math.random()-.5)*2,(Math.random()-.5)*2,(Math.random()-.5)*2,2.4,.4,2.6,[.92,.92,.92],[.6,.6,.62],-.1,.6);
-  if(m.t>9||m.y<heightAt(m.x,m.z)){if(m.t<=9)explosion(m.x,m.y,m.z,.8);kill(i)}}
- function kill(i){const m=FJ.missiles[i];world.remove(m.g);m.g.children[1].geometry.dispose();FJ.missiles.splice(i,1)}
- // lock warning beeps while a missile is coming for you
- FJ.warnT-=dt;const inbound=FJ.missiles.find(m=>m.tgt===pl.car&&Math.hypot(m.x-pl.car.x,m.z-pl.car.z)<1500);
- if(inbound&&FJ.warnT<=0){FJ.warnT=Math.max(.12,Math.hypot(inbound.x-pl.car.x,inbound.z-pl.car.z)/1500*.6);audio.beep&&audio.beep(1500)}
-}
 function updateInterceptors(dt){
  const tgt=fjTarget();FJ.spawnT-=dt;
  if(tgt){const active=FJ.list.filter(c=>!c.fighter.leave).length;if(active<2&&FJ.spawnT<=0){if(!FJ.list.length)toast('✈ Fighter jets scrambled from Salton Memorial AFB!',2600);spawnInterceptor(FJ.list.length%2);FJ.spawnT=4}}
  for(const c of FJ.list.slice())if(!cars.includes(c)||c.dead)FJ.list.splice(FJ.list.indexOf(c),1);
- updateMissiles(dt);
 }
-G.stepFighter=stepFighter;
+G.stepFighter=stepFighter;G.fighterSees=()=>!!pl.car&&FJ.list.some(c=>!c.fighter.leave&&Math.hypot(c.x-pl.car.x,c.z-pl.car.z)<1500);
 {const simFJ=simulate;simulate=function(dt){const r=simFJ.apply(this,arguments);try{updateInterceptors(Number.isFinite(dt)?dt:0)}catch(e){console.error('interceptors',e)}return r}}
-{const ngFJ=newGame;newGame=function(){for(const c of FJ.list.slice())removeInterceptor(c);for(const m of FJ.missiles)world.remove(m.g);FJ.missiles.length=0;return ngFJ.apply(this,arguments)}}
+{const ngFJ=newGame;newGame=function(){for(const c of FJ.list.slice())removeInterceptor(c);return ngFJ.apply(this,arguments)}}
 const speedingNativeClearWanted=clearWanted;clearWanted=function(){resetSpeedingEnforcement();return speedingNativeClearWanted.apply(this,arguments);};
 const speedingNativeNewGame=newGame;newGame=function(){resetSpeedingEnforcement();return speedingNativeNewGame.apply(this,arguments);};
 
