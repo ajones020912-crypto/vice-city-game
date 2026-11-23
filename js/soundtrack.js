@@ -428,7 +428,7 @@
     const motif=Array.from({length:16},(_,i)=>scale[(i*3+seed*2+Math.floor(i/4))%scale.length]);
     return {id,title,mood:style+' venue original',bpm,swing:style==='funk'||style==='blues'?0.12:0,form:[['intro',4],['groove',8],['hook',8],['break',4]],prog,
       step(E,s){const {t,st,sec,ch,beat}=s,full=sec.name==='groove'||sec.name==='hook',club=style==='club';
-        if(st===0)E.pad(ch.notes.map(n=>n+((style==='lounge'||style==='jazz')?12:0)),beat*4,club?0.12:0.065,{cut:club?2100:style==='lounge'?1100:1600,att:sec.name==='intro'?0.7:0.2,verb:0.48});
+        if(st===0)E.pad(t,ch.notes.map(n=>n+((style==='lounge'||style==='jazz')?12:0)),beat*4,club?0.12:0.065,{cut:club?2100:style==='lounge'?1100:1600,att:sec.name==='intro'?0.7:0.2,verb:0.48});
         if(club){
           if(full&&st%4===0)E.kick(t,st===0?1:0.82);if(full&&(st===4||st===12))E.clap(t,0.72);if(full&&st%2===0)E.hat(t,st%4===0?0.18:0.11,st===14);
           if(st%4===0)E.bass(t,ch.bass+(st===8?12:0),beat*0.82,0.68,{type:'reese',cut:520,q:3});
