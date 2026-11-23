@@ -1,0 +1,49 @@
+name: Set Lucia tank U-neck between previous two cuts
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-tank-midpoint-u-neck.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  midpoint:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [main, lucia-outfits]
+    concurrency:
+      group: lucia-u-neck-${{ matrix.target }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    env:
+      TARGET_BRANCH: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.target }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-midneck" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Set front neckline to the pointwise midpoint of the two approved curves
+        run: |
+          node <<'JS'
+          const fs=require('fs'),acorn=require(process.env.RUNNER_TEMP+'/lucia-midneck/node_modules/acorn');let s=fs.readFileSync('js/reference-characters.js','utf8');if(s.includes('// LUCIA_MIDPOINT_U_NECK_V3'))process.exit(0);if(!s.includes('// LUCIA_TANK_BRA_COVERAGE_V2'))throw Error('Latest higher-coverage tank required');fs.writeFileSync('/tmp/lucia-midneck-before.js',s);const from='neckHalf=.075,neckBase=Math.max(shoulderY-.085,braCoverageTop+.012),neckDepth=.100',to='neckHalf=.080,neckBase=((shoulderY-.155)+Math.max(shoulderY-.085,braCoverageTop+.012))*.5,neckDepth=.080*.080*.5*(.135/(.085*.085)+.100/(.075*.075))';if(s.split(from).length!==2)throw Error('Reviewed front neckline definition changed');s='// LUCIA_MIDPOINT_U_NECK_V3\n'+s.replace(from,to);acorn.parse(s,{ecmaVersion:'latest'});fs.writeFileSync('/tmp/lucia-midneck-after.js',s);
+          JS
+      - name: Verify midpoint shape retained straps and unchanged base
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-midneck/node_modules/three');if(!fs.existsSync('/tmp/lucia-midneck-after.js')){assert(fs.readFileSync('js/reference-characters.js','utf8').includes('// LUCIA_MIDPOINT_U_NECK_V3'));process.exit(0);}function load(file){const c={window:{},console,Math};vm.createContext(c);for(const p of ['js/characters.js',file])vm.runInContext(fs.readFileSync(p,'utf8'),c);return c.window.VCCharacters;}const old=load('/tmp/lucia-midneck-before.js'),cur=load('/tmp/lucia-midneck-after.js');function signature(h){const rows=[];h.traverse(o=>{if(o.userData.luciaOuterTank)return;const row=[o.type,o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()];if(o.isMesh)row.push(Object.keys(o.geometry.attributes).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.metalness,m.transparent,m.opacity,m.skinning]));rows.push(row);});return JSON.stringify(rows);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(T,id))===signature(cur.build(T,id)),'Other character changed');let poses=0,curveChecks=0;const dimensions=[];for(const merge of [false,true]){const a=old.build(T,'luciaC',{merge}),h=cur.build(T,'luciaC',{merge}),u=h.userData,fit=u.luciaTankUNeck,previous=a.userData.luciaTankUNeck,group=h.getObjectByName('lucia-dark-grey-tank-outfit'),body=h.getObjectByName('lucia-dark-grey-tank-top'),legacyBase=fit.shoulderY-.155;assert(signature(a)===signature(h),'Body bra underwear swimsuit or rig changed');assert(fit.neckBase>legacyBase&&fit.neckBase<previous.neckBase&&fit.strapWidth===previous.strapWidth&&fit.strapCenter===previous.strapCenter&&fit.hem===previous.hem);for(const x of [-.080,-.060,-.030,0,.030,.060,.080]){const legacy=legacyBase+.135*Math.pow(x/.085,2),latest=previous.neckBase+previous.neckDepth*Math.pow(x/previous.neckHalf,2),actual=fit.neckBase+fit.neckDepth*Math.pow(x/fit.neckHalf,2);assert(Math.abs(actual-(legacy+latest)*.5)<1e-9,'Neckline is not halfway between prior curves');curveChecks++;}for(const side of ['left','right']){const name='lucia-dark-grey-tank-'+side+'-shoulder-strap',before=a.getObjectByName(name),after=h.getObjectByName(name);assert(before&&after);for(const key of Object.keys(before.geometry.attributes))assert.deepStrictEqual(Array.from(before.geometry.attributes[key].array),Array.from(after.geometry.attributes[key].array),'Strap changed');assert.deepStrictEqual(Array.from(before.geometry.index.array),Array.from(after.geometry.index.array));}assert(group.visible&&u.luciaTankVisible&&u.luciaOutfit===a.userData.luciaOutfit&&h.getObjectByName('lucia-tailored-bra').visible&&h.getObjectByName('lucia-fitted-black-briefs').visible);h.updateMatrixWorld(true);const inverse=new T.Matrix4().copy(u.spine.matrixWorld).invert();function frontHits(x,y){const origin=new T.Vector3(x,y,1).applyMatrix4(u.spine.matrixWorld),direction=new T.Vector3(0,0,-1).transformDirection(u.spine.matrixWorld);return new T.Raycaster(origin,direction,0,2).intersectObject(body,false).filter(hit=>hit.point.clone().applyMatrix4(inverse).z>.02);}assert(frontHits(0,fit.neckBase-.020).length>0);assert(frontHits(0,fit.neckBase+.025).length===0);assert(frontHits(.060,fit.neckBase+.025).length>0);group.traverse(o=>{if(o.isMesh)assert(o.material.color.getHex()===0x3b3d40&&!o.material.transparent&&o.material.opacity===1&&o.material.bumpMap&&o.material.bumpScale===.00022);});dimensions.push({merge,originalCentre:legacyBase,higherCentre:previous.neckBase,midpointCentre:fit.neckBase,midpointHalfWidth:fit.neckHalf,midpointDepthParameter:fit.neckDepth});for(const angle of [-.7,0,.7]){u.spine.rotation.y=angle*.2;u.A[0].sh.rotation.x=angle;u.A[1].sh.rotation.x=-angle;h.updateMatrixWorld(true);h.traverse(o=>{assert(o.matrixWorld.elements.every(Number.isFinite));if(o.isMesh)for(const key of ['position','normal'])if(o.geometry.attributes[key])assert(Array.from(o.geometry.attributes[key].array).every(Number.isFinite));});poses++;}}fs.copyFileSync('/tmp/lucia-midneck-after.js','js/reference-characters.js');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-midpoint-u-neck-check.json',JSON.stringify({passed:true,branch:process.env.TARGET_BRANCH,neckline:'pointwise midpoint between original deeper U-neck and higher coverage U-neck',curveChecks,dimensions,poseChecks:poses,latestStrapsAndUnderarmsPreserved:true,defaultDarkGreyRibbingAndOpacityPreserved:true,baseGarmentsBodySkinToneAndRigUnchanged:true,otherCharactersUnchanged:true,scope:'Front neckline only. Curve interpolation and structural checks do not verify rendered fit, resulting bra exposure, all-pose clipping or live deployment. The older higher-neck coverage percentage does not certify this midpoint revision.'},null,2)+'\n');
+          JS
+      - name: Publish validated midpoint neckline to selected branch
+        run: |
+          git fetch origin "$TARGET_BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/"$TARGET_BRANCH")" || { echo 'Target branch changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- js/reference-characters.js status/lucia-midpoint-u-neck-check.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Set Lucia front U-neck halfway between previous cuts while preserving wider straps'
+          git push origin HEAD:"refs/heads/$TARGET_BRANCH"
