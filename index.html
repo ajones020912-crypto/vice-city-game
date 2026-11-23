@@ -740,8 +740,8 @@ function seaD(x,z){ // signed metres into the sea (>0 sea, <0 land)
 const gladesMask=(x,z)=>sstep(-2300,-2000,x)*(1-sstep(1300,1700,x))*sstep(3200,3450,z)*(1-sstep(4400,4650,z))*(.75+.25*Math.sin(x*.003+z*.002));
 const swampMask=(x,z)=>Math.max(gladesMask(x,z),swampMask0(x,z));
 const swampMask0=(x,z)=>sstep(440,520,x)*sstep(-300,-230,z)*sstep(520,380,z)*(1-sstep(1400,1600,x));
-// AIRPORT_FLAT_V2: expanded flat pad for Vice City International Airport (center -790,-45).
-const airportMask=(x,z)=>(1-sstep(435,525,Math.abs(x+790)))*(1-sstep(307.5,397.5,Math.abs(z+45)));
+// AIRPORT_FLAT_V3: relocated flat pad southwest of Vice City (center -1700,680).
+const airportMask=(x,z)=>(1-sstep(435,525,Math.abs(x+1700)))*(1-sstep(307.5,397.5,Math.abs(z-680)));
 const hillMask=(x,z)=>Math.max(hillMask0(x,z),sstep(-1750,-2100,x)*sstep(-350,-120,z)*(1-sstep(800,1050,z))*sstep(-3600,-3300,x));
 const hillMask0=(x,z)=>sstep(-3700,-3300,x)*sstep(-640,-1100,x)*sstep(400,200,z)*sstep(-400,-280,z);
 function rawH(x,z){
@@ -1663,7 +1663,7 @@ function buildBaseMap(){
   if(r.o==='h'){x.moveTo((r.a+WS)/MAPPX,(r.c+WS)/MAPPX);x.lineTo((r.b+WS)/MAPPX,(r.c+WS)/MAPPX)}else{x.moveTo((r.c+WS)/MAPPX,(r.a+WS)/MAPPX);x.lineTo((r.c+WS)/MAPPX,(r.b+WS)/MAPPX)}x.stroke()}
  baseMap=c;
 }
-const REGIONS=[['VICE CITY INTERNATIONAL AIRPORT',-1270,-420,-310,330,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['SUNRISE FARMS',1600,600,3600,3150,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
+const REGIONS=[['VICE CITY INTERNATIONAL AIRPORT',-2180,305,-1220,1055,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['SUNRISE FARMS',1600,600,3600,3150,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
 function zoneName(x,z){for(const r of REGIONS)if(x>r[1]&&x<r[3]&&z>r[2]&&z<r[4])return r[0];if(z<shoreZ(x))return'PALMERA GULF';return'PALMERA COUNTRYSIDE'}
 
 function clearStructureFootprint(x0,z0,x1,z1,margin=1.2){
@@ -1799,7 +1799,7 @@ function forceShopDoors(){
 function buildAirport(){
  // VICE_CITY_INTERNATIONAL_AIRPORT_V1
  const SCALE=1.5;
- const cx=-790,cz=-45,ground=heightAt(cx,cz)+.65;
+ const cx=-1700,cz=680,ground=heightAt(cx,cz)+.65;
  decks.push({x0:cx-435,x1:cx+435,z0:cz-307.5,z1:cz+307.5,y:ground});
  const mat=(color,roughness=.9)=>new T.MeshStandardMaterial({color,roughness});
  const asphalt=mat(0x454a4d),concrete=mat(0xb5b8b2),grass=mat(0x68765a),white=mat(0xe9e8dc),yellow=mat(0xe5bd42),metal=mat(0x64747a),roof=mat(0x34434a),glass=mat(0x315e70,.28);
@@ -4595,7 +4595,7 @@ function takeOut(e,at){
  else{const rs=roadSpotNear(at.x,at.z);p=[rs.x,rs.z];h=rs.h}
  if(c){if(c===pl.car){toast("You're already in it");return}c.x=p[0];c.z=p[1];c.h=h;c.vx=c.vz=0;c.vy=0;c.airborne=false;c.inp={thr:0,steer:0,hb:0};c.mode='parked';c.y=boat?Math.max(WL-.08,heightAt(p[0],p[1])):heightAt(p[0],p[1]);c.place()}
  else{c=boat?spawnBoat(e.tk,p[0],p[1],h,e.color):spawnCar(e.tk,p[0],p[1],h,'parked',e.color);c.gid=e.gid;c.up=e.up||null;c.hp=maxHp(c);c.fuel=100;c.owned=true;c.keep=true}
- if(!boat&&!aircraft)G.ownedCar=c;toast(aircraft?'✈ '+c.t.name+' is waiting at Mount Orrin Airport':boat?'⛵ '+c.t.name+' is waiting on the water nearby':'🚗 '+c.t.name+' is waiting at the curb',2600)}
+ if(!boat&&!aircraft)G.ownedCar=c;toast(aircraft?'✈ '+c.t.name+' is waiting at Vice City International Airport':boat?'⛵ '+c.t.name+' is waiting on the water nearby':'🚗 '+c.t.name+' is waiting at the curb',2600)}
 function renderVehiclePanel(){const box=$('#vehicleList');box.innerHTML='';if(!pl.garage||!pl.garage.length){const msg=document.createElement('div');msg.className='vehicle-empty';msg.textContent='You have not purchased any vehicles yet. Visit Sunshine Autos 🚘 on the map to buy your first vehicle.';box.appendChild(msg);return}for(const e of pl.garage){const t=CAR_TYPES[e.tk];if(!t)continue;const row=document.createElement('div');row.className='vehicle-entry';const label=document.createElement('span');label.textContent=(t.aircraft?'✈ ':t.boat?'⛵ ':'🚗 ')+t.name;const btn=document.createElement('button');btn.textContent='SPAWN';btn.onclick=()=>{if(pl.car||pl.inside){toast('Exit your vehicle and go outside first');return}takeOut(e,{x:pl.x,z:pl.z});$('#vehiclePanel').style.display='none'};row.append(label,btn);box.appendChild(row)}}
 function garageItems(at){const out=[],oc=G.ownedCar;
  if(oc&&!oc.dead&&!oc.t.boat&&pl.car!==oc&&hyp(oc.x,oc.z,at.x,at.z)<60&&(oc.gid||pl.garage.length<8))out.push({n:'🅿 Store your '+oc.t.name,p:0,btn:'Store',d:oc.gid?'Back into your garage':'Adds it to your garage ('+pl.garage.length+'/8)',f:()=>storeCar(oc)});
@@ -4614,7 +4614,7 @@ SHOP_ITEMS.mods=()=>{const c=pl.car;if(!c||c.t.aircraft||c.t.boat)return[];const
  out.push({n:'Respray (random color)',p:100,d:'New look — drops vehicle heat',f:()=>{const nc=pick2(c.t.colors||[0xffffff]);c.color=nc;c.v.body.material=paintMat(nc);if(pl.heat)pl.heat.vehicle=0;syncGarage(c)}});
  const hurt=c.hp<maxHp(c)-.5||!!(c._crumple&&c._crumple.dirty);out.push({n:'Repair',p:hurt?60:0,btn:hurt?null:'OK',locked:!hurt,d:'Body '+Math.round(c.hp/maxHp(c)*100)+'%',f:()=>{c.hp=maxHp(c);if(c._crumple)c._crumple.repairRequested=true;c.fire=0}});
  return out};
-SHOP_ITEMS.dealer=()=>DEALER_STOCK.map(([tk,price,req])=>{const t=CAR_TYPES[tk],lk=pl.rep<req;return{n:(t.aircraft?'✈ ':t.boat?'⛵ ':'🚗 ')+t.name,p:price,locked:lk,d:lk?'🔒 Requires '+req+' Rep ('+tierOf(req)[1]+')':t.aircraft?'Stored at Mount Orrin Airport · kept in your garage':t.boat?'Delivered to the water · kept in your garage':'Delivered to the curb · kept in your garage',f:()=>buyVehicle(tk,price)}});
+SHOP_ITEMS.dealer=()=>DEALER_STOCK.map(([tk,price,req])=>{const t=CAR_TYPES[tk],lk=pl.rep<req;return{n:(t.aircraft?'✈ ':t.boat?'⛵ ':'🚗 ')+t.name,p:price,locked:lk,d:lk?'🔒 Requires '+req+' Rep ('+tierOf(req)[1]+')':t.aircraft?'Stored at Vice City International Airport · kept in your garage':t.boat?'Delivered to the water · kept in your garage':'Delivered to the curb · kept in your garage',f:()=>buyVehicle(tk,price)}});
 Object.assign(SHOP_NAMES,{dealer:'Sunshine Autos',mods:"Pay 'n' Spray · Mod Garage",prop:'Property'});
 function sprayNear(){const c=pl.car;if(!c)return null;for(const g of G.spray)if(hyp(c.x,c.z,g.x,g.z)<4.5)return g;return null}
 
@@ -4989,7 +4989,7 @@ function carPrompt(){const c=pl.car;if(!c||c.dead)return'';
  if(G.exp&&hyp(c.x,c.z,EXPORT.x,EXPORT.z)<14)return c.tk===G.exp.tk?'Stop in the marker to export':'The dock wants a '+CAR_TYPES[G.exp.tk].name;
  if(c.tk==='taxi')return'[R] Start taxi job';return''}
 function extraBlips(b){
- if(airport)b.push({x:airport.x,z:airport.z,c:'#ffd23a',s:'✈',icon:true,label:'Mount Orrin Airport'});
+ if(airport)b.push({x:airport.x,z:airport.z,c:'#ffd23a',s:'✈',icon:true,label:'Vice City International Airport'});
  for(const s of GAS)b.push({x:s.x,z:s.z,c:'#5dff8a',s:'⛽',icon:true,label:'Fuel station'});
  b.push({x:DEALER.x,z:DEALER.z,c:'#ffd23a',s:'🚘',icon:true,label:'Vehicle dealership'});
  for(const p of PROPS)b.push({x:p.x,z:p.z,c:pl.props[p.id]?'#59ffa0':'#cccccc',s:pl.props[p.id]?'🏠':'🏷',small:!pl.props[p.id]});
