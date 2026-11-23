@@ -329,7 +329,8 @@ small{color:#b9cce0}
 <script src="js/punch-visual-fix.js?v=1"></script>
 <script src="js/one-hand-hit.js?v=1"></script>
 <script src="js/gun-animation.js?v=1"></script>
-<script>// AIRCRAFT_UNLOCK_DISTANCE_V1
+<script>// VC_FULL_MAP_ZOOM_4X_V1
+// AIRCRAFT_UNLOCK_DISTANCE_V1
 function vehicleUnlockDistance(c){const distance=Math.hypot(c.x-pl.x,c.z-pl.z);return distance-(c.t.aircraft?Math.max(c.t.L,c.t.W)/2:0); }
 
 (()=>{'use strict';
@@ -4795,7 +4796,7 @@ function bindMapControls(){
  cv.addEventListener('wheel',e=>{
   if(!G.mapOpen)return;e.preventDefault();
   const old=MapView.zoom;
-  MapView.zoom=clamp(MapView.zoom*(e.deltaY>0?.85:1.15),.5,6);
+  MapView.zoom=clamp(MapView.zoom*(e.deltaY>0?.85:1.15),.5,24);
   // zoom toward cursor
   const rect=cv.getBoundingClientRect(),mx=(e.clientX-rect.left)/rect.width*900,my=(e.clientY-rect.top)/rect.height*900;
   const k0=(900/(WS*2))*old,k1=(900/(WS*2))*MapView.zoom;

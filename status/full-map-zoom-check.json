@@ -1,0 +1,27 @@
+{
+  "passed": true,
+  "scope": "Current handler inspection, JavaScript syntax, clamp boundary regression, and actual full-map renderer execution against a mock canvas. Browser input and live deployment remain unverified.",
+  "oldMaximum": 6,
+  "newMaximum": 24,
+  "minimumsUnchanged": [
+    0.5
+  ],
+  "updatedLimits": [
+    {
+      "start": 406877,
+      "end": 406878,
+      "min": 0.5,
+      "max": 6,
+      "expression": "clamp(MapView.zoom*(e.deltaY>0?.85:1.15),.5,6)"
+    }
+  ],
+  "fullMapAndMinimapRenderersUnchanged": true,
+  "tests": [
+    "Inline JavaScript syntax",
+    "Zoom-out minimum retained",
+    "Existing zoom range retained",
+    "Values beyond former maximum accepted",
+    "New maximum enforced",
+    "Actual full-map renderer produces a fourfold narrower view with finite crop coordinates"
+  ]
+}
