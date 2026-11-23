@@ -759,21 +759,10 @@ function seaD(x,z){ // signed metres into the sea (>0 sea, <0 land)
  const bay=(1-Math.pow(Math.pow(bu,3.2)+Math.pow(bv,3.2),1/3.2))*800-Math.abs(70*Math.sin(ba*3+.7)+45*Math.sin(ba*7+2.2)+22*Math.sin(ba*13+.4))-25;
  const pass=-1e9; // lake now: no channel to the sea
  const mainlandSea=Math.min(Math.max(edge,Math.min(Math.max(bay,pass,Math.min(n,isl)),hhIsle(x,z))),flKeysD(x,z),afbIsle(x,z));
- // VICE_CITY_COASTAL_ISLAND_V2: a compact urban island tucked directly beside the mainland coast.
- // VCIA (center 650,820) remains entirely on the mainland; the island begins east/northeast of the airfield.
- const islandCx=1960,islandCz=170,islandRx=1120,islandRz=1390;
- const ang=Math.atan2((z-islandCz)/islandRz,(x-islandCx)/islandRx);
- const wob=24*Math.sin(ang*3+.6)+15*Math.sin(ang*5+1.8)+8*Math.sin(ang*9);
- const islandSdf=(Math.hypot((x-islandCx)/islandRx,(z-islandCz)/islandRz)-1)*1050-wob;
- const islandBounds=x>760&&x<3100&&z>-1450&&z<1850;
- // A single short, narrow causeway links the island's southwest edge to the mainland.
- const ax=820,az=770,bx=930,bz=690,dx=bx-ax,dz=bz-az;
- const t=clamp(((x-ax)*dx+(z-az)*dz)/(dx*dx+dz*dz),0,1);
- const causeway=Math.hypot(x-ax-t*dx,z-az-t*dz)<25;
- if(islandBounds&&!airportMask(x,z)){
-  const islandSea=causeway?-16:islandSdf;
-  return islandSea<0?Math.min(mainlandSea,islandSea):Math.max(mainlandSea,islandSea);
- }
+ // VICE_CITY_COASTAL_METRO_V3:
+ // Keep Vice City as one continuous coastal mainland/peninsula. The old detached oval island
+ // made the urban footprint look like an offshore blob; the shoreline now comes from Florida's
+ // real coast and the existing bays, with VCIA protected on the mainland.
  return mainlandSea;
 }
 const gladesMask=(x,z)=>sstep(-2300,-2000,x)*(1-sstep(1300,1700,x))*sstep(3200,3450,z)*(1-sstep(4400,4650,z))*(.75+.25*Math.sin(x*.003+z*.002));
@@ -1403,26 +1392,26 @@ function defineRoads(){
  addRoad('v',240,-1380,360,24,'hwy');
  addRoad('h',-420,-240,1560,24,'hwy');
 
- // COAST_ADAPTIVE_STREETS_V1: clip the east/north island street grid to its irregular shoreline.
+ // VICE_CITY_SHORELINE_STREETS_V3: trim the city grid to the actual coastline,
+ // not to an invented offshore oval. This leaves the downtown grid dense while streets
+ // naturally stop at bays, inlets and the ocean.
  const clipped=[];
  for(const r of roads){
-  const islandRoad=r.type==='city'&&r.b>760&&r.a<3100&&r.c>-1450&&r.c<1850;
-  if(!islandRoad){clipped.push(r);continue}
+  const cityRoad=r.type==='city'&&r.b>-1600&&r.a<1900&&r.c>-1550&&r.c<1250;
+  if(!cityRoad){clipped.push(r);continue}
   let run=null;
-  for(let p=r.a;p<=r.b+10;p+=10){
+  for(let p=r.a;p<=r.b+8;p+=8){
    const q=Math.min(p,r.b),x=r.o==='h'?q:r.c,z=r.o==='h'?r.c:q;
-   const land=seaD(x,z)<-8;
+   const land=seaD(x,z)<-5;
    if(land&&run===null)run=q;
    if((!land||q>=r.b)&&run!==null){
-    const stop=land?q:q-10;
-    if(stop-run>18)clipped.push({id:roadId++,o:r.o,c:r.c,a:run,b:stop,w:r.w,hw:r.hw,type:r.type,sig:r.sig,cross:[]});
+    const stop=land?q:q-8;
+    if(stop-run>22)clipped.push({id:roadId++,o:r.o,c:r.c,a:run,b:stop,w:r.w,hw:r.hw,type:r.type,sig:r.sig,cross:[]});
     run=null;
    }
   }
  }
  roads.length=0;roads.push(...clipped);
- // Short causeway from the mainland to the island's southwest shore.
- {const ax=820,az=770,bx=930;addRoad('h',az,ax,bx,18,'hwy')} /* same causeway ends as seaD; they were out of scope here and crashed road setup */
 }
 const CR_X=[],CR_Z=[];
 // Harbor Heights street plan: recursive random splits of the island, so every street ends in a T or at the shore
@@ -1979,9 +1968,9 @@ function* buildBaseMapGen(){
    // Urban districts get a pale lavender-gray tint, while green spaces remain green.
    // REFERENCE_CITY_FOOTPRINT_V2: irregular Vice City urban mass wraps north/east of VCIA.
    // The airport's west and south approaches remain green/open; the city widens toward downtown and the bay.
-   const inNorth=wx>-1580&&wx<220&&wz>-1450&&wz<1080;
-   const inEast=wx>-240&&wx<1560&&wz>-1450&&wz<420;
-   const inDistrict=inNorth||inEast;
+   // A single connected urban footprint: dense core north/east of VCIA,
+   // widening toward the waterfront instead of tinting a detached island.
+   const inDistrict=wx>-1580&&wx<1900&&wz>-1500&&wz<1200;
    if(inDistrict){r=.61;g=.63;b=.75;}
   }
   const R=Math.min(255,r*300),Gc=Math.min(255,g*300),Bc=Math.min(255,b*300);
@@ -2349,7 +2338,51 @@ function buildWestAirport(){
  westAirport={x:cx,z:cz,ground};
 }
 
-function spawnAirportPlanes(){spawnAFBJets();for(const c of cars.slice())if(c.airportStatic)removeCar(c);
+// AI_AIRLINE_TRAFFIC_V1: scheduled autonomous airline flights, runway operations and gate parking.
+const AIRTRAFFIC={planes:[],clock:0,next:18,serial:0};
+function aiPlaneSpawn(){
+ if(!airport||AIRTRAFFIC.planes.filter(p=>cars.includes(p)&&!p.dead).length>=4)return;
+ const A=airport,tk=['b737','a321neo','a330','b747'][AIRTRAFFIC.serial++%4],c=spawnCar(tk,A.x-70,A.z+310,Math.PI/2,'parked',CAR_TYPES[tk].colors[0]);
+ c.aiPilot={phase:'taxiOut',throttle:0,steer:0,pitch:0,t:0,gate:Math.floor(AIRTRAFFIC.serial%4),tk};
+ c.aiAirline=true;c.keep=true;c.airportStatic=false;c.gear=1;c.thr=0;AIRTRAFFIC.planes.push(c);
+}
+function aiPlaneControl(c,dt){
+ const a=c.aiPilot;if(!a||c.dead)return;a.t+=dt;
+ const A=airport,runX=A.x-40,runZ=A.z+285,runEnd=runX+320,gateX=A.gateNoseX-({a330:31.9,a321neo:22.2,b737:19.8,b747:35.3}[c.tk]||20),gateZ=[600,730,860,1055][a.gate];
+ const steerTo=(x,z)=>{const desired=Math.atan2(x-c.x,z-c.z),err=wrapA(desired-c.h);a.steer=clamp(err*1.5,-.7,.7)};
+ if(a.phase==='taxiOut'){
+  steerTo(runX,runZ);a.throttle=.34;if(Math.hypot(c.x-runX,c.z-runZ)<16){a.phase='lineUp';a.t=0}
+ }else if(a.phase==='lineUp'){
+  steerTo(runEnd,runZ);a.throttle=.22;if(a.t>3){a.phase='takeoff';a.t=0}
+ }else if(a.phase==='takeoff'){
+  steerTo(runEnd,runZ);a.throttle=1;a.pitch=c.as>flyCfg(c).vr*.92?.22:0;
+  if(c.airborne){a.phase='climb';a.t=0}
+ }else if(a.phase==='climb'){
+  a.throttle=.88;a.pitch=.13;a.steer=clamp(Math.sin(a.t*.22)*.12,-.12,.12);
+  if(a.t>34){a.phase='cruise';a.t=0}
+ }else if(a.phase==='cruise'){
+  a.throttle=.72;a.pitch=0;a.steer=.08;
+  if(a.t>34){a.phase='approach';a.t=0}
+ }else if(a.phase==='approach'){
+  const targetX=A.x-100,targetZ=A.z+310;
+  const desired=Math.atan2(targetX-c.x,targetZ-c.z);a.steer=clamp(wrapA(desired-c.h)*.5,-.22,.22);
+  a.throttle=.38;a.pitch=-.035;
+  if(a.t>32){a.phase='final';a.t=0}
+ }else if(a.phase==='final'){
+  const targetX=A.x-40,targetZ=A.z+285,desired=Math.atan2(targetX-c.x,targetZ-c.z);
+  a.steer=clamp(wrapA(desired-c.h)*.45,-.16,.16);a.throttle=.25;a.pitch=-.015;
+  if(!c.airborne){a.phase='taxiGate';a.t=0}
+ }else if(a.phase==='taxiGate'){
+  steerTo(gateX,gateZ);a.throttle=.16;
+  if(Math.hypot(c.x-gateX,c.z-gateZ)<8||a.t>48){a.phase='parked';a.throttle=0;a.steer=0;c.aiPilot=null;c.aiAirlineParked=true;c.vx=c.vz=c.vy=0;c.as=0;c.speed=0;c.airborne=false;c.thr=0;c.y=heightAt(c.x,c.z)+.88}
+ }else if(a.phase==='parked'){a.throttle=0}
+}
+function updateAirportTraffic(dt){
+ if(!airport||G.state!=='play')return;
+ AIRTRAFFIC.clock+=dt;AIRTRAFFIC.next-=dt;
+ if(AIRTRAFFIC.next<=0){aiPlaneSpawn();AIRTRAFFIC.next=72+Math.random()*38}
+ for(const c of AIRTRAFFIC.planes){if(!cars.includes(c)||c.dead)continue;if(c.aiPilot)aiPlaneControl(c,dt)}
+}function spawnAirportPlanes(){spawnAFBJets();for(const c of cars.slice())if(c.airportStatic)removeCar(c);
  if(airport){const A=airport;
   for(const [tk,col,i] of[['propPlane',0xe8e5d8,0],['smallJet',0xf1f3f5,1]]){const g=A.ga[i],c=spawnCar(tk,g.x,g.z,g.h,'parked',col);c.airportStatic=true;c.keep=true}
   // AIRLINER_GATES_V4: nose-in at concourse D's jet bridges facing the north runways. Wide-bodies take gates with an
@@ -3656,9 +3689,9 @@ function stepAircraft(c,dt){
  c.thr??=0;c.ap??=0;c.bank??=0;c.gam??=0;c.gear??=1;c.rpm??=0;c.stallT??=0;
  if(!Number.isFinite(c.x+c.z+c.y+c.h+(c.as||0)+c.ap+c.bank+c.gam)){c.as=0;c.ap=c.bank=c.gam=0;c.vx=c.vz=c.vy=0;if(!Number.isFinite(c.y))c.y=heightAt(c.x||0,c.z||0)+.88}
  if(c.dead)return stepAircraftWreck(c,dt);
- const ctlP=mine?((keys[' ']?1:0)-(keys.shift?1:0)):0,ctlR=mine?inp.steer:0,brake=mine&&inp.thr<0&&c.thr<=.01;
+ const ctlP=mine?((keys[' ']?1:0)-(keys.shift?1:0)):(c.aiPilot?.pitch||0),ctlR=mine?inp.steer:(c.aiPilot?.steer||0),brake=mine&&inp.thr<0&&c.thr<=.01;
  if(mine){if(inp.thr>0)c.thr=Math.min(1,c.thr+.55*dt);else if(inp.thr<0)c.thr=Math.max(0,c.thr-.85*dt)}
- else if(!c.occ)c.thr=Math.max(0,c.thr-dt);
+ else if(c.aiPilot)c.thr=clamp(c.aiPilot.throttle??0,0,1);else if(!c.occ)c.thr=Math.max(0,c.thr-dt);
  if(c.fuel<=0)c.thr=0;
  c.rpm+=((c.occ?.18+c.thr*.82:0)-c.rpm)*Math.min(1,dt*(c.tk==='smallJet'?.9:2.2));
  const k=F.acc/(t.top*t.top);let v=v0;
@@ -6782,7 +6815,7 @@ function updateAirportPolice(dt){
 }
 // hand airport cars their own driver instead of the road-network AI
 {const ctlOrig=controlAI;controlAI=function(c,dt){if(c.ai&&c.ai.airport)return apolDrive(c,dt);return ctlOrig.apply(this,arguments)}}
-{const simAP=simulate;simulate=function(dt){const r=simAP.apply(this,arguments);try{updateAirportPolice(Number.isFinite(dt)?dt:0)}catch(e){console.error('airport police',e)}return r}}
+{const simAP=simulate;simulate=function(dt){try{updateAirportTraffic(Number.isFinite(dt)?dt:0)}catch(e){console.error('airport traffic',e)}const r=simAP.apply(this,arguments);try{updateAirportPolice(Number.isFinite(dt)?dt:0)}catch(e){console.error('airport police',e)}return r}}
 // POLICE_DIALOGUE_V1: officers talk out loud. Each line is spoken with the browser's voice and written as a subtitle at
 // the bottom of the screen (O toggles the voice). Lines come from
 // what is happening: spotting you, chases, one-star arrests, busts, gunfights, losing you, and airport restricted areas.
