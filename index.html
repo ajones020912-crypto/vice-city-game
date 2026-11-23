@@ -1549,13 +1549,14 @@ function collideNearbyCars(){const grid=new Map();for(const a of cars){const gx=
 
 function makeParcels(){
  const lot=(x0,z0,x1,z1,mode,cx0,cz0)=>{ // subdivide a block lot
-  const nx=pick(mode==='low'?[1,2,2,3]:[1,2]),nz=pick(mode==='low'?[1,2,2]:[1,2]);const w=(x1-x0)/nx,d=(z1-z0)/nz;
+  // CITY_BLOCK_QUADRANTS_V1: every city block is divided into four buildable lots (2 x 2).
+  const nx=2,nz=2;const w=(x1-x0)/nx,d=(z1-z0)/nz;
   for(let i=0;i<nx;i++)for(let j=0;j<nz;j++){const a=x0+i*w+.5,b=z0+j*d+.5,c=x0+(i+1)*w-.5,e=z0+(j+1)*d-.5,cx=(a+c)/2,cz=(b+e)/2;
    if(cx>760&&cx<3100&&cz>-1450&&cz<1850&&seaD(cx,cz)>-12)continue;
    let H,style;
-   if(mode==='core'){const dd=Math.hypot(cx/230,(cz+10)/250),core=clamp(1.05-dd,0,1);H=9+rnd()*16+Math.pow(core,1.6)*(40+rnd()*100);style=H>38&&rnd()<.75?pick(['glass','glass','glass','office','stone','concrete']):pick(['deco','deco','apt','mission','hotel','brick','stone']);if(cz<-250){H=8+rnd()*14;style=pick(['deco','hotel','mission','apt'])}}
-   else if(mode==='port'){H=7+rnd()*10;style=rnd()<.55?'ware':pick(['brick','brick','concrete','apt','deco'])}
-   else{H=7+rnd()*14;style=pick(['deco','apt','mission','brick'])}
+   if(mode==='core'){const dd=Math.hypot(cx/280,(cz+10)/300),core=clamp(1.05-dd,0,1);H=20+rnd()*24+Math.pow(core,1.55)*(65+rnd()*125);style=H>52&&rnd()<.82?pick(['glass','glass','glass','office','stone','concrete']):pick(['deco','deco','apt','mission','hotel','brick','stone']);if(cz<-250){H=17+rnd()*23+Math.pow(core,1.3)*(18+rnd()*30);style=H>42?pick(['glass','office','stone']):pick(['deco','hotel','mission','apt'])}}
+   else if(mode==='port'){H=13+rnd()*17;style=rnd()<.55?'ware':pick(['brick','brick','concrete','apt','deco'])}
+   else{H=15+rnd()*22;style=pick(['deco','apt','mission','brick'])}
    const natural=style==='brick'||style==='concrete';
    parcels.push({x0:a,z0:b,x1:c,z1:e,cx,cz,H,style,col:natural?[1-rnd()*.06,1-rnd()*.07,1-rnd()*.08]:undefined,mode,edgeS:j===nz-1,cityId:mode==='port'?'port':'dt'})}};
  const xr=[],zr=[];
@@ -1611,7 +1612,7 @@ const SHOPS=[
 ];
 function assignShops(){
  for(const s of SHOPS)for(const [sx,sz] of s.spots){let best=null,bd=1e9;for(const p of parcels){if(p.shop||(p.x1-p.x0)<14||(p.z1-p.z0)<14||(p.mode!=='house'&&!p.edgeS))continue;const d=Math.hypot(p.cx-sx,p.cz-sz);if(d<bd){bd=d;best=p}}
-  if(best&&bd<90){best.shop=s;if(best.mode!=='house'){best.H=Math.min(best.H,9+rnd()*3);best.style='deco'}}}}
+  if(best&&bd<90){best.shop=s;if(best.mode!=='house'){best.H=Math.max(16,Math.min(best.H,22+rnd()*7));best.style='deco'}}}}
 function decorateRestaurantExterior(p,shop,fx,fz,face='s'){
  const cfg={
  palmgrill:{wall:[.83,.77,.58],roof:[.35,.24,.16],trim:[.18,.72,.54],awning:[.96,.83,.58]},
