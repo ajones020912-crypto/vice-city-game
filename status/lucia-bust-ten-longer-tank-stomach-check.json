@@ -1,0 +1,168 @@
+{
+  "passed": true,
+  "branch": "main",
+  "reports": [
+    {
+      "merge": false,
+      "measuredBustCoreVertices": 110,
+      "measuredBellyCoreVertices": 72,
+      "previousHem": 0.21773585677146912,
+      "newHem": 0.1377358567714691,
+      "hemExtension": 0.08000000000000002,
+      "coverageChecks": 21,
+      "profiles": [
+        {
+          "y": 0.1577358567714691,
+          "z": [
+            0.08234155725030434,
+            0.09641516777459258,
+            0.08235727439094798
+          ]
+        },
+        {
+          "y": 0.22,
+          "z": [
+            0.1019051659146889,
+            0.11052401746236973,
+            0.1011256763920424
+          ]
+        },
+        {
+          "y": 0.26,
+          "z": [
+            0.13124521579100956,
+            0.1312512264675033,
+            0.13124532105547804
+          ]
+        },
+        {
+          "y": 0.32,
+          "z": [
+            0.1472507776549452,
+            0.14729192035224647,
+            0.14722186558705175
+          ]
+        },
+        {
+          "y": 0.36,
+          "z": [
+            0.1599198581158826,
+            0.15995927794675535,
+            0.1599103278030224
+          ]
+        },
+        {
+          "y": 0.38,
+          "z": [
+            0.16323602076480614,
+            0.1633189984768334,
+            0.16323648214184938
+          ]
+        },
+        {
+          "y": 0.4,
+          "z": [
+            0.15956733514685917,
+            0.15961016817951235,
+            0.15956051883365108
+          ]
+        }
+      ],
+      "fit": {
+        "chestVertices": 470,
+        "bellyVertices": 344,
+        "maxChestAddition": 0.013466950178146364,
+        "maxBellyAddition": 0.006,
+        "coreBustProjectionScale": 1.1,
+        "maximumBellyAddition": 0.006,
+        "relativeTo": "current torso after the existing quarter-bust reduction",
+        "scope": "Localized forward-depth change, not breast volume or whole-torso scaling. Abdomen addition tapers to zero before the lower pelvis and bust."
+      }
+    },
+    {
+      "merge": true,
+      "measuredBustCoreVertices": 594,
+      "measuredBellyCoreVertices": 378,
+      "previousHem": 0.21773585677146912,
+      "newHem": 0.1377358567714691,
+      "hemExtension": 0.08000000000000002,
+      "coverageChecks": 21,
+      "profiles": [
+        {
+          "y": 0.1577358567714691,
+          "z": [
+            0.08234155725030434,
+            0.09641516777459258,
+            0.08235727439094798
+          ]
+        },
+        {
+          "y": 0.22,
+          "z": [
+            0.1019051659146889,
+            0.11052401746236973,
+            0.1011256763920424
+          ]
+        },
+        {
+          "y": 0.26,
+          "z": [
+            0.13124521579100956,
+            0.1312512264675033,
+            0.13124532105547804
+          ]
+        },
+        {
+          "y": 0.32,
+          "z": [
+            0.1472507776549452,
+            0.14729192035224647,
+            0.14722186558705175
+          ]
+        },
+        {
+          "y": 0.36,
+          "z": [
+            0.1599198581158826,
+            0.15995927794675535,
+            0.1599103278030224
+          ]
+        },
+        {
+          "y": 0.38,
+          "z": [
+            0.16323602076480614,
+            0.1633189984768334,
+            0.16323648214184938
+          ]
+        },
+        {
+          "y": 0.4,
+          "z": [
+            0.15956733514685917,
+            0.15961016817951235,
+            0.15956051883365108
+          ]
+        }
+      ],
+      "fit": {
+        "chestVertices": 470,
+        "bellyVertices": 344,
+        "maxChestAddition": 0.013466950178146364,
+        "maxBellyAddition": 0.006,
+        "coreBustProjectionScale": 1.1,
+        "maximumBellyAddition": 0.006,
+        "relativeTo": "current torso after the existing quarter-bust reduction",
+        "scope": "Localized forward-depth change, not breast volume or whole-torso scaling. Abdomen addition tapers to zero before the lower pelvis and bust."
+      }
+    }
+  ],
+  "bustProjectionIncreaseFromCurrent": 0.1,
+  "maximumAbdomenForwardAddition": 0.006,
+  "desiredHemExtension": 0.08,
+  "braAndTankRefitted": true,
+  "permanentUnderwearCoveragePreserved": true,
+  "hipsSeatShouldersAndLegsUnchanged": true,
+  "denimPreservedIfInstalled": true,
+  "scope": "Core forward projection is ten percent above the currently reduced bust, not the original bust or breast volume. Abdomen expands forward slightly, not the whole waist. Hem extension is capped by available torso surface. Numerical neutral-pose and finite-pose checks do not verify all animation clipping, rendered appearance or deployment."
+}
