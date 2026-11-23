@@ -1682,13 +1682,26 @@ function buildBaseMap(){
  // VCIA_SATELLITE_LAYOUT_V3: minimap drawn from the current expanded airport geometry.
  {const ax=650,az=820,sc=1.5,px=v=>(ax+v*sc+WS)/MAPPX,pz=v=>(az+v*sc+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w*sc/MAPPX,h*sc/MAPPX)};
   const path=(pts,color,width)=>{x.strokeStyle=color;x.lineWidth=width*sc/MAPPX;x.lineCap='round';x.lineJoin='round';x.beginPath();pts.forEach((p,i)=>i?x.lineTo(px(p[0]),pz(p[1])):x.moveTo(px(p[0]),pz(p[1])));x.stroke()};
-  x.save();rect(60,0,720,570,'#68765a');rect(0,-220,760,56,'#454a4d');
-  path([[-374,-249],[374,-249]],'#e9e8dc',1.2);path([[-374,-191],[374,-191]],'#e9e8dc',1.2);
-  path([[-330,-150],[330,-150]],'#454a4d',24);path([[-330,-150],[330,-150]],'#e5bd42',.35);
-  for(const xx of[-330,330])path([[xx,-235],[xx,-85]],'#454a4d',24);
-  rect(-125,94,190,84,'#b5b8b2');rect(200,112,120,151,'#b5b8b2');rect(90,62,44,55,'#b5b8b2');
-  path([[-125,63],[-125,94]],'#454a4d',24);
-  for(const xx of[-190,-135,-80])path([[xx,91],[xx,112]],'#e5bd42',.35);
+  x.save();
+  // Asphalt airport field: near-black pavement, with the runway and taxiways clearly separated.
+  rect(60,0,720,570,'#252a2c');
+  // Main runway remains the darkest, widest paved strip with bright edge markings.
+  rect(0,-220,760,56,'#171b1d');
+  path([[-374,-249],[374,-249]],'#e9e8dc',1.8);path([[-374,-191],[374,-191]],'#e9e8dc',1.8);
+  path([[-330,-150],[330,-150]],'#080b0d',32);
+  path([[-330,-150],[330,-150]],'#e2bd55',1.7);
+  // Parallel taxiway and runway connectors: wider charcoal lanes, yellow centerlines, pale edges.
+  path([[-374,-150],[374,-150]],'#111719',22);
+  path([[-374,-150],[374,-150]],'#e4c45f',1.8);
+  path([[-374,-164],[374,-164]],'#d9dedb',.9);path([[-374,-136],[374,-136]],'#d9dedb',.9);
+  for(const xx of[-330,330]){
+   path([[xx,-235],[xx,-85]],'#111719',30);
+   path([[xx,-235],[xx,-85]],'#e4c45f',1.7);
+  }
+  // Dark asphalt aprons with visible taxi lead-ins.
+  rect(-125,94,190,84,'#383e40');rect(200,112,120,151,'#383e40');rect(90,62,44,55,'#383e40');
+  path([[-125,63],[-125,94]],'#111719',30);path([[-125,63],[-125,94]],'#e4c45f',1.7);
+  for(const xx of[-190,-135,-80]){path([[xx,91],[xx,112]],'#111719',18);path([[xx,91],[xx,112]],'#e4c45f',1.5);}
   rect(-153,158,270,104,'#34434a');rect(-153,105,258,2,'#315e70');
   rect(-330,155,80,46,'#34434a');rect(24,155,80,46,'#34434a');
   for(const xx of[-255,-185,-115,-45]){path([[xx,102],[xx,28]],'#315e70',8);rect(xx,18,15,17,'#34434a');}
