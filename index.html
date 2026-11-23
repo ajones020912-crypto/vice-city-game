@@ -1844,12 +1844,27 @@ const MAPPX=4;let baseMap=null;
 function buildBaseMap(){
  const S=WS*2/MAPPX,[c,x]=cv(S,S),id=x.createImageData(S,S),o=[0,0,0],d=id.data;
  for(let j=0;j<S;j+=2)for(let i=0;i<S;i+=2){const wx=-WS+i*MAPPX,wz=-WS+j*MAPPX,h=heightAt(wx,wz);groundCol(wx,wz,h,o);let r=o[0],g=o[1],b=o[2];
-  if(h<WL){const k=clamp((WL-h)/3.4,0,1);r=.2-.12*k;g=.55-.3*k;b=.7-.28*k}else if(h>6){const k=h/50;r+=k*.2;g+=k*.15;b+=k*.1}
+  // SATELLITE_COLOR_PALETTE_V1: brighter MIA/GTA-style map colors for quick visual reading.
+  if(h<WL){
+   const depth=clamp((WL-h)/5,0,1);
+   r=.12-.025*depth;g=.56-.08*depth;b=.66-.035*depth;
+  }else{
+   // Florida land base: muted sage/grass green, with slightly brighter elevated terrain.
+   const elev=clamp(h/55,0,1);
+   r=.37+elev*.10;g=.59+elev*.12;b=.43+elev*.07;
+   // Urban districts get a pale lavender-gray tint, while green spaces remain green.
+   const inDistrict=(wx>-360&&wx<440&&wz>-360&&wz<1130)||
+    (wx>-1120&&wx<-505&&wz>385&&wz<1055)||
+    (wx>-440&&wx<900&&wz>1620&&wz<2420)||
+    (wx>240&&wx<1120&&wz>420&&wz<1220);
+   if(inDistrict){r=.61;g=.63;b=.75;}
+  }
   const R=Math.min(255,r*300),Gc=Math.min(255,g*300),Bc=Math.min(255,b*300);
   for(let dj=0;dj<2;dj++)for(let di=0;di<2;di++){const p=((j+dj)*S+i+di)*4;d[p]=R;d[p+1]=Gc;d[p+2]=Bc;d[p+3]=255}}
  x.putImageData(id,0,0);
- x.fillStyle='rgba(60,60,70,.55)';for(const b of colAll)if(b.h>6&&b.x1-b.x0>6)x.fillRect((b.x0+WS)/MAPPX,(b.z0+WS)/MAPPX,(b.x1-b.x0)/MAPPX,(b.z1-b.z0)/MAPPX);
- for(const r of roads){x.strokeStyle=r.type==='hwy'?'#f2c14e':r.type==='dirt'?'#8a6c42':'#d8d8d8';x.lineWidth=Math.max(1.6,r.w/MAPPX*(r.type==='hwy'?.9:.8));x.beginPath();
+ // Buildings and developed blocks: soft slate-lavender, like the reference map.
+ x.fillStyle='rgba(177,185,216,.62)';for(const b of colAll)if(b.h>6&&b.x1-b.x0>6)x.fillRect((b.x0+WS)/MAPPX,(b.z0+WS)/MAPPX,(b.x1-b.x0)/MAPPX,(b.z1-b.z0)/MAPPX);
+ for(const r of roads){x.strokeStyle=r.type==='hwy'?'#f4d77a':r.type==='dirt'?'#b49a70':'#f0f0e8';x.lineWidth=Math.max(1.6,r.w/MAPPX*(r.type==='hwy'?.9:.8));x.beginPath();
   if(r.o==='h'){x.moveTo((r.a+WS)/MAPPX,(r.c+WS)/MAPPX);x.lineTo((r.b+WS)/MAPPX,(r.c+WS)/MAPPX)}else{x.moveTo((r.c+WS)/MAPPX,(r.a+WS)/MAPPX);x.lineTo((r.c+WS)/MAPPX,(r.b+WS)/MAPPX)}x.stroke()}
  // VCIA_SATELLITE_LAYOUT_V3: minimap drawn from the current expanded airport geometry.
  {const ax=650,az=820,sc=1.5,px=v=>(ax+v*sc+WS)/MAPPX,pz=v=>(az+v*sc+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w*sc/MAPPX,h*sc/MAPPX)};
