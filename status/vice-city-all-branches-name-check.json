@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "branch": "building-textures",
+  "changedFiles": [
+    {
+      "path": "README.md",
+      "replacements": 1
+    },
+    {
+      "path": "index.html",
+      "replacements": 3
+    }
+  ],
+  "replacements": 4,
+  "outcome": "renamed",
+  "scope": "Literal spaced name only; preserves case styling. Excludes historical workflows and reports. Does not certify image text, split markup, external content or live deployment; does not rename files, identifiers, repository or URLs."
+}
