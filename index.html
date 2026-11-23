@@ -1973,7 +1973,7 @@ function buildWestAirport(){
  westAirport={x:cx,z:cz,ground};
 }
 
-function spawnAirportPlanes(){spawnAFBJets();for(const c of cars.slice())if(c.airportStatic)removeCar(c);if(airport){const a=spawnCar('propPlane',airport.x+205,airport.z+152,Math.PI/2,'parked',0xe8e5d8);a.airportStatic=true;a.keep=true;const j=spawnCar('smallJet',airport.x+225,airport.z+85,Math.PI/2,'parked',0xf1f3f5);j.airportStatic=true;j.keep=true;const bus=spawnCar('a321neo',airport.x-99,airport.z+73,0,'parked',CAR_TYPES.a321neo.colors[0]);bus.airportStatic=true;bus.keep=true}if(westAirport){const w=spawnCar('propPlane',westAirport.x+260,westAirport.z+155,Math.PI/2,'parked',0xf1f3f5);w.airportStatic=true;w.keep=true}}
+function spawnAirportPlanes(){spawnAFBJets();for(const c of cars.slice())if(c.airportStatic)removeCar(c);if(airport){const a=spawnCar('propPlane',airport.x+205,airport.z+152,Math.PI/2,'parked',0xe8e5d8);a.airportStatic=true;a.keep=true;const j=spawnCar('smallJet',airport.x+225,airport.z+85,Math.PI/2,'parked',0xf1f3f5);j.airportStatic=true;j.keep=true;const bus=spawnCar('a321neo',airport.x-99,airport.z+73,0,'parked',CAR_TYPES.a321neo.colors[0]);bus.airportStatic=true;bus.keep=true;const b7=spawnCar('b737',airport.x-203,airport.z+76,0,'parked',CAR_TYPES.b737.colors[0]);b7.airportStatic=true;b7.keep=true}if(westAirport){const w=spawnCar('propPlane',westAirport.x+260,westAirport.z+155,Math.PI/2,'parked',0xf1f3f5);w.airportStatic=true;w.keep=true}}
 
 // PALMETTO_GROVE_V1
 const PG={paths:[],homes:[],signs:[]};
@@ -2106,7 +2106,8 @@ for(const k of['taxi','police']){const b=CAR_TYPES[CAR_TYPES[k].base];CAR_TYPES[
 CAR_TYPES.propPlane={name:'Prop plane',aircraft:true,L:9.5,W:11.5,wb:3,wr:.2,mass:1800,power:1,top:48,grip:2,steer:.55,hp:180,colors:[0xe8e5d8,0x2e6fa8,0xd94b45]};
 CAR_TYPES.smallJet={name:'Small jet',aircraft:true,L:14,W:13,wb:4,wr:.2,mass:4200,power:1,top:72,grip:2,steer:.42,hp:240,colors:[0xf1f3f5,0x26384d,0xb8c7d8]};
 CAR_TYPES.fighterJet={name:'Fighter jet',aircraft:true,aiOnly:true,L:19,W:13.6,wb:5,wr:.3,mass:19000,power:1,top:125,grip:2,steer:.6,hp:320,colors:[0x7c858d,0x6f777e]};
-CAR_TYPES.a321neo={name:'Airbus A321neo',aircraft:true,L:44.5,W:35.8,wb:18,wr:.5,mass:80000,power:1,top:95,grip:2,steer:.35,hp:520,colors:[0x1e7fd6,0xff4f9a,0x20b6a4]};
+CAR_TYPES.a321neo={name:'Airbus A321neo',aircraft:true,airliner:true,L:44.5,W:35.8,wb:18,wr:.5,mass:80000,power:1,top:95,grip:2,steer:.35,hp:520,colors:[0x1e7fd6,0xff4f9a,0x20b6a4]};
+CAR_TYPES.b737={name:'Boeing 737-800',aircraft:true,airliner:true,L:39.5,W:35.8,wb:15.6,wr:.5,mass:70000,power:1,top:92,grip:2,steer:.38,hp:480,colors:[0xe8492f,0x2a4b8d,0xf2b134]};
 CAR_TYPES.speedboat={name:'Speedboat',boat:true,L:6.2,W:2.3,wb:3,wr:.3,mass:1300,power:11,top:42,grip:2.6,steer:.55,hp:120,colors:[0xffffff,0xff4f9a,0x2ec4e8,0xf0c44d,0x20252d]};
 CAR_TYPES.airboat={name:'Airboat',boat:true,airboat:true,L:4.8,W:2.4,wb:2.6,wr:.3,mass:900,power:9,top:32,grip:2.2,steer:.6,hp:100,colors:[0x5d8a5e,0x6b4a35,0x3d5a45,0xc9a24a]};
 function extrudeProfile(pts,depth,bevel){
@@ -2414,9 +2415,61 @@ function makeA321Visual(color){
  AC.merge(ch,new Set([body]));
  return{g,ch,body,wheels,beam:{visible:false},tail:{material:dark},head:{material:white},bar:null,pm:paint};
 }
+// B737_800_V1: Boeing 737-800 (39.5 m long, 35.8 m span) in a made-up "CORAL SKY" livery. Short gear so the fuselage
+// sits low, flat-bottomed CFM56 nacelles hung close under the wing, blended winglets, tall fin with a dorsal fillet.
+function makeB737Visual(color){
+ const g=new T.Group(),ch=new T.Group();g.add(ch);const O=2.55; // fuselage centre height (wheels touch at y=-0.88)
+ const white=AC.mat(0xf6f6f4,{roughness:.35,metalness:.2}),belly=AC.mat(0xb7bec6,{roughness:.4,metalness:.25}),paint=AC.mat(color,{roughness:.35,metalness:.25}),
+  glass=AC.mat(0x0c1722,{roughness:.05,metalness:.7}),dark=AC.mat(0x22262b,{roughness:.6,metalness:.4}),metal=AC.mat(0xb9c2c9,{roughness:.25,metalness:.85}),
+  nac=AC.mat(0xeceeef,{roughness:.3,metalness:.35}),rubber=AC.mat(0x0b0c0e,{roughness:.95,metalness:0}),door=AC.mat(0x9aa2aa,{roughness:.5,metalness:.3});
+ const add=(geo,mat,x=0,y=0,z=0)=>{const m=new T.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;ch.add(m);return m};
+ const fus=[[19.75,O-.05,.04,.04,.04],[19.2,O-.08,.78,.74,.68],[18.2,O-.05,1.38,1.36,1.24],[16.9,O,1.8,1.84,1.72],[15.4,O,1.88,1.88,1.88],[-10.5,O,1.88,1.88,1.88],[-14,O+.3,1.6,1.6,1.3],[-17,O+.8,1.05,1.0,.7],[-19.1,O+1.2,.5,.46,.3],[-19.75,O+1.35,.18,.16,.12]];
+ const body=add(AC.loft(fus,32),white);
+ add(AC.loft(fus.slice(2,8),12,Math.PI*1.2,Math.PI*1.8,1.006,false),belly);
+ for(const [b0,b1] of[[-.2,-.06],[Math.PI+.06,Math.PI+.2]])add(AC.loft(fus.slice(2,8),3,b0,b1,1.009,false),paint);   // cheat line
+ add(AC.loft([[18.7,O-.06,1.08,1.05,.98],[17.9,O-.03,1.56,1.56,1.45]],16,Math.PI*.24,Math.PI*.76,1.012,false),glass); // cockpit windows
+ add(AC.loft([[18.05,O-.03,1.5,1.5,1.42],[17.75,O-.02,1.66,1.68,1.58]],10,Math.PI*.3,Math.PI*.7,1.013,false),glass);  // "eyebrow" windows
+ const win=new T.BoxGeometry(.04,.32,.23),dr=new T.BoxGeometry(.03,1.83,.84);
+ for(const s of[-1,1]){for(let i=0;i<32;i++){const z=14.4-i*.8;if(Math.abs(z-1.3)<.7)continue;add(win,glass,s*1.875,O+.5,z)}
+  for(const z of[15.6,1.3,-12.9])add(dr,door,s*1.88,O+.1,z)}
+ const cv=document.createElement('canvas');cv.width=512;cv.height=96;const cx=cv.getContext('2d');cx.font='bold 62px Arial';cx.fillStyle='#'+new T.Color(color).getHexString();cx.textAlign='center';cx.textBaseline='middle';cx.fillText('CORAL SKY',256,50);
+ const tt=new T.CanvasTexture(cv);tt.encoding=T.sRGBEncoding;const titleMat=new T.MeshBasicMaterial({map:tt,transparent:true,depthWrite:false});
+ for(const s of[-1,1]){const t=new T.Mesh(new T.PlaneGeometry(7,1.3),titleMat);t.position.set(s*1.89,O+1.05,7);t.rotation.y=s*Math.PI/2;ch.add(t)}
+ const fair=add(new T.SphereGeometry(1,24,12),belly,0,O-1.25,.6);fair.scale.set(2.1,.9,6.4);
+ const wy=O-1.15;
+ for(const mir of[false,true]){const s=mir?-1:1;
+  add(AC.wing([[0,wy,4.9,6.4,.13],[2,wy,4.4,6.0,.13],[6,wy+.3,2.0,4.1,.12],[16.9,wy+1.15,-2.9,1.5,.1]],false,mir),white);
+  // blended winglet: curves up from the tip
+  const wl=AC.wing([[0,0,0,1.5,.09],[.8,0,-.5,1.1,.085],[2.45,0,-1.5,.55,.08]],true);const wlm=add(wl,paint,s*16.95,wy+1.15,-2.95);wlm.rotation.z=-s*.32;
+  // CFM56: flat-bottomed nacelle hung close in front of the wing
+  const ex=s*5.0,ey=wy+.2-.95,ez=4.6;
+  const n1=add(AC.lathe([[.82,2.0],[.98,1.82],[1.0,1.2],[.98,-.4],[.84,-1.4],[.6,-1.75]],32),nac,ex,ey,ez);n1.scale.set(1,.86,1);
+  const lip=add(AC.lathe([[.84,2.01],[.98,1.85],[.96,1.7],[.88,1.74]],32),paint,ex,ey,ez);lip.scale.set(1,.86,1);
+  const fan=add(new T.CircleGeometry(.8,28),dark,ex,ey,ez+1.78);fan.scale.set(1,.86,1);
+  const cone=add(new T.ConeGeometry(.38,.9,16),metal,ex,ey,ez-2.1);cone.rotation.x=-Math.PI/2;
+  add(AC.wing([[0,ey+.8,ez+.2,3.4,.12],[.55,ey+.8,ez-.3,3.0,.12]],true),white).position.x=ex-.06;
+ }
+ // tall fin with a long dorsal fillet, stabiliser
+ add(AC.wing([[0,O+1.45,-9.6,4.2,.06],[.7,O+1.45,-12.1,3.0,.06]],true),paint);
+ add(AC.wing([[0,O+1.45,-12.6,7.0,.11],[3.6,O+1.45,-15.6,4.4,.1],[6.6,O+1.45,-18.2,2.6,.09]],true),paint);
+ for(const mir of[false,true])add(AC.wing([[0,O+.95,-15.2,4.0,.1],[6.5,O+1.3,-18.6,1.6,.09]],false,mir),white);
+ const wheels=[];
+ const gear=(name,x,z,len,r,front)=>{const gg=new T.Group();gg.name='cs-'+name;gg.position.set(x,O-1.8,z);ch.add(gg);
+  const st=new T.Mesh(new T.CylinderGeometry(.1,.12,len,10),metal);st.position.y=-len/2;gg.add(st);
+  for(const o of[-.3,.3])wheels.push(AC.wheel(gg,add,rubber,metal,o,-len,0,r,.28,front))};
+ gear('gearN',0,15.3,O-1.8+.88-.36,.36,true);gear('gearL',2.9,-1.2,O-1.8+.88-.52,.52,false);gear('gearR',-2.9,-1.2,O-1.8+.88-.52,.52,false);
+ for(const s of[1,-1])AC.surf(ch,s>0?'ailL':'ailR',s*13.9,wy+.95,-3.2,new T.Mesh(new T.BoxGeometry(3.0,.06,.5),white),0,0,-.25,s*.45);
+ AC.surf(ch,'elev',0,O+1.1,-18.8,new T.Mesh(new T.BoxGeometry(11,.06,.5),white),0,0,-.25);
+ AC.surf(ch,'rud',0,O+4.3,-17.7,new T.Mesh(new T.BoxGeometry(.09,5.4,.7),paint),0,0,-.35,0,-.42);
+ AC.navLights(ch,add,17.0,wy+1.25,-3.2);
+ add(new T.SphereGeometry(.12,8,6),new T.MeshStandardMaterial({color:0xff2020,emissive:0xff2020,emissiveIntensity:1.2}),0,O+1.92,0);
+ AC.merge(ch,new Set([body]));
+ return{g,ch,body,wheels,beam:{visible:false},tail:{material:dark},head:{material:white},bar:null,pm:paint};
+}
 function makeAircraftVisual(tk,color){
  if(tk==='propPlane')return makeLowPolyPropPlaneVisual(color);
  if(tk==='a321neo')return makeA321Visual(color);
+ if(tk==='b737')return makeB737Visual(color);
  if(tk==='fighterJet')return makeFighterVisual(color);
  const t=CAR_TYPES[tk],W=t.W,g=new T.Group(),ch=new T.Group();g.add(ch);
  const paint=AC.mat(color,{roughness:.3,metalness:.3}),accentHex=AC.accentFor(color),accent=AC.mat(accentHex,{roughness:.32,metalness:.35}),gray=AC.mat(0xd9dee3,{roughness:.35,metalness:.45}),
@@ -3028,7 +3081,7 @@ const _cc=[null,null,null];
 // FLIGHT_V2: arcade flight model. Throttle is held (W/S), A/D bank and the plane turns by banking, Space pulls the nose
 // up / Shift pushes it down, the nose auto-levels when you let go. Stalls below stall speed, takes off by rotating past
 // Vr, lands if you come down gently on your wheels, and crashes (with the airframe crumpling) if you don't.
-function flyCfg(c){if(c.tk==='a321neo')return{acc:7.5,vs:40,vr:46,roll:.95,pitch:.45,maxBank:.75,retract:true,half:17.9,len:22.2,flare:1.7};if(c.tk==='fighterJet')return{acc:21,vs:42,vr:48,roll:3.2,pitch:1.25,maxBank:1.35,retract:true,half:6.8,len:9.4};return c.tk==='smallJet'
+function flyCfg(c){if(c.tk==='b737')return{acc:7.9,vs:39,vr:45,roll:1.0,pitch:.48,maxBank:.75,retract:true,half:17.9,len:19.8,flare:1.7};if(c.tk==='a321neo')return{acc:7.5,vs:40,vr:46,roll:.95,pitch:.45,maxBank:.75,retract:true,half:17.9,len:22.2,flare:1.7};if(c.tk==='fighterJet')return{acc:21,vs:42,vr:48,roll:3.2,pitch:1.25,maxBank:1.35,retract:true,half:6.8,len:9.4};return c.tk==='smallJet'
  ?{acc:12.5,vs:30,vr:34,roll:1.5,pitch:.7,maxBank:1.15,retract:true,half:6.5,len:7}
  :{acc:8.5,vs:19,vr:22,roll:2.1,pitch:.95,maxBank:1.2,retract:false,half:5.75,len:4.7}}
 function stepAircraft(c,dt){
@@ -3133,7 +3186,7 @@ function aircraftCrash(c,p,impact,part){
  if(!c.dead&&s>.85&&!(typeof DEV!=='undefined'&&DEV.god&&c===pl.car))damageCar(c,9999,'crash'); // a truly hard hit is not survivable
 }
 function aircraftCrumple(c,lx,ly,lz,dx,dy,dz,amount){
- if(typeof crumpleParts!=='function')return;const state=crumpleParts(c);const R=c.tk==='a321neo'?6:c.tk==='smallJet'?3.2:2.4,base=new T.Vector3(),pt=new T.Vector3();
+ if(typeof crumpleParts!=='function')return;const state=crumpleParts(c);const R=c.t.airliner?6:c.tk==='smallJet'?3.2:2.4,base=new T.Vector3(),pt=new T.Vector3();
  for(const part of state.parts){const a=part.geometry.attributes.position.array;part.from=new Float32Array(a);part.to=new Float32Array(a);
   for(let i=0;i<a.length;i+=3){base.fromArray(part.base,i).applyMatrix4(part.toCh);pt.fromArray(a,i).applyMatrix4(part.toCh);
    const d2=(base.x-lx)**2+(base.y-ly)**2+(base.z-lz)**2;if(d2>R*R*4)continue;const w=Math.exp(-d2/(R*R));
@@ -3400,7 +3453,7 @@ function updateCamera(dt){
  else if(pl.car){const c=pl.car;tx=c.x;ty=c.y+1.2;tz=c.z;const sp=c.speed;
   mouseIdle+=dt;if(mouseIdle>1.4||!mouseLocked){const target=c.h+Math.PI;const rate=sp>2?(c.vf>=-1?3.2:1.2):0;camYaw+=wrapA(target-camYaw)*(1-Math.exp(-rate*dt))}
   dist=(camMode===1?6.2:9.6)+sp*.05;height=camMode===1?2.4:3.6;fov=70+Math.min(22,sp*.7);camPitch=lerp(camPitch,.2,dt*.8*(mouseIdle>1.4?1:0));
-  if(c.t.aircraft){const jet=c.tk==='smallJet'||c.tk==='fighterJet'||c.tk==='a321neo';dist=(c.tk==='a321neo'?52:c.tk==='fighterJet'?23:jet?19:14)+sp*.06;height=jet?4.2:3.4;fov=62+Math.min(16,sp*.18);ty+=.6;
+  if(c.t.aircraft){const jet=c.tk==='smallJet'||c.tk==='fighterJet'||c.t.airliner;dist=(c.t.airliner?(c.tk==='a321neo'?52:48):c.tk==='fighterJet'?23:jet?19:14)+sp*.06;height=jet?4.2:3.4;fov=62+Math.min(16,sp*.18);ty+=.6;
    if(mouseIdle>1.4||!mouseLocked)camPitch=lerp(camPitch,clamp(.16-(c.gam||0)*.85,-.5,.9),Math.min(1,dt*2.5))}
   if(camMode===2){const sn=Math.sin(c.h),cs=Math.cos(c.h);camPos.set(c.x+sn*.3,c.y+1.2,c.z+cs*.3);camera.position.lerp(camPos,1);camera.lookAt(c.x+sn*20,c.y+1.2,c.z+cs*20);camera.fov=lerp(camera.fov,fov,.1);camera.updateProjectionMatrix();return}}
  else{tx=pl.x;ty=pl.y+1.65;tz=pl.z;dist=pl.weapon!=='fists'&&pl.aim>0?2.6:4.4;height=.2;
@@ -3501,7 +3554,7 @@ const audio=(()=>{let ctx=null,eng=null,engG=null,sir=null,sirG=null,master=null
   const rumN=noise(),rumLp=bq('lowpass',110,.8),rumG=g(0);rumN.connect(rumLp);rumLp.connect(rumG);rumG.connect(out);
   const wN=noise(),wBp=bq('bandpass',450,.45),wG=g(0);wN.connect(wBp);wBp.connect(wG);wG.connect(out);
   pv={pOsc,pOsc2,pLp,pG,lfo,bladeBp,bladeG,jw1,jw2,jwG,roarBp,roarG,rumG,wBp,wG}}
- function planeTick(t,car,on,speed,throttle){if(!pv)return;const P=pv,jet=on&&(car.tk==='smallJet'||car.tk==='fighterJet'||car.tk==='a321neo'),prop=on&&!jet,set=(prm,v,tc)=>prm.setTargetAtTime(v,t,tc);
+ function planeTick(t,car,on,speed,throttle){if(!pv)return;const P=pv,jet=on&&(car.tk==='smallJet'||car.tk==='fighterJet'||!!car.t.airliner),prop=on&&!jet,set=(prm,v,tc)=>prm.setTargetAtTime(v,t,tc);
   // propeller plane: engine rpm follows the throttle quickly
   const rpm=900+throttle*1500+Math.min(400,speed*6),fire=rpm/60*3,blade=rpm/60*2;
   set(P.pOsc.frequency,fire,.18);set(P.pOsc2.frequency,fire*.5,.18);set(P.pLp.frequency,300+throttle*900,.2);set(P.pG.gain,prop?.045+throttle*.055:0,.15);
