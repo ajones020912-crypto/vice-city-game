@@ -1686,6 +1686,35 @@ function buildBaseMap(){
   x.strokeStyle='#8b9678';x.lineWidth=1;x.strokeRect(px(-280),pz(-195),560/MAPPX,390/MAPPX);
   x.restore();
  }
+
+ // SALTON_AFB_SATELLITE_MAP_V1: draw the air force base footprint on the shared minimap/full-map canvas.
+ {const ax=650,az=-1180,px=v=>(ax+v+WS)/MAPPX,pz=v=>(az+v+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w/MAPPX,h/MAPPX)};
+  x.save();
+  // Base grounds and fenced compound
+  rect(0,-5,1160,390,'#53694a');
+  rect(0,-15,1080,350,'#657451');
+  // Main runway and threshold/centerline markings
+  rect(0,-70,920,46,'#343a3c');
+  x.strokeStyle='#e2e3dc';x.lineWidth=1.15;x.setLineDash([5,4]);x.beginPath();x.moveTo(px(-425),pz(-70));x.lineTo(px(425),pz(-70));x.stroke();x.setLineDash([]);
+  x.fillStyle='#e5e5dc';for(const end of [-1,1])for(let i=0;i<7;i++)x.fillRect(px(end*438)-1,pz(-70+i*5)-.7,2.2,2.1);
+  // Parallel taxiway, connectors and aircraft apron
+  rect(0,-5,700,20,'#454b4b');rect(0,-5,680,1.8,'#c5a75f');
+  for(const xx of [-330,0,330])rect(xx,-37,18,56,'#454b4b');
+  rect(-60,75,560,95,'#898d87');
+  x.strokeStyle='#e5e0c9';x.lineWidth=.85;for(const xx of [-300,-245,-190,-135,-80,-25,30,85,140]){x.beginPath();x.moveTo(px(xx),pz(48));x.lineTo(px(xx),pz(105));x.stroke()}
+  // Four hardened aircraft shelter roofs, aligned along the apron
+  for(let i=0;i<4;i++){const xx=-300+i*120;rect(xx,29,54,29,'#777c76');x.strokeStyle='#aeb1a8';x.lineWidth=.8;x.strokeRect(px(xx-27),pz(14),54/MAPPX,30/MAPPX);rect(xx,29,5,28,'#343a3b')}
+  // Operations buildings, hangar and control tower
+  rect(330,90,42,24,'#777f79');rect(365,76,34,35,'#606b68');rect(430,91,20,18,'#777f79');
+  rect(300,68,18,18,'#6e797b');rect(300,68,8,8,'#a7b8b7');
+  // Radar dome and service structures
+  x.fillStyle='#c2c6bd';x.beginPath();x.arc(px(370),pz(135),3.2,0,Math.PI*2);x.fill();
+  rect(-425,112,36,20,'#727d79');rect(-370,132,25,16,'#81877f');
+  // Perimeter fence and access road
+  x.strokeStyle='#9ba184';x.lineWidth=1.1;x.strokeRect(px(-560),pz(-180),1120/MAPPX,330/MAPPX);
+  x.strokeStyle='#b4b59a';x.lineWidth=1.4;x.beginPath();x.moveTo(px(560),pz(150));x.lineTo(px(590),pz(175));x.lineTo(px(630),pz(175));x.stroke();
+  x.restore();
+ }
  baseMap=c;
 }
 const REGIONS=[['VICE CITY INTERNATIONAL AIRPORT',-2180,305,-1220,1055,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['SUNRISE FARMS',1600,600,3600,3150,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
