@@ -1,0 +1,97 @@
+name: Lucia deeper warm tan skin color only
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-deeper-warm-tan-v3.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  tan:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [main, lucia-outfits]
+    concurrency:
+      group: lucia-u-neck-${{ matrix.target }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    env:
+      TARGET_BRANCH: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.target }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-warm-tan" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Reuse reviewed color-only checks with a deeper warm shade
+        run: |
+          git fetch origin main
+          git show origin/main:.github/workflows/lucia-warm-tan-v2.yml > /tmp/lucia-warm-original.yml
+          python3 <<'PY'
+          import json, os, pathlib, subprocess, traceback
+          model=pathlib.Path('js/reference-characters.js');html=pathlib.Path('index.html')
+          baseline=model.read_bytes();oldhtml=html.read_bytes()
+          report={'passed':False,'branch':os.environ['TARGET_BRANCH'],'previousSkinColor':'965F3E','newSkinColor':'845135','scope':'Lucia skin-color defaults and material color only. Rendered shade and live deployment not verified.'}
+          status=pathlib.Path('status/lucia-deeper-warm-tan-v3-check.json');status.parent.mkdir(exist_ok=True)
+          inner=pathlib.Path('status/lucia-deeper-warm-tan-v3-model-check.json');previous_inner=inner.read_bytes() if inner.exists() else None
+          try:
+              if b'// LUCIA_DEEPER_WARM_TAN_V3' in baseline:
+                  if not status.exists() or not json.loads(status.read_text()).get('passed'): raise RuntimeError('Deeper tan marker has no passing report')
+                  report.update(passed=True,outcome='target shade already installed')
+              else:
+                  lines=pathlib.Path('/tmp/lucia-warm-original.yml').read_text().splitlines();blocks=[]
+                  for i,line in enumerate(lines):
+                      if line!='        run: |': continue
+                      body=[]
+                      for value in lines[i+1:]:
+                          if value and not value.startswith('          '): break
+                          body.append(value[10:] if value else '')
+                      blocks.append('\n'.join(body)+'\n')
+                  if len(blocks)!=3: raise RuntimeError('Reviewed tan workflow layout changed')
+                  logs=[]
+                  for phase,original in zip(['prepare','validate'],blocks[:2]):
+                      script=original.replace('LUCIA_WARM_TAN_V2','LUCIA_DEEPER_WARM_TAN_V3')
+                      script=script.replace('0xa36d48','__PREVIOUS_SKIN_HEX__').replace('0x965f3e','0x845135').replace('__PREVIOUS_SKIN_HEX__','0x965f3e')
+                      script=script.replace('A36D48','__PREVIOUS_SKIN_TEXT__').replace('965F3E','845135').replace('__PREVIOUS_SKIN_TEXT__','965F3E')
+                      script=script.replace('status/lucia-warm-tan-v2-check.json','status/lucia-deeper-warm-tan-v3-model-check.json')
+                      if phase=='validate':
+                          needle="T=require(process.env.RUNNER_TEMP+'/lucia-warm-tan/node_modules/three');"
+                          replacement="T=Object.assign({},require(process.env.RUNNER_TEMP+'/lucia-warm-tan/node_modules/three'),{TextureLoader:class{load(url){const Base=require(process.env.RUNNER_TEMP+'/lucia-warm-tan/node_modules/three'),texture=new Base.Texture();texture.image={width:256,height:256};texture.userData.localURL=url;return texture;}}});"
+                          if script.count(needle)!=1: raise RuntimeError('Reviewed model-test setup changed')
+                          script=script.replace(needle,replacement,1)
+                      path=pathlib.Path('/tmp/lucia-deeper-tan-'+phase+'.sh');path.write_text(script)
+                      result=subprocess.run(['bash','-e',str(path)],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=180)
+                      logs.append({'phase':phase,'exitCode':result.returncode,'outputTail':(result.stdout or '')[-10000:]})
+                      report['steps']=logs
+                      if result.returncode: raise RuntimeError('Color-only '+phase+' failed; current tone may differ from reviewed baseline')
+                  detail=json.loads(inner.read_text())
+                  if not detail.get('passed') or detail.get('newSkinColor')!='845135': raise RuntimeError('Target color validation missing')
+                  if b'// LUCIA_DEEPER_WARM_TAN_V3' not in model.read_bytes(): raise RuntimeError('Deeper tan marker missing')
+                  report.update(passed=True,outcome='deeper warm tan installed and structurally checked',checks=detail,bodyClothesUnderwearAndRigPreserved=True,shortsRepairSourcePreserved=True,lightingAndOtherCharactersUnchanged=True)
+          except Exception as exc:
+              model.write_bytes(baseline);html.write_bytes(oldhtml)
+              if previous_inner is not None: inner.write_bytes(previous_inner)
+              elif inner.exists(): inner.unlink()
+              report.update(passed=False,error=str(exc),traceback=traceback.format_exc()[-10000:],baselinePreserved=True)
+          status.write_text(json.dumps(report,indent=2)+'\n')
+          PY
+      - name: Publish checked skin color only or diagnostic report
+        run: |
+          git fetch origin "$TARGET_BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/"$TARGET_BRANCH")" || { echo 'Branch changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/lucia-deeper-warm-tan-v3-check.json
+          if node -e "process.exit(JSON.parse(require('fs').readFileSync('status/lucia-deeper-warm-tan-v3-check.json','utf8')).passed?0:1)"; then
+            git add -- js/reference-characters.js index.html
+            if test -f status/lucia-deeper-warm-tan-v3-model-check.json; then git add -- status/lucia-deeper-warm-tan-v3-model-check.json; fi
+          fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Deepen Lucia warm tan to 845135 preserving body clothing rig and lighting or record error'
+            git push origin HEAD:"refs/heads/$TARGET_BRANCH"
+          fi
+          node -e "const r=JSON.parse(require('fs').readFileSync('status/lucia-deeper-warm-tan-v3-check.json','utf8'));if(!r.passed){console.error(r.error);process.exit(1);}"
