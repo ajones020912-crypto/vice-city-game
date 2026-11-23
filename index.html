@@ -692,8 +692,13 @@ const FL_KEYS=(()=>{const k=[];
  for(let i=0;i<6;i++){const t=i/5;k.push([-2650+t*1750,-700+38*Math.sin(t*5.4),78+12*Math.sin(i*1.7),34+7*Math.cos(i*1.3),.04*Math.sin(i)])}
  for(let i=0;i<6;i++){const t=i/5;k.push([1750+t*1650,-700+42*Math.sin(t*5.1+1.2),82+13*Math.cos(i*1.4),36+6*Math.sin(i*1.1),-.035*Math.sin(i)])}
  return k})();
-function flKeysD(x,z){let d=1e9;for(const [cx,cz,rx,rz,a] of FL_KEYS){const c=Math.cos(a),s=Math.sin(a),dx=x-cx,dz=z-cz,u=(dx*c+dz*s)/rx,v=(-dx*s+dz*c)/rz;
- const e=Math.hypot(u,v);if(e<3)d=Math.min(d,(e-1)*Math.min(rx,rz))}return d}
+// FAST_TERRAIN_V1: each key's rotation is worked out once, and keys too far away to matter are skipped. A key only
+// counts when e<3, and e >= distance/max(rx,rz), so any key more than 3 of its largest radii away can never count:
+// results are exactly the same as before, just without ~100 sin/cos pairs per terrain sample.
+let FL_KEYS_PRE=null;
+function flKeysD(x,z){if(!FL_KEYS_PRE)FL_KEYS_PRE=FL_KEYS.map(([cx,cz,rx,rz,a])=>{const m=Math.max(rx,rz);return[cx,cz,rx,rz,Math.cos(a),Math.sin(a),Math.min(rx,rz),9.0001*m*m]});
+ let d=1e9;for(let i=0;i<FL_KEYS_PRE.length;i++){const k=FL_KEYS_PRE[i],dx=x-k[0],dz=z-k[1];if(dx*dx+dz*dz>k[7])continue;
+  const c=k[4],s=k[5],u=(dx*c+dz*s)/k[2],v=(-dx*s+dz*c)/k[3],e=Math.hypot(u,v);if(e<3)d=Math.min(d,(e-1)*k[6])}return d}
 // SALTON_AFB_V1: Salton Memorial Island (the southern Kestrel Key, enlarged) carries an air force base:
 // runway, taxiway, apron, hardened aircraft shelters, control tower, radar dome, perimeter fence and parked fighters.
 const AFB={cx:650,cz:-1180,rx:600,rz:205,runZ:-1250,taxiZ:-1185,apronZ:-1105,hasZ:-1097,hasR:11,hasL:26};
@@ -1957,7 +1962,7 @@ function buildCityRivers(){
 function buildBaseMap(){if(LOADPRE.map){LOADPRE.map=false;return}for(const _ of buildBaseMapGen());}
 function* buildBaseMapGen(){
  const S=WS*2/MAPPX,[c,x]=cv(S,S),id=x.createImageData(S,S),o=[0,0,0],d=id.data;
- for(let j=0;j<S;j+=2){yield;for(let i=0;i<S;i+=2){const wx=-WS+i*MAPPX,wz=-WS+j*MAPPX,h=heightAt(wx,wz);groundCol(wx,wz,h,o);let r=o[0],g=o[1],b=o[2];
+ for(let j=0;j<S;j+=2){yield;for(let i=0;i<S;i+=2){const wx=-WS+i*MAPPX,wz=-WS+j*MAPPX,h=heightAt(wx,wz);let r,g,b; /* FAST_MAP_V1: both branches below set the colour, so the costly groundCol() call that used to sit here was wasted work */
   // SATELLITE_COLOR_PALETTE_V1: brighter MIA/GTA-style map colors for quick visual reading.
   if(h<WL){
    const depth=clamp((WL-h)/5,0,1);
