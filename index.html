@@ -2154,151 +2154,85 @@ function buildAirport(){
  for(const x of [-190,-135,-80]){paint(.35,47,yellow,x,91);paint(20,.35,yellow,x,112);}
  for(let x=-240;x<=240;x+=24)for(const z of [-71,-19])box(.35,.18,.35,warmLight,x,.34,z);
  for(let x=-210;x<=210;x+=30)for(const z of [21,49])box(.3,.18,.3,blueLight,x,.32,z);
- // Expanded VCIA passenger terminal with a wider concourse and glazed departures frontage.
- // Massive multi-level main passenger terminal with a wide glass frontage.
- box(270,30,104,white,-153,15,158,true);
- box(258,19,.9,glass,-153,15,105.3,true);
- box(282,2,112,roof,-153,31,158,true);
- box(280,1.2,22,white,-153,8.5,104,true);
- for(let x=-285;x<=-21;x+=8){box(.5,18,.65,metal,x,14.5,105.0);box(.55,13,.45,metal,x,7.5,96.8)}
- // Upper-level glass band and roof plant rooms.
- box(244,5,.8,glass,-153,25,105.1,true);
- box(38,7,28,roof,-153,35,158,true);
- addCol(cx-153*SCALE-138*SCALE,cz+105*SCALE,cx-153*SCALE+138*SCALE,cz+211*SCALE,ground+33*SCALE,'building');
- // Two side concourses and enclosed passenger bridges connecting to aircraft stands.
- box(78,15,42,white,-330,7.5,155,true);box(80,1,46,roof,-330,16,155,true);
- box(78,15,42,white,24,7.5,155,true);box(80,1,46,roof,24,16,155,true);
- for(const x of[-205,-101]){box(34,4,8,white,x,4.5,102,true);box(32,3,.35,glass,x,4.5,98.0);box(36,.5,10,roof,x,6.8,102)}
- // Four passenger jet bridges sized for narrowbody and widebody airline gates.
- // Each bridge has a glazed enclosed walkway, telescoping head, roof and support gear.
- for(const [i,x] of [-255,-185,-115,-45].entries()){
-  const z0=102,z1=28,mid=(z0+z1)/2,len=z0-z1;
-  // Fixed terminal connector and enclosed boarding corridor.
-  box(11,7,14,white,x,8.5,96,true);
-  box(8,5,len,glass,x,10.5,mid,true);
-  box(9.5,.8,len+3,roof,x,13.4,mid,true);
-  // Side rails and lower sill details.
-  for(const side of [-1,1]){
-   box(.65,4.8,len,metal,x+side*4.1,10.2,mid,true);
-   box(.8,1.2,7,white,x+side*4.5,8.1,z1+5,true);
-  }
-  // Telescoping aircraft-end cabin with visible glazing.
-  box(15,8,17,white,x,9,18,true);
-  box(13,5,.65,glass,x,10,9.4,true);
-  box(13,5,.65,glass,x,10,26.6,true);
-  box(16,.8,18,roof,x,13.4,18,true);
-  // Height-adjustable support column and wheeled base.
-  box(2.4,6,2.4,metal,x,3.1,35,true);
-  box(7,1.2,9,metal,x,0.9,35,true);
-  for(const side of [-1,1])box(1.5,2.2,1.5,metal,x+side*2.5,.1,35,true);
-  // Small gate number plate above the boarding head.
-  box(5,1.5,.35,blueLight,x,15,18,true);
- }
- // Gate canopy and terminal curbside frontage.
- box(250,2,22,roof,-153,7,94,true);
- for(let x=-220;x<=-86;x+=22){box(.5,4,.5,metal,x,2.5,119);box(1.8,.25,1.2,warmLight,x,4.7,119)}
- box(560,.16,9,asphalt,0,.10,192);paint(540,.2,yellow,0,192);
- // VCIA public parking lot beside the terminal, with a marked driveway connecting it to the main airport road.
- box(24,.16,28,asphalt,-320,.10,186);
- paint(.4,26,white,-332,186);paint(.4,26,white,-308,186);
- box(170,.16,80,asphalt,-320,.10,220,true);
- paint(170,.4,white,-320,180);paint(170,.4,white,-320,220);paint(170,.4,white,-320,260);
- for(let x=-400;x<=-240;x+=9.4){
-  paint(.45,38,white,x,200);
-  paint(.45,38,white,x,240);
- }
- // Accessible spaces and pedestrian walkway near the terminal-side entrance
- paint(18,.55,yellow,-245,184);paint(18,.55,yellow,-245,256);
- box(22,.12,5,asphalt,-225,.10,220);
 
- box(38,.16,35,asphalt,-78,.10,176);
- for(let x=-200;x<=-110;x+=10)paint(.16,9,white,x,182);
- box(8,23,8,white,13,11.6,154,true);
- box(17,5,15,glass,13,25,154,true);
- box(20,.8,18,roof,13,28,154);
- box(21,.6,19,white,13,22,154);
- box(.3,5,.3,metal,13,30.7,154);
- box(4,.4,.8,warmLight,13,33.3,154);
- const hx=205,hz=140;
- box(108,.16,86,asphalt,hx,.10,hz);
- box(108,17,2,metal,hx,8.7,hz+43,true);
- for(const side of [-1,1]){box(2,17,86,metal,hx+side*54,8.7,hz,true);box(26,17,2,metal,hx+side*41,8.7,hz-43,true);}
- box(56,3,2,metal,hx,15.7,hz-43,true);
- box(112,1.2,90,roof,hx,17.8,hz);
- for(let z=hz-39;z<=hz+39;z+=10)box(111,.25,.3,white,hx,18.5,z);
- for(const side of [-1,1])for(let x=31;x<=51;x+=4)box(.35,14,.3,roof,hx+side*x,7.7,hz-44.2);
- for(const x of [hx-34,hx+34])box(1.8,.25,.6,warmLight,x,15,hz-44.4);
- box(35,5,20,white,82,2.6,155,true);box(29,2,.3,glass,82,3,144.7);
- for(const x of [-230,-25,115]){box(.3,9,.3,metal,x,4.6,120);box(2,.3,1,warmLight,x,9.2,120);}
- // MIA_INSPIRED_VCIA_TERMINAL_V1: connected horseshoe terminal, six concourses, garages and elevated people mover.
- // The broad landside terminal wraps around the central parking/transport court.
- box(292,25,34,white,-153,13,150,true);
- box(286,18,.9,glass,-153,14,132.2,true);
- box(300,2,40,roof,-153,26,150,true);
- box(35,23,118,white,-319,12,70,true);
- box(35,23,118,white,13,12,70,true);
- box(38,2,122,roof,-319,24,70,true);
- box(38,2,122,roof,13,24,70,true);
- // Concourse piers D, E, F, G, H and J extend from the terminal toward the aircraft apron.
- const concourses=[
-  {id:'D',x:65,c:0x245b9a,len:214},
-  {id:'E',x:-5,c:0xb28a24,len:160},
-  {id:'F',x:-75,c:0xb28a24,len:160},
-  {id:'G',x:-145,c:0xb28a24,len:160},
-  {id:'H',x:-245,c:0x9a3838,len:150},
-  {id:'J',x:-315,c:0x9a3838,len:150}
- ];
- for(const q of concourses){
-  const mid=25-q.len/2;
-  box(27,15,q.len,white,q.x,8,mid,true);
-  box(29,1.2,q.len+4,roof,q.x,16,mid,true);
-  box(25,7,.8,glass,q.x,10,25-q.len,true);
-  // Repeated glazed gate bays and roof lights make each pier read as an airport concourse.
-  for(let zz=25-q.len+18;zz<25;zz+=27){
-   box(25,.22,1.1,metal,q.x,13.8,zz);
-   box(1.1,5,.7,glass,q.x-12.4,9.5,zz);
-   box(1.1,5,.7,glass,q.x+12.4,9.5,zz);
-  }
-  // Large color-coded concourse identifier at the pier entrance.
-  const cm=new T.MeshBasicMaterial({color:q.c});
-  box(18,4,2,cm,q.x,19,98);
-  // Two enclosed boarding bridges per concourse, with terminal-side supports.
-  for(const side of [-1,1]){
-   const bx=q.x+side*24,bz=-5;
-   box(17,6,9,white,bx,8,bz,true);
-   box(15,4,8,glass,bx,9,bz,true);
-   box(16,.7,10,roof,bx,11.5,bz,true);
-   box(2,5,2,metal,bx,2.5,bz,true);
-   box(6,.8,6,metal,bx,0.7,bz,true);
-  }
- }
- // Dolphin and Flamingo parking garages sit in the terminal's central landside court.
- for(const [gx,label] of [[-235,'DOLPHIN GARAGE'],[-75,'FLAMINGO GARAGE']]){
-  box(66,35,56,concrete,gx,18,218,true);
-  for(let yy=5;yy<=34;yy+=7)box(64,.55,54,white,gx,yy,218);
-  for(let xx=-27;xx<=27;xx+=9)box(.65,27,.65,metal,gx+xx,18,190,true);
-  box(52,3,1.2,glass,gx,34,189,true);
- }
- // MIA Mover-inspired elevated people mover links the garage court to a rental-car/intermodal stop.
- box(310,1.8,7,metal,-80,42,265,true);
- box(310,.7,3,glass,-80,44,265,true);
- for(let xx=-230;xx<=70;xx+=50)box(2,41,2,metal,xx,21,265,true);
- box(28,9,12,white,95,45,265,true);
- box(24,6,.8,glass,95,46,258.8,true);
- box(30,1,14,roof,95,50,265,true);
- // Landside terminal road and covered curbside drop-off loop.
- box(310,.18,16,asphalt,-153,.1,194);
- paint(290,.25,yellow,-153,194);
- for(let xx=-285;xx<=-25;xx+=26){
-  box(1,7,1,metal,xx,3.5,180,true);
-  box(8,.3,1.2,warmLight,xx,7.2,180);
- }
- // Air-cargo apron and warehouse zone on the western edge of the airport.
- box(130,.16,78,asphalt,365,.1,125);
- box(116,16,56,white,365,8,125,true);
- box(120,2,60,roof,365,17,125,true);
- for(let xx=320;xx<=410;xx+=18)box(1,10,.7,glass,xx,8,96.8,true);
- box(44,5,.8,blueLight,365,14,95,true);
+ // VCIA MIA-STYLE REBUILD: one connected horseshoe terminal with six attached concourses.
+ // The open side of the U faces the runway apron; rear hall and two wings are physically joined.
+ box(270,28,48,white,0,14,190,true);
+ box(250,18,1,glass,0,15,165,true);
+ box(280,2,56,roof,0,29,190,true);
+ box(46,25,128,white,-132,12,110,true);
+ box(46,25,128,white,132,12,110,true);
+ box(52,2,134,roof,-132,25,110,true);
+ box(52,2,134,roof,132,25,110,true);
+ box(58,25,48,white,-103,12,163,true);
+ box(58,25,48,white,103,12,163,true);
+ box(62,2,52,roof,-103,25,163,true);
+ box(62,2,52,roof,103,25,163,true);
+ box(210,7,2,glass,0,21,165,true);
+ box(220,2,12,roof,0,31,190,true);
+ // Color-coded terminal zones: North blue, Central yellow, South red.
+ box(48,4,2,blueLight,143,29,105,true);
+ box(82,4,2,yellow,0,30,211,true);
+ box(48,4,2,blueLight,-143,29,105,true);
+ // North Terminal D: long concourse with overhead Skytrain guideway.
+ box(28,17,255,white,178,8.5,-48,true);
+ box(32,2,263,roof,178,18,-48,true);
+ box(.8,9,240,glass,164,10,-48,true);
+ box(.8,9,240,glass,192,10,-48,true);
+ box(7,1.8,270,metal,178,30,-48,true);
+ // Central Terminal E, F and G.
+ box(28,17,198,white,108,8.5,-54,true);
+ box(32,2,206,roof,108,18,-54,true);
+ box(.8,9,184,glass,94,10,-54,true);
+ box(.8,9,184,glass,122,10,-54,true);
+ box(28,17,180,white,38,8.5,-52,true);
+ box(32,2,188,roof,38,18,-52,true);
+ box(.8,9,166,glass,24,10,-52,true);
+ box(.8,9,166,glass,52,10,-52,true);
+ box(28,17,180,white,-38,8.5,-52,true);
+ box(32,2,188,roof,-38,18,-52,true);
+ box(.8,9,166,glass,-52,10,-52,true);
+ box(.8,9,166,glass,-24,10,-52,true);
+ // South Terminal H and J.
+ box(28,17,198,white,-108,8.5,-54,true);
+ box(32,2,206,roof,-108,18,-54,true);
+ box(.8,9,184,glass,-122,10,-54,true);
+ box(.8,9,184,glass,-94,10,-54,true);
+ box(28,17,225,white,-178,8.5,-48,true);
+ box(32,2,233,roof,-178,18,-48,true);
+ box(.8,9,211,glass,-192,10,-48,true);
+ box(.8,9,211,glass,-164,10,-48,true);
+ // Enclosed passenger boarding bridges along both sides of the concourses.
+ box(18,6,10,white,207,8,-28,true);box(16,4,8,glass,207,9,-28,true);box(20,.8,12,roof,207,11.5,-28,true);
+ box(18,6,10,white,149,8,-76,true);box(16,4,8,glass,149,9,-76,true);box(20,.8,12,roof,149,11.5,-76,true);
+ box(18,6,10,white,136,8,-28,true);box(16,4,8,glass,136,9,-28,true);box(20,.8,12,roof,136,11.5,-28,true);
+ box(18,6,10,white,80,8,-76,true);box(16,4,8,glass,80,9,-76,true);box(20,.8,12,roof,80,11.5,-76,true);
+ box(18,6,10,white,66,8,-28,true);box(16,4,8,glass,66,9,-28,true);box(20,.8,12,roof,66,11.5,-28,true);
+ box(18,6,10,white,-66,8,-28,true);box(16,4,8,glass,-66,9,-28,true);box(20,.8,12,roof,-66,11.5,-28,true);
+ box(18,6,10,white,-136,8,-28,true);box(16,4,8,glass,-136,9,-28,true);box(20,.8,12,roof,-136,11.5,-28,true);
+ box(18,6,10,white,-80,8,-76,true);box(16,4,8,glass,-80,9,-76,true);box(20,.8,12,roof,-80,11.5,-76,true);
+ box(18,6,10,white,-207,8,-28,true);box(16,4,8,glass,-207,9,-28,true);box(20,.8,12,roof,-207,11.5,-28,true);
+ box(18,6,10,white,-149,8,-76,true);box(16,4,8,glass,-149,9,-76,true);box(20,.8,12,roof,-149,11.5,-76,true);
+ // Separate E Satellite terminal and enclosed connector.
+ box(50,14,74,white,70,7,-185,true);
+ box(54,2,78,roof,70,15,-185,true);
+ box(8,5,72,glass,61,10,-139,true);
+ // Parking garages and elevated MIA Mover station on the landside.
+ box(72,35,62,concrete,-96,18,294,true);
+ box(70,2,60,roof,-96,36,294,true);
+ box(72,35,62,concrete,96,18,294,true);
+ box(70,2,60,roof,96,36,294,true);
+ box(230,1.8,7,metal,0,44,365,true);
+ box(230,.7,3,glass,0,46,365,true);
+ box(32,10,14,white,132,47,365,true);
+ box(28,6,.8,glass,132,48,357,true);
+ // Separate western cargo apron and warehouse.
+ box(150,.16,92,asphalt,-390,.1,105);
+ box(132,17,70,white,-390,8.5,105,true);
+ box(138,2,74,roof,-390,18,105,true);
+ // Covered departures curb and airport sign.
+ box(340,.16,16,asphalt,0,.1,238);
+ paint(320,.25,yellow,0,238);
  const geometry=new T.BoxGeometry(1,1,1),matrix=new T.Matrix4(),rotation=new T.Quaternion();
  for(const [material,items] of batches){const mesh=new T.InstancedMesh(geometry,material,items.length);for(let i=0;i<items.length;i++){const [w,h,d,x,y,z]=items[i];matrix.compose(new T.Vector3(x,y,z),rotation,new T.Vector3(w,h,d));mesh.setMatrixAt(i,matrix);}mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;mesh.receiveShadow=true;world.add(mesh);}
  const [signCanvas,signCtx]=cv(1024,160);signCtx.fillStyle='#102d40';signCtx.fillRect(0,0,1024,160);signCtx.strokeStyle='#d9b85c';signCtx.lineWidth=10;signCtx.strokeRect(8,8,1008,144);signCtx.fillStyle='#fff';signCtx.font='bold 58px Arial';signCtx.textAlign='center';signCtx.textBaseline='middle';signCtx.fillText('VICE CITY INTERNATIONAL AIRPORT',512,82);const signMat=new T.MeshStandardMaterial({map:mkTex(signCanvas),roughness:.75});box(146,4,1.2,signMat,-153,8.5,135,true);
