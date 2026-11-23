@@ -2372,13 +2372,13 @@ function aiPlaneControl(c,dt){
  }else if(a.phase==='approach'){
   // AI_APPROACH_V2: fly out to a point well west of the runway on its centreline, then to the final approach fix,
   // so every arrival turns onto final already lined up and heading east, clear of the city on the other side.
-  const L=R.land,wp=a.wp?{x:L.x,z:L.z0+2400,alt:140}:{x:L.x,z:L.z0+3900,alt:380};fly(wp.x,wp.z,wp.alt,vRef*1.35);
+  const L=R.land,wp=a.wp?{x:L.x,z:L.z0+2400,alt:140}:{x:L.x,z:L.z0+3900,alt:380};fly(wp.x,wp.z,wp.alt,vRef*1.35);if(c.y-heightAt(c.x,c.z)-.88<40){a.pitch=.6;a.throttle=1;a.steer=clamp(a.steer,-.2,.2)} /* go-around / climb-out: get clear of the ground first */
   if(Math.hypot(c.x-wp.x,c.z-wp.z)<(a.wp?350:600)){if(a.wp){a.phase='final';a.t=0}else a.wp=1}
   if(a.t>240){a.phase='final';a.t=0}
  }else if(a.phase==='final'){
   // glide path to a point 150 m past the threshold, flare low down, idle at the end
   const L=R.land,dist=c.z-L.z0,h=c.y-heightAt(c.x,c.z)-.88;let alt=Math.max(0,dist+150)*.055;
-  if(dist<0)alt=0;fly(L.x,Math.min(c.z-500,L.z0),alt,vRef*.98,h<5?-2.4:dist<0?-4:-7);if(h<12&&dist<450){a.throttle=0;const vy=c.vy||0,ap=c.ap||0;a.pitch=vy>-1.4&&ap>-.1?-1:(vy<-2.8||ap<-.18?.7:0)} /* like a player holding nose-down: the landing assist then flares it */
+  if(dist<0)alt=0;fly(L.x,Math.min(c.z-(h<80?300:500),L.z0),alt,vRef*.98,h<5?-2.4:dist<0?-4:-7);if(h<12&&dist<450){a.throttle=0;const vy=c.vy||0,ap=c.ap||0;a.pitch=vy>-1.4&&ap>-.1?-1:(vy<-2.8||ap<-.18?.7:0)} /* like a player holding nose-down: the landing assist then flares it */
   // autoland: within 4 m of the runway, lined up and over the first 600 m, the AI airliner settles onto its wheels
   if(c.airborne&&h<4&&dist<0&&dist>-600&&Math.abs(c.x-L.x)<24&&Math.abs(wrapA(c.h-Math.PI))<.35){c.airborne=false;c.vy=0;c.ap=0;c.gam=0;c.bank=0;c.y=heightAt(c.x,c.z)+.88}
   if(!c.airborne){a.phase='rollout';a.t=0}
