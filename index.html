@@ -612,8 +612,9 @@ const water=new T.Mesh(new T.PlaneGeometry(10000,10000),waterMat);water.rotation
 const ISL=[[380,-820,150,95],[160,-840,100,70],[-120,-830,110,80],[600,-830,120,80],[830,-820,110,75],[1030,-830,110,90],[1280,-900,130,95],[1480,-860,110,80],[-280,-920,100,70]];
 // JAGGED_COAST_V1: layered waves give bays and headlands; inward bites are capped (~90 m) so no streets get cut off
 const coastJ=(t,k)=>{const j=72*Math.sin(t*.0041+k)+44*Math.sin(t*.0107+k*2.3)+24*Math.sin(t*.0263+k*3.1)+11*Math.sin(t*.061+k*5.7)+6*Math.sin(t*.13+k);return (j>0?j*.58:j)-Math.max(0,260*Math.sin(t*.0019+k*1.9)-60)-Math.max(0,150*Math.sin(t*.0047+k*.7)-50)}; // big outward peninsulas break up the rectangle
-// north shore: headlands and coves only push land out to sea, never into the beachfront
-const shoreZ=x=>-372+10*Math.sin(x*.012)+6*Math.sin(x*.031+1)-Math.max(0,55*Math.sin(x*.0047+1.3)+38*Math.sin(x*.0121+.4)+16*Math.sin(x*.029+2));
+// ATLANTIC_PENINSULA_COAST_V2: curved east coast; the existing city footprints remain inland.
+const shoreZ=x=>flLerp([[-5350,-1050],[-4300,-780],[-3000,-600],[-1600,-490],[-500,-430],[1000,-390],[1900,-300],[2500,-80],[2950,220],[3300,450],[3600,950],[3900,1650],[4300,2500]],x)
+ +10*Math.sin(x*.012)+6*Math.sin(x*.031+1)-Math.max(0,55*Math.sin(x*.0047+1.3)+38*Math.sin(x*.0121+.4)+16*Math.sin(x*.029+2));
 // HARBOR_ISLAND_V1: irregular island in the Calusa bay (negative = land)
 const HH_CX=2150,HH_CZ=-1050; // Key Biscayne position: offshore, south-east of downtown
 function hhIsle(x,z){const dx=(x-HH_CX)/480,dz=(z-HH_CZ)/440,a=Math.atan2(dz,dx);
@@ -627,8 +628,9 @@ const flLerp=(pts,t)=>{if(t<=pts[0][0])return pts[0][1];for(let i=1;i<pts.length
 // MIAMI_LAYOUT_V1 (world axes: north=-x, south=+x, east=-z, west=+z; the map is drawn rotated to match).
 // Vice City sits on the Atlantic (east) coast like Miami; the Gulf coast is far to the west beyond the glades,
 // the peninsula ends in a broad south coast below the farm country, and the keys curl away south-west.
-const flGulf=x=>flLerp([[-5500,5300],[-3000,5150],[-1000,4950],[500,4850],[1800,4600],[2700,4250],[3300,3800]],x);
-const flSouthC=z=>flLerp([[-400,3600],[1000,3590],[2000,3540],[3000,3440],[3600,3280],[4300,2900]],z);
+// VICE_CITY_ISLAND_OUTLINE_V2: broad northern mainland, indented Gulf coast, and a narrowing southern peninsula.
+const flGulf=x=>flLerp([[-5500,1700],[-4600,2600],[-3600,3650],[-2400,4450],[-1000,4950],[500,4900],[1800,4600],[2700,4150],[3300,3500],[3700,2600],[4100,1750]],x);
+const flSouthC=z=>flLerp([[-400,3600],[600,3650],[1500,3820],[2300,3900],[3000,3800],[3600,3500],[4100,3100],[4300,2700]],z);
 const bigJ=(t,k)=>coastJ(t*.55,k)*1.6;
 const FL_KEYS=(()=>{const k=[];
  // the Florida Keys: from the south-east corner, curving south then west
