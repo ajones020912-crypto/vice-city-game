@@ -403,6 +403,54 @@
     };
   }
 
+
+  // Thirty original restaurant tracks and a dedicated nightclub soundtrack.
+  const VENUE_SONGS = {
+    nightclub:[['afterglow-mainstage','Afterglow Mainstage','club',126,45]],
+    burger:[['bennys-griddle-groove','Griddle Groove','funk',108,3],['bennys-neon-refill','Neon Refill','pop',116,8],['bennys-late-night-stack','Late Night Stack','disco',112,13]],
+    palmgrill:[['palm-paradise-breeze','Paradise Breeze','tropical',96,4],['palm-paradise-sunset','Coconut Sunset','tropical',102,9],['palm-paradise-shoreline','Shoreline Stroll','reggae',88,14]],
+    oceandiner:[['ocean-view-morning','Ocean View Morning','retro',112,2],['ocean-view-neon','Chrome & Neon','rock',120,7],['ocean-view-moonlight','Moonlight Milkshake','jazz',92,12]],
+    havana:[['havana-calle-ocho','Calle Ocho Stroll','latin',108,1],['havana-cafe-nocturne','Café Nocturne','latin',100,6],['havana-sugarcane','Sugarcane Swing','latin',116,11]],
+    bigwave:[['bigwave-bluewater','Bluewater Drive','coastal',94,5],['bigwave-saltair','Salt Air','coastal',102,10],['bigwave-deepcurrent','Deep Current','jazz',88,15]],
+    sunsetsteak:[['sunset-steakhouse-gold','Golden Hour Lounge','lounge',84,3],['sunset-steakhouse-midnight','Midnight Reserve','jazz',90,8],['sunset-steakhouse-candlelight','Candlelight Suite','lounge',78,13]],
+    flamingo:[['flamingo-pizza-parade','Pizza Parade','pop',120,4],['flamingo-pink-neon','Pink Neon','disco',116,9],['flamingo-boardwalk','Boardwalk Bounce','rock',124,14]],
+    ricos:[['ricos-street-market','Street Market','latin',112,2],['ricos-sunlit-plaza','Sunlit Plaza','latin',104,7],['ricos-midnight-salsa','Midnight Salsa','latin',118,12]],
+    goldenfry:[['golden-fry-crispy','Crispy Beat','funk',110,5],['golden-fry-drivein','Drive-In Dash','pop',122,10],['golden-fry-afterhours','Afterhours Combo','disco',114,15]],
+    baysidebbq:[['bayside-smokehouse','Smokehouse Stomp','country',98,1],['bayside-sunset-pit','Sunset Pit','blues',90,6],['bayside-backporch','Back Porch Breeze','country',86,11]]
+  };
+  const VENUE_KIND = {nightclub:'nightclub',burger:'burger',palmgrill:'palmgrill',oceandiner:'oceandiner',havana:'havana',bigwave:'bigwave',sunsetsteak:'sunsetsteak',flamingo:'flamingo',ricos:'ricos',goldenfry:'goldenfry',baysidebbq:'baysidebbq'};
+  function makeVenueTrack(id,title,style,bpm,seed) {
+    const roots=[45,48,50,43,46,41,48,45],root=roots[seed%roots.length];
+    const intervals=style==='jazz'||style==='lounge'?[0,5,3,7]:style==='latin'?[0,7,5,3]:style==='blues'?[0,3,5,0]:[0,5,7,3];
+    const qualities=style==='jazz'||style==='lounge'?['m7','maj7','dom7','maj7']:style==='blues'?['min','min','maj','min']:['min','maj','maj','min'];
+    const prog=intervals.map((iv,i)=>chord(root+iv,qualities[i],root+iv-12));
+    const scale=style==='latin'||style==='tropical'||style==='reggae'?[0,2,4,7,9,12,14,16,19,21]:style==='blues'?[0,3,5,6,7,10,12,15,17,19]:[0,2,3,5,7,9,10,12,14,15,17,19,21];
+    const motif=Array.from({length:16},(_,i)=>scale[(i*3+seed*2+Math.floor(i/4))%scale.length]);
+    return {id,title,mood:style+' venue original',bpm,swing:style==='funk'||style==='blues'?0.12:0,form:[['intro',4],['groove',8],['hook',8],['break',4]],prog,
+      step(E,s){const {t,st,sec,ch,beat}=s,full=sec.name==='groove'||sec.name==='hook',club=style==='club';
+        if(st===0)E.pad(ch.notes.map(n=>n+((style==='lounge'||style==='jazz')?12:0)),beat*4,club?0.12:0.065,{cut:club?2100:style==='lounge'?1100:1600,att:sec.name==='intro'?0.7:0.2,verb:0.48});
+        if(club){
+          if(full&&st%4===0)E.kick(t,st===0?1:0.82);if(full&&(st===4||st===12))E.clap(t,0.72);if(full&&st%2===0)E.hat(t,st%4===0?0.18:0.11,st===14);
+          if(st%4===0)E.bass(t,ch.bass+(st===8?12:0),beat*0.82,0.68,{type:'reese',cut:520,q:3});
+          if(full&&st%2===0)E.stab(t,ch.notes.map(n=>n+12),0.045,{bright:2400,decay:0.13});
+          if(sec.name==='hook'&&st%2===0)E.lead(t,root+24+motif[(sec.bar*2+st/2)%16],beat*0.42,0.06,{wave:'sawtooth',cut:3400,dly:0.2});
+        } else {
+          if(full&&(st===0||st===8))E.kick(t,style==='rock'?0.72:0.58);
+          if(full&&(st===4||st===12)){if(style==='jazz'||style==='lounge'||style==='coastal')E.brush(t,0.48);else E.snare(t,0.48,0.22);}
+          if(full&&st%2===1)E.shaker(t,style==='tropical'||style==='latin'?0.17:0.08);if(full&&st%4===2)E.hat(t,0.07);
+          if(st===0||st===8)E.bass(t,ch.bass,beat*1.65,0.42,{type:style==='jazz'||style==='lounge'?'tri':'square',cut:style==='country'?500:850,env:2});
+          if(st===6||st===14)E.pluck(t,ch.notes[(st/2)%3]+12,0.045,{type:style==='coastal'||style==='country'?'triangle':'sawtooth',bright:style==='jazz'?1900:2800,decay:0.28,dly:0.12});
+          if(sec.name==='hook'&&st%4===0){const note=root+24+motif[(sec.bar*4+st/4+seed)%16];if(style==='jazz'||style==='lounge')E.bell(t,note,0.055);else E.lead(t,note,beat*0.7,0.045,{wave:style==='country'?'triangle':'sawtooth',cut:style==='blues'?1800:2800,dly:0.16});}
+          if(style==='latin'&&full&&(st===3||st===11))E.tom(t,root+7,0.28);
+          if(style==='country'&&st===10)E.pluck(t,root+19,0.05,{type:'triangle',bright:2100,decay:0.38});
+          if(style==='funk'&&full&&(st===6||st===14))E.stab(t,ch.notes.map(n=>n+12),0.045,{bright:2500,decay:0.16});
+        }
+        if(sec.name==='break'&&(st===0||st===8))E.bell(t,ch.notes[1]+12,0.045);
+      }};
+  }
+  const VENUE_TRACKS={};
+  for(const [kind,songs] of Object.entries(VENUE_SONGS))songs.forEach((song,i)=>{const tr=makeVenueTrack(song[0],song[1],song[2],song[3],song[4]+i*3);TRACKS[tr.id]=tr;VENUE_TRACKS[tr.id]={kind,index:i,title:tr.title};});
+  function venueSongs(kind){return VENUE_SONGS[kind]||null;}
   // ---------------------------------------------------------------- stings
   const STINGS = {
     passed: { title: 'Mission Passed', length: 2.6, play(E, t) {
@@ -441,16 +489,18 @@
     return ctx.startRendering();
   }
 
-  window.VCSoundtrack = { Engine, TRACKS, STINGS, renderOffline };
+  window.VCSoundtrack = { Engine, TRACKS, STINGS, VENUE_SONGS, renderOffline };
 
   // ---------------------------------------------------------------- game hookup
   // Only runs inside the game page (which exposes window.__vc).
   const SETTINGS_KEY = 'vc_soundtrack_v1';
+  const venueSelection = Object.create(null);
   let settings = { on: true };
   try { Object.assign(settings, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')); } catch (e) { /* storage blocked */ }
   const saveSettings = () => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) { /* storage blocked */ } };
 
   let ctx = null, engine = null, current = null, lastBig = '', radioHeld = false;
+  let venuePanel=null,venueLabel=null,venueNext=null,venueDownload=null;
   function ensureAudio() {
     if (!window.__vc) return;
     try {
@@ -461,6 +511,8 @@
   addEventListener('pointerdown', ensureAudio, { passive: true });
   addEventListener('keydown', ensureAudio);
 
+
+  function audioBufferToWav(buffer){const channels=buffer.numberOfChannels,length=buffer.length,dataLength=length*channels*2,ab=new ArrayBuffer(44+dataLength),v=new DataView(ab);const put=(o,str)=>{for(let i=0;i<str.length;i++)v.setUint8(o+i,str.charCodeAt(i));};put(0,'RIFF');v.setUint32(4,36+dataLength,true);put(8,'WAVE');put(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,channels,true);v.setUint32(24,buffer.sampleRate,true);v.setUint32(28,buffer.sampleRate*channels*2,true);v.setUint16(32,channels*2,true);v.setUint16(34,16,true);put(36,'data');v.setUint32(40,dataLength,true);let o=44;for(let i=0;i<length;i++)for(let c=0;c<channels;c++){const x=Math.max(-1,Math.min(1,buffer.getChannelData(c)[i]));v.setInt16(o,x<0?x*32768:x*32767,true);o+=2;}return ab;}
   // Hold the car radio quiet while chase / race music plays, then give it back.
   function holdRadio(G, hold) {
     const a = G.audio; if (!a || !a.setStation || hold === radioHeld) return;
@@ -474,7 +526,7 @@
     const pl = G.pl, SJ = G.ext && G.ext.SJ;
     if (SJ && SJ.kind === 'race') return 'race';
     if (pl.wanted >= 2) return 'chase';
-    if (pl.inside) return null;
+    if (pl.inside) { const raw=pl.inside.door&&pl.inside.door.kind, kind=VENUE_KIND[raw]||raw, list=venueSongs(kind); return list?list[venueSelection[kind]||0][0]:null; }
     if (pl.car && (G.station ?? -1) >= 0) return null; // the radio has the car
     const zone = G.zoneName ? G.zoneName(pl.x, pl.z) : '';
     if (zone === 'GRASSRUN BAYOU') return 'bayou';
@@ -494,6 +546,8 @@
     lastBig = shown;
     if (shown) return;
 
+
+    if(G.pl&&G.pl.inside&&G.pl.inside.door){const raw=G.pl.inside.door.kind,kind=VENUE_KIND[raw]||raw,list=venueSongs(kind);if(list){if(!venuePanel){venuePanel=document.createElement('div');venuePanel.style.cssText='position:fixed;right:14px;bottom:14px;z-index:10000;display:none;gap:7px;align-items:center;flex-wrap:wrap;max-width:310px;padding:10px 12px;border:1px solid #ffffff55;border-radius:12px;background:#071426ed;color:white;font:12px Arial,sans-serif';venueLabel=document.createElement('div');venueLabel.style.cssText='width:100%;font-weight:bold';venueNext=document.createElement('button');venueNext.textContent='Next track';venueDownload=document.createElement('button');venueDownload.textContent='Download WAV';for(const b of [venueNext,venueDownload])b.style.cssText='border:1px solid #ffffff55;border-radius:7px;padding:7px 9px;background:#183b58;color:white;cursor:pointer';venueNext.onclick=()=>{venueSelection[kind]=((venueSelection[kind]||0)+1)%list.length;current=null;update();};venueDownload.onclick=async()=>{const id=list[venueSelection[kind]||0][0];venueDownload.disabled=true;venueDownload.textContent='Rendering…';try{const buf=await renderOffline(id,48),wav=audioBufferToWav(buf),url=URL.createObjectURL(new Blob([wav],{type:'audio/wav'})),a=document.createElement('a');a.href=url;a.download=id+'.wav';a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);}catch(err){console.warn(err);if(G.toast)G.toast('WAV export failed in this browser',2000);}finally{venueDownload.disabled=false;venueDownload.textContent='Download WAV';};};venuePanel.append(venueLabel,venueNext,venueDownload);document.body.appendChild(venuePanel);}venueLabel.textContent='♫ '+(kind==='nightclub'?'AFTERGLOW NIGHTCLUB':'RESTAURANT MUSIC')+' · '+list[venueSelection[kind]||0][1];venuePanel.style.display='flex';}else if(venuePanel)venuePanel.style.display='none';}else if(venuePanel)venuePanel.style.display='none';
     const want = choose(G);
     const loud = want === 'chase' || want === 'race';
     holdRadio(G, !!(loud && G.pl && G.pl.car));
