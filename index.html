@@ -5539,10 +5539,13 @@ function planRoadsideSpeedLimits(list,buildings,ground){
   }
  }return out;
 }
-let roadsideSpeedLimitsGroup=null;
+let roadsideSpeedLimitsGroup=null;const roadsideSignCols=[];
 function buildRoadsideSpeedLimits(){
  if(roadsideSpeedLimitsGroup){const geos=new Set(),mats=new Set(),maps=new Set();roadsideSpeedLimitsGroup.traverse(o=>{if(o.geometry)geos.add(o.geometry);if(o.material)mats.add(o.material);});for(const m of mats)if(m.map)maps.add(m.map);for(const t of maps)t.dispose();for(const m of mats)m.dispose();for(const g of geos)g.dispose();if(roadsideSpeedLimitsGroup.parent)roadsideSpeedLimitsGroup.parent.remove(roadsideSpeedLimitsGroup);}
- const spots=planRoadsideSpeedLimits(roads,typeof BLD==='undefined'?[]:Array.from(BLD),heightAt),group=new T.Group();group.name='roadside-speed-limit-signs';group.userData.signCount=spots.length;roadsideSpeedLimitsGroup=group;if(!spots.length)return;
+ // SIGN_HITBOX_V1: each sign post is solid (same small footprint as palms and lamp posts)
+ for(const c of roadsideSignCols){for(let gx=Math.floor(c.x0/CG);gx<=Math.floor(c.x1/CG);gx++)for(let gz=Math.floor(c.z0/CG);gz<=Math.floor(c.z1/CG);gz++){const a=colGrid.get(gx*4096+gz);if(a){const i=a.indexOf(c);if(i>=0)a.splice(i,1)}}const i=colAll.indexOf(c);if(i>=0)colAll.splice(i,1)}roadsideSignCols.length=0;
+ const spots=planRoadsideSpeedLimits(roads,typeof BLD==='undefined'?[]:Array.from(BLD),heightAt),group=new T.Group();
+ for(const p of spots)roadsideSignCols.push(addCol(p.x-.2,p.z-.2,p.x+.2,p.z+.2,2.6,'speedSign'));group.name='roadside-speed-limit-signs';group.userData.signCount=spots.length;roadsideSpeedLimitsGroup=group;if(!spots.length)return;
  const poleMat=new T.MeshStandardMaterial({color:0x8e969b,metalness:.65,roughness:.65}),backMat=new T.MeshStandardMaterial({color:0xaab0b3,metalness:.45,roughness:.7}),poleGeo=new T.CylinderGeometry(.035,.045,1,6),boxGeo=new T.BoxGeometry(1,1,1),faceGeo=new T.PlaneGeometry(1,1),matrix=new T.Matrix4(),pos=new T.Vector3(),rot=new T.Quaternion(),scale=new T.Vector3(),up=new T.Vector3(0,1,0);
  const poles=new T.InstancedMesh(poleGeo,poleMat,spots.length),backs=new T.InstancedMesh(boxGeo,backMat,spots.length);poles.frustumCulled=backs.frustumCulled=false;group.add(poles,backs);
  for(let i=0;i<spots.length;i++){const p=spots[i];rot.setFromAxisAngle(up,p.yaw);matrix.compose(pos.set(p.x-p.nx*.055,p.y+1.1,p.z-p.nz*.055),rot,scale.set(1,2.2,1));poles.setMatrixAt(i,matrix);matrix.compose(pos.set(p.x,p.y+2.05,p.z),rot,scale.set(.72,.95,.045));backs.setMatrixAt(i,matrix);}poles.instanceMatrix.needsUpdate=backs.instanceMatrix.needsUpdate=true;
