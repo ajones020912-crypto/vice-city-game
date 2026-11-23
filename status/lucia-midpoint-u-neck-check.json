@@ -1,0 +1,30 @@
+{
+  "passed": true,
+  "branch": "lucia-outfits",
+  "neckline": "pointwise midpoint between original deeper U-neck and higher coverage U-neck",
+  "curveChecks": 14,
+  "dimensions": [
+    {
+      "merge": false,
+      "originalCentre": 0.345,
+      "higherCentre": 0.4819999988079071,
+      "midpointCentre": 0.41349999940395354,
+      "midpointHalfWidth": 0.08,
+      "midpointDepthParameter": 0.11668127643214148
+    },
+    {
+      "merge": true,
+      "originalCentre": 0.345,
+      "higherCentre": 0.4819999988079071,
+      "midpointCentre": 0.41349999940395354,
+      "midpointHalfWidth": 0.08,
+      "midpointDepthParameter": 0.11668127643214148
+    }
+  ],
+  "poseChecks": 6,
+  "latestStrapsAndUnderarmsPreserved": true,
+  "defaultDarkGreyRibbingAndOpacityPreserved": true,
+  "baseGarmentsBodySkinToneAndRigUnchanged": true,
+  "otherCharactersUnchanged": true,
+  "scope": "Front neckline only. Curve interpolation and structural checks do not verify rendered fit, resulting bra exposure, all-pose clipping or live deployment. The older higher-neck coverage percentage does not certify this midpoint revision."
+}
