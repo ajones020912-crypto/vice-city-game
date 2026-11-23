@@ -690,7 +690,7 @@ function buildAFB(){
  const C=AFB,box=(x,y,z,sx,sy,sz,col,ry=0,solid=false)=>{bakeG('plain',GEO.box,x,y,z,ry,sx,sy,sz,col);if(solid)addCol(x-sx/2,z-sz/2,x+sx/2,z+sz/2,y+sy)};
  const ASPH=[.24,.25,.26],CON=[.56,.57,.54],WHITE=[.92,.92,.9],YEL=[.95,.78,.2];
  // runway (flat deck so take-offs are smooth)
- const r0=C.cx-460,r1=C.cx+460;decks.push({x0:r0,x1:r1,z0:C.runZ-24,z1:C.runZ+24,y:.32});
+ const r0=C.cx-460,r1=C.cx+460;decks.push({x0:r0,x1:r1,z0:C.runZ-24,z1:C.runZ+24,y:.32});runwayDecks.push({x0:r0,x1:r1,z0:C.runZ-24,z1:C.runZ+24,y:.32});
  // AFB runway, taxiway, connectors and apron all have supporting collision-height decks.
  decks.push({x0:C.cx-350,x1:C.cx+350,z0:C.taxiZ-12,z1:C.taxiZ+12,y:.28});
  decks.push({x0:C.cx-341,x1:C.cx-319,z0:Math.min(C.runZ,C.taxiZ),z1:Math.max(C.runZ,C.taxiZ),y:.27});
@@ -770,9 +770,11 @@ function heightAt(x,z){
  const ix=gx|0,iz=gz|0,fx=gx-ix,fz=gz-iz,i=iz*(TN+1)+ix;
  let h=lerp(lerp(hg[i],hg[i+1],fx),lerp(hg[i+TN+1],hg[i+TN+2],fx),fz);
  for(const d of decks)if(x>d.x0&&x<d.x1&&z>d.z0&&z<d.z1&&h<d.y)h=d.y;
+ // Dedicated runway hitboxes are checked by the same ground-height system used by aircraft and vehicles.
+ for(const d of runwayDecks)if(x>d.x0&&x<d.x1&&z>d.z0&&z<d.z1&&h<d.y)h=d.y;
  return h;
 }
-const decks=[];
+const decks=[],runwayDecks=[];
 function bakeTerrain(){
  for(let iz=0;iz<=TN;iz++)for(let ix=0;ix<=TN;ix++)hg[iz*(TN+1)+ix]=rawH(-WS+ix*TS,-WS+iz*TS);
  // carve roads flat (causeways, swamp boardwalks) with soft shoulders
@@ -1865,6 +1867,7 @@ function buildAirport(){
  // Shortened airport apron shifted east so its western edge no longer spills into downtown.
  decks.push({x0:cx-450,x1:cx+550,z0:cz-400,z1:cz+400,y:ground});
  // Raised collision-height support for the runway and main taxiway.
+ runwayDecks.push({x0:cx-570,x1:cx+570,z0:cz-262,z1:cz-178,y:ground+.41});
  decks.push({x0:cx-570,x1:cx+570,z0:cz-262,z1:cz-178,y:ground+.41});
  decks.push({x0:cx-517.5,x1:cx+517.5,z0:cz-237,z1:cz-213,y:ground+.40});
  decks.push({x0:cx-517.5,x1:cx+517.5,z0:cz-262.5,z1:cz-37.5,y:ground+.40});
@@ -1989,6 +1992,7 @@ function buildWestAirport(){
  const SCALE=1.35,cx=4900,cz=2800,ground=heightAt(cx,cz)+.65;
  // Collision-height support for the full LWRA grounds and each paved aircraft surface.
  decks.push({x0:cx-470,x1:cx+470,z0:cz-340,z1:cz+340,y:ground});
+ runwayDecks.push({x0:cx-290.25,x1:cx+290.25,z0:cz-92.475,z1:cz-27.675,y:ground+.41});
  decks.push({x0:cx-290.25,x1:cx+290.25,z0:cz-92.475,z1:cz-27.675,y:ground+.41});
  decks.push({x0:cx-263.25,x1:cx+263.25,z0:cz+32.175,z1:cz+61.875,y:ground+.40});
  for(const x of[cx-209.25,cx+209.25])decks.push({x0:x-13.5,x1:x+13.5,z0:cz-6.75,z1:cz+101.25,y:ground+.40});
