@@ -1,0 +1,100 @@
+name: Lucia photo denim shorter legs and fuller seat coverage
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-photo-denim-short-seat.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  shorts:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [main, lucia-outfits]
+    concurrency:
+      group: lucia-u-neck-${{ matrix.target }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    env:
+      TARGET_BRANCH: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.target }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          npm install --prefix "$RUNNER_TEMP/lucia-photo-denim" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+          python -m pip install 'Pillow>=10,<13'
+      - name: Download CC0 source and simplify into local JPEG with provenance
+        run: |
+          python <<'PY'
+          import hashlib, io, json, pathlib, urllib.request
+          from PIL import Image, ImageEnhance, ImageFilter, ImageStat
+          status=pathlib.Path('status/lucia-photo-denim-download.json');status.parent.mkdir(exist_ok=True)
+          report={'passed':False,'source':'https://polyhaven.com/a/denim_fabric','author':'Rob Tuytel','license':'CC0-1.0'}
+          try:
+              def get(url):
+                  req=urllib.request.Request(url,headers={'User-Agent':'ViceCityGameAssetPreparation/1.0'})
+                  with urllib.request.urlopen(req,timeout=60) as response:
+                      return response.read(20000000)
+              catalog=json.loads(get('https://api.polyhaven.com/files/denim_fabric'))
+              candidates=[]
+              def walk(value,trail=''):
+                  if isinstance(value,dict):
+                      if isinstance(value.get('url'),str):
+                          url=value['url'];key=trail.lower()
+                          if '1k' in key and 'jpg' in key and any(k in key for k in ['diff','albedo','color']) and url.startswith('https://dl.polyhaven.org/'):
+                              candidates.append(url)
+                      for key,item in value.items():
+                          walk(item,trail+'/'+key)
+                  elif isinstance(value,list):
+                      for item in value: walk(item,trail)
+              walk(catalog)
+              if not candidates: raise RuntimeError('Official 1K JPG diffuse map not found; refusing guessed asset URL')
+              url=sorted(set(candidates))[0];raw=get(url)
+              image=Image.open(io.BytesIO(raw)).convert('RGB')
+              if min(image.size)<256: raise RuntimeError('Source image unexpectedly small')
+              image=image.resize((256,256),Image.Resampling.LANCZOS).filter(ImageFilter.GaussianBlur(.25))
+              image=ImageEnhance.Contrast(image).enhance(1.08)
+              image=ImageEnhance.Color(image).enhance(.90)
+              if max(ImageStat.Stat(image).stddev)<5: raise RuntimeError('Source texture lacks visible detail')
+              target=pathlib.Path('assets/textures/lucia-denim-photo.jpg');target.parent.mkdir(parents=True,exist_ok=True)
+              image.save(target,'JPEG',quality=84,optimize=True)
+              if target.stat().st_size>80000: raise RuntimeError('Simplified image exceeds size budget')
+              report.update(passed=True,downloadURL=url,sourceSHA256=hashlib.sha256(raw).hexdigest(),processedSHA256=hashlib.sha256(target.read_bytes()).hexdigest(),size=[256,256],bytes=target.stat().st_size,processing='Lanczos downscale, mild blur, restrained contrast and saturation; JPEG quality 84')
+              pathlib.Path('assets/textures/lucia-denim-photo-source.json').write_text(json.dumps(report,indent=2)+'\n')
+          except Exception as exc:
+              report['error']=str(exc)
+          status.write_text(json.dumps(report,indent=2)+'\n')
+          PY
+      - name: Prepare denser shortened shorts and verify preservation and rear coverage
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/lucia-photo-denim/node_modules/acorn'),T=require(process.env.RUNNER_TEMP+'/lucia-photo-denim/node_modules/three'),file='js/reference-characters.js',baseline=fs.readFileSync(file,'utf8'),status='status/lucia-photo-denim-short-seat-check.json',report={passed:false,branch:process.env.TARGET_BRANCH,scope:'Photo asset and neutral sampled seat coverage with finite-pose checks; rendered appearance and all-animation clipping still require in-game review.'};try{assert(JSON.parse(fs.readFileSync('status/lucia-photo-denim-download.json','utf8')).passed,'Photo download or simplification failed; see download report');if(baseline.includes('// LUCIA_PHOTO_DENIM_SHORT_SEAT_V1')){assert(fs.existsSync(status)&&JSON.parse(fs.readFileSync(status,'utf8')).passed);process.exit(0);}report.phase='prepare';const hook='addLuciaTexturedJeanShorts(T,h);';assert(baseline.split(hook).length===2,'Installed textured shorts hook missing or ambiguous');const helper=String.raw`
+           function fitLuciaPhotoDenim(T,h){
+            const u=h.userData,d=h.getObjectByName('lucia-seamless-denim'),briefs=h.getObjectByName('lucia-fitted-black-briefs');if(!d||!d.isSkinnedMesh||d.skeleton.bones.length!==3||!briefs.visible)throw Error('Reviewed shorts rig and permanent briefs required');h.updateMatrixWorld(true);const inv=new T.Matrix4().copy(u.hips.matrixWorld).invert(),M=inv.clone().multiply(d.matrixWorld),back=M.clone().invert(),old=d.geometry,p=old.attributes.position,uv=old.attributes.uv,sw=old.attributes.skinWeight,smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};const points=[],tex=[],weights=[];let oldMin=Infinity;for(let i=0;i<p.count;i++){const v=new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(M);oldMin=Math.min(oldMin,v.y);points.push(v);tex.push([uv.getX(i),uv.getY(i)]);weights.push([sw.getX(i),sw.getY(i),sw.getZ(i),sw.getW(i)]);}if(oldMin>-.30)throw Error('Unexpected original hem; refusing duplicate shortening');for(const v of points)if(v.y<-.10){const rear=1-smooth((v.z+.050)/.100),depth=.135+.020*rear;v.y=-.10+(v.y+.10)*depth/(-oldMin-.10);}const edges=new Map(),ids=old.index?Array.from(old.index.array):Array.from({length:p.count},(_,i)=>i),indices=[];function middle(a,b){const key=a<b?a+','+b:b+','+a;if(edges.has(key))return edges.get(key);const i=points.length;points.push(points[a].clone().lerp(points[b],.5));let ua=tex[a][0],ub=tex[b][0];if(Math.abs(ua-ub)>.5){if(ua<ub)ua++;else ub++;}tex.push([(ua+ub)/2,(tex[a][1]+tex[b][1])/2]);weights.push(weights[a].map((v,k)=>(v+weights[b][k])/2));edges.set(key,i);return i;}for(let i=0;i<ids.length;i+=3){const [a,b,c]=ids.slice(i,i+3),ab=middle(a,b),bc=middle(b,c),ca=middle(c,a);indices.push(a,ab,ca,ab,b,bc,ca,bc,c,ab,bc,ca);}const targets=[];h.traverse(o=>{if(o.isMesh&&o.visible&&o!==d&&(o===briefs||o.name==='lucia-pelvis-skin-bridge'||(o.material===u.m.skin&&(o.parent===u.spine||o.parent===u.hips||u.Lg.some(l=>o.parent===l.hp)))))targets.push(o);});const centers=u.Lg.map(l=>l.hp.getWorldPosition(new T.Vector3()).applyMatrix4(inv).x);let samples=0,maxExpansion=0;for(const v of points){const split=smooth((-.080-v.y)/.140),side=v.x<0?-1:1,cx=(side<0?Math.min(...centers):Math.max(...centers))*split,center=new T.Vector3(cx,v.y,0),radial=v.clone().sub(center);radial.y=0;const radius=radial.length();if(radius<.002)continue;radial.multiplyScalar(1/radius);const origin=center.clone().addScaledVector(radial,1.5).applyMatrix4(u.hips.matrixWorld),direction=radial.clone().negate().transformDirection(u.hips.matrixWorld),hits=new T.Raycaster(origin,direction,0,1.55).intersectObjects(targets,false),hit=hits.find(hit=>split<=.15||side*hit.point.clone().applyMatrix4(inv).x>=-.002);if(!hit)continue;const skin=hit.point.clone().applyMatrix4(inv).sub(center).dot(radial);if(skin<=0)continue;const clearance=v.z<0?.014:.010,target=Math.max(radius,skin+clearance),delta=target-radius;if(delta>.090)throw Error('Unexpected full-seat expansion');v.copy(center).addScaledVector(radial,target);maxExpansion=Math.max(maxExpansion,delta);samples++;}if(samples<200)throw Error('Insufficient dense fit samples');const positions=[],uvs=[],boneIds=[],boneWeights=[];for(let i=0;i<indices.length;i+=3){const face=indices.slice(i,i+3),us=face.map(k=>tex[k][0]),seam=Math.max(...us)-Math.min(...us)>.5;for(let j=0;j<3;j++){const k=face[j],v=points[k].clone().applyMatrix4(back);positions.push(v.x,v.y,v.z);uvs.push(us[j]+(seam&&us[j]<.5?1:0),tex[k][1]);boneIds.push(0,1,2,0);boneWeights.push(...weights[k]);}}const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setAttribute('uv',new T.Float32BufferAttribute(uvs,2));g.setAttribute('skinIndex',new T.Uint16BufferAttribute(boneIds,4));g.setAttribute('skinWeight',new T.Float32BufferAttribute(boneWeights,4));g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();d.geometry=g;if(!fitLuciaPhotoDenim.map){const map=new T.TextureLoader().load('assets/textures/lucia-denim-photo.jpg?v=photo-seat-v1');map.wrapS=map.wrapT=T.RepeatWrapping;map.repeat.set(2,1);map.encoding=T.sRGBEncoding;map.magFilter=T.LinearFilter;map.minFilter=T.LinearMipmapLinearFilter;map.generateMipmaps=true;map.anisotropy=4;fitLuciaPhotoDenim.map=map;}const material=new T.MeshStandardMaterial({color:0xffffff,map:fitLuciaPhotoDenim.map,bumpMap:d.material.bumpMap,bumpScale:.00035,roughnessMap:d.material.roughnessMap,roughness:.96,metalness:0,skinning:true,side:T.DoubleSide,transparent:false,opacity:1});material.onBeforeCompile=shader=>{shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vLuciaPhotoDenim;').replace('#include <begin_vertex>','#include <begin_vertex>\nvLuciaPhotoDenim=position;');shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vLuciaPhotoDenim;').replace('#include <map_fragment>','#include <map_fragment>\nfloat backPanel=1.0-smoothstep(-0.02,0.02,vLuciaPhotoDenim.z);float px=abs(abs(vLuciaPhotoDenim.x)-0.09)-0.034;float py=abs(vLuciaPhotoDenim.y+0.035)-0.045;float pocket=(1.0-smoothstep(0.001,0.003,abs(max(px,py))))*backPanel;diffuseColor.rgb=mix(diffuseColor.rgb,vec3(0.38,0.29,0.15),pocket*0.45);');};material.customProgramCacheKey=()=> 'lucia-photo-denim-seat-v1';material.needsUpdate=true;d.material=material;d.visible=true;d.onBeforeRender();u.luciaPhotoDenimShortSeat={originalMinY:oldMin,frontHemTarget:-.235,rearHemTarget:-.255,denseFitSamples:samples,denseFitVertices:points.length,maxExpansion,photoPath:'assets/textures/lucia-denim-photo.jpg',photoSize:256,bodyAndPermanentUnderwearUnchanged:true};
+           }
+          `;let s=baseline.replace(hook,hook+' fitLuciaPhotoDenim(T,h);');const declaration='function addLuciaTexturedJeanShorts(T,h){';assert(s.split(declaration).length===2);s=s.replace(declaration,helper+declaration);s='// LUCIA_PHOTO_DENIM_SHORT_SEAT_V1\n'+s;acorn.parse(s,{ecmaVersion:'latest'});report.phase='validate';const TT=Object.assign({},T,{TextureLoader:class{load(url){const t=new T.Texture();t.image={width:256,height:256};t.userData.localURL=url;return t;}}});function load(text){const c={window:{},console,Math};vm.createContext(c);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),c);vm.runInContext(text,c);return c.window.VCCharacters;}const old=load(baseline),cur=load(s);function sig(h){const rows=[];h.traverse(o=>{if(o.name==='lucia-seamless-denim')return;const r=[o.type,o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()];if(o.isMesh)r.push(Object.keys(o.geometry.attributes).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.opacity]));rows.push(r);});return JSON.stringify(rows);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(sig(old.build(TT,id))===sig(cur.build(TT,id)));const reports=[];for(const merge of [false,true]){const a=old.build(TT,'luciaC',{merge}),h=cur.build(TT,'luciaC',{merge}),u=h.userData,d=h.getObjectByName('lucia-seamless-denim'),prior=a.getObjectByName('lucia-seamless-denim');assert(sig(a)===sig(h),'Body tank underwear rig or other clothing changed');assert(d.visible&&d.material.color.getHex()===0xffffff&&!d.material.transparent&&d.material.opacity===1&&d.material.map.userData.localURL.includes('lucia-denim-photo.jpg'));const shader={uniforms:{},vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:T.ShaderLib.standard.fragmentShader};d.material.onBeforeCompile(shader,{});assert(shader.fragmentShader.includes('#include <map_fragment>')&&shader.fragmentShader.includes('diffuseColor.rgb=mix'),'Photo sampling missing from shader template');h.updateMatrixWorld(true);const inv=new T.Matrix4().copy(u.hips.matrixWorld).invert(),M=inv.clone().multiply(d.matrixWorld),p=d.geometry.attributes.position,w=d.geometry.attributes.skinWeight;let minY=Infinity;for(let i=0;i<p.count;i++){minY=Math.min(minY,new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(M).y);assert(Math.abs(w.getX(i)+w.getY(i)+w.getZ(i)+w.getW(i)-1)<1e-5);}assert(minY>u.luciaPhotoDenimShortSeat.originalMinY+.070&&minY<=-.225,'Leg length was not shortened as intended');const targets=[];h.traverse(o=>{if(o.isMesh&&o.visible&&(o.name==='lucia-fitted-black-briefs'||o.name==='lucia-pelvis-skin-bridge'||(o.material===u.m.skin&&(o.parent===u.spine||o.parent===u.hips||u.Lg.some(l=>o.parent===l.hp)))))targets.push(o);});let coverage=0,minGap=Infinity;for(const y of [-.18,-.12,-.06,0,.06,.10])for(const x of [-.12,-.08,-.04,0,.04,.08,.12]){const origin=new T.Vector3(x,y,-1).applyMatrix4(u.hips.matrixWorld),direction=new T.Vector3(0,0,1).transformDirection(u.hips.matrixWorld),ray=new T.Raycaster(origin,direction,0,2),skin=ray.intersectObjects(targets,false)[0];if(!skin)continue;const cloth=ray.intersectObject(d,false)[0];assert(cloth&&cloth.distance<skin.distance-.001,'Sampled rear seat remains uncovered or clipped');minGap=Math.min(minGap,skin.distance-cloth.distance);coverage++;}assert(coverage>=20,'Insufficient rear coverage checks');for(const angle of [-.7,0,.7]){u.Lg[0].hp.rotation.x=angle;u.Lg[1].hp.rotation.x=-angle;h.updateMatrixWorld(true);d.onBeforeRender();assert(Array.from(d.skeleton.boneMatrices).every(Number.isFinite));for(let i=0;i<p.count;i+=37)assert(d.boneTransform(i,new T.Vector3().fromBufferAttribute(p,i)).toArray().every(Number.isFinite));}reports.push({merge,newMinY:minY,rearCoverageSamples:coverage,minimumSampledRearClearance:minGap,fit:u.luciaPhotoDenimShortSeat});}fs.writeFileSync(file,s);Object.assign(report,{passed:true,phase:'complete',reports,localPhotoAssetVerified:true,photoGPUDisplayNotVerified:true,bodyTankAndPermanentUnderwearPreserved:true});}catch(error){fs.writeFileSync(file,baseline);Object.assign(report,{passed:false,error:String(error),stack:error.stack,baselinePreserved:true});}fs.mkdirSync('status',{recursive:true});fs.writeFileSync(status,JSON.stringify(report,null,2)+'\n');
+          JS
+      - name: Publish validated photo denim or diagnostic reports only
+        run: |
+          git fetch origin "$TARGET_BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/"$TARGET_BRANCH")" || { echo 'Branch changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/lucia-photo-denim-download.json status/lucia-photo-denim-short-seat-check.json
+          if node -e "process.exit(JSON.parse(require('fs').readFileSync('status/lucia-photo-denim-short-seat-check.json','utf8')).passed?0:1)"; then
+            git add -- js/reference-characters.js assets/textures/lucia-denim-photo.jpg assets/textures/lucia-denim-photo-source.json
+          fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Add simplified CC0 photo denim and shorter full-seat shorts or record validation error'
+            git push origin HEAD:"refs/heads/$TARGET_BRANCH"
+          fi
+          node -e "const r=JSON.parse(require('fs').readFileSync('status/lucia-photo-denim-short-seat-check.json','utf8'));if(!r.passed){console.error(r.error);process.exit(1);}"
