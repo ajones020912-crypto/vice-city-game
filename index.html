@@ -902,7 +902,7 @@ function B(key,x,z){const k=key+'|'+Math.floor((x+WS)/CH)+','+Math.floor((z+WS)/
 const _m=new T.Matrix4(),_q=new T.Quaternion(),_e=new T.Euler(),_p=new T.Vector3(),_sc=new T.Vector3();
 let _yOff=0; // set while baking props that should sit on the terrain (see grounded())
 const grounded=(fn,x,z,s)=>{_yOff=heightAt(x,z);try{fn(x,z,s)}finally{_yOff=0}};
-function bakeG(key,g,x,y,z,ry,sx,sy,sz,col,rx=0,rz=0){_e.set(rx,ry,rz);_q.setFromEuler(_e);_m.compose(_p.set(x,y+_yOff,z),_q,_sc.set(sx,sy,sz));B(key,x,z).geo(g,_m,col)}
+function bakeG(key,g,x,y,z,ry,sx,sy,sz,col,rx=0,rz=0){if(key==='palm')return;_e.set(rx,ry,rz);_q.setFromEuler(_e);_m.compose(_p.set(x,y+_yOff,z),_q,_sc.set(sx,sy,sz));B(key,x,z).geo(g,_m,col)}
 function finalizeBatches(){
  for(const [k,b] of chunkMap){const d=MATS[b.key];if(b.bad)console.warn('[World geometry] skipped',b.bad,'invalid primitive(s) in chunk',k);if(!d||!b.v)continue;const m=new T.Mesh(b.toGeometry(),d.mat);m.castShadow=d.shadow;m.receiveShadow=d.recv;m.matrixAutoUpdate=false;world.add(m)}
  chunkMap.clear();
@@ -1402,10 +1402,7 @@ function initPalm(){
   if(pl){const c1=[.2,.5,.18],c2=[.3,.62,.22];fb.quad(pl[1],pl[0],cur[0],cur[1],0,1,0,0,0,1,1,c1);fb.quad(pl[0],pl[2],cur[2],cur[0],0,1,0,0,0,1,1,c2)}pl=cur}
  PALM.frond=fb.toGeometry();
 }
-function palm(x,z,s=1){const rot=rnd()*TAU,bx=Math.cos(rot)*PALM.top[0]*s,bz=Math.sin(rot)*PALM.top[0]*s;
- bakeG('plain',PALM.trunk,x,0,z,-rot,s,s,s,WH);
- const nf=9+Math.floor(rnd()*3);for(let i=0;i<nf;i++){bakeG('palm',PALM.frond,x+bx,PALM.top[1]*s,z+bz,i/nf*TAU+rnd()*.4,s*(.85+rnd()*.3),s,s,[.8+rnd()*.3,.85+rnd()*.2,.8],0,rr(-.15,.35))}
- addCol(x-.3,z-.3,x+.3,z+.3,6)}
+function palm(x,z,s=1){/* PALM_TREES_REMOVED: intentionally disabled across the entire map. */ return;}
 function oak(x,z,s=1){bakeG('plain',GEO.cyl6,x,0,z,0,.28*s,3.4*s,.28*s,[.34,.26,.18]);for(let i=0;i<4;i++){const a=rnd()*TAU;bakeG('plain',GEO.ico,x+Math.cos(a)*1.3*s,3.6*s+rnd()*1.2*s,z+Math.sin(a)*1.3*s,rnd()*6,2.1*s,1.6*s,2.1*s,[.16+rnd()*.12,.4+rnd()*.15,.14])}addCol(x-.3,z-.3,x+.3,z+.3,6)}
 function cypress(x,z,s=1){const h=7+rnd()*5;bakeG('plain',GEO.cyl6,x,0,z,0,.55*s,h*s,.3*s,[.4,.34,.27]);bakeG('plain',GEO.cyl6,x,0,z,0,.95*s,1.2*s,.95*s,[.36,.3,.24]);
  for(let i=0;i<3;i++)bakeG('plain',GEO.ico,x+rr(-1,1),h*s+rr(-.5,1),z+rr(-1,1),rnd()*6,rr(2.4,3.4)*s,1.2*s,rr(2.4,3.4)*s,[.2+rnd()*.06,.34+rnd()*.08,.22]);
@@ -2025,11 +2022,9 @@ function pgHitsBox(x0,z0,x1,z1,margin=0){return PG.paths.some(p=>p.points.some((
 const pgOldDefineRoads=defineRoads;
 defineRoads=function(){
  pgOldDefineRoads();PG.paths=[];PG.homes=[];PG.signs=[];
- for(let i=roads.length-1;i>=0;i--){const r=roads[i];if((r.o==='v'&&[-270,-150,-30,90,210].includes(r.c)&&r.a===420&&r.b===1100)||(r.o==='h'&&[540,660,780,900,1020].includes(r.c)&&r.a===-330&&r.b===380))roads.splice(i,1)}
- addRoad('v',-300,420,1200,14,'city');addRoad('v',300,420,1200,14,'city');
- addRoad('h',480,-300,380,14,'city');addRoad('h',1080,-300,380,14,'city');
- const defs=[['Grove Drive',[[-30,480],[-80,550],[-40,650],[80,730],[55,850],[140,970],[90,1080]],14],['Banyan Loop',[[-40,650],[-200,650],[-235,780],[-180,920],[55,850]],12],['Palm Court',[[80,730],[200,710],[230,610]],12]];
- for(const [name,control,width] of defs){const curve=new T.CatmullRomCurve3(control.map(p=>new T.Vector3(p[0],0,p[1])),false,'centripetal');const points=curve.getPoints(Math.ceil(curve.getLength()/4));PG.paths.push({name,width,curve,points})}
+ // Remove every road segment entering Palmetto Grove.
+ const zone={x0:-345,x1:425,z0:445,z1:1115};
+ for(let i=roads.length-1;i>=0;i--){const r=roads[i],lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),crosses=r.o==='h'?(r.c>=zone.z0-r.hw&&r.c<=zone.z1+r.hw&&hi>=zone.x0-r.hw&&lo<=zone.x1+r.hw):(r.c>=zone.x0-r.hw&&r.c<=zone.x1+r.hw&&hi>=zone.z0-r.hw&&lo<=zone.z1+r.hw);if(crosses)roads.splice(i,1)}
 };
 const pgOldNearRoad=nearRoad;nearRoad=function(x,z,m=0){return pgOldNearRoad(x,z,m)||pgNear(x,z,m)};
 const pgOldFootprint=footprintHitsRoad;footprintHitsRoad=function(x0,z0,x1,z1,m=.8){return pgOldFootprint(x0,z0,x1,z1,m)||pgHitsBox(x0,z0,x1,z1,m)};
@@ -2072,7 +2067,7 @@ function worldSteps(){const buildOne=p=>{if(p.style==='house')buildHouse(p);else
   ['Swamps, hills and keys',6,()=>{swampProps();hillProps();keysProps()}],
   ['Planting the countryside',8,()=>bigMapProps()],
   ['Traffic lights, airports and air base',4,()=>{buildSignals();buildAirport();buildWestAirport();buildAFB();spawnAirportPlanes()}],
-  ['Palmetto Grove',4,()=>{buildPalmettoGrove();finalizeBatches()}],
+  ['Palmetto Grove cleared',4,()=>{PG.paths=[];PG.homes=[];PG.signs=[];}],
   ['Drawing the map',7,()=>buildBaseMap()]]}
 function buildWorld(){for(const [,,f] of worldSteps()){if(typeof f==='function')f();else for(const p of f.each())f.fn(p)}}
 const nextPaint=()=>new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
