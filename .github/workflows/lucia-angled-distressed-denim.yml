@@ -1,0 +1,109 @@
+name: Lucia angled distressed denim with full seat checks
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-angled-distressed-denim.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  shorts:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [main, lucia-outfits]
+    concurrency:
+      group: lucia-u-neck-${{ matrix.target }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    env:
+      TARGET_BRANCH: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.target }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          npm install --prefix "$RUNNER_TEMP/lucia-photo-denim" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+          python -m pip install 'Pillow>=10,<13'
+      - name: Prepare angled torn hems repair cap fitting and capture all failures
+        run: |
+          git fetch origin main
+          git show origin/main:.github/workflows/lucia-photo-denim-short-seat.yml > /tmp/lucia-photo-original.yml
+          python <<'PY'
+          import json, os, pathlib, subprocess, traceback
+          model=pathlib.Path('js/reference-characters.js');baseline=model.read_bytes()
+          original_status=pathlib.Path('status/lucia-photo-denim-short-seat-check.json')
+          old_status=original_status.read_bytes() if original_status.exists() else None
+          report={'passed':False,'branch':os.environ['TARGET_BRANCH'],'scope':'Angled ragged geometry, pale frayed-edge shader detail, official simplified photo asset, neutral rear coverage and finite-pose checks. Not rendered or all-animation verification.'};steps=[]
+          try:
+              if b'outerHemRise:.035' in baseline and b'hemStyle:' in baseline:
+                  previous=pathlib.Path('status/lucia-angled-distressed-denim-check.json')
+                  if not previous.exists() or not json.loads(previous.read_text()).get('passed'): raise RuntimeError('Existing angled hem lacks a passing report')
+                  report.update(passed=True,outcome='already installed and structurally checked')
+              else:
+                  if b'// LUCIA_PHOTO_DENIM_SHORT_SEAT_V1' in baseline: raise RuntimeError('Photo fitter is already installed; refusing duplicate shortening or ambiguous migration')
+                  lines=pathlib.Path('/tmp/lucia-photo-original.yml').read_text().splitlines();blocks=[]
+                  for i,line in enumerate(lines):
+                      if line!='        run: |': continue
+                      body=[]
+                      for value in lines[i+1:]:
+                          if value and not value.startswith('          '): break
+                          body.append(value[10:] if value else '')
+                      blocks.append('\n'.join(body)+'\n')
+                  if len(blocks)!=3: raise RuntimeError('Original photo installer layout changed')
+                  download,fit,unused_publish=blocks
+                  def once(text,a,b):
+                      if text.count(a)!=1: raise RuntimeError('Reviewed fragment changed: '+a[:140])
+                      return text.replace(a,b,1)
+                  fit=once(fit,'const [a,b,c]=ids.slice(i,i+3),ab=middle(a,b),bc=middle(b,c),ca=middle(c,a);','const [a,b,c]=ids.slice(i,i+3),capNormal=points[b].clone().sub(points[a]).cross(points[c].clone().sub(points[a])).normalize();if(Math.max(points[a].y,points[b].y,points[c].y)<-.19&&capNormal.y<-.65)continue;const ab=middle(a,b),bc=middle(b,c),ca=middle(c,a);')
+                  fit=once(fit,"if(delta>.090)throw Error('Unexpected full-seat expansion');","if(delta>.090)throw Error('Unexpected full-seat expansion: '+JSON.stringify({point:v.toArray(),center:center.toArray(),radius,skin,delta,hit:hit.object.name}));")
+                  clipping="""const clippedIndices=[];function hemHeight(v){const ax=Math.abs(v.x),rear=1-smooth((v.z+.050)/.100),outer=smooth((ax-.100)/.100),ragged=.003*(.5+.5*Math.sin(ax*410+v.z*93))+.006*Math.pow(Math.max(0,Math.sin(ax*173+v.z*67)),10);return -.235-.020*rear+.035*outer+ragged;}function score(k){return points[k].y-hemHeight(points[k]);}function edgeCut(a,b){let lo=0,hi=1;const positive=score(a)>=0;for(let j=0;j<24;j++){const t=(lo+hi)/2,v=points[a].clone().lerp(points[b],t);if((v.y>=hemHeight(v))===positive)lo=t;else hi=t;}const t=(lo+hi)/2,k=points.length;points.push(points[a].clone().lerp(points[b],t));let ua=tex[a][0],ub=tex[b][0];if(Math.abs(ua-ub)>.5){if(ua<ub)ua++;else ub++;}tex.push([ua+(ub-ua)*t,tex[a][1]+(tex[b][1]-tex[a][1])*t]);weights.push(weights[a].map((v,j)=>v+(weights[b][j]-v)*t));return k;}for(let i=0;i<indices.length;i+=3){const face=indices.slice(i,i+3),poly=[];for(let j=0;j<3;j++){const a=face[j],b=face[(j+1)%3],inside=score(a)>=0,next=score(b)>=0;if(inside)poly.push(a);if(inside!==next)poly.push(edgeCut(a,b));}for(let j=1;j+1<poly.length;j++)clippedIndices.push(poly[0],poly[j],poly[j+1]);}if(clippedIndices.length<indices.length*.40)throw Error('Distressing removed too much garment');const positions=[],uvs=[],boneIds=[],boneWeights=[];for(let i=0;i<clippedIndices.length;i+=3){const face=clippedIndices.slice(i,i+3),us=face.map(k=>tex[k][0]),seam=Math.max(...us)-Math.min(...us)>.5;"""
+                  fit=once(fit,'const positions=[],uvs=[],boneIds=[],boneWeights=[];for(let i=0;i<indices.length;i+=3){const face=indices.slice(i,i+3),us=face.map(k=>tex[k][0]),seam=Math.max(...us)-Math.min(...us)>.5;',clipping)
+                  fit=once(fit,'frontHemTarget:-.235,rearHemTarget:-.255,',"frontHemTarget:-.235,rearHemTarget:-.255,outerHemRise:.035,hemStyle:'ragged cutoffs rising toward outer thighs with protected rear coverage',")
+                  fray="float hemRear=1.0-smoothstep(-0.050,0.050,vLuciaPhotoDenim.z);float hemOuter=smoothstep(0.100,0.200,abs(vLuciaPhotoDenim.x));float hemLine=-0.235-0.020*hemRear+0.035*hemOuter;float fray=(1.0-smoothstep(0.001,0.010,abs(vLuciaPhotoDenim.y-hemLine)))*(0.45+0.55*abs(sin(vLuciaPhotoDenim.x*850.0+vLuciaPhotoDenim.z*310.0)));diffuseColor.rgb=mix(diffuseColor.rgb,vec3(0.68,0.71,0.72),fray*0.55);float backPanel=1.0-smoothstep(-0.02,0.02,vLuciaPhotoDenim.z);"
+                  fit=once(fit,'float backPanel=1.0-smoothstep(-0.02,0.02,vLuciaPhotoDenim.z);',fray)
+                  verify="""node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),T=require(process.env.RUNNER_TEMP+'/lucia-photo-denim/node_modules/three'),TT=Object.assign({},T,{TextureLoader:class{load(url){const t=new T.Texture();t.image={width:256,height:256};t.userData.localURL=url;return t;}}}),c={window:{},console,Math};vm.createContext(c);for(const path of ['js/characters.js','js/reference-characters.js'])vm.runInContext(fs.readFileSync(path,'utf8'),c);const checks=[];for(const merge of [false,true]){const h=c.window.VCCharacters.build(TT,'luciaC',{merge}),u=h.userData,d=h.getObjectByName('lucia-seamless-denim');assert(u.luciaPhotoDenimShortSeat.outerHemRise===.035);h.updateMatrixWorld(true);const inv=new T.Matrix4().copy(u.hips.matrixWorld).invert(),M=inv.multiply(d.matrixWorld),p=d.geometry.attributes.position;const sides=[];for(const side of [-1,1]){let inner=Infinity,outer=Infinity,innerCount=0,outerCount=0;for(let i=0;i<p.count;i++){const v=new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(M),x=v.x*side;if(v.z<=.025||v.y>=-.12)continue;if(x>=.060&&x<=.105){inner=Math.min(inner,v.y);innerCount++;}if(x>=.165){outer=Math.min(outer,v.y);outerCount++;}}assert(innerCount>2&&outerCount>2&&outer>inner+.008,'Outer leg opening does not visibly rise');sides.push({side,inner,outer,rise:outer-inner});}const shader={uniforms:{},vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:T.ShaderLib.standard.fragmentShader};d.material.onBeforeCompile(shader,{});assert(shader.fragmentShader.includes('float fray=')&&shader.fragmentShader.includes('#include <map_fragment>'),'Photo or frayed-edge shader detail missing');checks.push({merge,sides});}fs.writeFileSync('/tmp/lucia-angled-hem-measurements.json',JSON.stringify(checks));
+          JS
+          """
+                  verify='\n'.join(line[10:] if line.startswith('          ') else line for line in verify.splitlines())+'\n'
+                  for phase,script in [('download',download),('fit-and-preserve-rear-coverage',fit),('verify-angled-frayed-hem',verify)]:
+                      report['phase']=phase
+                      path=pathlib.Path('/tmp/lucia-angled-'+phase+'.sh');path.write_text(script)
+                      run=subprocess.run(['bash','-e',str(path)],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
+                      steps.append({'phase':phase,'exitCode':run.returncode,'outputTail':(run.stdout or '')[-16000:]})
+                      if run.returncode: raise RuntimeError(phase+' failed')
+                      if phase=='download' and not json.loads(pathlib.Path('status/lucia-photo-denim-download.json').read_text()).get('passed'): raise RuntimeError('Official photo download failed')
+                      if phase=='fit-and-preserve-rear-coverage' and not json.loads(original_status.read_text()).get('passed'): raise RuntimeError(json.loads(original_status.read_text()).get('error','Photo fitting failed'))
+                  report.update(passed=True,phase='complete',outcome='photo-textured angled distressed cutoffs installed and structurally checked',hemMeasurements=json.loads(pathlib.Path('/tmp/lucia-angled-hem-measurements.json').read_text()),rearCoverageTestsRetained=True,bodyTankAndPermanentUnderwearPreserved=True,capRepair='Exclude downward-facing closed-solid leg caps before radial shell fitting; retain expansion guard')
+          except Exception as exc:
+              model.write_bytes(baseline)
+              if old_status is not None: original_status.write_bytes(old_status)
+              elif original_status.exists(): original_status.unlink()
+              report.update(passed=False,error=str(exc),traceback=traceback.format_exc()[-12000:],baselinePreserved=True)
+          report['steps']=steps
+          path=pathlib.Path('status/lucia-angled-distressed-denim-check.json');path.parent.mkdir(exist_ok=True);path.write_text(json.dumps(report,indent=2)+'\n')
+          PY
+      - name: Publish validated angled cutoffs or exact diagnostics
+        run: |
+          git fetch origin "$TARGET_BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/"$TARGET_BRANCH")" || { echo 'Branch changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/lucia-angled-distressed-denim-check.json
+          if test -f status/lucia-photo-denim-download.json; then git add -- status/lucia-photo-denim-download.json; fi
+          if node -e "process.exit(JSON.parse(require('fs').readFileSync('status/lucia-angled-distressed-denim-check.json','utf8')).passed?0:1)"; then
+            git add -- js/reference-characters.js status/lucia-photo-denim-short-seat-check.json assets/textures/lucia-denim-photo.jpg assets/textures/lucia-denim-photo-source.json
+          fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Give Lucia photo denim ragged hems rising at outer thighs or record fit failure'
+            git push origin HEAD:"refs/heads/$TARGET_BRANCH"
+          fi
+          node -e "const r=JSON.parse(require('fs').readFileSync('status/lucia-angled-distressed-denim-check.json','utf8'));if(!r.passed){console.error(r.error);process.exit(1);}"
