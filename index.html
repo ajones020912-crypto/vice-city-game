@@ -371,7 +371,7 @@ renderer.outputEncoding=T.sRGBEncoding;renderer.toneMapping=T.ACESFilmicToneMapp
 document.body.insertBefore(renderer.domElement,document.body.firstChild);
 scene.fog=new T.Fog(0x9fd0ea,280,1400);
 // ---------- advanced post: bloom + SSAO + wet grade + vignette + grain ----------
-const depthTex=new T.DepthTexture();depthTex.type=T.UnsignedShortType;
+const depthTex=new T.DepthTexture();depthTex.type=T.UnsignedIntType; // higher precision prevents visible depth banding in Ultra SSAO
 const postRT=new T.WebGLRenderTarget(innerWidth,innerHeight,{minFilter:T.LinearFilter,magFilter:T.LinearFilter,format:T.RGBAFormat,depthTexture:depthTex});
 const postScene=new T.Scene();
 const postCam=new T.OrthographicCamera(-1,1,1,-1,0,1);
@@ -495,7 +495,7 @@ const postMat=new T.ShaderMaterial({
    col=mix(col,vec3(.55,.02,.02),hurt*(1.-vig)*.7);
    col=mix(col,col*vec3(.55,.35,.4),focus*(1.-vig)*.7);
    // grain
-   col+=(hash(uv*res+fract(time*11.))*2.-1.)*.03*intensity;
+   col+=(hash(uv*res+fract(time*11.))*2.-1.)*.006*intensity; // subtle film grain; avoid scanline-like noise on Ultra
    float luma=dot(col,vec3(.299,.587,.114));
    col=mix(vec3(luma),col,1.1);
    gl_FragColor=vec4(col,1.);
