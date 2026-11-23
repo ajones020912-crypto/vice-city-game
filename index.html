@@ -1661,6 +1661,31 @@ function buildBaseMap(){
  x.fillStyle='rgba(60,60,70,.55)';for(const b of colAll)if(b.h>6&&b.x1-b.x0>6)x.fillRect((b.x0+WS)/MAPPX,(b.z0+WS)/MAPPX,(b.x1-b.x0)/MAPPX,(b.z1-b.z0)/MAPPX);
  for(const r of roads){x.strokeStyle=r.type==='hwy'?'#f2c14e':r.type==='dirt'?'#8a6c42':'#d8d8d8';x.lineWidth=Math.max(1.6,r.w/MAPPX*(r.type==='hwy'?.9:.8));x.beginPath();
   if(r.o==='h'){x.moveTo((r.a+WS)/MAPPX,(r.c+WS)/MAPPX);x.lineTo((r.b+WS)/MAPPX,(r.c+WS)/MAPPX)}else{x.moveTo((r.c+WS)/MAPPX,(r.a+WS)/MAPPX);x.lineTo((r.c+WS)/MAPPX,(r.b+WS)/MAPPX)}x.stroke()}
+ // AIRPORT_SATELLITE_MAP_V1: draw the actual airport footprint into the shared minimap/full-map terrain canvas.
+ {const ax=-1700,az=680,px=v=>(ax+v+WS)/MAPPX,pz=v=>(az+v+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w/MAPPX,h/MAPPX)};
+  x.save();
+  // Mown airport grounds and perimeter service apron
+  rect(0,0,560,390,'#53694a');
+  rect(0,-45,500,48,'#343b3d'); // primary runway
+  rect(0,35,440,22,'#454b4b'); // parallel taxiway
+  rect(0,35,430,2.2,'#b99b55'); // taxiway centerline
+  // Runway centerline and threshold markings
+  x.strokeStyle='#e3e4dc';x.lineWidth=1.25;x.setLineDash([5,4]);x.beginPath();x.moveTo(px(-215),pz(-45));x.lineTo(px(215),pz(-45));x.stroke();x.setLineDash([]);
+  x.fillStyle='#e5e5dc';for(const end of [-1,1]){for(let i=0;i<6;i++){const xx=end*232+i*end*2.2;x.fillRect(px(xx)-1.0,pz(-45)-4.2,.9,8.4)}}
+  // Taxiway connectors and holding positions
+  for(const xx of [-185,175]){rect(xx,-5,22,80,'#454b4b');x.strokeStyle='#c9ad63';x.lineWidth=.9;x.beginPath();x.moveTo(px(xx),pz(-42));x.lineTo(px(xx),pz(34));x.stroke()}
+  // Aprons and aircraft parking stands
+  rect(-125,94,190,84,'#898d87');rect(200,112,120,151,'#858b85');rect(90,62,44,65,'#777f79');
+  x.strokeStyle='#e6e1c9';x.lineWidth=.8;for(const xx of [-205,-165,-125,-85]){x.beginPath();x.moveTo(px(xx),pz(75));x.lineTo(px(xx),pz(113));x.stroke()}
+  // Terminal roof, concourse and hangar roofs
+  rect(-153,156,112,45,'#46545a');rect(-153,133,124,16,'#65777a');
+  rect(205,140,112,90,'#59645f');rect(82,155,35,20,'#727d79');
+  // Air traffic control tower
+  rect(13,154,22,19,'#68777a');rect(13,154,6,7,'#9bb0b2');
+  // Airport perimeter and service road, muted like satellite imagery
+  x.strokeStyle='#8b9678';x.lineWidth=1;x.strokeRect(px(-280),pz(-195),560/MAPPX,390/MAPPX);
+  x.restore();
+ }
  baseMap=c;
 }
 const REGIONS=[['VICE CITY INTERNATIONAL AIRPORT',-2180,305,-1220,1055,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['SUNRISE FARMS',1600,600,3600,3150,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
