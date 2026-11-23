@@ -329,7 +329,9 @@ small{color:#b9cce0}
 <script src="js/punch-visual-fix.js?v=1"></script>
 <script src="js/one-hand-hit.js?v=1"></script>
 <script src="js/gun-animation.js?v=1"></script>
-<script>
+<script>// AIRCRAFT_UNLOCK_DISTANCE_V1
+function vehicleUnlockDistance(c){const distance=Math.hypot(c.x-pl.x,c.z-pl.z);return distance-(c.t.aircraft?Math.max(c.t.L,c.t.W)/2:0); }
+
 (()=>{'use strict';
 if(!window.THREE){document.querySelector('.card').innerHTML='<h2>Could not load 3D engine</h2><p>Check your internet connection and reload.</p>';return;}
 const T=THREE,$=s=>document.querySelector(s);
@@ -3143,7 +3145,7 @@ function breakinPrompt(){const b=G.breakin,pc=Math.min(99,Math.floor(b.t/b.need*
  return (b.jack?'Pulling the driver out ':'Breaking in ')+bar+' '+pc+'%'+(b.rang?' · 🚨 ALARM':'')+' · move away to cancel'}
 function updateBreakin(dt){const b=G.breakin;if(!b)return;const c=b.c;
  if(G.state!=='play')return;
- const d=Math.hypot(c.x-pl.x,c.z-pl.z);
+ const d=vehicleUnlockDistance(c);
  if(pl.car||!pl.alive||c.dead||d>4.8||(b.jack?c.speed>4:!!c.occ)){G.breakin=null;G.hudDirty=true;if(!pl.car&&pl.alive&&!c.dead)toast(b.jack?'Carjack failed':'Break-in cancelled',1200);return}
  if(b.jack&&c.inp){c.inp.thr=0;c.inp.hb=1;c.vx*=.85;c.vz*=.85} // driver holds still while you grab the door
  b.t+=dt;
@@ -3165,7 +3167,7 @@ function ejectPlayer(force){const c=pl.car;if(!c)return;const sn=Math.sin(c.h),c
  pl.y=heightAt(pl.x,pl.z)+(force?.5:0);pl.vx=c.vx*(force?1:0);pl.vz=c.vz*(force?1:0);pl.vy=force?4:0;
  c.occ=null;if(c.mode==='player'){c.mode=c.dead?'wreck':'parked'}c.inp.thr=0;c.inp.steer=0;c.inp.hb=0;pl.car=null;plH.visible=true;
  $('#vehicle').textContent='On foot';$('#speedo').style.display='none';audio.door();G.hudDirty=true;camYaw=c.h+Math.PI;}
-function nearestCar(maxD=4.6){let best=null,bd=maxD;for(const c of cars){if(c.dead||c.t.aiOnly)continue;const d=Math.hypot(c.x-pl.x,c.z-pl.z)-(c.t.aircraft?Math.max(c.t.L,c.t.W)/2:0);if(d<bd){bd=d;best=c}}return best}
+function nearestCar(maxD=4.6){let best=null,bd=maxD;for(const c of cars){if(c.dead||c.t.aiOnly)continue;const d=vehicleUnlockDistance(c);if(d<bd){bd=d;best=c}}return best}
 function playerOnFoot(dt){
  const f=(keys['w']||keys['arrowup']?1:0)-(keys['s']||keys['arrowdown']?1:0),sd=(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0);
  const run=keys['shift'],aiming=pl.weapon!=='fists'&&(mouseDown||pl.aim>0);

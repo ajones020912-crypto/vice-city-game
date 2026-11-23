@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "branch": "main",
+  "scope": "Current inline source inspection and isolated behavior tests. Live deployment, physical aircraft access, and in-browser gameplay are not verified.",
+  "outcome": "aircraft-aware distance shared by selection and ongoing break-in checks",
+  "breakinFunction": "updateBreakin",
+  "originalSelectionDistance": "Math.hypot(c.x-pl.x,c.z-pl.z)-(c.t.aircraft?Math.max(c.t.L,c.t.W)/2:0)",
+  "originalBreakinDistance": "Math.hypot(c.x-pl.x,c.z-pl.z)",
+  "continuationLimit": 4.8,
+  "tests": [
+    "Original selection-versus-continuation bug reproduced and corrected",
+    "Prop plane and small jet start continue and cancel correctly on both horizontal axes",
+    "Ordinary car selection and continuation thresholds unchanged",
+    "AI-only fighters remain excluded",
+    "Destroyed occupied and invalid-player cancellation rules preserved",
+    "Seven-second unlock completes once with one scheduled alarm and wanted event",
+    "Moving-car carjack cancellation unchanged"
+  ],
+  "inlineScriptsChecked": 1,
+  "alarmTimerAndOtherBreakinLogicUnchanged": true,
+  "characterOutfitAndSkinCodeUnchanged": true
+}
