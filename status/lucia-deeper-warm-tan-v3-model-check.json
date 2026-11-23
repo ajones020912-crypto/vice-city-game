@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "modelBuildsChecked": 24,
+  "previousSkinColor": "965F3E",
+  "newSkinColor": "845135",
+  "geometryAndRigTransformsUnchanged": true,
+  "materialFinishUnchanged": true,
+  "otherCharactersUnchanged": true,
+  "lightingAndGameplayCodeUnchanged": true,
+  "scope": "Skin-color defaults and material color only; rendered color and live deployment not verified."
+}

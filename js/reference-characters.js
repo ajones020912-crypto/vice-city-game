@@ -1,3 +1,4 @@
+// LUCIA_DEEPER_WARM_TAN_V3
 // LUCIA_CLOSER_FITTING_TANK_V1
 // LUCIA_TEXTURED_JEAN_SHORTS_V1
 // LUCIA_BUST_TEN_LONGER_TANK_STOMACH_V1
@@ -39,7 +40,7 @@
  const originalBuild=api.build;let printTexture=null;
  const looks={
   jasonC:{referenceLead:'jason',name:'Jason',realistic:true,skin:0xc98e68,hair:0x2d211b,hairStyle:'short',beard:false,jacket:null,top:{kind:'tee',color:0x626a68},legs:{kind:'trousers',color:0x6a593f},shoes:{kind:'boots',color:0x594735,sole:0x29231e},extras:['watch']},
-  luciaC:{referenceLead:'lucia',name:'Lucia',realistic:true,female:true,luciaSummer:true,build:'slim',skin:0x965f3e,hair:0x24150f,hairStyle:'referencePonytail',jacket:null,top:{kind:'tank',color:0x762b3d},legs:{kind:'shorts',color:0x466f98,highWaist:true},shoes:{color:0xf8f4ee,sole:0xe2e2e2,accent:0x9b5961},extras:['hoops','bracelets','ring','necklace']}
+  luciaC:{referenceLead:'lucia',name:'Lucia',realistic:true,female:true,luciaSummer:true,build:'slim',skin:0x845135,hair:0x24150f,hairStyle:'referencePonytail',jacket:null,top:{kind:'tank',color:0x762b3d},legs:{kind:'shorts',color:0x466f98,highWaist:true},shoes:{color:0xf8f4ee,sole:0xe2e2e2,accent:0x9b5961},extras:['hoops','bracelets','ring','necklace']}
  };
  for(const id of Object.keys(looks))api.DESIGNS[id]=Object.assign({},api.DESIGNS[id],looks[id]);
  function add(T,parent,geometry,material,name,x=0,y=0,z=0){const mesh=new T.Mesh(geometry,material);mesh.name=name;mesh.position.set(x,y,z);mesh.castShadow=true;parent.add(mesh);return mesh}
@@ -88,7 +89,7 @@
    if(cloth){mesh.material=mesh.material.clone();mesh.material.color.setHex(0x151619);mesh.material.roughness=.92;mesh.material.flatShading=false;}
    reshape(mesh,u.spine,v=>{const waist=Math.exp(-Math.pow((v.y-.16)/.10,2));v.x*=1-.025*waist;const f=Math.max(0,Math.min(1,v.z/.06)),front=f*f*(3-2*f),chest=Math.exp(-Math.pow((v.y-.385)/.105,2)),round=Math.exp(-Math.pow((Math.abs(v.x)-.065)/.095,2));v.z+=front*chest*(.004+.014*round);});
   }
-  m.shirt.color.setHex(0x151619);m.skin.color.setHex(0x965f3e);m.skin.roughness=.80;m.pants.color.setHex(0x4b739a);denim.material.color.setHex(0x4b739a);
+  m.shirt.color.setHex(0x151619);m.skin.color.setHex(0x845135);m.skin.roughness=.80;m.pants.color.setHex(0x4b739a);denim.material.color.setHex(0x4b739a);
   const hipMeshes=[];h.traverse(o=>{if(o.isMesh&&(o===denim||o.parent===u.hips||u.Lg.some(l=>o.parent===l.hp)))hipMeshes.push(o);});
   for(const mesh of hipMeshes)reshape(mesh,u.hips,v=>{const hip=Math.exp(-Math.pow((v.y+.045)/.14,2)),thigh=Math.exp(-Math.pow((v.y+.22)/.13,2));v.x*=1+.025*hip+.018*thigh;v.z*=1+.07*hip+.025*thigh;});
   for(const child of u.headP.children.slice())if(child.isMesh&&(child.material===m.hair||/hair|ponytail|curl/i.test(child.name)))u.headP.remove(child);
