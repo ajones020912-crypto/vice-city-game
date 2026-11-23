@@ -1396,6 +1396,11 @@ function defineRoads(){
  addRoad('h',360,-1500,120,26,'hwy');
  addRoad('v',240,-1380,360,24,'hwy');
  addRoad('h',-420,-240,1560,24,'hwy');
+ // CITY_BLOCKS_60_V1: blocks back to 60 m (yesterday's size). Two narrower side streets run inside every 180 m block in
+ // each direction, over the same district extents; lines that would sit on a highway are skipped. No signals on them.
+ {const onHwy=(o,c)=>roads.some(q=>q.type==='hwy'&&q.o===o&&Math.abs(q.c-c)<25),done=new Set(),side=(o,c,a,b)=>{const k=o+c+':'+a+':'+b;if(done.has(k)||onHwy(o,c))return;done.add(k);addRoad(o,c,a,b,12,'city',false)};
+  for(let j=0;j<nz.length-1;j++)for(const d of[60,120]){const z=nz[j]+d;if(z<1080)side('h',z,-1500,220);if(z<420)side('h',z,-240,1560)}
+  for(let i=0;i<nx.length-1;i++)for(const d of[60,120]){const x=nx[i]+d;if(x<220)side('v',x,-1380,1080);if(x>=-240&&x<=1560)side('v',x,-1380,360)}}
 
  // VICE_CITY_SHORELINE_STREETS_V3: trim the city grid to the actual coastline,
  // not to an invented offshore oval. This leaves the downtown grid dense while streets
@@ -1594,7 +1599,8 @@ function decorateCityLots(){
 function makeParcels(){
  const lot=(x0,z0,x1,z1,mode,cx0,cz0)=>{ // subdivide a block lot
   // CITY_BLOCK_QUADRANTS_V1: every city block is divided into four buildable lots (2 x 2).
-  const nx=2,nz=2;const w=(x1-x0)/nx,d=(z1-z0)/nz;
+  const bcx=(x0+x1)/2,bcz=(z0+z1)/2,bcore=clamp(1.05-Math.hypot(bcx/280,(bcz+10)/300),0,1),small=x1-x0<50;
+  const nx=small?(bcore>.35?1:pick([1,2,2])):2,nz=small?(bcore>.35?1:pick([1,2])):2;const w=(x1-x0)/nx,d=(z1-z0)/nz;
   for(let i=0;i<nx;i++)for(let j=0;j<nz;j++){const a=x0+i*w+.5,b=z0+j*d+.5,c=x0+(i+1)*w-.5,e=z0+(j+1)*d-.5,cx=(a+c)/2,cz=(b+e)/2;
    if(cx>760&&cx<3100&&cz>-1450&&cz<1850&&seaD(cx,cz)>-12)continue;
    let H,style;
@@ -1605,8 +1611,8 @@ function makeParcels(){
  const xr=[],zr=[];
  const used=new Set(),K=(x,z)=>x+','+z;G.plazas=[];
  // CITY_LAYOUT_REFERENCE_FIX_V3: dense urban footprint north and east of VCIA.
- const gx=[-1500,-1320,-1140,-960,-780,-600,-420,-240,-60,120,300,480,660,840,1020,1200,1380,1560];
- const gz=[-1380,-1200,-1020,-840,-660,-480,-300,-120,60,240,420,600,780,960,1140];
+ // CITY_BLOCKS_60_V1: 60 m blocks (the side streets are added in defineRoads)
+ const gx=[],gz=[];for(let v=-1500;v<=1560;v+=60)gx.push(v);for(let v=-1380;v<=1140;v+=60)gz.push(v);
  const airportBox={x0:80,x1:1460,z0:380,z1:1340};
  const addCityBlock=(x0,z0,x1,z1,mode='core',box=airportBox)=>{
   if(x0<box.x1&&x1>box.x0&&z0<box.z1&&z1>box.z0)return;
