@@ -1887,7 +1887,7 @@ function buildCityRivers(){
  // CITY_WATERWAYS_V1: branching tidal rivers divide the urban districts and feed the eastern bay.
  const water=new T.MeshBasicMaterial({color:0x087f9b,transparent:true,opacity:.94,side:T.DoubleSide,depthWrite:false});
  const make=(start,segments,width)=>{
-  const curve=new T.CatmullRomCurve3([new T.Vector3(start[0],0,start[1]),...segments.map(q=>new T.Vector3(q[4],0,q[5]))]);
+  const curve=new T.CatmullRomCurve3([new T.Vector3(start[0]+700,0,start[1]-700),...segments.map(q=>new T.Vector3(q[4]+700,0,q[5]-700))]);
   const pts=curve.getPoints(100),left=[],right=[];
   for(let i=0;i<pts.length;i++){
    const p=pts[i],a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
@@ -1965,7 +1965,7 @@ function buildBaseMap(){
  x.putImageData(id,0,0);
 
  // Draw the same river network into the satellite map so waterways read clearly at every zoom.
- {const river=(pts,width)=>{x.strokeStyle='#087f9b';x.lineWidth=width/MAPPX;x.lineCap='round';x.lineJoin='round';x.beginPath();pts.forEach((p,i)=>x[i?'lineTo':'moveTo']((p[0]+WS)/MAPPX,(p[1]+WS)/MAPPX));x.stroke();};
+ {const river=(pts,width)=>{x.strokeStyle='#087f9b';x.lineWidth=width/MAPPX;x.lineCap='round';x.lineJoin='round';x.beginPath();pts.forEach((p,i)=>x[i?'lineTo':'moveTo']((p[0]+700+WS)/MAPPX,(p[1]-700+WS)/MAPPX));x.stroke();};
   x.save();
   river([[1120,-260],[1060,-80],[1190,80],[1135,250],[1080,390],[930,470],[990,650],[1050,820],[1190,900],[1150,1080],[1090,1260],[1010,1410],[1080,1580],[1110,1690],[1270,1780],[1390,1830]],76);
   river([[480,520],[620,470],[700,390],[820,410],[930,425],[1010,520],[1110,550],[1220,590],[1310,560],[1420,590],[1540,625],[1660,690],[1810,700],[1910,710],[2020,650],[2130,620]],56);
