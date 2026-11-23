@@ -1679,21 +1679,23 @@ function buildBaseMap(){
  x.fillStyle='rgba(60,60,70,.55)';for(const b of colAll)if(b.h>6&&b.x1-b.x0>6)x.fillRect((b.x0+WS)/MAPPX,(b.z0+WS)/MAPPX,(b.x1-b.x0)/MAPPX,(b.z1-b.z0)/MAPPX);
  for(const r of roads){x.strokeStyle=r.type==='hwy'?'#f2c14e':r.type==='dirt'?'#8a6c42':'#d8d8d8';x.lineWidth=Math.max(1.6,r.w/MAPPX*(r.type==='hwy'?.9:.8));x.beginPath();
   if(r.o==='h'){x.moveTo((r.a+WS)/MAPPX,(r.c+WS)/MAPPX);x.lineTo((r.b+WS)/MAPPX,(r.c+WS)/MAPPX)}else{x.moveTo((r.c+WS)/MAPPX,(r.a+WS)/MAPPX);x.lineTo((r.c+WS)/MAPPX,(r.b+WS)/MAPPX)}x.stroke()}
- // VCIA_SATELLITE_LAYOUT_V2: two runways, looping taxiways, broad aprons and terminal complex.
- {const ax=650,az=820,px=v=>(ax+v+WS)/MAPPX,pz=v=>(az+v+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w/MAPPX,h/MAPPX)};
-  const path=(pts,color,width)=>{x.strokeStyle=color;x.lineWidth=width/MAPPX;x.lineCap='round';x.lineJoin='round';x.beginPath();pts.forEach((p,i)=>i?x.lineTo(px(p[0]),pz(p[1])):x.moveTo(px(p[0]),pz(p[1])));x.stroke()};
-  x.save();rect(0,0,820,580,'#a4a8a5');rect(0,0,790,550,'#858b89');
-  rect(0,-220,760,56,'#c9cbc5');rect(0,-150,690,24,'#b8bcb7');path([[-350,-220],[350,-220]],'#e5e6df',2);
-  for(let xx=-310;xx<=310;xx+=48)rect(xx,-220,22,7,'#969b98');
-  path([[-340,245],[310,-80]],'#c9cbc5',56);path([[-340,245],[310,-80]],'#e7e7df',2.2);
-  for(let t=0;t<7;t++){path([[-360+t*3,222+t*1.5],[-347+t*3,248+t*1.5]],'#e7e7df',2);path([[300+t*3,-100+t*1.5],[313+t*3,-74+t*1.5]],'#e7e7df',2)}
-  path([[-360,-185],[-405,-150],[-405,65],[-350,115],[-230,130]],'#b7bbb6',22);path([[360,-185],[405,-145],[405,95],[350,145],[245,150]],'#b7bbb6',22);
-  path([[-220,-112],[-170,-70],[-120,-35],[120,-35],[180,-75],[250,-125]],'#b7bbb6',18);path([[-255,170],[-190,115],[-120,65],[-40,28],[80,12],[205,35],[300,90]],'#b7bbb6',18);
-  rect(210,165,250,205,'#aeb3af');rect(320,95,118,90,'#aeb3af');rect(225,150,118,75,'#65777a');rect(225,108,145,18,'#899594');
-  rect(300,220,180,92,'#747e7c');rect(110,210,90,72,'#969d99');for(let zz=115;zz<=195;zz+=18)path([[155,zz],[205,zz]],'#e1e2d9',2);
-  rect(-260,-70,115,80,'#929a98');rect(-260,-70,72,38,'#778381');rect(-120,185,120,74,'#9ba19d');rect(-115,185,90,46,'#75817e');rect(35,250,110,55,'#8f9692');rect(365,-5,65,120,'#8e9693');
-  path([[-430,285],[-380,315],[-210,325],[0,315],[220,320],[430,270]],'#c4c7c0',7);path([[-420,-290],[-300,-310],[0,-315],[300,-300],[420,-260]],'#c4c7c0',7);
-  x.strokeStyle='#777f77';x.lineWidth=1.5/MAPPX;x.strokeRect(px(-410),pz(-290),820/MAPPX,580/MAPPX);x.restore();
+ // VCIA_SATELLITE_LAYOUT_V3: minimap drawn from the current expanded airport geometry.
+ {const ax=650,az=820,sc=1.5,px=v=>(ax+v*sc+WS)/MAPPX,pz=v=>(az+v*sc+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w*sc/MAPPX,h*sc/MAPPX)};
+  const path=(pts,color,width)=>{x.strokeStyle=color;x.lineWidth=width*sc/MAPPX;x.lineCap='round';x.lineJoin='round';x.beginPath();pts.forEach((p,i)=>i?x.lineTo(px(p[0]),pz(p[1])):x.moveTo(px(p[0]),pz(p[1])));x.stroke()};
+  x.save();rect(60,0,720,570,'#68765a');rect(0,-220,760,56,'#454a4d');
+  path([[-374,-249],[374,-249]],'#e9e8dc',1.2);path([[-374,-191],[374,-191]],'#e9e8dc',1.2);
+  path([[-330,-150],[330,-150]],'#454a4d',24);path([[-330,-150],[330,-150]],'#e5bd42',.35);
+  for(const xx of[-330,330])path([[xx,-235],[xx,-85]],'#454a4d',24);
+  rect(-125,94,190,84,'#b5b8b2');rect(200,112,120,151,'#b5b8b2');rect(90,62,44,55,'#b5b8b2');
+  path([[-125,63],[-125,94]],'#454a4d',24);
+  for(const xx of[-190,-135,-80])path([[xx,91],[xx,112]],'#e5bd42',.35);
+  rect(-153,158,270,104,'#34434a');rect(-153,105,258,2,'#315e70');
+  rect(-330,155,80,46,'#34434a');rect(24,155,80,46,'#34434a');
+  for(const xx of[-255,-185,-115,-45]){path([[xx,102],[xx,28]],'#315e70',8);rect(xx,18,15,17,'#34434a');}
+  path([[-420,192],[420,192]],'#454a4d',9);rect(-320,220,170,80,'#454a4d');
+  for(let xx=-400;xx<=-240;xx+=18)path([[xx,181],[xx,259]],'#e9e8dc',.7);
+  rect(205,140,108,86,'#34434a');rect(13,154,17,15,'#315e70');rect(82,155,35,20,'#b5b8b2');
+  x.strokeStyle='#777f77';x.lineWidth=1.5/MAPPX;x.strokeRect(px(-410),pz(-290),820*sc/MAPPX,580*sc/MAPPX);x.restore();
  }
  // LEONIDA_WEST_REGIONAL_AIRPORT_SATELLITE_V1
  {const ax=4900,az=2800,px=v=>(ax+v+WS)/MAPPX,pz=v=>(az+v+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w/MAPPX,h/MAPPX)};x.save();rect(0,0,900,620,'#53694a');rect(0,-45,560,48,'#343b3d');rect(0,35,470,22,'#454b4b');x.strokeStyle='#e3e4dc';x.lineWidth=1.2;x.setLineDash([5,4]);x.beginPath();x.moveTo(px(-245),pz(-45));x.lineTo(px(245),pz(-45));x.stroke();x.setLineDash([]);rect(-125,110,180,100,'#898d87');rect(195,125,125,105,'#858b85');rect(-310,220,175,90,'#454b4b');rect(0,155,112,44,'#46545a');rect(185,115,100,72,'#59645f');rect(10,155,20,18,'#68777a');x.strokeStyle='#9ba184';x.lineWidth=1;x.strokeRect(px(-430),pz(-285),860/MAPPX,570/MAPPX);x.restore();}
