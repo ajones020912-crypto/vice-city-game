@@ -1190,7 +1190,7 @@ const signCache={};
 function signTex(text,fg,bg,kind='generic'){
  const k=kind+'|'+text+'|'+fg+'|'+(bg||'');if(signCache[k])return signCache[k];
  const[c,x]=cv(1024,256),themes={
- palmgrill:{bg:'#123d35',edge:'#f2d69a',sub:'TROPICAL KITCHEN',shape:'palm'},oceandiner:{bg:'#102f4d',edge:'#f3f6ef',sub:'DINER · EST. 1986',shape:'star'},havana:{bg:'#572719',edge:'#f2bd62',sub:'CAFÉ · COCINA CUBANA',shape:'sun'},bigwave:{bg:'#073b55',edge:'#b5edf2',sub:'FRESH FROM THE COAST',shape:'fish'},sunsetsteak:{bg:'#291915',edge:'#e9a36e',sub:'CHOPHOUSE & GRILL',shape:'steak'},flamingo:{bg:'#571c3d',edge:'#ffd2e3',sub:'PIZZA · PASTA · MORE',shape:'slice'},ricos:{bg:'#5a2719',edge:'#f5d36b',sub:'TAQUERÍA · FRESH DAILY',shape:'taco'},goldenfry:{bg:'#593b08',edge:'#ffe17b',sub:'BURGERS · FRIES · SHAKES',shape:'fries'},baysidebbq:{bg:'#382016',edge:'#e4b17c',sub:'LOW & SLOW SMOKEHOUSE',shape:'flame'},burger:{bg:'#40220e',edge:'#ffc36a',sub:'BURGERS · FRIES · SHAKES',shape:'burger'},nightclub:{bg:'#160e39',edge:'#d5a5ff',sub:'MUSIC · LIGHTS · LATE NIGHTS',shape:'disco'}};
+ palmgrill:{bg:'#123d35',edge:'#f2d69a',sub:'TROPICAL KITCHEN',shape:'palm'},oceandiner:{bg:'#102f4d',edge:'#f3f6ef',sub:'DINER · EST. 1986',shape:'star'},havana:{bg:'#572719',edge:'#f2bd62',sub:'CAFÉ · COCINA CUBANA',shape:'sun'},bigwave:{bg:'#073b55',edge:'#b5edf2',sub:'FRESH FROM THE COAST',shape:'fish'},sunsetsteak:{bg:'#291915',edge:'#e9a36e',sub:'CHOPHOUSE & GRILL',shape:'steak'},flamingo:{bg:'#571c3d',edge:'#ffd2e3',sub:'PIZZA · PASTA · MORE',shape:'slice'},ricos:{bg:'#5a2719',edge:'#f5d36b',sub:'TAQUERÍA · FRESH DAILY',shape:'taco'},goldenfry:{bg:'#593b08',edge:'#ffe17b',sub:'BURGERS · FRIES · SHAKES',shape:'fries'},baysidebbq:{bg:'#382016',edge:'#e4b17c',sub:'LOW & SLOW SMOKEHOUSE',shape:'flame'},burger:{bg:'#40220e',edge:'#ffc36a',sub:'BURGERS · FRIES · SHAKES',shape:'burger'},nightclub:{bg:'#160e39',edge:'#d5a5ff',sub:'MUSIC · LIGHTS · LATE NIGHTS',shape:'disco'},bar:{bg:'#082d3b',edge:'#a8f1ff',sub:'MOCKTAILS · MUSIC · SOCIAL',shape:'sun'},gym:{bg:'#1d3528',edge:'#c8ff8e',sub:'FITNESS · TRAINING · RECOVERY',shape:'star'},spray:{bg:'#241d39',edge:'#d4b4ff',sub:'AUTO BODY · CUSTOM PAINT',shape:'generic'}};
  const th=themes[kind]||{bg:bg||'#0c1018',edge:fg,sub:'',shape:'generic'};
  const grad=x.createLinearGradient(0,0,1024,256);grad.addColorStop(0,th.bg);grad.addColorStop(.55,'#080b15');grad.addColorStop(1,th.bg);x.fillStyle=grad;x.fillRect(0,0,1024,256);
  x.shadowColor=th.edge;x.shadowBlur=kind==='nightclub'?30:18;x.strokeStyle=th.edge;x.lineWidth=12;x.strokeRect(10,10,1004,236);x.shadowBlur=0;x.strokeStyle='#ffffff44';x.lineWidth=2;x.strokeRect(25,25,974,206);
@@ -1507,6 +1507,8 @@ const SHOPS=[
  {k:'ricos',name:"RICO'S TACOS",col:'#e8bd45',spots:[[-620,-380],[-740,-80],[120,680]]},
  {k:'goldenfry',name:'THE GOLDEN FRY',col:'#e5b83e',spots:[[900,-100],[1020,80],[-220,720]]},
  {k:'baysidebbq',name:'BAYSIDE BBQ',col:'#bd6843',spots:[[880,460],[1030,580],[-930,-440]]},
+ {k:'bar',name:'THE BLUE PELICAN LOUNGE',col:'#36b8c8',spots:[[-260,-520],[620,40]]},
+ {k:'gym',name:'VICE FITNESS CLUB',col:'#a5e04d',spots:[[180,820],[-920,-260]]},
  {k:'ammu',name:'GUN COVE',col:'#ff4d4d',spots:[[60,-100],[-250,30],[-760,570],[150,300]]},
  {k:'clothes',name:'PASTEL THREADS',col:'#b78bff',spots:[[-120,30],[240,-90],[-900,780]]},
  {k:'safe',name:'SAFEHOUSE',col:'#59ffa0',spots:[[150,30],[-600,520],[-90,-270],[30,610]]},
@@ -1585,10 +1587,67 @@ function portExtras(){
 function beachProps(){
  for(let x=-1200;x<1600;x+=12+rnd()*10){const z=shoreZ(x)+rr(8,28);if(rnd()<.5)palm(x,z,rr(.8,1.1));if(rnd()<.35){const c=pick([[1,.3,.4],[.2,.7,1],[1,.85,.2],[.3,.9,.6],[1,1,1]]);bakeG('plain',GEO.cyl6,x+3,0,z+3,0,.05,2.4,.05,[.9,.9,.9]);bakeG('plain',GEO.cone,x+3,2.2,z+3,0,1.9,.6,1.9,c);bakeG('plain',GEO.box,x+3.8,.05,z+4.5,0,1.1,.06,2,pick([[1,.4,.5],[.3,.6,1],[1,.9,.3]]))}
   if(rnd()<.04){bakeG('plain',GEO.box,x,0,z,0,2.2,3.2,2.2,[.95,.95,.9]);bakeG('plain',GEO.box,x,3.2,z,0,3,.3,3,[1,.25,.25]);bakeG('plain',GEO.box,x,0,z-1.2,0,.2,4,.2,[.9,.9,.9]);addCol(x-1,z-1,x+1,z+1,3)}}
- // boardwalk + piers
- for(const [x0,x1] of[[-880,1090]])bakeG('plain',GEO.box,(x0+x1)/2,0,-346,0,x1-x0,.22,4,[.62,.46,.3]);
+ // VICE BEACH BOARDWALK: a continuous timber promenade with piers, kiosks, seating and a lit Ferris wheel.
+ const bwx0=-880,bwx1=1090,bwz=-346;
+ bakeG('plain',GEO.box,(bwx0+bwx1)/2,-.02,bwz,0,bwx1-bwx0,.28,15,[.48,.31,.18]);
+ bakeG('plain',GEO.box,(bwx0+bwx1)/2,.14,bwz,0,bwx1-bwx0,.06,14,[.69,.49,.29]);
+ // Decorative boardwalk plank seams and edge rails.
+ for(let x=bwx0+5;x<bwx1;x+=5)bakeG('plain',GEO.box,x,.19,bwz,0,.055,.025,13,[.32,.2,.12]);
+ for(const side of[-1,1]){
+  const rz=bwz+side*7;
+  bakeG('plain',GEO.box,(bwx0+bwx1)/2,.72,rz,0,bwx1-bwx0,.18,.22,[.34,.23,.15]);
+  for(let x=bwx0+8;x<bwx1;x+=16){bakeG('plain',GEO.box,x,.42,rz,0,.22,.85,.22,[.3,.2,.13]);addCol(x-.16,rz-.16,x+.16,rz+.16,1.1,'boardwalk-rail-post')}
+  addCol(bwx0,rz-.18,bwx1,rz+.18,1.05,'boardwalk-rail');
+ }
+ // Warm globe lamps and ocean-facing benches.
+ for(let x=bwx0+22;x<bwx1;x+=44){
+  bakeG('plain',GEO.cyl6,x,1.8,bwz-5.2,0,.11,3.6,.11,[.16,.16,.17]);
+  bakeG('lamp',GEO.sph,x,3.72,bwz-5.2,0,.34,.34,.34,[1,.78,.48]);
+  addCol(x-.22,bwz-5.42,x+.22,bwz-4.98,4.2,'boardwalk-lamp');
+ }
+ for(const x of[-790,-570,-350,-130,90,310,530,930]){
+  bakeG('plain',GEO.box,x,.58,bwz+3.2,0,3.2,.16,.75,[.48,.27,.13]);
+  bakeG('plain',GEO.box,x,.92,bwz+2.82,0,3.2,.55,.12,[.48,.27,.13]);
+  for(const dx of[-1.25,1.25])bakeG('plain',GEO.box,x+dx,.3,bwz+3.2,0,.12,.56,.65,[.22,.22,.24]);
+  addCol(x-1.65,bwz+2.78,x+1.65,bwz+3.62,1.25,'boardwalk-bench');
+ }
+ // Colorful food, souvenir and arcade kiosks along the landward edge.
+ const kiosks=[
+  [-700,'SUNSET SNACKS',[.9,.35,.18]],[-470,'TIDE & TREAT',[.15,.55,.72]],
+  [-240,'BOARDWALK BITES',[.95,.68,.2]],[0,'VICE BEACH GIFTS',[.78,.28,.48]],
+  [240,'SHELL SHACK',[.2,.62,.48]],[470,'NEON ARCADE',[.35,.28,.78]],
+  [930,'ICE CREAM CO.',[.9,.45,.65]]
+ ];
+ for(const [x,name,col] of kiosks){
+  const z=bwz-13,w=name==='NEON ARCADE'?13:10,d=8;
+  bakeG('plain',GEO.box,x,1.8,z,0,w,3.6,d,[.86,.78,.62]);
+  bakeG('plain',GEO.box,x,3.72,z,0,w+1,.35,d+.7,col);
+  bakeG('plain',GEO.box,x,.95,z+d/2+.12,0,w*.72,.9,.28,[.42,.25,.15]);
+  for(const side of[-1,1])bakeG('plain',GEO.box,x+side*(w/2-.3),1.8,z+d/2,0,.28,3.4,.3,col);
+  const sign=new T.Mesh(new T.PlaneGeometry(w*.88,1.35),new T.MeshBasicMaterial({map:signTex(name,'#fff2d6',null,'generic'),toneMapped:false}));
+  sign.position.set(x,4.65,z+d/2+.2);world.add(sign);
+  addCol(x-w/2,z-d/2,x+w/2,z+d/2,4.2,'boardwalk-kiosk');
+ }
+ // Entrance arch and a clear landmark sign.
+ for(const x of[-80,80]){bakeG('plain',GEO.box,x,3.3,bwz-13,0,.65,6.6,.65,[.25,.18,.13]);addCol(x-.35,bwz-13.35,x+.35,bwz-12.65,7,'boardwalk-arch')}
+ bakeG('neon',GEO.box,0,6.8,bwz-13,0,17,.55,.55,[1,.42,.22]);
+ const bwSign=new T.Mesh(new T.PlaneGeometry(15,2.3),new T.MeshBasicMaterial({map:signTex('VICE BEACH BOARDWALK','#ffe5a8',null,'generic'),toneMapped:false}));
+ bwSign.position.set(0,6.8,bwz-12.68);world.add(bwSign);
+ // Ferris wheel at the eastern end of the promenade.
+ const wheelX=700,wheelY=15,wheelZ=bwz-15;
+ const wheelMat=new T.MeshStandardMaterial({color:0x7bd5e8,metalness:.55,roughness:.35,emissive:0x123344,emissiveIntensity:.35});
+ const wheel=new T.Mesh(new T.TorusGeometry(12,.48,8,48),wheelMat);wheel.position.set(wheelX,wheelY,wheelZ);world.add(wheel);
+ for(let i=0;i<12;i++){const a=i*Math.PI/6;
+  const spoke=new T.Mesh(new T.BoxGeometry(.22,12,.22),wheelMat);spoke.position.set(wheelX+Math.cos(a)*6,wheelY+Math.sin(a)*6,wheelZ);spoke.rotation.z=a;world.add(spoke);
+  const gondola=new T.Mesh(new T.BoxGeometry(1.45,1.15,1.25),new T.MeshStandardMaterial({color:[0xff6b83,0xffd166,0x6bd6b8,0x8c83ff][i%4],roughness:.65}));
+  gondola.position.set(wheelX+Math.cos(a)*12,wheelY+Math.sin(a)*12,wheelZ);world.add(gondola);
+ }
+ for(const x of[-5,5]){bakeG('plain',GEO.box,wheelX+x,4,wheelZ,0,.65,8,.65,[.34,.31,.3]);}
+ addCol(wheelX-14,wheelZ-1.4,wheelX+14,wheelZ+1.4,30,'boardwalk-ferris-wheel');
+ // Existing piers extend from the boardwalk out over the water.
  for(const px of[-120,210]){decks.push({x0:px-3,x1:px+3,z0:-428,z1:-350,y:.6});bakeG('plain',GEO.box,px,.1,-384,0,6,.55,68,[.58,.42,.28]);for(let z=-415;z<-352;z+=6)for(const sx of[-3,3])bakeG('plain',GEO.cyl6,px+sx,-2.5,z,0,.18,3.4,.18,[.35,.26,.18]);
-  bakeG('plain',GEO.box,px,.65,-423,0,10,3,6,pick(PAL));bakeG('plain',GEO.box,px,3.65,-423,0,11,.4,7,[.9,.3,.4])}
+  bakeG('plain',GEO.box,px,.65,-423,0,10,3,6,pick(PAL));bakeG('plain',GEO.box,px,3.65,-423,0,11,.4,7,[.9,.3,.4]);
+  addCol(px-3.1,-428,px+3.1,-350,1.2,'boardwalk-pier');}
  // beached boats at the marina
  for(let i=0;i<8;i++){const x=-760+i*14,z=shoreZ(x)-14;bakeG('plain',GEO.box,x,-.3,z,rr(-.3,.3),2.4,.8,6.5,pick([[.95,.95,.95],[.3,.5,.9],[.9,.3,.3]]));bakeG('plain',GEO.box,x,.4,z-.5,0,1.6,.8,2.6,[.85,.88,.9])}
 }
@@ -1877,30 +1936,44 @@ function buildDowntownPark(){
  path(96,68,30,3,.55);path(144,112,30,3,.55);
  // Reflecting pond and fountain.
  bakeG('water2',GEO.box,120,.18,90,0,25,.12,19,[.18,.62,.72]);
+ // Fountain basin, rim and centre column are all solid to player/vehicle collision.
+ addCol(107.5,80.5,132.5,99.5,.5,'park-fountain-basin');
  bakeG('plain',GEO.cyl6,120,.32,90,0,3.8,.32,3.8,[.68,.72,.68]);
+ addCol(116.2,86.2,123.8,93.8,1.1,'park-fountain-base');
  bakeG('water2',GEO.cyl6,120,.58,90,0,1.05,2.2,1.05,[.35,.78,.9]);
  bakeG('plain',GEO.cyl6,120,2.8,90,0,.16,2.25,.16,[.8,.84,.86]);
+ addCol(119.2,89.2,120.8,90.8,5.2,'park-fountain-column');
  bakeG('water2',GEO.cyl6,120,1.35,90,0,.12,1.3,.12,[.48,.82,.94]);
  // Open-sided pavilion.
  const gx=144,gz=62;
  for(const [dx,dz] of[[-5,-4],[5,-4],[-5,4],[5,4]])bakeG('plain',GEO.box,gx+dx,2,gz+dz,0,.35,4,.35,[.88,.84,.72]);
  bakeG('plain',GEO.box,gx,4.35,gz,0,13,.35,11,[.72,.32,.22]);
- // Benches around the pond.
+ // Benches around the pond. Add solid collision boxes for each seat and support.
  for(const [bx,bz,rot] of[[96,91,0],[144,91,0],[120,63,Math.PI/2],[120,117,Math.PI/2]]){
   bakeG('plain',GEO.box,bx,.75,bz,rot,5,.28,1.1,[.48,.27,.13]);
   for(const side of[-1,1])bakeG('plain',GEO.box,bx+Math.cos(rot)*side*1.8,.38,bz+Math.sin(rot)*side*1.8,rot,.22,.65,.22,[.22,.22,.22]);
+  if(rot===0)addCol(bx-2.5,bz-.55,bx+2.5,bz+.55,1.1,'park-bench');
+  else addCol(bx-.55,bz-2.5,bx+.55,bz+2.5,1.1,'park-bench');
  }
  // Trees and flower beds, placed clear of paths and pond.
  for(const [tx,tz,sc] of[[81,52,1],[158,52,1],[81,128,1],[158,128,1],[96,119,.85],[150,76,.85],[89,75,.85],[151,119,.85]])if(Math.hypot(tx-120,tz-90)>24)oak(tx,tz,sc);
  for(const [fx,fz] of[[82,67],[158,113],[82,113],[158,67]]){
   bakeG('plain',GEO.box,fx,.25,fz,0,7,.35,3,[.28,.34,.22]);
-  for(let k=-2;k<=2;k++)bakeG('plain',GEO.ico,fx+k*1.15,.72,fz,0,.48,.5,.48,pick([[.95,.35,.48],[1,.72,.25],[.72,.45,.9],[.95,.82,.55]]));
+  addCol(fx-3.5,fz-1.5,fx+3.5,fz+1.5,.8,'park-flower-bed');
+  for(let k=-2;k<=2;k++){
+   const px=fx+k*1.15;
+   bakeG('plain',GEO.ico,px,.72,fz,0,.48,.5,.48,pick([[.95,.35,.48],[1,.72,.25],[.72,.45,.9],[.95,.82,.55]]));
+   addCol(px-.32,fz-.32,px+.32,fz+.32,1.25,'park-flower');
+  }
  }
 }
 function forceShopDoors(){
  // Guaranteed enterable storefronts so Gun Cove / shops always have an interior door
  const forced=[
   {k:'repair',name:'WRENCH WORKS',col:'#44c5d8',x:-380,z:-230},{k:'repair',name:'WRENCH WORKS',col:'#44c5d8',x:-880,z:360},{k:'repair',name:'WRENCH WORKS',col:'#44c5d8',x:330,z:280},
+  {k:'spray',name:"PAY 'N' SPRAY",col:'#b36bff',x:-770,z:665},{k:'spray',name:"PAY 'N' SPRAY",col:'#b36bff',x:90,z:600},
+  {k:'bar',name:'THE BLUE PELICAN LOUNGE',col:'#36b8c8',x:-260,z:-520},{k:'bar',name:'THE BLUE PELICAN LOUNGE',col:'#36b8c8',x:620,z:40},
+  {k:'gym',name:'VICE FITNESS CLUB',col:'#a5e04d',x:180,z:820},{k:'gym',name:'VICE FITNESS CLUB',col:'#a5e04d',x:-920,z:-260},
   {k:'jewelry',name:'GOLDEN HOUR JEWELERS',col:'#e9c65a',x:300,z:-210},{k:'jewelry',name:'GOLDEN HOUR JEWELERS',col:'#e9c65a',x:-510,z:120},
   {k:'pharmacy',name:'PALMCARE PHARMACY',col:'#5bd18a',x:-320,z:280},{k:'pharmacy',name:'PALMCARE PHARMACY',col:'#5bd18a',x:420,z:-80},{k:'pharmacy',name:'PALMCARE PHARMACY',col:'#5bd18a',x:-970,z:820},
   {k:'nightclub',name:'THE AFTERGLOW',col:'#df67ef',x:210,z:-360},{k:'nightclub',name:'THE AFTERGLOW',col:'#df67ef',x:-430,z:-190},{k:'nightclub',name:'THE AFTERGLOW',col:'#df67ef',x:540,z:260},
@@ -4184,7 +4257,7 @@ function carHitPeds(c){const sp=c.speed;if(sp<1.5&&!c.dead)return;const sn=Math.
 
 // ================= INTERIORS =================
 const INT={},intGroup=new T.Group();intGroup.visible=false;scene.add(intGroup);
-const INTKINDS=['burger','ammu','clothes','safe','repair','jewelry','pharmacy','nightclub','palmgrill','oceandiner','havana','bigwave','sunsetsteak','flamingo','ricos','goldenfry','baysidebbq'];
+const INTKINDS=['burger','ammu','clothes','safe','repair','spray','jewelry','pharmacy','nightclub','palmgrill','oceandiner','havana','bigwave','sunsetsteak','flamingo','ricos','goldenfry','baysidebbq','bar','gym'];
 function checkerTex(c1,c2,n){
  const S=512,[c,x]=cv(S,S),cell=S/2;
  const hex=h=>{const n=parseInt(h.slice(1),16);return[(n>>16)&255,(n>>8)&255,n&255]};
@@ -4233,11 +4306,11 @@ function buildInterior(kind,idx){
  const bx=(w,h,d,x,y,z,mat,cast=true)=>{const m=new T.Mesh(new T.BoxGeometry(w,h,d),mat);m.position.set(x,y+h/2,z);m.receiveShadow=true;m.castShadow=cast;g.add(m);return m};
  const plane=(w,d,x,y,z,mat,rx=-Math.PI/2)=>{const m=new T.Mesh(new T.PlaneGeometry(w,d),mat);m.rotation.x=rx;m.position.set(x,y,z);m.receiveShadow=true;g.add(m);return m};
  const col=(w,d,x,z,h=3)=>addCol(cx+x-w/2,cz+z-d/2,cx+x+w/2,cz+z+d/2,h,'int');
- const wallHex={palmgrill:'#d9f0df',oceandiner:'#d8eaf4',havana:'#f2dfbd',bigwave:'#d5edf2',sunsetsteak:'#5a3026',flamingo:'#f8dce8',ricos:'#f2d7a0',goldenfry:'#f6edc8',baysidebbq:'#d9c0a0',burger:'#f4efe2',ammu:'#3b3f46',clothes:'#f3d9e6',safe:'#e6dfd0',repair:'#dce7e8',jewelry:'#f4ecd4',pharmacy:'#e4f3e9',nightclub:'#211b36'}[kind]||'#e6dfd0';
- const wallC={palmgrill:0xd9f0df,oceandiner:0xd8eaf4,havana:0xf2dfbd,bigwave:0xd5edf2,sunsetsteak:0x5a3026,flamingo:0xf8dce8,ricos:0xf2d7a0,goldenfry:0xf6edc8,baysidebbq:0xd9c0a0,burger:0xf4efe2,ammu:0x3b3f46,clothes:0xf3d9e6,safe:0xe6dfd0,repair:0xdce7e8,jewelry:0xf4ecd4,pharmacy:0xe4f3e9,nightclub:0x211b36}[kind]||0xe6dfd0;
+ const wallHex={palmgrill:'#d9f0df',oceandiner:'#d8eaf4',havana:'#f2dfbd',bigwave:'#d5edf2',sunsetsteak:'#5a3026',flamingo:'#f8dce8',ricos:'#f2d7a0',goldenfry:'#f6edc8',baysidebbq:'#d9c0a0',bar:'#163d50',gym:'#dce6d5',spray:'#272d39',burger:'#f4efe2',ammu:'#3b3f46',clothes:'#f3d9e6',safe:'#e6dfd0',repair:'#dce7e8',jewelry:'#f4ecd4',pharmacy:'#e4f3e9',nightclub:'#211b36'}[kind]||'#e6dfd0';
+ const wallC={palmgrill:0xd9f0df,oceandiner:0xd8eaf4,havana:0xf2dfbd,bigwave:0xd5edf2,sunsetsteak:0x5a3026,flamingo:0xf8dce8,ricos:0xf2d7a0,goldenfry:0xf6edc8,baysidebbq:0xd9c0a0,bar:0x163d50,gym:0xdce6d5,spray:0x272d39,burger:0xf4efe2,ammu:0x3b3f46,clothes:0xf3d9e6,safe:0xe6dfd0,repair:0xdce7e8,jewelry:0xf4ecd4,pharmacy:0xe4f3e9,nightclub:0x211b36}[kind]||0xe6dfd0;
  // Floors with proper plane UVs (no box UV stretch)
  let floorMap;
- if(kind==='palmgrill')floorMap=checkerTex('#d5b77a','#f2e5c7',5);else if(kind==='oceandiner')floorMap=checkerTex('#2c6e9a','#f5f2e9',7);else if(kind==='havana')floorMap=checkerTex('#a84e32','#e5bd76',5);else if(kind==='bigwave')floorMap=checkerTex('#2c8197','#d8e9e5',6);else if(kind==='sunsetsteak')floorMap=woodTex(7);else if(kind==='flamingo')floorMap=checkerTex('#e86c9c','#fff0f5',6);else if(kind==='ricos')floorMap=checkerTex('#c74d32','#f3d18a',5);else if(kind==='goldenfry')floorMap=checkerTex('#e5b83e','#fff4cf',6);else if(kind==='baysidebbq')floorMap=woodTex(8);else if(kind==='burger')floorMap=checkerTex('#d9372f','#f2f2f2',6);
+ if(kind==='palmgrill')floorMap=checkerTex('#d5b77a','#f2e5c7',5);else if(kind==='oceandiner')floorMap=checkerTex('#2c6e9a','#f5f2e9',7);else if(kind==='havana')floorMap=checkerTex('#a84e32','#e5bd76',5);else if(kind==='bigwave')floorMap=checkerTex('#2c8197','#d8e9e5',6);else if(kind==='sunsetsteak')floorMap=woodTex(7);else if(kind==='flamingo')floorMap=checkerTex('#e86c9c','#fff0f5',6);else if(kind==='ricos')floorMap=checkerTex('#c74d32','#f3d18a',5);else if(kind==='goldenfry')floorMap=checkerTex('#e5b83e','#fff4cf',6);else if(kind==='baysidebbq')floorMap=woodTex(8);else if(kind==='burger')floorMap=checkerTex('#d9372f','#f2f2f2',6);else if(kind==='bar')floorMap=woodTex(7);else if(kind==='gym')floorMap=checkerTex('#303a43','#9ba7a8',7);else if(kind==='spray')floorMap=checkerTex('#343b46','#20252c',5);
  else if(kind==='ammu')floorMap=makeNoiseTex(256,90,45,[1,1,1.06],8);
  else if(kind==='clothes')floorMap=checkerTex('#f5e9ef','#e0c4d4',6);
  else floorMap=woodTex(5);
@@ -4489,9 +4562,15 @@ function buildInterior(kind,idx){
   clerk.position.set(0,0,-4.7);o.counter={x:cx,z:cz-3.8};
  }
  else { // new specialty businesses
-  const dark=kind==='nightclub',accent=kind==='jewelry'?0xe9c65a:kind==='pharmacy'?0x5bd18a:kind==='repair'?0x44c5d8:0xdf67ef;
+  const dark=kind==='nightclub'||kind==='bar',accent=kind==='jewelry'?0xe9c65a:kind==='pharmacy'?0x5bd18a:kind==='repair'?0x44c5d8:kind==='spray'?0xb36bff:kind==='gym'?0xa5e04d:kind==='bar'?0x36b8c8:0xdf67ef;
   const shelf=M(dark?0x28243a:0xd8dadd),glass=M(0x9acbdc,{transparent:true,opacity:.38,metalness:.2,roughness:.15}),trim=M(accent,{emissive:accent,emissiveIntensity:dark?1.1:.12});
-  if(kind==='nightclub'){
+  if(kind==='spray'){
+   plane(11,8,0,.04,0,M(0x20252c));bx(12,1.0,3,0,0,-3.8,M(0x3d4651));bx(12,.12,3,0,1.0,-3.8,trim);for(const x of[-6,0,6]){bx(.18,3.0,.18,x,.1,-5.7,trim);bx(2.2,.15,.3,x,2.8,-5.7,shelf)}sign("PAY 'N' SPRAY",'#d8b8ff',0,3.1,-6.82,7);sign('AUTO BODY · CUSTOM PAINT','#e5d7ff',0,2.35,-6.82,7);o.counter={x:cx,z:cz-3.8};
+  }else if(kind==='bar'){
+   plane(11,8,0,.04,0,M(0x102d3b));bx(12,1.0,1.5,0,0,-4.8,wood);bx(12,.12,1.7,0,1.0,-4.8,trim);for(const x of[-7,-3,1,5]){cyl(.12,1.0,x,0,-2.7,metal);cyl(.42,.12,x,.95,-2.7,table)}for(let i=0;i<5;i++){const x=-8+i*4;bx(2.2,.12,1.2,x,.8,2.2,table);bx(2.3,.65,.12,x,.1,2.75,seat);col(2.2,1.2,x,2.2,1)}sign('THE BLUE PELICAN','#b8f5ff',0,3.1,-6.82,7);sign('MOCKTAILS · MUSIC · LATE NIGHTS','#d6f8ff',0,2.35,-6.82,8);o.counter={x:cx,z:cz-4.8};
+  }else if(kind==='gym'){
+   plane(11,8,0,.04,0,M(0x27343c));for(const x of[-7,-2,3,8]){bx(2.0,.18,1.2,x,.05,-3.5,metal);for(const dx of[-.8,.8]){cyl(.12,1.2,x+dx,.2,-3.5,metal);cyl(.42,.16,x+dx,.7,-3.5,trim)}}for(const x of[-6,0,6]){bx(2.4,.12,1.5,x,.8,2.2,seat);bx(2.5,.75,.12,x,.1,2.85,trim);col(2.4,1.5,x,2.2,1)}sign('VICE FITNESS CLUB','#e4ffc7',0,3.1,-6.82,7);sign('TRAIN · MOVE · RECOVER','#efffdd',0,2.35,-6.82,7);o.counter={x:cx,z:cz-3.8};
+  }else if(kind==='nightclub'){
    plane(11,8,0,.04,0,M(0x171327));bx(6,.85,1.4,0,0,-5.1,M(0x242039));bx(5,.12,.8,0,.9,-5.1,trim);bx(3,.08,2.6,0,.04,0,M(0x4a356b));
    for(const x of[-8,-4,4,8]){bx(.16,3.4,.16,x,0,-1.5,trim,false);bx(.16,3.4,.16,x,0,1.5,trim,false)}
    for(const x of[-5,0,5])bx(1.2,.12,.6,x,1.1,-5.7,M(0x12101e));
@@ -4527,12 +4606,15 @@ const SHOP_ITEMS={
  ammu:()=>{const a=[];for(const k of['pistol','smg','shot','rifle']){const w=WEAP[k],lk=pl.rep<(w.req||0);if(!pl.weapons[k])a.push({n:w.name,p:w.price,locked:lk,d:lk?'🔒 Requires '+w.req+' Rep ('+tierOf(w.req)[1]+')':'Includes '+w.pack+' ammo',f:()=>{pl.weapons[k]=1;pl.ammo[k]+=w.pack;pl.weapon=k}});else a.push({n:w.name+' ammo ×'+w.pack,p:w.ammoPrice,d:'Have '+pl.ammo[k],f:()=>{pl.ammo[k]+=w.pack}})}a.push({n:'Body armor',p:300,d:'Armor to 100',f:()=>{pl.armor=100}});return a},
  clothes:()=>[['Neon Pink Tee',0xff6ec7],['Teal Bomber',0x20b6a4],['Sunset Orange',0xff8a3d],['Midnight Black',0x2a2f3a],['Beach White',0xf2f2f2],['Royal Purple',0x7a4fe0]].map(([n,c])=>({n,p:40,d:'Shirt · reduces heat',f:()=>{pl.shirt=c;plH.userData.m.shirt.color.setHex(c);if(pl.heat)pl.heat.clothes=0;toast('Outfit changed — clothing heat lost',1800)}})).concat([{n:'Khaki Cargo',p:30,d:'Pants',f:()=>{pl.pants=0x8a7a62;plH.userData.m.pants.color.setHex(0x8a7a62);if(pl.heat)pl.heat.clothes=0}},{n:'Dark Denim',p:30,d:'Pants',f:()=>{pl.pants=0x26344f;pl.boughtPants=1;plH.userData.m.pants.color.setHex(0x26344f);if(pl.heat)pl.heat.clothes=0}}]),
  safe:()=>[{n:'Save game',p:0,d:'Write progress to this browser',f:()=>{saveGame(true)},stay:true},{n:'Sleep until morning',p:0,d:'Restore health, time → 07:00',f:()=>{pl.hp=100;G.clock=7;clearWanted();toast('You slept. Wanted level cleared.')}},{n:'Take a shower',p:0,d:'Armor +25',f:()=>{pl.armor=Math.min(100,pl.armor+25)},stay:true}],
+ spray:()=>[{n:'Respray and repair vehicle',p:75,locked:!(pl.inside&&pl.inside.door.serviceCar&&!pl.inside.door.serviceCar.dead),d:'Change paint, restore condition and clear wanted level',f:()=>{const c=pl.inside&&pl.inside.door.serviceCar;if(!c||c.dead){toast('Park a vehicle outside Pay n Spray first');return}c.hp=maxHp(c);c.fire=0;c.dead=false;if(c._crumple)c._crumple.repairRequested=true;clearWanted();const nc=pick2(c.t.colors||[0xffffff]);c.color=nc;c.v.body.material=paintMat(nc);toast('Vehicle resprayed · $75 service complete')}}],
+ bar:()=>[{n:'Citrus Bay Cooler',p:7,d:'Non-alcoholic citrus mocktail · +8 health',f:()=>{pl.hp=Math.min(100,pl.hp+8)}},{n:'Blue Pelican Fizz',p:9,d:'Sparkling fruit mocktail · +12 health',f:()=>{pl.hp=Math.min(100,pl.hp+12)}},{n:'Tropical Sunrise',p:8,d:'Mango and citrus mocktail · +10 health',f:()=>{pl.hp=Math.min(100,pl.hp+10)}},{n:'Lounge music',p:0,d:'Enjoy the venue soundtrack',btn:'Listen',stay:true,f:()=>toast('The lounge playlist is on')}],
+ gym:()=>[{n:'Cardio session',p:10,d:'Short fitness minigame · +3 reputation',f:()=>{addRep(3);toast('Cardio session complete · +3 reputation')}},{n:'Strength circuit',p:15,d:'Training minigame · +5 reputation',f:()=>{addRep(5);toast('Training circuit complete · +5 reputation')}},{n:'Recovery station',p:5,d:'Restore 15 health',f:()=>{pl.hp=Math.min(100,pl.hp+15)}}],
  repair:()=>[{n:'Repair vehicle',p:180,locked:!(pl.inside&&pl.inside.door.serviceCar&&!pl.inside.door.serviceCar.dead),d:'Restore the vehicle parked outside',f:()=>{const c=pl.inside&&pl.inside.door.serviceCar;if(!c||c.dead){toast('Park a vehicle outside Wrench Works before entering');return}c.hp=maxHp(c);toast('Vehicle repaired')}},{n:'Refuel vehicle',p:65,locked:!(pl.inside&&pl.inside.door.serviceCar&&!pl.inside.door.serviceCar.dead),d:'Fill the vehicle fuel tank',f:()=>{const c=pl.inside&&pl.inside.door.serviceCar;if(!c||c.dead){toast('Park a vehicle outside Wrench Works before entering');return}c.fuel=100;toast('Fuel tank filled')}}],
  jewelry:()=>[['Silver Chain',85],['Gold Watch',220],['Diamond Studs',350],['Ocean Sapphire Ring',480]].map(([n,p])=>({n,p,d:'Adds this piece to your jewelry collection',locked:pl.jewelry.includes(n),f:()=>{pl.jewelry.push(n);toast(n+' added to your collection')}})).concat([{n:'View collection',p:0,d:pl.jewelry.length?pl.jewelry.join(' · '):'No jewelry owned yet',btn:'View',stay:true,f:()=>toast(pl.jewelry.length?pl.jewelry.join(' · '):'Your jewelry collection is empty')}]),
  pharmacy:()=>[{n:'First-aid kit',p:45,d:'Adds one kit to your inventory',f:()=>{pl.medkits++;toast('First-aid kit added · '+pl.medkits+' in inventory')}},{n:'Use first-aid kit',p:0,d:'Restore up to 35 health · '+pl.medkits+' available',locked:pl.medkits<1||pl.hp>=100,btn:'Use',f:()=>{if(pl.medkits<1||pl.hp>=100)return;pl.medkits--;pl.hp=Math.min(100,pl.hp+35);toast('First-aid kit used')}}],
  nightclub:()=>[{n:'Entry',p:15,d:'Enter The Afterglow music venue',f:()=>{pl.rel=Math.min(100,pl.rel+2);toast('Welcome to The Afterglow')}},{n:'Dance floor session',p:0,d:'Join the music and earn a little reputation',btn:'Dance',f:()=>{addRep(2);pl.rel=Math.min(100,pl.rel+1);toast('Dance session complete · +2 reputation')}}]};
 for(const [kind,menu] of Object.entries(RESTAURANT_MENUS))SHOP_ITEMS[kind]=()=>menu.map(([n,p,heal])=>({n,p,d:'Signature house dish · +'+heal+' health',f:()=>{pl.hp=Math.min(100,pl.hp+heal)}}));
-const SHOP_NAMES={palmgrill:'Palm Paradise Grill',oceandiner:'Ocean View Diner',havana:'Little Havana Café',bigwave:'Big Wave Seafood',sunsetsteak:'Sunset Steakhouse',flamingo:'Flamingo Pizza',ricos:"Rico's Tacos",goldenfry:'The Golden Fry',baysidebbq:'Bayside BBQ',burger:'Benny\'s Burger Shack',ammu:'Leonida Tactical Supply',clothes:'Vice Threads',safe:'Safehouse',repair:'Wrench Works',jewelry:'Golden Hour Jewelers',pharmacy:'PalmCare Pharmacy',nightclub:'The Afterglow'};
+const SHOP_NAMES={palmgrill:'Palm Paradise Grill',oceandiner:'Ocean View Diner',havana:'Little Havana Café',bigwave:'Big Wave Seafood',sunsetsteak:'Sunset Steakhouse',flamingo:'Flamingo Pizza',ricos:"Rico's Tacos",goldenfry:'The Golden Fry',baysidebbq:'Bayside BBQ',burger:'Benny\'s Burger Shack',ammu:'Leonida Tactical Supply',clothes:'Vice Threads',safe:'Safehouse',repair:'Wrench Works',spray:"Pay 'n' Spray",bar:'The Blue Pelican Lounge',gym:'Vice Fitness Club',jewelry:'Golden Hour Jewelers',pharmacy:'PalmCare Pharmacy',nightclub:'The Afterglow'};
 function openShop(kind){G.state='shop';G.shopKind=kind;document.exitPointerLock?.();$('#shop').style.display='grid';$('#shoptitle').textContent=G.shopTitle||SHOP_NAMES[kind];G.shopTitle=null;renderShop(kind)}
 function renderShop(kind){$('#shopcash').textContent='Cash: $'+pl.cash;const box=$('#shopitems');box.innerHTML='';
  for(const it of SHOP_ITEMS[kind]()){const r=document.createElement('div');r.className='row';r.innerHTML=`<div><b>${it.n}</b><br><small>${it.d}</small></div>`;const b=document.createElement('button');b.textContent=it.btn||(it.p?'$'+it.p.toLocaleString():'Use');b.disabled=it.p>pl.cash||!!it.locked;
@@ -4541,7 +4623,7 @@ function closeShop(){$('#shop').style.display='none';G.state='play';requestGameM
 // ================= ENTER / EXIT BUILDINGS =================
 function fadeTo(a,ms=450){$('#fade').style.transition=`opacity ${ms/1000}s`;$('#fade').style.opacity=a}
 function enterInterior(door){if(pl.inside||G.busy)return;
-  if(door.kind==='repair'){let best=null,bd=18;for(const c of cars){if(c.dead||c.t.boat||c.t.aircraft)continue;const d=Math.hypot(c.x-door.x,c.z-door.z);if(d<bd){bd=d;best=c}}door.serviceCar=best;}
+  if(door.kind==='repair'||door.kind==='spray'){let best=null,bd=18;for(const c of cars){if(c.dead||c.t.boat||c.t.aircraft)continue;const d=Math.hypot(c.x-door.x,c.z-door.z);if(d<bd){bd=d;best=c}}door.serviceCar=best;}
   const o=INT[door.kind];
   if(!o){toast('This store is closed right now');return}
   G.busy=true;fadeTo(1);setTimeout(()=>{
@@ -4563,10 +4645,9 @@ function buildMarkers(){
  const bm=(col)=>new T.MeshBasicMaterial({color:col,transparent:true,opacity:.28,blending:T.AdditiveBlending,depthWrite:false});
  for(const d of doors){const m=new T.Mesh(new T.CylinderGeometry(.9,.9,7,12,1,true),bm(new T.Color(d.col)));m.position.set(d.x,3.5,d.z);world.add(m);const ic=new T.Mesh(new T.OctahedronGeometry(.4),new T.MeshBasicMaterial({color:new T.Color(d.col)}));ic.position.set(d.x,2.8,d.z);world.add(ic);doorMarks.push(ic)}
  // Pay 'n' Spray garages
- for(const g of G.spray){const r=new T.Mesh(new T.TorusGeometry(4,.28,8,28),new T.MeshBasicMaterial({color:0xb36bff}));r.rotation.x=Math.PI/2;r.position.set(g.x,.4,g.z);world.add(r);const b=new T.Mesh(new T.CylinderGeometry(4,4,10,20,1,true),bm(0xb36bff));b.position.set(g.x,5,g.z);world.add(b);
-  const sg=new T.Mesh(new T.PlaneGeometry(8,2),new T.MeshBasicMaterial({map:signTex("PAY 'N' SPRAY",'#b36bff'),toneMapped:false}));sg.position.set(g.x,8,g.z);sg.rotation.y=g.ry||0;world.add(sg);g.sign=sg}
+ // Pay 'n' Spray locations are now full enterable storefronts; remove the old floating garage markers.
 }
-G.spray=[{x:120,z:120,ry:Math.PI/2},{x:-770,z:665,ry:Math.PI/2},{x:90,z:600,ry:Math.PI/2}];
+G.spray=[{x:-770,z:665,ry:Math.PI/2},{x:90,z:600,ry:Math.PI/2}];
 const HOSP={x:-49.6,z:-60},PD={x:49.6,z:-120};
 // ================= MISSIONS =================
 const ring=new T.Group();world.add(ring);
@@ -4657,7 +4738,7 @@ function bustPlayer(){if(G.busted||!pl.alive)return;G.busted=true;pl.alive=false
 // ================= HUD / MAPS =================
 const mini=$('#minic').getContext('2d'),mapx=$('#mapc').getContext('2d');
 
-const STORE_MAP_ICONS={palmgrill:'food',oceandiner:'food',havana:'food',bigwave:'food',sunsetsteak:'food',flamingo:'food',ricos:'food',goldenfry:'food',baysidebbq:'food',burger:'food',ammu:'shop',clothes:'clothing',safe:'home',repair:'garage',jewelry:'jewelry',pharmacy:'pharmacy',nightclub:'nightclub'};
+const STORE_MAP_ICONS={palmgrill:'food',oceandiner:'food',havana:'food',bigwave:'food',sunsetsteak:'food',flamingo:'food',ricos:'food',goldenfry:'food',baysidebbq:'food',burger:'food',ammu:'shop',clothes:'clothing',safe:'home',repair:'garage',jewelry:'jewelry',pharmacy:'pharmacy',nightclub:'nightclub',bar:'bar',gym:'gym',spray:'garage'};
 function drawMapGlyph(ctx,key,x,y,size=18){const keys={'🍔':'food','👕':'clothing','🏠':'home','🛒':'shop','⛽':'fuel','🔧':'garage','🚘':'car','🏥':'hospital','🚓':'police','🏷':'property','🏁':'race','⚓':'boat','⛵':'boat','🚁':'aircraft','✈':'airport','📍':'waypoint'};key=keys[key]||key;const r=size*.43;ctx.save();ctx.translate(x,y);ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=Math.max(1.35,size*.095);ctx.strokeStyle='#f4fbff';ctx.fillStyle='#f4fbff';const line=p=>{ctx.beginPath();ctx.moveTo(p[0][0],p[0][1]);for(let i=1;i<p.length;i++)ctx.lineTo(p[i][0],p[i][1]);ctx.stroke()};const circle=(a,b,c,f=false)=>{ctx.beginPath();ctx.arc(a,b,c,0,TAU);f?ctx.fill():ctx.stroke()};switch(key){case'food':line([[-r,-r],[ -r,r]]);line([[r*.25,-r],[r*.25,r]]);line([[r*.25,-r],[r*.65,-r*.55],[r*.65,0],[r*.25,0]]);break;case'clothing':ctx.beginPath();ctx.moveTo(-r,-r*.45);ctx.lineTo(-r*.45,-r);ctx.lineTo(0,-r*.65);ctx.lineTo(r*.45,-r);ctx.lineTo(r,-r*.45);ctx.lineTo(r*.65,-r*.05);ctx.lineTo(r*.48,-r*.25);ctx.lineTo(r*.48,r);ctx.lineTo(-r*.48,r);ctx.closePath();ctx.stroke();break;case'home':ctx.beginPath();ctx.moveTo(-r,-r*.05);ctx.lineTo(0,-r);ctx.lineTo(r,-r*.05);ctx.lineTo(r,r);ctx.lineTo(-r,r);ctx.closePath();ctx.stroke();ctx.strokeRect(-r*.28,r*.25,r*.56,r*.75);break;case'car':case'garage':ctx.strokeRect(-r,-r*.45,r*2,r*1.15);ctx.beginPath();ctx.moveTo(-r*.7,-r*.45);ctx.lineTo(-r*.4,-r*.85);ctx.lineTo(r*.4,-r*.85);ctx.lineTo(r*.7,-r*.45);ctx.stroke();circle(-r*.55,r*.8,r*.17);circle(r*.55,r*.8,r*.17);break;case'jewelry':circle(0,0,r*.52);line([[-r*.55,-r*.05],[0,-r*.8],[r*.55,-r*.05],[0,r*.8],[-r*.55,-r*.05]]);break;case'pharmacy':ctx.strokeRect(-r,-r,r*2,r*2);ctx.fillRect(-r*.13,-r*.65,r*.26,r*1.3);ctx.fillRect(-r*.65,-r*.13,r*1.3,r*.26);break;case'nightclub':line([[-r*.7,-r*.8],[-r*.7,r*.8]]);line([[r*.7,-r*.8],[r*.7,r*.8]]);line([[-r*.7,-r*.25],[r*.7,-r*.25]]);line([[-r*.7,r*.35],[r*.7,r*.35]]);circle(0,-r*.7,r*.22);break;case'fuel':ctx.strokeRect(-r*.7,-r,r*.95,r*1.8);ctx.strokeRect(-r*.52,-r*.72,r*.58,r*.45);line([[r*.25,-r*.65],[r*.65,-r*.35],[r*.65,r*.55],[r*.4,r*.72]]);break;case'hospital':ctx.strokeRect(-r,-r,r*2,r*2);ctx.fillRect(-r*.14,-r*.68,r*.28,r*1.36);ctx.fillRect(-r*.68,-r*.14,r*1.36,r*.28);break;case'police':circle(0,0,r);line([[-r*.45,-r*.05],[0,-r*.55],[r*.45,-r*.05],[r*.3,r*.45],[-r*.3,r*.45],[-r*.45,-r*.05]]);break;case'airport':case'aircraft':line([[-r,-r*.12],[r,-r*.12]]);line([[0,-r],[0,r]]);line([[-r*.8,-r*.12],[-r*.18,r*.18],[0,r*.72],[r*.18,r*.18],[r*.8,-r*.12]]);break;case'race':line([[-r,-r],[r,-r]]);line([[-r,-r],[-r,r]]);ctx.fillStyle='#f4fbff';for(let i=0;i<3;i++)for(let j=0;j<2;j++)if((i+j)%2===0)ctx.fillRect(-r+i*r*.55,-r+j*r*.55,r*.55,r*.55);break;case'boat':line([[-r,-r*.2],[r,-r*.2],[r*.55,r*.55],[-r*.55,r*.55],[-r,-r*.2]]);line([[0,-r],[0,-r*.2]]);break;case'waypoint':circle(0,-r*.25,r*.5);ctx.beginPath();ctx.moveTo(-r*.35,r*.1);ctx.lineTo(0,r);ctx.lineTo(r*.35,r*.1);ctx.stroke();break;case'shop':ctx.strokeRect(-r*.85,-r*.45,r*1.7,r*1.35);line([[-r,-r*.45],[-r*.7,-r],[r*.7,-r],[r,-r*.45]]);break;default:circle(0,0,r*.28,true);break;}ctx.restore();}
 function mapEmoji(ctx,icon,x,y,size=17){ctx.save();ctx.shadowColor='#0009';ctx.shadowBlur=3;ctx.fillStyle='#091b2bef';ctx.strokeStyle='#d5f6ff99';ctx.lineWidth=1;ctx.beginPath();ctx.arc(x,y,size*.64,0,TAU);ctx.fill();ctx.stroke();ctx.shadowBlur=0;drawMapGlyph(ctx,icon,x,y,size*.85);ctx.restore();}
 
@@ -4955,8 +5036,7 @@ function simulate(dt){updateWaypoint();updateBreakin(dt);updateFlightHud();updat
   // wanted decay
   if(pl.wanted>0){let seen=false;for(const c of cars)if(c.mode==='cop'&&!c.dead&&Math.hypot(c.x-pl.x,c.z-pl.z)<70&&policeLineOfSight(c.x,c.y+1.4,c.z))seen=true;for(const p of cops)if(p.active&&!p.dead&&Math.hypot(p.x-pl.x,p.z-pl.z)<60&&policeLineOfSight(p.x,p.y+1.6,p.z))seen=true;
    if((G.fighterSees&&G.fighterSees())||heliSees()||(!pl.inside&&cctvNear()))seen=true;if(seen){pl.sightT=0;G.lastSeen={x:pl.x,z:pl.z}}else pl.sightT+=dt;if(pl.sightT>((pl.heat.cctv?20:14)-(!pl.heat.clothes?3:0)-(!pl.heat.partner?2:0))){pl.sightT=8;pl.crime=Math.max(0,pl.crime-(pl.crime>=22?8:pl.crime>=14?6:4));const w=starsFor(pl.crime);if(w<pl.wanted){pl.wanted=w;G.hudDirty=true;toast(w?'Wanted level dropped: '+'★'.repeat(w):'You lost the cops!')}}}
-  // Pay 'n' Spray
-  if(pl.car&&!G.busy){for(const g of G.spray){if(Math.hypot(pl.car.x-g.x,pl.car.z-g.z)<4.5&&!pl.car.t.boat&&(pl.wanted>0||pl.car.hp<maxHp(pl.car)*.8)){if(pl.cash<75){if(!(G.sprayWarn>G.time)){toast('Pay \'n\' Spray costs $75');G.sprayWarn=G.time+4}continue}G.busy=true;pl.cash-=75;fadeTo(1,350);const car=pl.car;setTimeout(()=>{car.hp=maxHp(car);if(car._crumple)car._crumple.repairRequested=true;car.fire=0;car.dead=false;clearWanted();{const nc=pick2(car.t.colors||[0xffffff]);car.color=nc;car.v.body.material=paintMat(nc)}fadeTo(0,350);G.busy=false;toast('Resprayed & repaired — heat cleared');G.hudDirty=true;for(const c of cars)if(c.mode==='cop')c.parkedCop=false},500)}}}
+  // Pay 'n' Spray service is handled inside its dedicated storefront.
   updateMission(dt);
   // giver markers
   for(const q of givers)if(q.g.visible){q.d.rotation.y+=dt*2;q.d.position.y=2.4+Math.sin(G.time*3)*.2}
