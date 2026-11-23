@@ -1,0 +1,61 @@
+name: Relocate park hospital
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/relocate-park-hospital.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  relocate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/vc-hospital" --no-package-lock --ignore-scripts acorn@8
+      - name: Resolve hospital references and validate relocation
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/vc-hospital/node_modules/acorn'),file='index.html',original=fs.readFileSync(file,'utf8'),report={passed:false,scope:'Guarded source integration, road/park clearance, mocked building construction and collision tests. Visual appearance and live deployment require in-game verification.'};
+          function walk(n,f,parents=[]){f(n,parents);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f,parents.concat(n));}else if(v&&typeof v.type==='string')walk(v,f,parents.concat(n));}}
+          try{
+           assert(!original.includes('// VC_DEDICATED_HOSPITAL_V1'),'Hospital relocation already installed');const scripts=[...original.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].filter(m=>m[1].includes('function respawn('));assert(scripts.length===1);const m=scripts[0],code=m[1],ast=acorn.parse(code,{ecmaVersion:'latest'}),named={},hosp=[];walk(ast,(n,parents)=>{if(n.type==='FunctionDeclaration'&&n.id)named[n.id.name]=n;if(n.type==='VariableDeclarator'&&n.id.name==='HOSP')hosp.push(n);if(n.type==='AssignmentExpression'&&n.left.type==='MemberExpression'&&n.left.object.name==='HOSP')throw Error('Hospital coordinates are reassigned; inspect before relocating');});report.hospitalReferences=[...code.matchAll(/\bHOSP\b/g)].slice(0,24).map(x=>code.slice(Math.max(0,x.index-120),x.index+180));assert(hosp.length===1&&hosp[0].init.type==='ObjectExpression','Hospital landmark is not uniquely resolved');const props=hosp[0].init.properties,x=props.find(p=>(p.key.name||p.key.value)==='x'),z=props.find(p=>(p.key.name||p.key.value)==='z');assert(x&&z&&x.value.type==='Literal'&&z.value.type==='Literal');report.oldHospital={x:x.value.value,z:z.value.value};assert(x.value.value>60&&x.value.value<180&&z.value.value>30&&z.value.value<150,'Resolved hospital is not the park hospital');for(const name of ['makeParcels','forceShopDoors','defineRoads','buildDowntownPark','playerDied','respawn'])assert(named[name],'Missing required native integration: '+name);assert(/respawn\s*\(\s*HOSP\b/.test(code.slice(named.playerDied.start,named.playerDied.end)),'Hospital recovery is not linked to HOSP');for(const [name,n]of Object.entries(named)){const text=code.slice(n.start,n.end);if(name!=='worldSteps'&&/\bHOSP\b/.test(text)&&/new T\.(?:Mesh|Group)|addCol\s*\(/.test(text))throw Error('Existing hospital geometry needs explicit migration: '+name);}
+           const helper=String.raw`// VC_DEDICATED_HOSPITAL_V1
+          function vcReserveHospitalLot(){for(let i=parcels.length-1;i>=0;i--){const p=parcels[i];if(p.x1>72&&p.x0<108&&p.z1>162&&p.z0<198)parcels.splice(i,1);}}
+          function vcBuildDedicatedHospital(){
+           if(vcBuildDedicatedHospital.ready)return;const p={x0:74,z0:166,x1:106,z1:194,cx:90,cz:180,H:14,style:'hospital',cityId:'dt',hospital:true};if(!clearStructureFootprint(p.x0,p.z0,p.x1,p.z1,1))throw Error('Reserved hospital lot is obstructed or unsuitable');
+           const g=new T.Group();g.name='dedicated-downtown-hospital';g.position.set(90,heightAt(90,180),180);const mat=(color,extra={})=>new T.MeshStandardMaterial(Object.assign({color,roughness:.7},extra)),cream=mat(0xe4e8e4),blue=mat(0x467d91,{roughness:.22,metalness:.25}),trim=mat(0x8c9d9f),red=mat(0xd93745,{emissive:0x7a1420,emissiveIntensity:.45});
+           function box(w,h,d,x,y,z,material){const mesh=new T.Mesh(new T.BoxGeometry(w,h,d),material);mesh.position.set(x,y+h/2,z);mesh.castShadow=true;mesh.receiveShadow=true;g.add(mesh);return mesh;}
+           box(32,11,28,0,0,0,cream);box(19,3,23,-5,11,-1,cream);box(32.4,.4,28.4,0,10.9,0,trim);box(19.4,.35,23.4,-5,13.9,-1,trim);
+           for(const y of [2.3,5.4,8.3]){for(const xx of [-12,-7,-2,3,8,13]){if(y<3&&Math.abs(xx)<5)continue;box(3.2,1.8,.08,xx,y,14.05,blue);box(3.2,1.8,.08,xx,y,-14.05,blue);}for(const xx of [-16.05,16.05])for(const zz of [-10,-4,2,8])box(.08,1.8,3,xx,y,zz,blue);}
+           box(5.5,3.2,.12,0,0,14.1,blue);box(.1,3.2,.18,0,0,14.2,trim);box(18,.35,4,0,3.5,15.2,cream);for(const xx of [-8,8]){box(.3,3.5,.3,xx,0,16.5,trim);addCol(90+xx-.2,196.3,90+xx+.2,196.7,3.5,'hospital');}box(2.3,.65,.2,11,9.5,14.2,red);box(.65,2.3,.2,11,8.68,14.2,red);
+           function sign(text,x,y,z,w){const mesh=new T.Mesh(new T.PlaneGeometry(w,w/5),new T.MeshBasicMaterial({map:signTex(text,'#ffffff'),toneMapped:false}));mesh.position.set(x,y,z);g.add(mesh);}sign('VICE CITY MEDICAL CENTER',-1,7.2,14.18,24);sign('EMERGENCY / PATIENT DROP-OFF',0,3.75,17.24,17);
+           world.add(g);addCol(p.x0,p.z0,p.x1,p.z1,p.H,'building');BLD.push(p);vcBuildDedicatedHospital.ready=true;G.hospitalRelocation={building:p,recovery:{x:HOSP.x,z:HOSP.z},parkPreserved:true};
+          }
+          `;
+           const edits=[{start:x.value.start,end:x.value.end,text:'90'},{start:z.value.start,end:z.value.end,text:'198'},{start:named.makeParcels.body.end-1,end:named.makeParcels.body.end-1,text:'\nvcReserveHospitalLot();\n'},{start:named.forceShopDoors.body.start+1,end:named.forceShopDoors.body.start+1,text:'\nvcBuildDedicatedHospital();\n'},{start:named.makeParcels.start,end:named.makeParcels.start,text:helper}];let changed=code;for(const e of edits.sort((a,b)=>b.start-a.start))changed=changed.slice(0,e.start)+e.text+changed.slice(e.end);acorn.parse(changed,{ecmaVersion:'latest'});assert(changed.includes(code.slice(named.buildDowntownPark.start,named.buildDowntownPark.end))&&changed.includes(code.slice(named.respawn.start,named.respawn.end)),'Park or recovery logic changed');
+           const roads=[],sandbox={G:{},addRoad(o,c,a,b,w,type){roads.push({o,c,a,b,w,type});}};vm.createContext(sandbox);vm.runInContext(code.slice(named.defineRoads.start,named.defineRoads.end),sandbox);sandbox.defineRoads();const hits=(b,r)=>r.o==='h'?b.x1>r.a&&b.x0<r.b&&b.z1>r.c-r.w/2&&b.z0<r.c+r.w/2:b.z1>r.a&&b.z0<r.b&&b.x1>r.c-r.w/2&&b.x0<r.c+r.w/2;const footprint={x0:73,z0:165,x1:107,z1:195},spawn={x0:89.4,z0:197.4,x1:90.6,z1:198.6};assert(!roads.some(r=>hits(footprint,r)||hits(spawn,r)),'Hospital or recovery point overlaps a road');assert(footprint.z0>150&&spawn.z0>150,'Hospital still overlaps park');
+           const collisions=[],objects=[],point=()=>({set(){}});class Group{constructor(){this.position=point();}add(o){objects.push(o);}}class Mesh{constructor(){this.position=point();}}Object.assign(sandbox,{T:{Group,Mesh,BoxGeometry:class{},PlaneGeometry:class{},MeshStandardMaterial:class{},MeshBasicMaterial:class{}},world:{add(o){objects.push(o);}},parcels:[{x0:75,x1:105,z0:165,z1:195},{x0:75,x1:105,z0:75,z1:105},{x0:-100,x1:-80,z0:200,z1:220}],BLD:[],HOSP:{x:90,z:198},heightAt:()=>0,clearStructureFootprint:()=>true,signTex:()=>({}),addCol(x0,z0,x1,z1,h,tag){collisions.push({x0,z0,x1,z1,h,tag});}});vm.runInContext(helper,sandbox);sandbox.vcReserveHospitalLot();assert(sandbox.parcels.length===2&&sandbox.parcels.some(p=>p.z0===75),'Reservation damaged the park or unrelated parcel');sandbox.vcBuildDedicatedHospital();sandbox.vcBuildDedicatedHospital();assert(sandbox.BLD.length===1&&objects.length>40);assert(!collisions.some(c=>spawn.x1>c.x0&&spawn.x0<c.x1&&spawn.z1>c.z0&&spawn.z0<c.z1),'Recovery point is obstructed');
+           const offset=m.index+m[0].indexOf(code),candidate=original.slice(0,offset)+changed+original.slice(offset+code.length);for(const s of candidate.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(s[1].trim())acorn.parse(s[1],{ecmaVersion:'latest'});fs.writeFileSync(file,candidate);Object.assign(report,{passed:true,newBuilding:{x0:74,z0:166,x1:106,z1:194},newHospitalAndRecovery:{x:90,z:198},parkBuilderUnchanged:true,roadsUnchanged:true,recoveryLogicUnchanged:true,tests:['Native hospital uniquely identified inside park','Native hospital recovery references preserved','Reserved dedicated lot outside park','Native road geometry clears building and recovery point','Mock building constructs once with signage and collisions','Recovery point clears hospital walls and canopy supports','All inline JavaScript parses']});
+          }catch(error){fs.writeFileSync(file,original);Object.assign(report,{passed:false,error:String(error),stack:error.stack,baselinePreserved:true});}
+          fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/hospital-relocation-check.json',JSON.stringify(report,null,2)+'\n');
+          JS
+      - name: Publish validated relocation or diagnostics
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Branch changed; rerun.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/hospital-relocation-check.json
+          if node -e "if(!require('./status/hospital-relocation-check.json').passed)process.exit(1)"; then git add -- index.html; fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Move park hospital to a dedicated medical center or record validation error'
+            git push origin HEAD:refs/heads/main
+          fi
+          node -e "if(!require('./status/hospital-relocation-check.json').passed)process.exit(1)"
