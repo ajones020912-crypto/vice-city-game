@@ -1383,7 +1383,7 @@ function buildBaseMap(){
   if(r.o==='h'){x.moveTo((r.a+WS)/MAPPX,(r.c+WS)/MAPPX);x.lineTo((r.b+WS)/MAPPX,(r.c+WS)/MAPPX)}else{x.moveTo((r.c+WS)/MAPPX,(r.a+WS)/MAPPX);x.lineTo((r.c+WS)/MAPPX,(r.b+WS)/MAPPX)}x.stroke()}
  baseMap=c;
 }
-const REGIONS=[['NEON BEACH',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['NORTH OUTSKIRTS',-400,1100,1000,1600,0,0],['EAST HIGHWAY',900,-200,1700,600,0,0]];
+const REGIONS=[['VICE CITY',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['NORTH OUTSKIRTS',-400,1100,1000,1600,0,0],['EAST HIGHWAY',900,-200,1700,600,0,0]];
 function zoneName(x,z){for(const r of REGIONS)if(x>r[1]&&x<r[3]&&z>r[2]&&z<r[4])return r[0];if(z<shoreZ(x))return'PALMERA GULF';return'PALMERA COUNTRYSIDE'}
 
 function clearStructureFootprint(x0,z0,x1,z1,margin=1.2){
@@ -2101,7 +2101,7 @@ function makeOriginalHumanBeforeSimple(o){
 function randomHumanOpts(x=pl.x,z=pl.z){
  const district=zoneName(x,z);
  const palettes={
-  'NEON BEACH':{shirts:[0xff6b8a,0x20b6a4,0xf0c44d,0xf2f2f2,0x2e9cda,0xff8a3d],pants:[0xd9d2c3,0x8a7a62,0x26344f,0x3b3b44],role:'beachgoer'},
+  'VICE CITY':{shirts:[0xff6b8a,0x20b6a4,0xf0c44d,0xf2f2f2,0x2e9cda,0xff8a3d],pants:[0xd9d2c3,0x8a7a62,0x26344f,0x3b3b44],role:'beachgoer'},
   'KESTREL KEYS':{shirts:[0xf2f2f2,0x20b6a4,0x2e9cda,0xff8a3d,0xf0c44d],pants:[0xd9d2c3,0x8a7a62,0x26344f],role:'island local'},
   'PORT CALUSA':{shirts:[0x202936,0x6a2fb3,0xe94e68,0x2e9cda,0x20b6a4,0x3b4654],pants:[0x20242c,0x26344f,0x3b3b44,0x5a3b3b],role:'city local'},
   'EAST HIGHWAY':{shirts:[0x26344f,0xf2f2f2,0x52677c,0x8b9aa6,0x2a2f3a],pants:[0x20242c,0x3b3b44,0x26344f],role:'commuter'},
@@ -3332,7 +3332,7 @@ const MISSIONS=[
  {id:'m4',title:'Keys Run',giver:[-100,-340.4],reward:2000,rep:20,time:115,steps:()=>[{text:'Race to Kestrel Keys! Checkpoint 1/5',pos:[200,-330],r:7,car:true},{text:'Checkpoint 2/5',pos:[380,-330],r:8,car:true},{text:'Checkpoint 3/5 — the causeway',pos:[380,-600],r:8,car:true},{text:'Checkpoint 4/5',pos:[380,-820],r:8,car:true},{text:'Final checkpoint at the lighthouse!',pos:[960,-820],r:8,car:true}]},
  {id:'m5',title:'Gator Bait',giver:[850,40],reward:1800,rep:18,steps:()=>[{text:'Enter Grassrun Bayou. Stay off the main roads.',pos:[720,80],r:16},{text:'Survive the bayou — alligators are active. Reach the stilt shack.',pos:[1010,40],r:10}]},
  {id:'m6',title:'Heat Run',giver:[30,30],reward:2200,rep:22,steps:()=>[{text:'Raise at least 2 wanted stars, then lose the cops without dying.',type:'heatrun'}]},
- {id:'m7',title:"Smuggler's Run",req:20,giver:[-660,shoreZ(-660)+14],reward:2500,rep:15,steps:()=>{const w=findWater(150,-700)||[150,-700];return[{text:'Grab the speedboat waiting at the marina.',type:'inboat',tk:'speedboat',near:[-660,shoreZ(-660)-6]},{text:'Collect the floating package off the Keys.',pos:w,r:10,boat:true,onDone:()=>{addCrime(8);toast('📡 Coast guard radar picked you up!')}},{text:'Bring it to the Neon Beach pier.',pos:[-108,-420],r:10,boat:true}]}},
+ {id:'m7',title:"Smuggler's Run",req:20,giver:[-660,shoreZ(-660)+14],reward:2500,rep:15,steps:()=>{const w=findWater(150,-700)||[150,-700];return[{text:'Grab the speedboat waiting at the marina.',type:'inboat',tk:'speedboat',near:[-660,shoreZ(-660)-6]},{text:'Collect the floating package off the Keys.',pos:w,r:10,boat:true,onDone:()=>{addCrime(8);toast('📡 Coast guard radar picked you up!')}},{text:'Bring it to the Vice City pier.',pos:[-108,-420],r:10,boat:true}]}},
  {id:'m8',title:'Turf War',req:50,giver:[-830.6,525],reward:2800,rep:18,steps:()=>[{text:'Drive into Harbor Kings turf in Port Calusa.',pos:[-805,770],r:22},{text:'Take out the Harbor Kings',type:'gangclear',n:6}]},
  {id:'m9',title:'The Big Score',req:100,giver:[-19.6,120],reward:4000,rep:25,rel:10,steps:()=>[{text:'Get a gun, then rob any Burger Shack or Pastel Threads register.',type:'rob'},{text:'Lose the heat.',type:'heatrun'}]}
 ];
