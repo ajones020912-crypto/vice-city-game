@@ -609,7 +609,7 @@ void main(){vec2 uv=wp.xz/(ws*2.)+.5;vec4 dt=texture2D(depthTex,uv);float d=dt.r
 const water=new T.Mesh(new T.PlaneGeometry(10000,10000),waterMat);water.rotation.x=-Math.PI/2;water.position.y=WL;water.renderOrder=2;water.frustumCulled=false;world.add(water);
 
 // ---------- terrain height field ----------
-const ISL=[[380,-820,150,95],[160,-840,100,70],[-120,-830,110,80],[600,-830,120,80],[830,-820,110,75],[1030,-830,110,90],[1280,-900,130,95],[1480,-860,110,80],[-280,-920,100,70],[720,-980,120,85]];
+const ISL=[[380,-820,150,95],[160,-840,100,70],[-120,-830,110,80],[600,-830,120,80],[830,-820,110,75],[1030,-830,110,90],[1280,-900,130,95],[1480,-860,110,80],[-280,-920,100,70]];
 // JAGGED_COAST_V1: layered waves give bays and headlands; inward bites are capped (~90 m) so no streets get cut off
 const coastJ=(t,k)=>{const j=72*Math.sin(t*.0041+k)+44*Math.sin(t*.0107+k*2.3)+24*Math.sin(t*.0263+k*3.1)+11*Math.sin(t*.061+k*5.7)+6*Math.sin(t*.13+k);return (j>0?j*.58:j)-Math.max(0,260*Math.sin(t*.0019+k*1.9)-60)-Math.max(0,150*Math.sin(t*.0047+k*.7)-50)}; // big outward peninsulas break up the rectangle
 // north shore: headlands and coves only push land out to sea, never into the beachfront
@@ -639,6 +639,41 @@ const FL_KEYS=(()=>{const k=[];
  for(const [x,z] of isle)if(x>-2000)k.push([x,z,26+((x*7+z*3)%17+17)%17,18+((x+z)%9+9)%9,(x*z)%3]);return k})();
 function flKeysD(x,z){let d=1e9;for(const [cx,cz,rx,rz,a] of FL_KEYS){const c=Math.cos(a),s=Math.sin(a),dx=x-cx,dz=z-cz,u=(dx*c+dz*s)/rx,v=(-dx*s+dz*c)/rz;
  const e=Math.hypot(u,v);if(e<3)d=Math.min(d,(e-1)*Math.min(rx,rz))}return d}
+// SALTON_AFB_V1: Salton Memorial Island (the southern Kestrel Key, enlarged) carries an air force base:
+// runway, taxiway, apron, hardened aircraft shelters, control tower, radar dome, perimeter fence and parked fighters.
+const AFB={cx:650,cz:-1180,rx:600,rz:205,runZ:-1250,taxiZ:-1185,apronZ:-1105};
+function afbIsle(x,z){const dx=(x-AFB.cx)/AFB.rx,dz=(z-AFB.cz)/AFB.rz,a=Math.atan2(dz,dx);
+ const wob=.025*Math.sin(a*5+.4)+.02*Math.sin(a*11+1.3);return (Math.pow(Math.pow(Math.abs(dx),4)+Math.pow(Math.abs(dz),4),.25)-1-wob)*AFB.rz}
+function buildAFB(){
+ const C=AFB,box=(x,y,z,sx,sy,sz,col,ry=0,solid=false)=>{bakeG('plain',GEO.box,x,y,z,ry,sx,sy,sz,col);if(solid)addCol(x-sx/2,z-sz/2,x+sx/2,z+sz/2,y+sy)};
+ const ASPH=[.24,.25,.26],CON=[.56,.57,.54],WHITE=[.92,.92,.9],YEL=[.95,.78,.2];
+ // runway (flat deck so take-offs are smooth)
+ const r0=C.cx-460,r1=C.cx+460;decks.push({x0:r0,x1:r1,z0:C.runZ-24,z1:C.runZ+24,y:.32});
+ box(C.cx,.2,C.runZ,920,.12,46,ASPH);
+ for(let x=r0+40;x<r1-40;x+=32)box(x,.33,C.runZ,16,.02,.9,WHITE);                 // centreline
+ for(const s of[-1,1])box(C.cx,.33,C.runZ+s*21.5,900,.02,.7,WHITE);              // edge lines
+ for(const end of[r0+12,r1-12])for(let k=-4;k<=4;k++)if(k)box(end,.33,C.runZ+k*4.2,14,.02,2,WHITE); // threshold bars
+ // taxiway + links, apron
+ box(C.cx,.18,C.taxiZ,700,.1,20,ASPH);for(let k=-6;k<=6;k++)box(C.cx+k*55,.24,C.taxiZ,20,.02,.4,YEL);
+ for(const x of[C.cx-330,C.cx,C.cx+330])box(x,.17,(C.runZ+C.taxiZ)/2,22,.1,C.taxiZ-C.runZ-20,ASPH);
+ box(C.cx-60,.16,C.apronZ,560,.1,95,CON);
+ // hardened aircraft shelters (half-buried concrete vaults with dark doors)
+ for(let i=0;i<4;i++){const x=C.cx-300+i*120,z=C.apronZ+22;bakeG('plain',GEO.cyl,x,0,z+11,0,10,22,10,[.6,.6,.57],Math.PI/2);
+  box(x,0,z-0.2,18,7.5,.5,[.18,.2,.22]);addCol(x-10,z-.5,x+10,z+22,9)}
+ // control tower, ops building, radar dome
+ const tx=C.cx+300,tz=C.apronZ+15;box(tx,0,tz,7,20,7,[.85,.84,.8],0,true);box(tx,20,tz,10,4,10,[.2,.35,.42]);box(tx,24,tz,11,.6,11,[.3,.3,.32]);
+ box(tx+28,0,tz+8,34,8,16,[.75,.74,.7],0,true);
+ bakeG('plain',GEO.box,tx+70,0,tz,0,10,4,10,[.6,.6,.62]);bakeG('plain',GEO.sph,tx+70,4,tz,0,7,7,7,[.95,.95,.95]);addCol(tx+63,tz-7,tx+77,tz+7,11);
+ // perimeter fence with a gate on the causeway (x=380)
+ const fx0=C.cx-560,fx1=C.cx+560,fz0=C.cz-180,fz1=C.cz+150,FEN=[.32,.34,.36];
+ const fenceX=(z,a,b)=>{for(let x=a;x<b;x+=10){box(x,0,z,.15,2.6,.15,FEN);}box((a+b)/2,1.3,z,b-a,2.4,.05,[.45,.48,.5]);addCol(a,z-.15,b,z+.15,2.6)};
+ const fenceZ=(x,a,b)=>{for(let z=a;z<b;z+=10){box(x,0,z,.15,2.6,.15,FEN);}box(x,1.3,(a+b)/2,.05,2.4,b-a,[.45,.48,.5]);addCol(x-.15,a,x+.15,b,2.6)};
+ fenceX(fz1,fx0,365);fenceX(fz1,395,fx1);fenceX(fz0,fx0,fx1);fenceZ(fx0,fz0,fz1);fenceZ(fx1,fz0,fz1);
+ box(352,0,fz1+6,4,3,4,[.9,.88,.82],0,true);box(352,3,fz1+6,5,.3,5,[.3,.3,.32]); // guard booth
+ for(const s of[-1,1])box(380+s*15,1.2,fz1,.3,.3,12,[.9,.2,.2]);                  // gate arms
+}
+function spawnAFBJets(){for(const c of cars.slice())if(c.afbStatic)removeCar(c);
+ for(let i=0;i<3;i++){const x=AFB.cx-300+i*120,z=AFB.apronZ-8;const j=spawnCar('fighterJet',x,z,Math.PI,'parked',CAR_TYPES.fighterJet.colors[i%2]);j.afbStatic=true;j.keep=true}}
 function seaD(x,z){ // signed metres into the sea (>0 sea, <0 land)
  const n=shoreZ(x)-z;let isl=1e9;
  for(const [cx,cz,rx,rz] of ISL){const d=Math.hypot((x-cx)/rx,(z-cz)/rz);isl=Math.min(isl,(d-.62)*Math.min(rx,rz))}
@@ -650,7 +685,7 @@ function seaD(x,z){ // signed metres into the sea (>0 sea, <0 land)
  const bu=Math.abs(x+1250)/800,bv=Math.abs(z-1865)/835,ba=Math.atan2(z-1865,x+1250);
  const bay=(1-Math.pow(Math.pow(bu,3.2)+Math.pow(bv,3.2),1/3.2))*800-Math.abs(70*Math.sin(ba*3+.7)+45*Math.sin(ba*7+2.2)+22*Math.sin(ba*13+.4))-25;
  const pass=-1e9; // lake now: no channel to the sea
- return Math.min(Math.max(edge,Math.min(Math.max(bay,pass,Math.min(n,isl)),hhIsle(x,z))),flKeysD(x,z));
+ return Math.min(Math.max(edge,Math.min(Math.max(bay,pass,Math.min(n,isl)),hhIsle(x,z))),flKeysD(x,z),afbIsle(x,z));
 }
 const gladesMask=(x,z)=>sstep(-2300,-2000,x)*(1-sstep(1300,1700,x))*sstep(3200,3450,z)*(1-sstep(4400,4650,z))*(.75+.25*Math.sin(x*.003+z*.002));
 const swampMask=(x,z)=>Math.max(gladesMask(x,z),swampMask0(x,z));
@@ -1173,7 +1208,8 @@ function defineRoads(){
   for(const [g0,g1] of cuts){if(g0>s0)addRoad(o,c,s0,g0,w,type,sig);s0=Math.max(s0,g1)}if(b>s0)addRoad(o,c,s0,b,w,type,sig)};
  for(const x of xr)seg('v',x,-330,420,18,'city',true);
  for(const z of zr){if(z===-330)seg('h',z,-900,1100,18,'city',true);else if(z===-30)seg('h',z,-640,380,18,'city',true);else seg('h',z,-300,380,18,'city',true)}
- addRoad('v',380,-980,1400,30,'hwy');          // Interstate 1 — longer causeway to the Keys
+ addRoad('v',380,-980,1400,30,'hwy');
+ addRoad('v',380,-1090,-980,14,'city');          // causeway on to the Salton Memorial AFB gate          // Interstate 1 — longer causeway to the Keys
  addRoad('h',420,-1400,1500,28,'hwy');         // Gulf Expressway extended
  addRoad('h',-820,-420,1500,14,'city');        // Keys road extended
  for(let i=0;i<8;i++){addRoad('v',-1050+70*i,420,1010,16,'city',true);addRoad('h',490+70*i,-1060,-550,16,'city',true)}
@@ -1577,7 +1613,7 @@ function buildBaseMap(){
   if(r.o==='h'){x.moveTo((r.a+WS)/MAPPX,(r.c+WS)/MAPPX);x.lineTo((r.b+WS)/MAPPX,(r.c+WS)/MAPPX)}else{x.moveTo((r.c+WS)/MAPPX,(r.a+WS)/MAPPX);x.lineTo((r.c+WS)/MAPPX,(r.b+WS)/MAPPX)}x.stroke()}
  baseMap=c;
 }
-const REGIONS=[['NEON BEACH',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['SUNRISE FARMS',1600,600,3600,3150,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
+const REGIONS=[['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['NEON BEACH',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['SUNRISE FARMS',1600,600,3600,3150,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
 function zoneName(x,z){for(const r of REGIONS)if(x>r[1]&&x<r[3]&&z>r[2]&&z<r[4])return r[0];if(z<shoreZ(x))return'PALMERA GULF';return'PALMERA COUNTRYSIDE'}
 
 function clearStructureFootprint(x0,z0,x1,z1,margin=1.2){
@@ -1771,7 +1807,7 @@ function buildAirport(){
  airport={x:cx,z:cz,ground};spawnAirportPlanes();
 }
 let airport=null;
-function spawnAirportPlanes(){if(!airport)return;for(const c of cars.slice())if(c.airportStatic)removeCar(c);const a=spawnCar('propPlane',airport.x+205,airport.z+152,Math.PI/2,'parked',0xe8e5d8);a.airportStatic=true;a.keep=true;const j=spawnCar('smallJet',airport.x+225,airport.z+85,Math.PI/2,'parked',0xf1f3f5);j.airportStatic=true;j.keep=true;}
+function spawnAirportPlanes(){spawnAFBJets();if(!airport)return;for(const c of cars.slice())if(c.airportStatic)removeCar(c);const a=spawnCar('propPlane',airport.x+205,airport.z+152,Math.PI/2,'parked',0xe8e5d8);a.airportStatic=true;a.keep=true;const j=spawnCar('smallJet',airport.x+225,airport.z+85,Math.PI/2,'parked',0xf1f3f5);j.airportStatic=true;j.keep=true;}
 
 // PALMETTO_GROVE_V1
 const PG={paths:[],homes:[],signs:[]};
@@ -1827,7 +1863,7 @@ function worldSteps(){const buildOne=p=>{if(p.style==='house')buildHouse(p);else
   ['Streetlights and palm trees',6,()=>{portExtras();streetProps();addOuterStreetlights();beachProps()}],
   ['Swamps, hills and keys',6,()=>{swampProps();hillProps();keysProps()}],
   ['Planting the countryside',8,()=>bigMapProps()],
-  ['Traffic lights and the airport',3,()=>{buildSignals();buildAirport()}],
+  ['Traffic lights, airport and air base',4,()=>{buildSignals();buildAirport();buildAFB()}],
   ['Palmetto Grove',4,()=>{buildPalmettoGrove();finalizeBatches()}],
   ['Drawing the map',7,()=>buildBaseMap()]]}
 function buildWorld(){for(const [,,f] of worldSteps()){if(typeof f==='function')f();else for(const p of f.each())f.fn(p)}}
@@ -1903,6 +1939,7 @@ const CAR_TYPES={
 for(const k of['taxi','police']){const b=CAR_TYPES[CAR_TYPES[k].base];CAR_TYPES[k]=Object.assign({},b,CAR_TYPES[k])}
 CAR_TYPES.propPlane={name:'Prop plane',aircraft:true,L:9.5,W:11.5,wb:3,wr:.2,mass:1800,power:1,top:48,grip:2,steer:.55,hp:180,colors:[0xe8e5d8,0x2e6fa8,0xd94b45]};
 CAR_TYPES.smallJet={name:'Small jet',aircraft:true,L:14,W:13,wb:4,wr:.2,mass:4200,power:1,top:72,grip:2,steer:.42,hp:240,colors:[0xf1f3f5,0x26384d,0xb8c7d8]};
+CAR_TYPES.fighterJet={name:'Fighter jet',aircraft:true,L:19,W:13.6,wb:5,wr:.3,mass:19000,power:1,top:125,grip:2,steer:.6,hp:320,colors:[0x7c858d,0x6f777e]};
 CAR_TYPES.speedboat={name:'Speedboat',boat:true,L:6.2,W:2.3,wb:3,wr:.3,mass:1300,power:11,top:42,grip:2.6,steer:.55,hp:120,colors:[0xffffff,0xff4f9a,0x2ec4e8,0xf0c44d,0x20252d]};
 CAR_TYPES.airboat={name:'Airboat',boat:true,airboat:true,L:4.8,W:2.4,wb:2.6,wr:.3,mass:900,power:9,top:32,grip:2.2,steer:.6,hp:100,colors:[0x5d8a5e,0x6b4a35,0x3d5a45,0xc9a24a]};
 function extrudeProfile(pts,depth,bevel){
@@ -2119,8 +2156,45 @@ function makeLowPolyPropPlaneVisual(color){
  const keep=new Set([body]);AC.merge(ch,keep);
  return{g,ch,body,wheels,beam:{visible:false},tail:{material:dark},head:{material:white},bar:null,pm:paint};
 }
+// FIGHTER_JET_V1: an F-22-style stealth fighter: faceted chined fuselage, diamond wing, canted twin tails,
+// side intakes, gold-tinted bubble canopy, twin flat nozzles with afterburner glow, retractable gear.
+function makeFighterVisual(color){
+ const g=new T.Group(),ch=new T.Group();g.add(ch);
+ const flat={flatShading:true},paint=AC.mat(color,Object.assign({roughness:.55,metalness:.35},flat)),dark=AC.mat(0x3a4046,Object.assign({roughness:.6,metalness:.4},flat)),
+  canopy=AC.mat(0x8a6a2a,{roughness:.05,metalness:.9,transparent:true,opacity:.85}),nozzle=AC.mat(0x2b2e31,Object.assign({roughness:.45,metalness:.7},flat)),
+  metal=AC.mat(0xb9c2c9,{roughness:.25,metalness:.85}),rubber=AC.mat(0x0b0c0e,{roughness:.95,metalness:0});
+ const add=(geo,mat,x=0,y=0,z=0)=>{const m=new T.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;ch.add(m);return m};
+ // chined, faceted fuselage (8-sided loft gives the stealth facets)
+ const fus=[[9.4,-.05,.02,.02,.02],[8.6,-.02,.38,.24,.2],[7.4,.02,.72,.42,.36],[6.0,.06,.98,.56,.44],[4.6,.06,1.2,.6,.5],[3.0,.02,1.6,.52,.55],[1.0,0,1.8,.52,.6],[-2.0,0,1.85,.48,.56],[-5.0,.04,1.72,.4,.46],[-7.2,.08,1.52,.34,.38],[-8.7,.08,1.38,.3,.32]];
+ const body=add(AC.loft(fus,8),paint);
+ const can=add(new T.SphereGeometry(1,18,10,0,Math.PI*2,0,Math.PI/2),canopy,0,.5,5.7);can.scale.set(.56,.5,2.0);
+ // intakes: angled boxes along the sides with dark mouths
+ for(const s of[-1,1]){const it=add(new T.BoxGeometry(.75,.95,2.8),paint,s*1.62,-.05,2.4);it.rotation.y=s*.12;
+  const mouth=add(new T.BoxGeometry(.6,.8,.05),dark,s*1.7,-.05,3.82);mouth.rotation.y=s*.12}
+ // diamond wing (leading edge swept ~42°, trailing edge slightly forward-swept)
+ for(const mir of[false,true])add(AC.wing([[1.3,0,2.6,6.6,.05],[4.2,.02,-.1,3.6,.045],[6.8,.04,-2.4,1.05,.04]],false,mir),paint);
+ // horizontal tails
+ for(const mir of[false,true])add(AC.wing([[1.1,.05,-5.4,3.3,.045],[4.1,.06,-7.3,1.5,.04]],false,mir),paint);
+ // canted twin vertical tails
+ for(const s of[-1,1]){const f=add(AC.wing([[0,0,-4.3,3.5,.05],[2.7,0,-6.4,1.7,.045]],true),paint,s*1.3,.42,0);f.rotation.z=-s*.49}
+ // flat 2D thrust-vectoring nozzles + afterburner glow
+ for(const s of[-1,1]){add(new T.BoxGeometry(.95,.62,.9),nozzle,s*.66,.06,-8.95);
+  const glow=new T.Mesh(new T.PlaneGeometry(.75,.42),new T.MeshBasicMaterial({color:0xff8a2a,transparent:true,opacity:0,depthWrite:false,side:T.DoubleSide}));glow.position.set(s*.66,.06,-9.41);glow.rotation.y=Math.PI;glow.name='cs-burn'+(s>0?'L':'R');ch.add(glow)}
+ // retractable gear
+ const wheels=[];
+ const gearGroup=(name,x,y,z,len,r,w,front)=>{const gg=new T.Group();gg.name='cs-'+name;gg.position.set(x,y,z);ch.add(gg);
+  const st=new T.Mesh(new T.CylinderGeometry(.07,.08,len,10),metal);st.position.y=-len/2;st.castShadow=true;gg.add(st);
+  wheels.push(AC.wheel(gg,add,rubber,metal,0,-len,0,r,w,front))};
+ gearGroup('gearN',0,-.45,5.6,.5,.26,.18,true);gearGroup('gearL',1.45,-.5,-1.4,.45,.34,.24,false);gearGroup('gearR',-1.45,-.5,-1.4,.45,.34,.24,false);
+ // ailerons on the outer wing trailing edge
+ for(const s of[1,-1])AC.surf(ch,s>0?'ailL':'ailR',s*5.4,.03,-3.15,new T.Mesh(new T.BoxGeometry(1.9,.04,.32),paint),0,0,-.16);
+ AC.navLights(ch,add,6.75,.05,-2.9);
+ AC.merge(ch,new Set([body,can]));
+ return{g,ch,body,wheels,beam:{visible:false},tail:{material:dark},head:{material:paint},bar:null,pm:paint};
+}
 function makeAircraftVisual(tk,color){
  if(tk==='propPlane')return makeLowPolyPropPlaneVisual(color);
+ if(tk==='fighterJet')return makeFighterVisual(color);
  const t=CAR_TYPES[tk],W=t.W,g=new T.Group(),ch=new T.Group();g.add(ch);
  const paint=AC.mat(color,{roughness:.3,metalness:.3}),accentHex=AC.accentFor(color),accent=AC.mat(accentHex,{roughness:.32,metalness:.35}),gray=AC.mat(0xd9dee3,{roughness:.35,metalness:.45}),
   glass=AC.mat(0x0a1824,{roughness:.05,metalness:.75}),dark=AC.mat(0x15191e,{roughness:.6,metalness:.4}),metal=AC.mat(0xb9c2c9,{roughness:.25,metalness:.85}),rubber=AC.mat(0x0b0c0e,{roughness:.95,metalness:0});
@@ -2731,10 +2805,11 @@ const _cc=[null,null,null];
 // FLIGHT_V2: arcade flight model. Throttle is held (W/S), A/D bank and the plane turns by banking, Space pulls the nose
 // up / Shift pushes it down, the nose auto-levels when you let go. Stalls below stall speed, takes off by rotating past
 // Vr, lands if you come down gently on your wheels, and crashes (with the airframe crumpling) if you don't.
-function flyCfg(c){return c.tk==='smallJet'
+function flyCfg(c){if(c.tk==='fighterJet')return{acc:21,vs:42,vr:48,roll:3.2,pitch:1.25,maxBank:1.35,retract:true,half:6.8,len:9.4};return c.tk==='smallJet'
  ?{acc:12.5,vs:30,vr:34,roll:1.5,pitch:.7,maxBank:1.15,retract:true,half:6.5,len:7}
  :{acc:8.5,vs:19,vr:22,roll:2.1,pitch:.95,maxBank:1.2,retract:false,half:5.75,len:4.7}}
 function stepAircraft(c,dt){
+ if(c.fighter&&G.stepFighter)return G.stepFighter(c,dt);
  const t=c.t,F=flyCfg(c),inp=c.inp,mine=c===pl.car&&c.occ==='player'&&G.state==='play',g=9.8,v0=c.as??c.speed??0;
  c.thr??=0;c.ap??=0;c.bank??=0;c.gam??=0;c.gear??=1;c.rpm??=0;c.stallT??=0;
  if(!Number.isFinite(c.x+c.z+c.y+c.h+(c.as||0)+c.ap+c.bank+c.gam)){c.as=0;c.ap=c.bank=c.gam=0;c.vx=c.vz=c.vy=0;if(!Number.isFinite(c.y))c.y=heightAt(c.x||0,c.z||0)+.88}
@@ -2861,7 +2936,8 @@ function animateAircraft(c,ctlP,ctlR,dt){const v=c.v;if(!v)return;
  // propeller / fans
  const prop=v.ch.getObjectByName('propeller');if(prop)prop.rotation.z+=(c.rpm*55+.0)*dt;
  if(S.disc){S.disc.material.opacity=clamp((c.rpm-.3)*.8,0,.38);S.disc.visible=c.rpm>.3}
- if(S.fanL)S.fanL.rotation.z+=c.rpm*40*dt;if(S.fanR)S.fanR.rotation.z+=c.rpm*40*dt;
+ if(S.fanL)S.fanL.rotation.z+=c.rpm*40*dt;
+ for(const b of[S.burnL,S.burnR])if(b){const k=clamp((c.thr-.75)*4,0,1);b.material.opacity=k*(.75+.25*Math.random());b.scale.set(1,1+k*.4,1)}if(S.fanR)S.fanR.rotation.z+=c.rpm*40*dt;
 }
 // burnt look for every part of a destroyed plane, not just the fuselage
 {const flightExplode=explodeCar;explodeCar=function(c){
@@ -3089,7 +3165,7 @@ function updateCamera(dt){
  else if(pl.car){const c=pl.car;tx=c.x;ty=c.y+1.2;tz=c.z;const sp=c.speed;
   mouseIdle+=dt;if(mouseIdle>1.4||!mouseLocked){const target=c.h+Math.PI;const rate=sp>2?(c.vf>=-1?3.2:1.2):0;camYaw+=wrapA(target-camYaw)*(1-Math.exp(-rate*dt))}
   dist=(camMode===1?6.2:9.6)+sp*.05;height=camMode===1?2.4:3.6;fov=70+Math.min(22,sp*.7);camPitch=lerp(camPitch,.2,dt*.8*(mouseIdle>1.4?1:0));
-  if(c.t.aircraft){const jet=c.tk==='smallJet';dist=(jet?19:14)+sp*.06;height=jet?4.2:3.4;fov=62+Math.min(16,sp*.18);ty+=.6;
+  if(c.t.aircraft){const jet=c.tk==='smallJet'||c.tk==='fighterJet';dist=(c.tk==='fighterJet'?23:jet?19:14)+sp*.06;height=jet?4.2:3.4;fov=62+Math.min(16,sp*.18);ty+=.6;
    if(mouseIdle>1.4||!mouseLocked)camPitch=lerp(camPitch,clamp(.16-(c.gam||0)*.85,-.5,.9),Math.min(1,dt*2.5))}
   if(camMode===2){const sn=Math.sin(c.h),cs=Math.cos(c.h);camPos.set(c.x+sn*.3,c.y+1.2,c.z+cs*.3);camera.position.lerp(camPos,1);camera.lookAt(c.x+sn*20,c.y+1.2,c.z+cs*20);camera.fov=lerp(camera.fov,fov,.1);camera.updateProjectionMatrix();return}}
  else{tx=pl.x;ty=pl.y+1.65;tz=pl.z;dist=pl.weapon!=='fists'&&pl.aim>0?2.6:4.4;height=.2;
@@ -3190,7 +3266,7 @@ const audio=(()=>{let ctx=null,eng=null,engG=null,sir=null,sirG=null,master=null
   const rumN=noise(),rumLp=bq('lowpass',110,.8),rumG=g(0);rumN.connect(rumLp);rumLp.connect(rumG);rumG.connect(out);
   const wN=noise(),wBp=bq('bandpass',450,.45),wG=g(0);wN.connect(wBp);wBp.connect(wG);wG.connect(out);
   pv={pOsc,pOsc2,pLp,pG,lfo,bladeBp,bladeG,jw1,jw2,jwG,roarBp,roarG,rumG,wBp,wG}}
- function planeTick(t,car,on,speed,throttle){if(!pv)return;const P=pv,jet=on&&car.tk==='smallJet',prop=on&&!jet,set=(prm,v,tc)=>prm.setTargetAtTime(v,t,tc);
+ function planeTick(t,car,on,speed,throttle){if(!pv)return;const P=pv,jet=on&&(car.tk==='smallJet'||car.tk==='fighterJet'),prop=on&&!jet,set=(prm,v,tc)=>prm.setTargetAtTime(v,t,tc);
   // propeller plane: engine rpm follows the throttle quickly
   const rpm=900+throttle*1500+Math.min(400,speed*6),fire=rpm/60*3,blade=rpm/60*2;
   set(P.pOsc.frequency,fire,.18);set(P.pOsc2.frequency,fire*.5,.18);set(P.pLp.frequency,300+throttle*900,.2);set(P.pG.gain,prop?.045+throttle*.055:0,.15);
@@ -5627,6 +5703,71 @@ function updateRaceTrack(dt){
 {const speedOrig=updateSpeedingEnforcement;updateSpeedingEnforcement=function(){if(raceOn()){resetSpeedingEnforcement();return}return speedOrig.apply(this,arguments)}}
 {const redOrig=updateRedLights;updateRedLights=function(){if(raceOn()){RL.node=null;RL.runs=[];return}return redOrig.apply(this,arguments)}}
 {const simRT=simulate;simulate=function(dt){const r=simRT.apply(this,arguments);try{updateRaceTrack(Number.isFinite(dt)?dt:0)}catch(e){console.error('race track',e)}return r}}
+// INTERCEPTORS_V1: at 5+ stars while you are flying, two fighters scramble from Salton Memorial AFB, chase you with
+// lead pursuit, fire homing missiles (with a lock warning) and use the cannon up close. They break off when you land,
+// leave the aircraft or drop below 5 stars.
+const FJ={list:[],missiles:[],warnT:0,spawnT:0,mGeo:null};
+function fjTarget(){const c=pl.car;return pl.wanted>=5&&c&&c.t.aircraft&&c.airborne&&!c.dead?c:null}
+function spawnInterceptor(i){const tgt=pl.car,ang=Math.atan2(AFB.cx-tgt.x,AFB.cz-tgt.z)+(i?.35:-.35),d=1600;
+ const x=tgt.x+Math.sin(ang)*d,z=tgt.z+Math.cos(ang)*d,c=spawnCar('fighterJet',x,z,ang+Math.PI,'fighter',CAR_TYPES.fighterJet.colors[i%2]);
+ c.keep=true;c.occ='ai';c.ai=null;c.airborne=true;c.y=Math.max(tgt.y+60,heightAt(x,z)+120);c.as=105;c.thr=1;c.rpm=1;c.gear=0;c.gam=0;c.ap=0;c.bank=0;
+ c.fighter={i,missileT:5+i*2.5,gunT:0,leave:false};c.place();FJ.list.push(c);return c}
+function stepFighter(c,dt){const F=c.fighter,tgt=fjTarget();if(!tgt)F.leave=true;
+ let tx,ty,tz,want;
+ if(!F.leave){const lead=Math.min(3,Math.hypot(tgt.x-c.x,tgt.z-c.z)/Math.max(60,c.as)),side=(F.i?1:-1)*55;
+  tx=tgt.x+tgt.vx*lead+Math.cos(tgt.h)*side;tz=tgt.z+tgt.vz*lead-Math.sin(tgt.h)*side;ty=tgt.y+(tgt.vy||0)*lead+8;
+  const d=Math.hypot(tgt.x-c.x,tgt.z-c.z);want=d<300?Math.max(55,(tgt.as||tgt.speed)+6):118}
+ else{tx=c.x+Math.sin(c.h)*500;tz=c.z+Math.cos(c.h)*500;ty=c.y+40;want=118}
+ const dh=wrapA(Math.atan2(tx-c.x,tz-c.z)-c.h),turn=.62;c.h+=clamp(dh,-turn*dt,turn*dt);
+ c.bank+=(clamp(-dh*1.8,-1.25,1.25)-c.bank)*Math.min(1,dt*3);
+ const floor=heightAt(c.x,c.z)+(F.leave?120:35);ty=Math.max(ty,floor);
+ const vy=clamp((ty-c.y)*.6,-30,30);c.as+=(want-c.as)*Math.min(1,dt*.8);
+ c.gam=Math.asin(clamp(vy/Math.max(30,c.as),-.6,.6));c.ap=c.gam;
+ const hv=c.as*Math.cos(c.gam);c.vx=Math.sin(c.h)*hv;c.vz=Math.cos(c.h)*hv;c.vy=c.as*Math.sin(c.gam);c.vf=hv;
+ c.x+=c.vx*dt;c.z+=c.vz*dt;c.y=Math.max(floor-20,c.y+c.vy*dt);c.pitch=-c.ap;c.roll=c.bank;c.thr=1;c.rpm=1;c.gear=0;
+ if(typeof animateAircraft==='function')animateAircraft(c,0,clamp(dh,-1,1),dt);
+ // contrails from the wingtips
+ if(Math.random()<dt*25){const sn=Math.sin(c.h),cs=Math.cos(c.h);for(const s of[-1,1])emit(c.x+cs*s*6.6,c.y+.2,c.z-sn*s*6.6,0,0,0,1.2,.25,.9,[.95,.97,1],[.85,.88,.92],0,.45)}
+ if(F.leave){if(!tgt&&Math.hypot(c.x-pl.x,c.z-pl.z)>2600)removeInterceptor(c);return}
+ // weapons
+ const dx=tgt.x-c.x,dy=tgt.y-c.y,dz=tgt.z-c.z,d=Math.hypot(dx,dy,dz),off=Math.abs(wrapA(Math.atan2(dx,dz)-c.h));
+ F.missileT-=dt;if(F.missileT<=0&&d<1300&&d>150&&off<.4){F.missileT=7+Math.random()*3;launchMissile(c,tgt)}
+ F.gunT-=dt;if(d<420&&off<.14&&F.gunT<=0){F.gunT=.09;const sn=Math.sin(c.h),cs=Math.cos(c.h);
+  emit(c.x+sn*9,c.y+.3,c.z+cs*9,dx/d*420+(Math.random()-.5)*20,dy/d*420,dz/d*420+(Math.random()-.5)*20,.5,.25,.15,[1,.85,.4],[1,.5,.2],0,1);
+  if(Math.random()<.22*(1-d/460))damageCar(tgt,5,'shot')}
+ c.age+=dt;
+}
+function removeInterceptor(c){const i=FJ.list.indexOf(c);if(i>=0)FJ.list.splice(i,1);if(cars.includes(c))removeCar(c)}
+function launchMissile(from,tgt){
+ if(!FJ.mGeo){FJ.mGeo=new T.CylinderGeometry(.14,.14,3,8);FJ.mGeo.rotateX(Math.PI/2);FJ.mMat=new T.MeshStandardMaterial({color:0xeeeeee,roughness:.5,metalness:.3});FJ.fMat=new T.MeshBasicMaterial({color:0xffb040})}
+ const g=new T.Group(),body=new T.Mesh(FJ.mGeo,FJ.mMat),flame=new T.Mesh(new T.SphereGeometry(.35,8,6),FJ.fMat);flame.position.z=-1.8;flame.scale.set(1,1,2.2);g.add(body,flame);world.add(g);
+ const sn=Math.sin(from.h),cs=Math.cos(from.h),sp=from.as+40;
+ FJ.missiles.push({g,x:from.x+sn*3,y:from.y-.6,z:from.z+cs*3,vx:sn*sp,vy:0,vz:cs*sp,t:0,tgt});
+ if(tgt===pl.car){toast('⚠ MISSILE LAUNCH — break hard!',1800);G.shake=Math.max(G.shake||0,.15)}
+}
+function updateMissiles(dt){
+ for(let i=FJ.missiles.length-1;i>=0;i--){const m=FJ.missiles[i],t=m.tgt;m.t+=dt;
+  let vx=m.vx,vy=m.vy,vz=m.vz;const sp=Math.min(210,Math.hypot(vx,vy,vz)+60*dt);
+  if(t&&!t.dead){let ax=t.x-m.x,ay=t.y-m.y,az=t.z-m.z;const ad=Math.hypot(ax,ay,az)||1;ax/=ad;ay/=ad;az/=ad;const l=Math.hypot(vx,vy,vz)||1;let ux=vx/l,uy=vy/l,uz=vz/l;
+   const turn=Math.min(1,1.5*dt/Math.max(.05,Math.acos(clamp(ux*ax+uy*ay+uz*az,-1,1))));ux+=(ax-ux)*turn;uy+=(ay-uy)*turn;uz+=(az-uz)*turn;const k=Math.hypot(ux,uy,uz)||1;vx=ux/k*sp;vy=uy/k*sp;vz=uz/k*sp;
+   if(ad<10){explosion(m.x,m.y,m.z,1.1);audio.boom();if(t===pl.car){G.shake=1;toast('💥 Missile hit!',1400)}damageCar(t,135,'shot');kill(i);continue}}
+  m.vx=vx;m.vy=vy;m.vz=vz;m.x+=vx*dt;m.y+=vy*dt;m.z+=vz*dt;m.g.position.set(m.x,m.y,m.z);m.g.lookAt(m.x+vx,m.y+vy,m.z+vz);
+  emit(m.x,m.y,m.z,(Math.random()-.5)*2,(Math.random()-.5)*2,(Math.random()-.5)*2,2.4,.4,2.6,[.92,.92,.92],[.6,.6,.62],-.1,.6);
+  if(m.t>9||m.y<heightAt(m.x,m.z)){if(m.t<=9)explosion(m.x,m.y,m.z,.8);kill(i)}}
+ function kill(i){const m=FJ.missiles[i];world.remove(m.g);m.g.children[1].geometry.dispose();FJ.missiles.splice(i,1)}
+ // lock warning beeps while a missile is coming for you
+ FJ.warnT-=dt;const inbound=FJ.missiles.find(m=>m.tgt===pl.car&&Math.hypot(m.x-pl.car.x,m.z-pl.car.z)<1500);
+ if(inbound&&FJ.warnT<=0){FJ.warnT=Math.max(.12,Math.hypot(inbound.x-pl.car.x,inbound.z-pl.car.z)/1500*.6);audio.beep&&audio.beep(1500)}
+}
+function updateInterceptors(dt){
+ const tgt=fjTarget();FJ.spawnT-=dt;
+ if(tgt){const active=FJ.list.filter(c=>!c.fighter.leave).length;if(active<2&&FJ.spawnT<=0){if(!FJ.list.length)toast('✈ Fighter jets scrambled from Salton Memorial AFB!',2600);spawnInterceptor(FJ.list.length%2);FJ.spawnT=4}}
+ for(const c of FJ.list.slice())if(!cars.includes(c)||c.dead)FJ.list.splice(FJ.list.indexOf(c),1);
+ updateMissiles(dt);
+}
+G.stepFighter=stepFighter;
+{const simFJ=simulate;simulate=function(dt){const r=simFJ.apply(this,arguments);try{updateInterceptors(Number.isFinite(dt)?dt:0)}catch(e){console.error('interceptors',e)}return r}}
+{const ngFJ=newGame;newGame=function(){for(const c of FJ.list.slice())removeInterceptor(c);for(const m of FJ.missiles)world.remove(m.g);FJ.missiles.length=0;return ngFJ.apply(this,arguments)}}
 const speedingNativeClearWanted=clearWanted;clearWanted=function(){resetSpeedingEnforcement();return speedingNativeClearWanted.apply(this,arguments);};
 const speedingNativeNewGame=newGame;newGame=function(){resetSpeedingEnforcement();return speedingNativeNewGame.apply(this,arguments);};
 
