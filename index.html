@@ -738,8 +738,8 @@ function seaD(x,z){ // signed metres into the sea (>0 sea, <0 land)
 const gladesMask=(x,z)=>sstep(-2300,-2000,x)*(1-sstep(1300,1700,x))*sstep(3200,3450,z)*(1-sstep(4400,4650,z))*(.75+.25*Math.sin(x*.003+z*.002));
 const swampMask=(x,z)=>Math.max(gladesMask(x,z),swampMask0(x,z));
 const swampMask0=(x,z)=>sstep(440,520,x)*sstep(-300,-230,z)*sstep(520,380,z)*(1-sstep(1400,1600,x));
-// AIRPORT_FLAT_V1: 1 over the airfield (x -1080..-500, z -250..160), easing to 0 over 60 m
-const airportMask=(x,z)=>(1-sstep(290,350,Math.abs(x+790)))*(1-sstep(205,265,Math.abs(z+45)));
+// AIRPORT_FLAT_V2: expanded flat pad for Vice City International Airport (center -790,-45).
+const airportMask=(x,z)=>(1-sstep(435,525,Math.abs(x+790)))*(1-sstep(307.5,397.5,Math.abs(z+45)));
 const hillMask=(x,z)=>Math.max(hillMask0(x,z),sstep(-1750,-2100,x)*sstep(-350,-120,z)*(1-sstep(800,1050,z))*sstep(-3600,-3300,x));
 const hillMask0=(x,z)=>sstep(-3700,-3300,x)*sstep(-640,-1100,x)*sstep(400,200,z)*sstep(-400,-280,z);
 function rawH(x,z){
@@ -1661,7 +1661,7 @@ function buildBaseMap(){
   if(r.o==='h'){x.moveTo((r.a+WS)/MAPPX,(r.c+WS)/MAPPX);x.lineTo((r.b+WS)/MAPPX,(r.c+WS)/MAPPX)}else{x.moveTo((r.c+WS)/MAPPX,(r.a+WS)/MAPPX);x.lineTo((r.c+WS)/MAPPX,(r.b+WS)/MAPPX)}x.stroke()}
  baseMap=c;
 }
-const REGIONS=[['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['SUNRISE FARMS',1600,600,3600,3150,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
+const REGIONS=[['VICE CITY INTERNATIONAL AIRPORT',-1270,-420,-310,330,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['SUNRISE FARMS',1600,600,3600,3150,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
 function zoneName(x,z){for(const r of REGIONS)if(x>r[1]&&x<r[3]&&z>r[2]&&z<r[4])return r[0];if(z<shoreZ(x))return'PALMERA GULF';return'PALMERA COUNTRYSIDE'}
 
 function clearStructureFootprint(x0,z0,x1,z1,margin=1.2){
@@ -1795,16 +1795,17 @@ function forceShopDoors(){
  for(const shop of forced)ensureSafeForcedShop(shop);
 }
 function buildAirport(){
- // AIRPORT_REBUILD_V2
+ // VICE_CITY_INTERNATIONAL_AIRPORT_V1
+ const SCALE=1.5;
  const cx=-790,cz=-45,ground=heightAt(cx,cz)+.65;
- decks.push({x0:cx-290,x1:cx+290,z0:cz-205,z1:cz+205,y:ground});
+ decks.push({x0:cx-435,x1:cx+435,z0:cz-307.5,z1:cz+307.5,y:ground});
  const mat=(color,roughness=.9)=>new T.MeshStandardMaterial({color,roughness});
  const asphalt=mat(0x454a4d),concrete=mat(0xb5b8b2),grass=mat(0x68765a),white=mat(0xe9e8dc),yellow=mat(0xe5bd42),metal=mat(0x64747a),roof=mat(0x34434a),glass=mat(0x315e70,.28);
  asphalt.map=makeNoiseTex(256,120,30,[1,1.01,1.02],8);
  concrete.map=makeNoiseTex(256,205,18,[1,1,.98],6);
  const blueLight=new T.MeshBasicMaterial({color:0x668edb}),warmLight=new T.MeshBasicMaterial({color:0xffe2aa});
  const batches=new Map();
- const box=(w,h,d,m,x,y,z,solid=false)=>{if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,cx+x,ground+y,cz+z]);if(solid)addCol(cx+x-w/2,cz+z-d/2,cx+x+w/2,cz+z+d/2,ground+y+h/2);};
+ const box=(w,h,d,m,x,y,z,solid=false)=>{w*=SCALE;d*=SCALE;x*=SCALE;z*=SCALE;if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,cx+x,ground+y,cz+z]);if(solid)addCol(cx+x-w/2,cz+z-d/2,cx+x+w/2,cz+z+d/2,ground+y+h/2);};
  const paint=(w,d,m,x,z)=>box(w,.018,d,m,x,.235,z);
  box(560,.4,390,grass,0,-.21,0);
  box(500,.18,48,asphalt,0,.10,-45);
@@ -1852,6 +1853,7 @@ function buildAirport(){
  for(const x of [-230,-25,115]){box(.3,9,.3,metal,x,4.6,120);box(2,.3,1,warmLight,x,9.2,120);}
  const geometry=new T.BoxGeometry(1,1,1),matrix=new T.Matrix4(),rotation=new T.Quaternion();
  for(const [material,items] of batches){const mesh=new T.InstancedMesh(geometry,material,items.length);for(let i=0;i<items.length;i++){const [w,h,d,x,y,z]=items[i];matrix.compose(new T.Vector3(x,y,z),rotation,new T.Vector3(w,h,d));mesh.setMatrixAt(i,matrix);}mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;mesh.receiveShadow=true;world.add(mesh);}
+ const [signCanvas,signCtx]=cv(1024,160);signCtx.fillStyle='#102d40';signCtx.fillRect(0,0,1024,160);signCtx.strokeStyle='#d9b85c';signCtx.lineWidth=10;signCtx.strokeRect(8,8,1008,144);signCtx.fillStyle='#fff';signCtx.font='bold 58px Arial';signCtx.textAlign='center';signCtx.textBaseline='middle';signCtx.fillText('VICE CITY INTERNATIONAL AIRPORT',512,82);const signMat=new T.MeshStandardMaterial({map:mkTex(signCanvas),roughness:.75});box(146,4,1.2,signMat,-153,8.5,135,true);
  airport={x:cx,z:cz,ground};spawnAirportPlanes();
 }
 let airport=null;
