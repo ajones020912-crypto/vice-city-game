@@ -1,0 +1,34 @@
+{
+  "passed": true,
+  "branch": "lucia-outfits",
+  "previousSkinColor": "965F3E",
+  "newSkinColor": "845135",
+  "scope": "Lucia skin-color defaults and material color only. Rendered shade and live deployment not verified.",
+  "steps": [
+    {
+      "phase": "prepare",
+      "exitCode": 0,
+      "outputTail": ""
+    },
+    {
+      "phase": "validate",
+      "exitCode": 0,
+      "outputTail": ""
+    }
+  ],
+  "outcome": "deeper warm tan installed and structurally checked",
+  "checks": {
+    "passed": true,
+    "modelBuildsChecked": 24,
+    "previousSkinColor": "965F3E",
+    "newSkinColor": "845135",
+    "geometryAndRigTransformsUnchanged": true,
+    "materialFinishUnchanged": true,
+    "otherCharactersUnchanged": true,
+    "lightingAndGameplayCodeUnchanged": true,
+    "scope": "Skin-color defaults and material color only; rendered color and live deployment not verified."
+  },
+  "bodyClothesUnderwearAndRigPreserved": true,
+  "shortsRepairSourcePreserved": true,
+  "lightingAndOtherCharactersUnchanged": true
+}
