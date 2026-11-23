@@ -1,0 +1,60 @@
+name: Slim Lucia denim and repair moving rear coverage
+on:
+  push:
+    branches: [main]
+    paths: ['scripts/lucia-slim-denim-fit.js', '.github/workflows/lucia-slim-denim-repair.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  repair:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [main, lucia-outfits]
+    concurrency:
+      group: lucia-u-neck-${{ matrix.target }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.target }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/vc-slim-denim" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Load approved fitter
+        run: git show  '${{ github.sha }}:scripts/lucia-slim-denim-fit.js' > /tmp/vc-approved-slim-denim.js
+      - name: Validate slimmer fit body preservation and moving coverage
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/vc-slim-denim/node_modules/acorn'),T=require(process.env.RUNNER_TEMP+'/vc-slim-denim/node_modules/three'),file='js/reference-characters.js',before=fs.readFileSync(file,'utf8'),helper=fs.readFileSync('/tmp/vc-approved-slim-denim.js','utf8'),report={passed:false,scope:'Actual Three.js model builds, preservation signatures, measurable inward fitting, and sampled rear occlusion during poses. Browser-rendered appearance, every animation, and deployment remain unverified.'};
+          function walk(n,f){f(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f);}else if(v&&typeof v.type==='string')walk(v,f);}}
+          try{
+           assert(!before.includes('function vcFitLuciaSlimDenim('),'Slim refit already installed');assert(!before.includes('function fitLuciaPhotoDenim('),'A later photo fitter requires review before refitting');const hook='addLuciaTexturedJeanShorts(T,h);';assert(before.split(hook).length===2);let declaration;walk(acorn.parse(before,{ecmaVersion:'latest'}),n=>{if(n.type==='FunctionDeclaration'&&n.id.name==='addLuciaTexturedJeanShorts')declaration=n;});assert(declaration);let candidate=before.slice(0,declaration.start)+helper+'\n'+before.slice(declaration.start);candidate=candidate.replace(hook,hook+' vcFitLuciaSlimDenim(T,h);');acorn.parse(candidate,{ecmaVersion:'latest'});const TT=Object.assign({},T,{TextureLoader:class{load(url){const t=new T.Texture();t.image={width:256,height:256};t.userData={localURL:url};return t;}}});function load(text){const sandbox={window:{},console,Math};vm.createContext(sandbox);vm.runInContext(fs.readFileSync('js/characters.js','utf8'),sandbox);vm.runInContext(text,sandbox);return sandbox.window.VCCharacters;}const old=load(before),cur=load(candidate);
+           function signature(h){const rows=[];h.traverse(o=>{if(['lucia-seamless-denim','lucia-denim-inner-seat-lining'].includes(o.name))return;const r=[o.type,o.name,o.visible,o.position.toArray(),o.quaternion.toArray(),o.scale.toArray()];if(o.isMesh)r.push(Object.keys(o.geometry.attributes).sort().map(k=>[k,Array.from(o.geometry.attributes[k].array)]),o.geometry.index?Array.from(o.geometry.index.array):null,...(Array.isArray(o.material)?o.material:[o.material]).map(m=>[m.type,m.color?m.color.getHex():null,m.roughness,m.transparent,m.opacity]));rows.push(r);});return JSON.stringify(rows);}for(const id of Object.keys(old.DESIGNS))if(id!=='luciaC')assert(signature(old.build(TT,id))===signature(cur.build(TT,id)),'Other character changed: '+id);const results=[];
+           for(const merge of [false,true]){const prior=old.build(TT,'luciaC',{merge}),h=cur.build(TT,'luciaC',{merge}),u=h.userData,d=h.getObjectByName('lucia-seamless-denim'),lining=h.getObjectByName('lucia-denim-inner-seat-lining'),briefs=h.getObjectByName('lucia-fitted-black-briefs'),bra=h.getObjectByName('lucia-tailored-bra');assert(signature(prior)===signature(h),'Body bra briefs tank or other geometry changed');assert(briefs.visible&&bra.visible&&briefs.material.opacity===1&&bra.material.opacity===1);assert(u.luciaSlimDenim.slimmedVertices>=20&&u.luciaSlimDenim.maxReduction>.001);assert(lining&&lining.material.opacity===1&&!lining.material.transparent&&d.skeleton===briefs.skeleton);for(const mesh of [d,lining]){assert(mesh.geometry.attributes.uv&&mesh.geometry.attributes.uv.count===mesh.geometry.attributes.position.count);const w=mesh.geometry.attributes.skinWeight;for(let i=0;i<w.count;i++)assert(Math.abs(w.getX(i)+w.getY(i)+w.getZ(i)+w.getW(i)-1)<1e-5);}
+            h.updateMatrixWorld(true);const inv=new T.Matrix4().copy(u.hips.matrixWorld).invert(),probes=[];h.traverse(o=>{if(!o.isMesh||!o.visible||!(o.name==='lucia-pelvis-skin-bridge'||(o.material===u.m.skin&&(o.parent===u.hips||o.parent===u.spine||u.Lg.some(l=>o.parent===l.hp)))))return;const p=o.geometry.attributes.position,n=o.geometry.attributes.normal,M=inv.clone().multiply(o.matrixWorld),N=new T.Matrix3().getNormalMatrix(M);for(let i=0;i<p.count;i+=23){const v=new T.Vector3().fromBufferAttribute(p,i).applyMatrix4(M),normal=new T.Vector3().fromBufferAttribute(n,i).applyMatrix3(N).normalize();if(v.y>=-.18&&v.y<=.06&&Math.abs(v.x)<=.17&&normal.z<-.2)probes.push({o,i,kind:'body'});}});const count=briefs.geometry.attributes.position.count;for(let i=Math.floor(count/2);i<count;i+=35)probes.push({o:briefs,i,kind:'briefs'});assert(probes.filter(q=>q.kind==='body').length>=8&&probes.filter(q=>q.kind==='briefs').length>=20);const coverage=[];
+            for(let frame=0;frame<=24;frame++){const phase=frame/24*Math.PI*2,angle=.65*Math.sin(phase);u.Lg[0].hp.rotation.x=angle;u.Lg[1].hp.rotation.x=-angle;u.Lg[0].kn.rotation.x=Math.max(0,Math.sin(phase))*.4;u.Lg[1].kn.rotation.x=Math.max(0,-Math.sin(phase))*.4;u.spine.rotation.y=.1*Math.sin(phase*2);h.updateMatrixWorld(true);h.traverse(o=>{if(o.isSkinnedMesh&&typeof o.onBeforeRender==='function')o.onBeforeRender();});h.updateMatrixWorld(true);const proxies=[d,lining].map(mesh=>{const geometry=mesh.geometry.clone(),p=geometry.attributes.position;for(let i=0;i<p.count;i++){const v=mesh.boneTransform(i,new T.Vector3().fromBufferAttribute(mesh.geometry.attributes.position,i));assert(v.toArray().every(Number.isFinite));p.setXYZ(i,v.x,v.y,v.z);}p.needsUpdate=true;geometry.computeBoundingBox();geometry.computeBoundingSphere();const proxy=new T.Mesh(geometry,new T.MeshBasicMaterial({side:T.DoubleSide}));proxy.matrixAutoUpdate=false;proxy.matrixWorld.copy(mesh.matrixWorld);return proxy;});const rear=new T.Vector3(0,0,-1).transformDirection(u.hips.matrixWorld);let minimumGap=Infinity;for(const q of probes){const v=new T.Vector3().fromBufferAttribute(q.o.geometry.attributes.position,q.i);if(q.o.isSkinnedMesh)q.o.boneTransform(q.i,v);v.applyMatrix4(q.o.matrixWorld);const origin=v.clone().addScaledVector(rear,1),hit=new T.Raycaster(origin,rear.clone().negate(),0,1.01).intersectObjects(proxies,false)[0];assert(hit&&hit.distance<.999,'Rear '+q.kind+' exposed at frame '+frame+' vertex '+q.i);minimumGap=Math.min(minimumGap,1-hit.distance);}coverage.push({frame,checks:probes.length,minimumGap});for(const proxy of proxies){proxy.geometry.dispose();proxy.material.dispose();}}results.push({merge,fit:u.luciaSlimDenim,coverage});}
+           fs.writeFileSync(file,candidate);Object.assign(report,{passed:true,results,bodyBraPermanentBriefsAndOtherCharactersUnchanged:true,innerLiningNotBodyReplacement:true,outerClearanceReduced:true});
+          }catch(error){fs.writeFileSync(file,before);Object.assign(report,{passed:false,error:String(error),stack:error.stack,baselinePreserved:true});}
+          fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/lucia-slim-denim-check.json',JSON.stringify(report,null,2)+'\n');
+          JS
+      - name: Publish only validated refit or diagnostics
+        env:
+          TARGET_BRANCH: ${{ matrix.target }}
+        run: |
+          git fetch origin "$TARGET_BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/"$TARGET_BRANCH")" || { echo 'Branch changed; rerun.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/lucia-slim-denim-check.json
+          if node -e "if(!require('./status/lucia-slim-denim-check.json').passed)process.exit(1)"; then git add -- js/reference-characters.js; fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Slim Lucia shorts and add thin moving rear lining or record coverage failure'
+            git push origin HEAD:"refs/heads/$TARGET_BRANCH"
+          fi
+          node -e "if(!require('./status/lucia-slim-denim-check.json').passed)process.exit(1)"
