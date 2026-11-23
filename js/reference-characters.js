@@ -1,3 +1,4 @@
+// LUCIA_BUST_QUARTER_REFIT_V1
 // LUCIA_FULLER_SEAT_SUBTLE_HIPS_V1
 // LUCIA_HANGING_TANK_BRIDGE_V2
 // LUCIA_TANK_BROAD_CHEST_V1
@@ -143,7 +144,11 @@ function installLuciaPelvisBridge(T,h){
  }
 
  
- function addLuciaTailoredBra(T,h){
+ 
+ function fitLuciaQuarterBust(T,h){
+  const u=h.userData;if(u.luciaQuarterBust)return;if(!u.luciaCenterContour||h.getObjectByName('lucia-tailored-bra'))throw Error('Torso required before bra fitting');h.updateMatrixWorld(true);const inverse=new T.Matrix4().copy(u.spine.matrixWorld).invert(),smooth=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t);};let changed=0,core=0,maxReduction=0,meshes=0;for(const mesh of u.spine.children){if(!mesh.isMesh||mesh.material!==u.m.skin)continue;const g=mesh.geometry.clone(),p=g.attributes.position,oldNormals=g.attributes.normal.clone(),M=inverse.clone().multiply(mesh.matrixWorld),back=M.clone().invert(),v=new T.Vector3(),edited=new Set(),affected=new Set();for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(M);const weight=smooth((v.y-.275)/.045)*smooth((.490-v.y)/.045)*(1-smooth((Math.abs(v.x)-.120)/.040))*smooth((v.z-.025)/.060);if(weight<=0)continue;const reduction=.25*v.z*weight;if(reduction<=1e-8)continue;if(weight>.999999)core++;v.z-=reduction;maxReduction=Math.max(maxReduction,reduction);v.applyMatrix4(back);p.setXYZ(i,v.x,v.y,v.z);edited.add(i);affected.add(i);}if(!edited.size)continue;for(let i=0,c=g.index?g.index.count:p.count;i<c;i+=3){const tri=[0,1,2].map(j=>g.index?g.index.getX(i+j):i+j);if(tri.some(k=>edited.has(k)))for(const k of tri)affected.add(k);}p.needsUpdate=true;g.computeVertexNormals();const n=g.attributes.normal,groups=new Map();for(const i of affected){const key=[p.getX(i),p.getY(i),p.getZ(i)].map(x=>Math.round(x*1e5)).join(',');if(!groups.has(key))groups.set(key,[]);groups.get(key).push(i);}for(const ids of groups.values()){const sum=new T.Vector3();for(const i of ids)sum.add(new T.Vector3().fromBufferAttribute(n,i));sum.normalize();for(const i of ids)n.setXYZ(i,sum.x,sum.y,sum.z);}for(let i=0;i<n.count;i++)if(!affected.has(i))n.setXYZ(i,oldNormals.getX(i),oldNormals.getY(i),oldNormals.getZ(i));n.needsUpdate=true;g.computeBoundingBox();g.computeBoundingSphere();mesh.geometry=g;changed+=edited.size;meshes++;}if(changed<20||core<10||maxReduction<.020||maxReduction>.060)throw Error('Quarter reduction outside intended localized range');u.luciaQuarterBust={changedVertices:changed,coreVertices:core,meshes,maxProjectionReduction:maxReduction,coreProjectionScale:.75,scope:'25 percent less forward depth relative to the spine in the fully weighted bust region, smoothly tapered at edges. Not a claim about cup size, breast volume or whole-torso dimensions. Existing garment fitters run afterwards without changing coverage rules.'};
+ }
+function addLuciaTailoredBra(T,h){
   const u=h.userData;if(u.luciaTailoredBra)return;const torso=u.luciaCenterContour&&u.spine.children[u.luciaCenterContour.spineChildIndex];if(!torso||!torso.isMesh||torso.material!==u.m.skin)throw Error('Reviewed torso missing');h.updateMatrixWorld(true);const inverse=new T.Matrix4().copy(u.spine.matrixWorld).invert(),M=inverse.clone().multiply(torso.matrixWorld),N=new T.Matrix3().getNormalMatrix(M),g=torso.geometry,p=g.attributes.position,n=g.attributes.normal,triangles=[],count=g.index?g.index.count:p.count;
   for(let i=0;i<count;i+=3)triangles.push([0,1,2].map(j=>{const k=g.index?g.index.getX(i+j):i+j;return {p:new T.Vector3().fromBufferAttribute(p,k).applyMatrix4(M),n:new T.Vector3().fromBufferAttribute(n,k).applyMatrix3(N).normalize()};}));const material=new T.MeshStandardMaterial({color:0x191a1e,roughness:.88,metalness:0,side:T.DoubleSide,transparent:false,opacity:1}),group=new T.Group();group.name='lucia-tailored-bra';
   function clip(poly,plane){const out=[];if(!poly.length)return out;for(let i=0;i<poly.length;i++){const a=poly[i],b=poly[(i+1)%poly.length],da=plane[0]*a.p.x+plane[1]*a.p.y+plane[2]*a.p.z-plane[3],db=plane[0]*b.p.x+plane[1]*b.p.y+plane[2]*b.p.z-plane[3];if(da<=0)out.push(a);if((da<=0)!==(db<=0)){const t=da/(da-db);out.push({p:a.p.clone().lerp(b.p,t),n:a.n.clone().lerp(b.n,t).normalize()});}}return out;}
@@ -209,7 +214,7 @@ function lucia(T,h){
 
  defineLuciaCenterContour(T,h);
 
- addLuciaTailoredBra(T,h);
+ fitLuciaQuarterBust(T,h); addLuciaTailoredBra(T,h);
 
  addLuciaFittedBriefs(T,h);
 

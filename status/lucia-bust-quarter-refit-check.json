@@ -1,0 +1,216 @@
+{
+  "passed": true,
+  "branch": "main",
+  "reports": [
+    {
+      "merge": false,
+      "reducedVertices": 468,
+      "measuredCoreVertices": 120,
+      "tankProjectionReduction": 0.04458971338731499,
+      "braCoverageChecks": 6,
+      "profiles": [
+        {
+          "y": 0.32,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.133319979907645,
+            0.13400467397525806,
+            0.1336200925336566,
+            0.133993104876992,
+            0.13333144094713245
+          ]
+        },
+        {
+          "y": 0.34,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.13975288117860973,
+            0.14047300707799593,
+            0.14002267304529026,
+            0.14049319407636396,
+            0.13990292317707964
+          ]
+        },
+        {
+          "y": 0.36,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.14651156933241827,
+            0.1472808987991746,
+            0.1468757046782284,
+            0.14715276151651757,
+            0.14654680768512984
+          ]
+        },
+        {
+          "y": 0.38,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.14960296255531003,
+            0.1503176131940438,
+            0.14993583327104942,
+            0.15026190637471082,
+            0.14959853707757098
+          ]
+        },
+        {
+          "y": 0.4,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.1461470241688949,
+            0.1468765832913107,
+            0.14654909093781276,
+            0.14675625409847504,
+            0.14615045901048873
+          ]
+        }
+      ],
+      "fit": {
+        "changedVertices": 470,
+        "coreVertices": 120,
+        "meshes": 4,
+        "maxProjectionReduction": 0.044889832288026815,
+        "coreProjectionScale": 0.75,
+        "scope": "25 percent less forward depth relative to the spine in the fully weighted bust region, smoothly tapered at edges. Not a claim about cup size, breast volume or whole-torso dimensions. Existing garment fitters run afterwards without changing coverage rules."
+      }
+    },
+    {
+      "merge": true,
+      "reducedVertices": 2649,
+      "measuredCoreVertices": 654,
+      "tankProjectionReduction": 0.04458971338731499,
+      "braCoverageChecks": 6,
+      "profiles": [
+        {
+          "y": 0.32,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.133319979907645,
+            0.13400467397525806,
+            0.1336200925336566,
+            0.133993104876992,
+            0.13333144094713245
+          ]
+        },
+        {
+          "y": 0.34,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.13975288117860973,
+            0.14047300707799593,
+            0.14002267304529026,
+            0.14049319407636396,
+            0.13990292317707964
+          ]
+        },
+        {
+          "y": 0.36,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.14651156933241827,
+            0.1472808987991746,
+            0.1468757046782284,
+            0.14715276151651757,
+            0.14654680768512984
+          ]
+        },
+        {
+          "y": 0.38,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.14960296255531003,
+            0.1503176131940438,
+            0.14993583327104942,
+            0.15026190637471082,
+            0.14959853707757098
+          ]
+        },
+        {
+          "y": 0.4,
+          "x": [
+            -0.08,
+            -0.035,
+            0,
+            0.035,
+            0.08
+          ],
+          "z": [
+            0.1461470241688949,
+            0.1468765832913107,
+            0.14654909093781276,
+            0.14675625409847504,
+            0.14615045901048873
+          ]
+        }
+      ],
+      "fit": {
+        "changedVertices": 470,
+        "coreVertices": 120,
+        "meshes": 4,
+        "maxProjectionReduction": 0.044889832288026815,
+        "coreProjectionScale": 0.75,
+        "scope": "25 percent less forward depth relative to the spine in the fully weighted bust region, smoothly tapered at edges. Not a claim about cup size, breast volume or whole-torso dimensions. Existing garment fitters run afterwards without changing coverage rules."
+      }
+    }
+  ],
+  "measuredCoreProjectionReduction": 0.25,
+  "braAndTankRegenerated": true,
+  "permanentCoverageRulesUnchanged": true,
+  "hipsSeatBriefsShouldersAndRigPreserved": true,
+  "midpointNecklineRibbingAndBridgePreserved": true,
+  "scope": "Localized forward-depth metric, not cup size or volume. Numerical core measurement, neutral garment rays and finite-pose checks do not verify final rendered appearance, every animation collision, alternate outfit fit or live deployment."
+}
