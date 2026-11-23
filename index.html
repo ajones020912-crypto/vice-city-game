@@ -669,6 +669,8 @@ const FL_KEYS=(()=>{const k=[];
   [5050,1510,115,65,-.2],[4300,2490,105,60,.45]
  ];
  for(const isle of southKeys)k.push(isle);
+ // KEY_LENTO_V1 — a larger inhabited island at the real-world Key Largo position.
+ k.push([3950,700,270,155,-.16]);
  // LEONIDA_WEST_REGIONAL_AIRPORT_ISLAND_V1
  k.push([4900,2800,480,330,-.2]);
  const isle=[[-1480,1180],[-1360,1290],[-1560,1360],[-1250,1150],[-640,1200],[-560,1330],[-1690,1600],[-1660,1880],[-1700,2150],[-1580,2420],[-1340,2520],[-620,2440],[-560,2250],[-1180,1300],[-1650,1080],[-2600,2050],[-2900,2080],[-3200,2010]];
@@ -1301,6 +1303,12 @@ function defineRoads(){
  addRoad('v',-2700,420,1750,18,'hwy');                                        // west highway through Orrin Wilds
  addRoad('h',3200,-2300,2700,18,'hwy');                                       // Glades Trail across the south
  addRoad('v',2600,-200,3200,18,'hwy');                                        // east coast highway
+ // KEY_LENTO_HIGHWAY_V1 — continuous causeway/highway from the east-coast route through Key Lento and the Keys to LWRA.
+ addRoad('h',3200,2600,3600,30,'hwy');
+ addRoad('v',3600,700,3200,30,'hwy');
+ addRoad('h',700,3600,4250,30,'hwy');
+ addRoad('v',4250,700,2800,30,'hwy');
+ addRoad('h',2800,4250,4900,30,'hwy');
  addRoad('h',1520,900,2600,16,'city');                                        // parkway out to the coast
  addRoad('h',2600,1000,2600,9,'dirt');addRoad('h',1900,1000,2600,9,'dirt');addRoad('v',1800,700,3200,9,'dirt');addRoad('v',2200,1520,3200,9,'dirt');
  addRoad('h',4200,-1400,1600,9,'dirt');addRoad('v',-2300,2350,3200,9,'dirt');addRoad('h',1100,-3300,-2700,9,'dirt');addRoad('h',-150,-3300,-2700,9,'dirt');
@@ -1731,7 +1739,7 @@ function buildBaseMap(){
  }
  baseMap=c;
 }
-const REGIONS=[['LEONIDA WEST REGIONAL AIRPORT',4430,2450,5370,3150,0,0],['VICE CITY INTERNATIONAL AIRPORT',-2430,445,-1470,1195,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['SUNRISE FARMS',1600,600,3600,3150,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
+const REGIONS=[['LEONIDA WEST REGIONAL AIRPORT',4430,2450,5370,3150,0,0],['VICE CITY INTERNATIONAL AIRPORT',-2430,445,-1470,1195,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',-330,-345,430,445,0,60],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['SUNRISE FARMS',1600,600,3600,3150,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['KEY LENTO',3680,430,4230,970,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
 function zoneName(x,z){for(const r of REGIONS)if(x>r[1]&&x<r[3]&&z>r[2]&&z<r[4])return r[0];if(z<shoreZ(x))return'PALMERA GULF';return'PALMERA COUNTRYSIDE'}
 
 function clearStructureFootprint(x0,z0,x1,z1,margin=1.2){
