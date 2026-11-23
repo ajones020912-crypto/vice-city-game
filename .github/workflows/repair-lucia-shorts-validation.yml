@@ -1,0 +1,117 @@
+name: Repair Lucia shorts validation and rerun coverage fitting
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/repair-lucia-shorts-validation.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  shorts:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [main, lucia-outfits]
+    concurrency:
+      group: lucia-u-neck-${{ matrix.target }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      TARGET_BRANCH: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.target }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          npm install --prefix "$RUNNER_TEMP/lucia-photo-denim" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+          python -m pip install 'Pillow>=10,<13'
+      - name: Initialize test texture metadata correctly and retain all original fitting guards
+        run: |
+          git fetch origin main
+          python <<'PY'
+          import json, os, pathlib, subprocess, traceback
+          model=pathlib.Path('js/reference-characters.js');baseline=model.read_bytes()
+          tracked=[pathlib.Path('status/lucia-photo-denim-short-seat-check.json'),pathlib.Path('status/lucia-angled-distressed-denim-check.json'),pathlib.Path('status/lucia-denim-stride-rear-coverage-check.json')]
+          previous={p:p.read_bytes() if p.exists() else None for p in tracked}
+          status=pathlib.Path('status/lucia-shorts-validation-repair-check.json');status.parent.mkdir(exist_ok=True)
+          report={'passed':False,'branch':os.environ['TARGET_BRANCH'],'scope':'Repair headless Texture metadata initialization and rerun the existing photo-denim, angled torn hem, body-preservation, and sampled stride rear-coverage installer. Full in-game appearance and deployment remain unverified.'}
+          try:
+              if b'strideRearCoverageRig:true' in baseline:
+                  old=pathlib.Path('status/lucia-denim-stride-rear-coverage-check.json')
+                  if not old.exists() or not json.loads(old.read_text()).get('passed'): raise RuntimeError('Stride model marker exists without successful coverage validation; refusing unverified overwrite')
+                  report.update(passed=True,outcome='Stride shorts repair already installed with passing coverage report',priorCoverage=json.loads(old.read_text()))
+              else:
+                  def source(name):
+                      return subprocess.check_output(['git','show','origin/main:.github/workflows/'+name],text=True,timeout=30)
+                  def once(text,a,b):
+                      if text.count(a)!=1: raise RuntimeError('Reviewed installer fragment changed: '+a[:160])
+                      return text.replace(a,b,1)
+                  originals={'photo':source('lucia-photo-denim-short-seat.yml'),'angled':source('lucia-angled-distressed-denim.yml'),'stride':source('lucia-denim-stride-rear-coverage.yml')}
+                  counts={}
+                  for name,text in list(originals.items()):
+                      count=text.count('t.userData.localURL=url;');counts[name]=count
+                      originals[name]=text.replace('t.userData.localURL=url;','t.userData={localURL:url};')
+                  if counts['photo']<1 or counts['angled']<1: raise RuntimeError('Expected failed test-texture setup not found; no speculative edit applied')
+                  photo=originals['photo']
+                  angled=once(originals['angled'],'git show origin/main:.github/workflows/lucia-photo-denim-short-seat.yml > /tmp/lucia-photo-original.yml','cp /tmp/lucia-reviewed-photo-fixed.yml /tmp/lucia-photo-original.yml')
+                  angled=once(angled,"raise RuntimeError(json.loads(original_status.read_text()).get('error','Photo fitting failed'))","raise RuntimeError(json.dumps(json.loads(original_status.read_text())))")
+                  stride=once(originals['stride'],'git show origin/main:.github/workflows/lucia-angled-distressed-denim.yml > /tmp/lucia-angled-original.yml','cp /tmp/lucia-reviewed-angled-fixed.yml /tmp/lucia-angled-original.yml')
+                  stride=once(stride,"raise RuntimeError(outcome.get('error','Angled photo fitter failed'))","raise RuntimeError(json.dumps(outcome))")
+                  pathlib.Path('/tmp/lucia-reviewed-photo-fixed.yml').write_text(photo)
+                  pathlib.Path('/tmp/lucia-reviewed-angled-fixed.yml').write_text(angled)
+                  lines=stride.splitlines();blocks=[]
+                  for i,line in enumerate(lines):
+                      if line!='        run: |': continue
+                      body=[]
+                      for value in lines[i+1:]:
+                          if value and not value.startswith('          '): break
+                          body.append(value[10:] if value else '')
+                      blocks.append('\n'.join(body)+'\n')
+                  if len(blocks)!=2: raise RuntimeError('Stride installer layout changed')
+                  script=pathlib.Path('/tmp/lucia-shorts-validation-repair.sh');script.write_text(blocks[0])
+                  run=subprocess.run(['bash','-e',str(script)],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=1100)
+                  report.update(testTextureAssignmentsRepaired=counts,exitCode=run.returncode,outputTail=(run.stdout or '')[-20000:])
+                  if run.returncode: raise RuntimeError('Shorts installer subprocess failed')
+                  outcome=json.loads(pathlib.Path('status/lucia-denim-stride-rear-coverage-check.json').read_text())
+                  report['installerOutcome']=outcome
+                  if not outcome.get('passed'): raise RuntimeError(outcome.get('error','Shorts stride installer did not pass'))
+                  if b'strideRearCoverageRig:true' not in model.read_bytes(): raise RuntimeError('Expected shorts rig missing after validation')
+                  coverage=outcome.get('coverage')
+                  if not isinstance(coverage,list) or len(coverage)!=2: raise RuntimeError('Both merged and unmerged coverage reports required')
+                  for result in coverage:
+                      poses=result.get('walkCoverage')
+                      if not isinstance(poses,list) or len(poses)!=13: raise RuntimeError('All thirteen sampled stride poses are required')
+                      if any(pose.get('bodyChecks',0)<8 or pose.get('briefChecks',0)<20 or pose.get('minimumGap',0)<=.001 for pose in poses): raise RuntimeError('Required moving body or underwear coverage samples missing')
+                  report.update(passed=True,outcome='Photo denim and ripped angled shorts installed after repaired validation and sampled moving rear-coverage tests',bodyTankBraAndPermanentBriefsPreserved=True,coverage=coverage,existingFitGuardsRetained=True)
+          except Exception as exc:
+              model.write_bytes(baseline)
+              for p,content in previous.items():
+                  if content is not None: p.write_bytes(content)
+                  elif p.exists(): p.unlink()
+              report.update(passed=False,error=str(exc),traceback=traceback.format_exc()[-20000:],baselinePreserved=True)
+          status.write_text(json.dumps(report,indent=2)+'\n')
+          PY
+      - name: Publish only validated shorts or exact diagnostics
+        run: |
+          git fetch origin "$TARGET_BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/"$TARGET_BRANCH")" || { echo 'Branch changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/lucia-shorts-validation-repair-check.json
+          if test -f status/lucia-photo-denim-download.json; then git add -- status/lucia-photo-denim-download.json; fi
+          if node -e "process.exit(JSON.parse(require('fs').readFileSync('status/lucia-shorts-validation-repair-check.json','utf8')).passed?0:1)"; then
+            git add -- js/reference-characters.js status/lucia-photo-denim-short-seat-check.json status/lucia-angled-distressed-denim-check.json status/lucia-denim-stride-rear-coverage-check.json assets/textures/lucia-denim-photo.jpg assets/textures/lucia-denim-photo-source.json
+          fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Repair shorts test texture metadata and install coverage-checked denim or record exact failure'
+            git push origin HEAD:"refs/heads/$TARGET_BRANCH"
+          fi
+          node -e "const r=JSON.parse(require('fs').readFileSync('status/lucia-shorts-validation-repair-check.json','utf8'));if(!r.passed){console.error(r.error);process.exit(1);}"
