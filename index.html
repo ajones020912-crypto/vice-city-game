@@ -684,8 +684,7 @@ const FL_KEYS=(()=>{const k=[];
  for(const isle of southKeys)k.push(isle);
  // KEY_LENTO_V1 — a larger inhabited island at the real-world Key Largo position.
  k.push([3950,700,270,155,-.16]);
- // LEONIDA_WEST_REGIONAL_AIRPORT_ISLAND_V1
- k.push([4900,2800,480,330,-.2]);
+ // LEONIDA_WEST_REGIONAL_AIRPORT_ISLAND_V2: custom island shoreline is applied in seaD().
  const isle=[[-1480,1180],[-1360,1290],[-1560,1360],[-1250,1150],[-640,1200],[-560,1330],[-1690,1600],[-1660,1880],[-1700,2150],[-1580,2420],[-1340,2520],[-620,2440],[-560,2250],[-1180,1300],[-1650,1080],[-2600,2050],[-2900,2080],[-3200,2010]];
  for(const [x,z] of isle)if(x>-2000)k.push([x,z,26+((x*7+z*3)%17+17)%17,18+((x+z)%9+9)%9,(x*z)%3]);
  // ATLANTIC_BARRIER_KEYS_V1: narrow offshore barrier islands, kept well outside every existing city.
@@ -763,7 +762,7 @@ function seaD(x,z){ // signed metres into the sea (>0 sea, <0 land)
  const bu=Math.abs(x+1250)/800,bv=Math.abs(z-1865)/835,ba=Math.atan2(z-1865,x+1250);
  const bay=(1-Math.pow(Math.pow(bu,3.2)+Math.pow(bv,3.2),1/3.2))*800-Math.abs(70*Math.sin(ba*3+.7)+45*Math.sin(ba*7+2.2)+22*Math.sin(ba*13+.4))-25;
  const pass=-1e9; // lake now: no channel to the sea
- const mainlandSea=Math.min(Math.max(edge,Math.min(Math.max(bay,pass,Math.min(n,isl)),hhIsle(x,z))),flKeysD(x,z),afbIsle(x,z));
+ const mainlandSea=Math.min(Math.max(edge,Math.min(Math.max(bay,pass,Math.min(n,isl)),hhIsle(x,z))),flKeysD(x,z),westAirportIslandD(x,z),afbIsle(x,z));
  // VICE_CITY_COASTAL_METRO_V3:
  // Keep Vice City as one continuous coastal mainland/peninsula. The old detached oval island
  // made the urban footprint look like an offshore blob; the shoreline now comes from Florida's
@@ -775,7 +774,8 @@ const swampMask=(x,z)=>Math.max(gladesMask(x,z),swampMask0(x,z));
 const swampMask0=(x,z)=>sstep(440,520,x)*sstep(-300,-230,z)*sstep(520,380,z)*(1-sstep(1400,1600,x));
 // GTA_VI_REFERENCE_ALIGNMENT_V1: VCIA sits west/southwest of downtown, on the mainland.
 const airportMask=(x,z)=>(1-sstep(620,680,Math.abs(x-820)))*(1-sstep(425,470,Math.abs(z-895))); /* VCIA_MIA_LAYOUT_V1 footprint x 200..1440, z 470..1320 */
-const westAirportMask=(x,z)=>(1-sstep(380,470,Math.abs(x-4900)))*(1-sstep(250,340,Math.abs(z-2800)));
+const westAirportMask=(x,z)=>(1-sstep(420,500,Math.abs(x-4900)))*(1-sstep(520,600,Math.abs(z-2800)));
+function westAirportIslandD(x,z){const dx=x-4900,dz=z-2800,a=Math.atan2(dz,dx),r=Math.hypot(dx/430,dz/545),taper=1-.13*Math.max(0,dz/545)-.05*Math.max(0,-dz/545),rag=.025*Math.sin(a*3+.6)+.018*Math.sin(a*7-1.1)+.012*Math.sin(a*13+.8);return(r/(taper+rag)-1)*430;}
 const hillMask=(x,z)=>Math.max(hillMask0(x,z),sstep(-1750,-2100,x)*sstep(-350,-120,z)*(1-sstep(800,1050,z))*sstep(-3600,-3300,x));
 const hillMask0=(x,z)=>sstep(-3700,-3300,x)*sstep(-640,-1100,x)*sstep(400,200,z)*sstep(-400,-280,z);
 function rawH(x,z){
@@ -2072,7 +2072,7 @@ function* buildBaseMapGen(){
  }
  baseMap=c;
 }
-const REGIONS=[['LEONIDA WEST REGIONAL AIRPORT',4430,2450,5370,3150,0,0],['VICE CITY INTERNATIONAL AIRPORT',200,470,1440,1320,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',430,-920,2440,1570,1510,315],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['KEY LENTO',3680,430,4230,970,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
+const REGIONS=[['LEONIDA WEST REGIONAL AIRPORT',4400,2250,5400,3350,0,0],['VICE CITY INTERNATIONAL AIRPORT',200,470,1440,1320,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',430,-920,2440,1570,1510,315],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['KEY LENTO',3680,430,4230,970,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
 function zoneName(x,z){for(const r of REGIONS)if(x>r[1]&&x<r[3]&&z>r[2]&&z<r[4])return r[0];if(z<shoreZ(x))return'PALMERA GULF';return'PALMERA COUNTRYSIDE'}
 
 function clearStructureFootprint(x0,z0,x1,z1,margin=1.2){
@@ -2329,36 +2329,29 @@ let airport=null;
 
 let westAirport=null;
 function buildWestAirport(){
- // LEONIDA_WEST_REGIONAL_AIRPORT_V1 — regional airport on the new Key West island.
- const SCALE=1.35,cx=4900,cz=2800,ground=heightAt(cx,cz)+.65;
- // Collision-height support for the full LWRA grounds and each paved aircraft surface.
- decks.push({x0:cx-470,x1:cx+470,z0:cz-340,z1:cz+340,y:ground});
- runwayDecks.push({x0:cx-290.25,x1:cx+290.25,z0:cz-92.475,z1:cz-27.675,y:ground+.41});
- decks.push({x0:cx-290.25,x1:cx+290.25,z0:cz-92.475,z1:cz-27.675,y:ground+.41});
- decks.push({x0:cx-263.25,x1:cx+263.25,z0:cz+32.175,z1:cz+61.875,y:ground+.40});
- airportGroundDecks.push({x0:cx-263.25,x1:cx+263.25,z0:cz+32.4,z1:cz+62.1,y:ground+.32});
- airportGroundDecks.push({x0:cx-222.75,x1:cx-195.75,z0:cz-60.75,z1:cz+47.25,y:ground+.30});
- airportGroundDecks.push({x0:cx-249.75,x1:cx-7.5,z0:cz+70.875,z1:cz+205.875,y:ground+.22});
- airportGroundDecks.push({x0:cx+33.75,x1:cx+222.75,z0:cz+14.85,z1:cz+155.25,y:ground+.22});
- for(const x of[cx-209.25,cx+209.25])decks.push({x0:x-13.5,x1:x+13.5,z0:cz-6.75,z1:cz+101.25,y:ground+.40});
- decks.push({x0:cx-249.75,x1:cx-7.5,z0:cz+70.875,z1:cz+205.875,y:ground+.18});
- decks.push({x0:cx+33.75,x1:cx+222.75,z0:cz+14.85,z1:cz+155.25,y:ground+.18});
+ // LEONIDA_WEST_REGIONAL_AIRPORT_V2 — compact island airport based on the supplied Mile Zero Air Station footprint.
+ const SCALE=1.12,cx=4900,cz=2800,ground=heightAt(cx,cz)+.65;
+ decks.push({x0:cx-410,x1:cx+410,z0:cz-515,z1:cz+515,y:ground});
  const mat=(color,roughness=.9)=>new T.MeshStandardMaterial({color,roughness});
- const asphalt=mat(0x454a4d),concrete=mat(0xb5b8b2),grass=mat(0x68765a),white=mat(0xe9e8dc),yellow=mat(0xe5bd42),metal=mat(0x64747a),roof=mat(0x34434a),glass=mat(0x315e70,.28);
+ const asphalt=mat(0x454a4d),concrete=mat(0xb5b8b2),grass=mat(0x68765a),white=mat(0xe9e8dc),yellow=mat(0xe5bd42),roof=mat(0x34434a),glass=mat(0x315e70,.28);
  asphalt.map=makeNoiseTex(256,120,30,[1,1.01,1.02],8);concrete.map=makeNoiseTex(256,205,18,[1,1,.98],6);
- const batches=new Map(),box=(w,h,d,m,x,y,z,solid=false)=>{w*=SCALE;d*=SCALE;x*=SCALE;z*=SCALE;const lift=m===asphalt?.22:0;if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,cx+x,ground+y+lift,cz+z]);if(solid)addCol(cx+x-w/2,cz+z-d/2,cx+x+w/2,cz+z+d/2,ground+y+lift+h/2)},paint=(w,d,m,x,z)=>box(w,.018,d,m,x,.455,z);
- box(650,.4,460,grass,0,-.21,0);
- box(430,.18,48,asphalt,0,.10,-45);for(const z of[-67,-23])paint(420,.35,white,0,z);for(let x=-180;x<=180;x+=30)paint(12,.8,white,x,-45);
- box(390,.16,22,asphalt,0,.10,35);paint(380,.35,yellow,0,35);for(const x of[-155,155])box(20,.16,80,asphalt,x,.10,-5);
- box(180,.16,100,concrete,-125,.10,105);box(112,9,34,white,-155,4.6,165,true);box(106,5,.4,glass,-155,4.1,147.7);box(120,.8,44,roof,-155,9.5,164);
- box(140,.16,105,concrete,190,.10,115);box(92,12,58,white,195,6.2,170,true);box(96,.8,62,roof,195,12.8,170);for(let x=165;x<=225;x+=20){box(8,5,.5,glass,x,5.2,140);box(8,4,.5,metal,x,2.2,140)}
- box(9,22,9,white,5,11.6,155,true);box(18,5,16,glass,5,25,155,true);box(21,.8,19,roof,5,28,155);
- box(170,.16,75,asphalt,-315,.10,225,true);for(let x=-390;x<=-240;x+=12)paint(.45,60,white,x,225);paint(160,.4,white,-315,185);paint(160,.4,white,-315,265);
- // No cross-water access road: the airport island is reached by air or boat.
+ const batches=new Map(),up=new T.Vector3(0,1,0),box=(w,h,d,m,x,y,z,solid=false,ry=0)=>{w*=SCALE;d*=SCALE;x*=SCALE;z*=SCALE;const lift=m===asphalt?.22:0;if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,cx+x,ground+y+lift,cz+z,ry]);if(solid)addCol(cx+x-w/2,cz+z-d/2,cx+x+w/2,cz+z+d/2,ground+y+lift+h/2,'west-airport-structure')},paint=(w,d,m,x,z,ry=0)=>box(w,.018,d,m,x,.455,z,false,ry);
+ box(690,.32,900,grass,0,-.22,0);
+ const runway=(len,w,x,z,ang)=>{box(len,.2,w,asphalt,x,.12,z,false,ang);for(const end of[-1,1])for(let k=-3;k<=3;k++){const t=end*(len/2-12),ox=Math.cos(ang)*t+Math.sin(ang)*k*4,oz=-Math.sin(ang)*t+Math.cos(ang)*k*4;paint(2.5,2.2,white,x+ox,z+oz,ang)}for(let t=-len/2+26;t<len/2-20;t+=22)paint(10,1.1,white,x+Math.cos(ang)*t,z-Math.sin(ang)*t,ang);runwayDecks.push({x0:cx-len*SCALE/2-18,x1:cx+len*SCALE/2+18,z0:cz-w*SCALE/2-18,z1:cz+w*SCALE/2+18,y:ground+.42});decks.push({x0:cx-len*SCALE/2-18,x1:cx+len*SCALE/2+18,z0:cz-w*SCALE/2-18,z1:cz+w*SCALE/2+18,y:ground+.42})};
+ runway(610,48,-5,-70,-.58);runway(535,44,5,38,.62);
+ box(560,.16,20,asphalt,0,-4,205);box(510,.16,20,asphalt,0,-4,-285);
+ for(const [x,z,ang,len] of[[-150,-160,-.58,190],[150,155,.62,190],[-210,30,.62,125],[205,-45,-.58,135]])box(18,.16,len,asphalt,x,.1,z,false,ang);
+ box(260,.18,180,concrete,205,.12,85);
+ for(let i=0;i<6;i++){const z=10+i*27;box(34,.12,18,asphalt,125,.2,z);paint(26,.35,yellow,125,z+10);box(2,.12,34,yellow,145,.2,z+8)}
+ box(190,.18,95,concrete,235,.12,230);box(145,12,42,white,235,6.3,235,true);box(150,.8,46,roof,235,12.7,235);
+ for(let x=180;x<=290;x+=22){box(10,6,.5,glass,x,5.4,213);box(10,4,.5,glass,x,5.2,257)}
+ box(12,23,12,white,145,11.8,285,true);box(22,5,19,glass,145,25.8,285,true);box(25,.8,22,roof,145,29,285);
+ for(const [x,z,w,d] of[[-235,205,95,70],[-235,95,90,62],[-245,-25,78,58],[-235,-155,92,65]]){box(w,.18,d,concrete,x,.12,z);box(w*.78,12,d*.72,white,x,6.2,z,true);box(w*.82,.8,d*.76,roof,x,12.6,z);for(let q=-w*.25;q<=w*.25;q+=w*.25)box(8,5,.5,glass,x+q,5.2,z-d*.37)}
+ box(190,.18,85,asphalt,-40,.12,330);for(let x=-115;x<=35;x+=30)box(18,.12,36,concrete,x,.2,330);box(75,8,42,white,-160,4.2,340,true);box(80,.8,46,roof,-160,8.6,340);
+ for(const ang of[-.58,.62])for(const side of[-1,1])for(let t=-230;t<=230;t+=28){const x=Math.cos(ang)*t+Math.sin(ang)*side*29,z=-Math.sin(ang)*t+Math.cos(ang)*side*29;box(1.1,.65,1.1,yellow,x,.55,z)}
  const geometry=new T.BoxGeometry(1,1,1),matrix=new T.Matrix4(),rotation=new T.Quaternion();
- for(const [material,items] of batches){const mesh=new T.InstancedMesh(geometry,material,items.length);for(let i=0;i<items.length;i++){const [w,h,d,x,y,z]=items[i];matrix.compose(new T.Vector3(x,y,z),rotation,new T.Vector3(w,h,d));mesh.setMatrixAt(i,matrix)}mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;mesh.receiveShadow=true;world.add(mesh)}
- const [c,ctx]=cv(1024,150);ctx.fillStyle='#102d40';ctx.fillRect(0,0,1024,150);ctx.strokeStyle='#d9b85c';ctx.lineWidth=9;ctx.strokeRect(8,8,1008,134);ctx.fillStyle='#fff';ctx.font='bold 52px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('LEONIDA WEST REGIONAL AIRPORT',512,76);const signMat=new T.MeshStandardMaterial({map:mkTex(c),roughness:.75});box(150,4,1.2,signMat,-155,8.5,142,true);
- westAirport={x:cx,z:cz,ground};
+ for(const [material,items] of batches){const mesh=new T.InstancedMesh(geometry,material,items.length);for(let i=0;i<items.length;i++){const [w,h,d,x,y,z,ry]=items[i];rotation.setFromAxisAngle(up,ry);matrix.compose(new T.Vector3(x,y,z),rotation,new T.Vector3(w,h,d));mesh.setMatrixAt(i,matrix)}mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;mesh.receiveShadow=true;world.add(mesh)}
+ const [c,ctx]=cv(1024,150);ctx.fillStyle='#102d40';ctx.fillRect(0,0,1024,150);ctx.strokeStyle='#d9b85c';ctx.lineWidth=9;ctx.strokeRect(8,8,1008,134);ctx.fillStyle='#fff';ctx.font='bold 52px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('LEONIDA WEST REGIONAL AIRPORT',512,76);const signMat=new T.MeshStandardMaterial({map:mkTex(c),roughness:.75});box(150,4,1.2,signMat,235,8.5,280,true);westAirport={x:cx,z:cz,ground};
 }
 
 // AI_AIRLINE_TRAFFIC_V1: scheduled autonomous airline flights, runway operations and gate parking.
