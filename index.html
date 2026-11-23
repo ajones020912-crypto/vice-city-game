@@ -3268,8 +3268,8 @@ function updateRedLights(){
   // car heading h: forward=(sin h,cos h); steering right lowers h, so right = cross(in,out) > 0
   const cross=e.inx*out[1]-e.inz*out[0],rightTurn=cross>0;
   if(e.red&&!rightTurn&&!(out[0]===-e.inx&&out[1]===-e.inz)){const now=G.time;RL.runs=RL.runs.filter(t=>now-t<7);RL.runs.push(now);
-   if(RL.runs.length>=3){RL.runs=[];const next=Math.min(6,(pl.wanted||0)+1);addCrime(Math.max(.1,WANTED_AT[next]-(pl.crime||0)));toast('🚦 Ran 3 red lights: the police want a word',2200)}
-   else toast('🚦 Ran a red light ('+RL.runs.length+'/3)',1300)}}
+   if(RL.runs.length>=5){RL.runs=[];const next=Math.min(6,(pl.wanted||0)+1);addCrime(Math.max(.1,WANTED_AT[next]-(pl.crime||0)));toast('🚦 Ran 5 red lights: the police want a word',2200)}
+   else toast('🚦 Ran a red light ('+RL.runs.length+'/5)',1300)}}
  RL.node=at;RL.px=c.x;RL.pz=c.z;
 }
 function addWanted(n,why){addCrime(n>0?n*2:.6)}
