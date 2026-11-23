@@ -1271,8 +1271,6 @@ function defineRoads(){
  addRoad('v',380,-1090,-980,14,'city');          // causeway on to the Salton Memorial AFB gate          // Interstate 1 — longer causeway to the Keys
  addRoad('h',420,-1400,1500,28,'hwy');         // Gulf Expressway extended
  addRoad('h',-820,-420,1500,14,'city');        // Keys road extended
- // Access road to Leonida West Regional Airport.
- addRoad('h',2800,4100,4890,18,'hwy');
  for(let i=0;i<8;i++){addRoad('v',-1050+70*i,420,1010,16,'city',true);addRoad('h',490+70*i,-1060,-550,16,'city',true)}
  for(const x of[-270,-150,-30,90,210])addRoad('v',x,420,1100,14,'city');
  for(const z of[540,660,780,900,1020])addRoad('h',z,-330,380,14,'city');
@@ -1870,7 +1868,13 @@ function buildAirport(){
  // VICE_CITY_INTERNATIONAL_AIRPORT_V1
  const SCALE=1.5;
  const cx=-1950,cz=820,ground=heightAt(cx,cz)+.65;
+ // Surface support decks: runway, taxiway/connectors, apron and airport grounds.
  decks.push({x0:cx-435,x1:cx+435,z0:cz-307.5,z1:cz+307.5,y:ground});
+ decks.push({x0:cx-375,x1:cx+375,z0:cz-103.5,z1:cz-31.5,y:ground+.41});
+ decks.push({x0:cx-330,x1:cx+330,z0:cz+36,z1:cz+69,y:ground+.40});
+ for(const x of[cx-277.5,cx+262.5])decks.push({x0:x-16.5,x1:x+16.5,z0:cz-15,z1:cz+105,y:ground+.40});
+ decks.push({x0:cx-285,x1:cx-142.5,z0:cz+69,z1:cz+195,y:ground+.18});
+ decks.push({x0:cx+120,x1:cx+280,z0:cz+91.5,z1:cz+195,y:ground+.18});
  const mat=(color,roughness=.9)=>new T.MeshStandardMaterial({color,roughness});
  const asphalt=mat(0x454a4d),concrete=mat(0xb5b8b2),grass=mat(0x68765a),white=mat(0xe9e8dc),yellow=mat(0xe5bd42),metal=mat(0x64747a),roof=mat(0x34434a),glass=mat(0x315e70,.28);
  asphalt.map=makeNoiseTex(256,120,30,[1,1.01,1.02],8);
@@ -1955,7 +1959,13 @@ let westAirport=null;
 function buildWestAirport(){
  // LEONIDA_WEST_REGIONAL_AIRPORT_V1 — regional airport on the new Key West island.
  const SCALE=1.35,cx=4900,cz=2800,ground=heightAt(cx,cz)+.65;
+ // Collision-height support for the full LWRA grounds and each paved aircraft surface.
  decks.push({x0:cx-470,x1:cx+470,z0:cz-340,z1:cz+340,y:ground});
+ decks.push({x0:cx-290.25,x1:cx+290.25,z0:cz-92.475,z1:cz-27.675,y:ground+.41});
+ decks.push({x0:cx-263.25,x1:cx+263.25,z0:cz+32.175,z1:cz+61.875,y:ground+.40});
+ for(const x of[cx-209.25,cx+209.25])decks.push({x0:x-13.5,x1:x+13.5,z0:cz-6.75,z1:cz+101.25,y:ground+.40});
+ decks.push({x0:cx-249.75,x1:cx-7.5,z0:cz+70.875,z1:cz+205.875,y:ground+.18});
+ decks.push({x0:cx+33.75,x1:cx+222.75,z0:cz+14.85,z1:cz+155.25,y:ground+.18});
  const mat=(color,roughness=.9)=>new T.MeshStandardMaterial({color,roughness});
  const asphalt=mat(0x454a4d),concrete=mat(0xb5b8b2),grass=mat(0x68765a),white=mat(0xe9e8dc),yellow=mat(0xe5bd42),metal=mat(0x64747a),roof=mat(0x34434a),glass=mat(0x315e70,.28);
  asphalt.map=makeNoiseTex(256,120,30,[1,1.01,1.02],8);concrete.map=makeNoiseTex(256,205,18,[1,1,.98],6);
@@ -1967,8 +1977,7 @@ function buildWestAirport(){
  box(140,.16,105,concrete,190,.10,115);box(92,12,58,white,195,6.2,170,true);box(96,.8,62,roof,195,12.8,170);for(let x=165;x<=225;x+=20){box(8,5,.5,glass,x,5.2,140);box(8,4,.5,metal,x,2.2,140)}
  box(9,22,9,white,5,11.6,155,true);box(18,5,16,glass,5,25,155,true);box(21,.8,19,roof,5,28,155);
  box(170,.16,75,asphalt,-315,.10,225,true);for(let x=-390;x<=-240;x+=12)paint(.45,60,white,x,225);paint(160,.4,white,-315,185);paint(160,.4,white,-315,265);
- // Raised access causeway from the mainland side.
- box(340,.7,14,asphalt,-470,.10,0,true);paint(330,.35,yellow,-470,0);
+ // No cross-water access road: the airport island is reached by air or boat.
  const geometry=new T.BoxGeometry(1,1,1),matrix=new T.Matrix4(),rotation=new T.Quaternion();
  for(const [material,items] of batches){const mesh=new T.InstancedMesh(geometry,material,items.length);for(let i=0;i<items.length;i++){const [w,h,d,x,y,z]=items[i];matrix.compose(new T.Vector3(x,y,z),rotation,new T.Vector3(w,h,d));mesh.setMatrixAt(i,matrix)}mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;mesh.receiveShadow=true;world.add(mesh)}
  const [c,ctx]=cv(1024,150);ctx.fillStyle='#102d40';ctx.fillRect(0,0,1024,150);ctx.strokeStyle='#d9b85c';ctx.lineWidth=9;ctx.strokeRect(8,8,1008,134);ctx.fillStyle='#fff';ctx.font='bold 52px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('LEONIDA WEST REGIONAL AIRPORT',512,76);const signMat=new T.MeshStandardMaterial({map:mkTex(c),roughness:.75});box(150,4,1.2,signMat,-155,8.5,142,true);
