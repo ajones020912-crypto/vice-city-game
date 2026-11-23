@@ -4968,8 +4968,7 @@ function simulate(dt){updateWaypoint();updateBreakin(dt);updateFlightHud();updat
   // wanted decay
   if(pl.wanted>0){let seen=false;for(const c of cars)if(c.mode==='cop'&&!c.dead&&Math.hypot(c.x-pl.x,c.z-pl.z)<70&&policeLineOfSight(c.x,c.y+1.4,c.z))seen=true;for(const p of cops)if(p.active&&!p.dead&&Math.hypot(p.x-pl.x,p.z-pl.z)<60&&policeLineOfSight(p.x,p.y+1.6,p.z))seen=true;
    if((G.fighterSees&&G.fighterSees())||heliSees()||(!pl.inside&&cctvNear()))seen=true;if(seen){pl.sightT=0;G.lastSeen={x:pl.x,z:pl.z}}else pl.sightT+=dt;if(pl.sightT>((pl.heat.cctv?20:14)-(!pl.heat.clothes?3:0)-(!pl.heat.partner?2:0))){pl.sightT=8;pl.crime=Math.max(0,pl.crime-(pl.crime>=22?8:pl.crime>=14?6:4));const w=starsFor(pl.crime);if(w<pl.wanted){pl.wanted=w;G.hudDirty=true;toast(w?'Wanted level dropped: '+'★'.repeat(w):'You lost the cops!')}}}
-  // Pay 'n' Spray
-  if(pl.car&&!G.busy){for(const g of G.spray){if(Math.hypot(pl.car.x-g.x,pl.car.z-g.z)<4.5&&!pl.car.t.boat&&(pl.wanted>0||pl.car.hp<maxHp(pl.car)*.8)){if(pl.cash<75){if(!(G.sprayWarn>G.time)){toast('Pay \'n\' Spray costs $75');G.sprayWarn=G.time+4}continue}G.busy=true;pl.cash-=75;fadeTo(1,350);const car=pl.car;setTimeout(()=>{car.hp=maxHp(car);if(car._crumple)car._crumple.repairRequested=true;car.fire=0;car.dead=false;clearWanted();{const nc=pick2(car.t.colors||[0xffffff]);car.color=nc;car.v.body.material=paintMat(nc)}fadeTo(0,350);G.busy=false;toast('Resprayed & repaired — heat cleared');G.hudDirty=true;for(const c of cars)if(c.mode==='cop')c.parkedCop=false},500)}}}
+  // Pay 'n' Spray service is handled inside its dedicated storefront.
   updateMission(dt);
   // giver markers
   for(const q of givers)if(q.g.visible){q.d.rotation.y+=dt*2;q.d.position.y=2.4+Math.sin(G.time*3)*.2}
