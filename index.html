@@ -1686,11 +1686,68 @@ function bigMapProps(){
 }
 // AIRFIELD_CLEAR_V1: nothing grows or stands on the airfield (trees, lamps) so planes can land
 {const clearOf=fn=>function(x,z){if(airportMask(x,z)>.02)return;return fn.apply(this,arguments)};palm=clearOf(palm);oak=clearOf(oak);pine=clearOf(pine);rock=clearOf(rock);if(typeof lamp==='function')lamp=clearOf(lamp)}
+function buildLuxuryMarina(){
+ // CALUSA COVE YACHT CLUB: a purpose-built marina on the western shore of Harbor Island.
+ const cx=1835,cz=-1050,landY=Math.max(.25,heightAt(cx,cz));
+ const wood=[.43,.28,.17],dark=[.16,.19,.21],cream=[.88,.83,.7],glass=[.18,.42,.5];
+ // Waterfront clubhouse with a covered terrace and a prominent yacht-club sign.
+ bakeG('plain',GEO.box,cx,landY+2.2,cz,0,34,4.4,23,[.83,.78,.67]);
+ bakeG('plain',GEO.box,cx,landY+4.6,cz,0,36,.65,25,[.24,.31,.34]);
+ bakeG('plain',GEO.box,cx,landY+2.5,cz-11.7,0,28,3.2,.35,glass);
+ bakeG('plain',GEO.box,cx,landY+5.1,cz,0,38,.45,27,[.19,.24,.27]);
+ for(let x=cx-15;x<=cx+15;x+=5){bakeG('plain',GEO.box,x,landY+2.5,cz+11.5,0,.3,4.5,.3,[.3,.27,.22]);}
+ // Terrace deck, steps and landscaping.
+ bakeG('plain',GEO.box,cx,landY+.18,cz+18,0,40,.35,13,[.65,.54,.39]);
+ for(const x of[cx-22,cx+22]){bakeG('plain',GEO.box,x,landY+.8,cz+18,0,.6,1.2,.6,[.25,.28,.29]);addCol(x-.4,cz+17.6,x+.4,cz+18.4,2,'marina-terrace-post')}
+ const clubSign=new T.Mesh(new T.PlaneGeometry(19,3.1),new T.MeshBasicMaterial({map:signTex('CALUSA COVE YACHT CLUB','#ffe2a4','#102a39','generic'),toneMapped:false}));
+ clubSign.position.set(cx,landY+5.2,cz-12.05);world.add(clubSign);
+ addCol(cx-17,cz-11.5,cx+17,cz+11.5,7,'marina-clubhouse');
+ // Main floating dock and four finger piers, extending into the bay.
+ const dockY=.42,spineX=1635,spineZ=cz;
+ decks.push({x0:spineX-145,x1:spineX+145,z0:spineZ-4,z1:spineZ+4,y:dockY});
+ bakeG('plain',GEO.box,spineX,dockY-.18,spineZ,0,290,.36,8,wood);
+ addCol(spineX-145,spineZ-4,spineX+145,spineZ+4,1.3,'marina-main-dock');
+ for(const z of[cz-43,cz-14,cz+14,cz+43]){
+  decks.push({x0:spineX-55,x1:spineX+5,z0:z-3,z1:z+3,y:dockY});
+  bakeG('plain',GEO.box,spineX-25,dockY-.12,z,0,60,.3,6,[.58,.43,.29]);
+  addCol(spineX-55,z-3,spineX+5,z+3,1.2,'marina-finger-pier');
+  for(const x of[spineX-52,spineX+2])for(const side of[-1,1]){
+   bakeG('plain',GEO.cyl6,x,-1.5,z+side*2.4,0,.22,3.4,.22,[.3,.25,.19]);
+   bakeG('plain',GEO.box,x,.65,z+side*2.4,0,.55,.25,.55,[.18,.18,.18]);
+  }
+ }
+ // Mooring bollards along the dock edges.
+ for(let x=spineX-135;x<=spineX+135;x+=18)for(const side of[-1,1]){
+  bakeG('plain',GEO.cyl6,x,.48,spineZ+side*3.4,0,.16,.5,.16,dark);
+ }
+ // Four moored yachts with hulls, decks, cabins, dark windows and collision volumes.
+ const yachts=[[-178,cz-29,0],[-128,cz+29,1],[-78,cz-29,2],[-28,cz+29,3]];
+ const hulls=[[.91,.93,.9],[.18,.31,.42],[.83,.84,.78],[.72,.72,.68]];
+ for(let i=0;i<yachts.length;i++){
+  const [x,z]=yachts[i],hc=hulls[i];
+  bakeG('plain',GEO.box,x,.9,z,0,17,1.35,4.5,hc);
+  bakeG('plain',GEO.box,x+.4,1.8,z,0,8.5,.65,3.7,[.91,.91,.86]);
+  bakeG('plain',GEO.box,x+1.3,2.55,z,0,5.2,1.25,3.1,[.84,.87,.86]);
+  bakeG('plain',GEO.box,x+1.3,2.65,z-1.58,0,3.7,.65,.08,glass);
+  bakeG('plain',GEO.box,x+1.3,2.65,z+1.58,0,3.7,.65,.08,glass);
+  bakeG('plain',GEO.box,x-5.4,1.65,z,0,2.5,.35,3.5,[.7,.73,.72]);
+  addCol(x-8.7,z-2.4,x+8.7,z+2.4,3.4,'marina-yacht');
+ }
+ // Shoreline promenade, palms and low bollard lights.
+ bakeG('walk',GEO.box,1810,landY+.08,cz+39,0,82,.12,5,[.77,.72,.61]);
+ for(const x of[1780,1810,1840,1870,1900]){
+  bakeG('plain',GEO.cyl6,x,1.6,cz+43,0,.09,3.2,.09,[.17,.19,.2]);
+  bakeG('lamp',GEO.sph,x,3.3,cz+43,0,.3,.3,.3,[1,.82,.57]);
+  addCol(x-.2,cz+42.8,x+.2,cz+43.2,3.6,'marina-light');
+ }
+ for(const x of[1770,1900]){palm(x,cz+53,.9)}
+}
 function keysProps(){
  for(let i=0;i<380;i++){const[cx,cz,rx,rz]=pick(ISL),a=rnd()*TAU,r=Math.sqrt(rnd())*.58,x=cx+Math.cos(a)*r*rx,z=cz+Math.sin(a)*r*rz;if(nearRoad(x,z,10))continue;palm(x,z,rr(.8,1.2))}
  // pastel resort hotels, marina, lighthouse
  for(let i=0;i<22;i++){const[cx,cz,rx,rz]=ISL[i%ISL.length],x=cx+rr(-.4,.4)*rx,z=cz+(rnd()<.5?-1:1)*rr(24,.4*rz);if(nearRoad(x,z,20))continue;const p={x0:x-14,z0:z-9,x1:x+14,z1:z+9,cx:x,cz:z,H:rr(10,22),style:pick(['deco','apt']),mode:'key',col:pick(PAL),cityId:'key'};building(p);if(rnd()<.5)bakeG('water2',GEO.box,x+20,0,z,0,8,.1,12,[.2,.85,.95])}
  const lx=1030,lz=-860;for(let i=0;i<6;i++)bakeG('plain',GEO.cyl,lx,i*5,lz,0,3.4-.28*i,5,3.4-.28*i,i%2?[.95,.95,.95]:[.9,.2,.2]);bakeG('glow',GEO.sph,lx,31,lz,0,1.6,1.6,1.6,[1,.95,.6]);addCol(lx-3.5,lz-3.5,lx+3.5,lz+3.5,30);
+ buildLuxuryMarina();
 }
 function nearRoad(x,z,m){for(const r of roads){if(r.o==='h'){if(x>r.a-m&&x<r.b+m&&Math.abs(z-r.c)<r.hw+m)return true}else if(z>r.a-m&&z<r.b+m&&Math.abs(x-r.c)<r.hw+m)return true}return false}
 function streetProps(){
