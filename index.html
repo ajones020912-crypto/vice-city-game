@@ -1422,7 +1422,7 @@ function defineRoads(){
  }
  roads.length=0;roads.push(...clipped);
  // Short causeway from the mainland to the island's southwest shore.
- addRoad('h',az,ax,bx,18,'hwy');
+ {const ax=820,az=770,bx=930;addRoad('h',az,ax,bx,18,'hwy')} /* same causeway ends as seaD; they were out of scope here and crashed road setup */
 }
 const CR_X=[],CR_Z=[];
 // Harbor Heights street plan: recursive random splits of the island, so every street ends in a T or at the shore
@@ -2339,7 +2339,11 @@ const pgOldDefineRoads=defineRoads;
 defineRoads=function(){
  pgOldDefineRoads();PG.paths=[];PG.homes=[];PG.signs=[];
  // Remove every road segment entering Palmetto Grove.
- const noRoadZones=[{x0:-345,x1:425,z0:445,z1:1115},{x0:200,x1:1440,z0:470,z1:1320}]; // Palmetto Grove and VCIA
+ const noRoadZones=[{x0:-345,x1:425,z0:445,z1:1115}]; // Palmetto Grove
+ // VCIA_MIA_LAYOUT_V1: roads that run into the airport are cut short at its fence; roads entirely inside it are dropped.
+ {const A={x0:200,x1:1440,z0:470,z1:1320},pad=6;for(let i=roads.length-1;i>=0;i--){const r=roads[i],hw=r.hw||r.w/2,lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),[c0,c1,a0,a1]=r.o==='h'?[A.z0,A.z1,A.x0,A.x1]:[A.x0,A.x1,A.z0,A.z1];
+  if(r.c<c0-hw||r.c>c1+hw||hi<a0-hw||lo>a1+hw)continue;const before=a0-hw-pad-lo,after=hi-(a1+hw+pad);
+  if(before<20&&after<20){roads.splice(i,1);continue}if(before>=after){r.a=lo;r.b=a0-hw-pad}else{r.a=a1+hw+pad;r.b=hi}}}
  for(let i=roads.length-1;i>=0;i--){const r=roads[i],lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),crosses=noRoadZones.some(zone=>r.o==='h'?(r.c>=zone.z0-r.hw&&r.c<=zone.z1+r.hw&&hi>=zone.x0-r.hw&&lo<=zone.x1+r.hw):(r.c>=zone.x0-r.hw&&r.c<=zone.x1+r.hw&&hi>=zone.z0-r.hw&&lo<=zone.z1+r.hw));if(crosses)roads.splice(i,1)}
 };
 const pgOldNearRoad=nearRoad;nearRoad=function(x,z,m=0){return pgOldNearRoad(x,z,m)||pgNear(x,z,m)};
