@@ -1296,6 +1296,8 @@ const CITY_CUTS=(()=>{const c={v:{},h:{}},add=(o,k,a,b)=>(c[o][k]=c[o][k]||[]).p
  add('v',120,60,120);add('h',90,90,150);                         // the downtown park
  for(const [x,z] of CITY_SUPER){add('v',x,z-60,z+60);add('h',z,x-60,x+60)}
  for(const [o,k,a] of CITY_MERGE)add(o,k,a,a+60);return c})();
+// BOARDWALK_FIX_V1: where the Vice Beach boardwalk runs (a straight strip along z=-346, the beach lies seaward of it)
+const BOARDWALK={x0:-880,x1:1090,z:-346,land:-326};
 function defineRoads(){
  const xr=[],zr=[];for(let i=-300;i<=300;i+=60)xr.push(i);for(let i=-330;i<=330;i+=60)zr.push(i);
  G.xr=xr;G.zr=zr;
@@ -1641,6 +1643,7 @@ function makeParcels(){
   lot(CR_X[i]+a,CR_Z[j]+7+2.9,CR_X[i+1]-b,CR_Z[j+1]-7-2.9,'low')}
 
 vcReserveMedicalBlock();
+ for(let i=parcels.length-1;i>=0;i--){const q=parcels[i];if(q.x1>BOARDWALK.x0-4&&q.x0<BOARDWALK.x1+4&&q.z0<BOARDWALK.land-2&&q.z1>Math.min(shoreZ(q.x0),shoreZ(q.x1),shoreZ(q.cx))-15)parcels.splice(i,1)} /* BOARDWALK_FIX_V1: keep the boardwalk and the beach between it and the shoreline open */
 }
 const SHOPS=[
  {k:'burger',name:"BENNY'S BURGER SHACK",col:'#ff9a2e',spots:[[-60,-100],[-180,150],[-840,640],[-30,590]]},
@@ -1746,24 +1749,30 @@ function beachProps(){
  for(let x=-1200;x<1600;x+=12+rnd()*10){const z=shoreZ(x)+rr(8,28);if(rnd()<.5)palm(x,z,rr(.8,1.1));if(rnd()<.35){const c=pick([[1,.3,.4],[.2,.7,1],[1,.85,.2],[.3,.9,.6],[1,1,1]]);bakeG('plain',GEO.cyl6,x+3,0,z+3,0,.05,2.4,.05,[.9,.9,.9]);bakeG('plain',GEO.cone,x+3,2.2,z+3,0,1.9,.6,1.9,c);bakeG('plain',GEO.box,x+3.8,.05,z+4.5,0,1.1,.06,2,pick([[1,.4,.5],[.3,.6,1],[1,.9,.3]]))}
   if(rnd()<.04){bakeG('plain',GEO.box,x,0,z,0,2.2,3.2,2.2,[.95,.95,.9]);bakeG('plain',GEO.box,x,3.2,z,0,3,.3,3,[1,.25,.25]);bakeG('plain',GEO.box,x,0,z-1.2,0,.2,4,.2,[.9,.9,.9]);addCol(x-1,z-1,x+1,z+1,3)}}
  // VICE BEACH BOARDWALK: a continuous timber promenade with piers, kiosks, seating and a lit Ferris wheel.
- const bwx0=-880,bwx1=1090,bwz=-346;
- bakeG('plain',GEO.box,(bwx0+bwx1)/2,-.02,bwz,0,bwx1-bwx0,.28,15,[.48,.31,.18]);
- bakeG('plain',GEO.box,(bwx0+bwx1)/2,.14,bwz,0,bwx1-bwx0,.06,14,[.69,.49,.29]);
- // Decorative boardwalk plank seams and edge rails.
- for(let x=bwx0+5;x<bwx1;x+=5)bakeG('plain',GEO.box,x,.19,bwz,0,.055,.025,13,[.32,.2,.12]);
- for(const side of[-1,1]){
-  const rz=bwz+side*7;
-  bakeG('plain',GEO.box,(bwx0+bwx1)/2,.72,rz,0,bwx1-bwx0,.18,.22,[.34,.23,.15]);
-  for(let x=bwx0+8;x<bwx1;x+=16){bakeG('plain',GEO.box,x,.42,rz,0,.22,.85,.22,[.3,.2,.13]);addCol(x-.16,rz-.16,x+.16,rz+.16,1.1,'boardwalk-rail-post')}
-  addCol(bwx0,rz-.18,bwx1,rz+.18,1.05,'boardwalk-rail');
+ const bwx0=BOARDWALK.x0,bwx1=BOARDWALK.x1,bwz=BOARDWALK.z;
+ // BOARDWALK_FIX_V1: the boardwalk is laid in segments with a gap wherever a road still crosses it (the highways)
+ const bwGaps=roads.filter(r=>r.o==='v'&&r.c>bwx0-20&&r.c<bwx1+20&&Math.min(r.a,r.b)<bwz-8&&Math.max(r.a,r.b)>bwz+8).map(r=>[r.c-r.hw-3,r.c+r.hw+3]).sort((a,b)=>a[0]-b[0]);
+ const bwSegs=[];{let s0=bwx0;for(const [g0,g1] of bwGaps){if(g0>s0+4)bwSegs.push([s0,g0]);s0=Math.max(s0,g1)}if(bwx1>s0+4)bwSegs.push([s0,bwx1])}
+ const onBw=(x,half=0)=>bwSegs.some(([a,b])=>x-half>=a&&x+half<=b);
+ for(const [s0,s1] of bwSegs){
+  bakeG('plain',GEO.box,(s0+s1)/2,-.02,bwz,0,s1-s0,.28,15,[.48,.31,.18]);
+  bakeG('plain',GEO.box,(s0+s1)/2,.14,bwz,0,s1-s0,.06,14,[.69,.49,.29]);
+  // Decorative boardwalk plank seams and edge rails.
+  for(let x=s0+5;x<s1;x+=5)bakeG('plain',GEO.box,x,.19,bwz,0,.055,.025,13,[.32,.2,.12]);
+  for(const side of[-1,1]){
+   const rz=bwz+side*7;
+   bakeG('plain',GEO.box,(s0+s1)/2,.72,rz,0,s1-s0,.18,.22,[.34,.23,.15]);
+   for(let x=s0+8;x<s1;x+=16){bakeG('plain',GEO.box,x,.42,rz,0,.22,.85,.22,[.3,.2,.13]);addCol(x-.16,rz-.16,x+.16,rz+.16,1.1,'boardwalk-rail-post')}
+   addCol(s0,rz-.18,s1,rz+.18,1.05,'boardwalk-rail');
+  }
  }
  // Warm globe lamps and ocean-facing benches.
- for(let x=bwx0+22;x<bwx1;x+=44){
+ for(let x=bwx0+22;x<bwx1;x+=44){if(!onBw(x,1))continue;
   bakeG('plain',GEO.cyl6,x,1.8,bwz-5.2,0,.11,3.6,.11,[.16,.16,.17]);
   bakeG('lamp',GEO.sph,x,3.72,bwz-5.2,0,.34,.34,.34,[1,.78,.48]);
   addCol(x-.22,bwz-5.42,x+.22,bwz-4.98,4.2,'boardwalk-lamp');
  }
- for(const x of[-790,-570,-350,-130,90,310,530,930]){
+ for(const x of[-790,-570,-350,-130,90,310,530,930]){if(!onBw(x,2))continue;
   bakeG('plain',GEO.box,x,.58,bwz+3.2,0,3.2,.16,.75,[.48,.27,.13]);
   bakeG('plain',GEO.box,x,.92,bwz+2.82,0,3.2,.55,.12,[.48,.27,.13]);
   for(const dx of[-1.25,1.25])bakeG('plain',GEO.box,x+dx,.3,bwz+3.2,0,.12,.56,.65,[.22,.22,.24]);
@@ -1776,7 +1785,7 @@ function beachProps(){
   [240,'SHELL SHACK',[.2,.62,.48]],[470,'NEON ARCADE',[.35,.28,.78]],
   [930,'ICE CREAM CO.',[.9,.45,.65]]
  ];
- for(const [x,name,col] of kiosks){
+ for(let [x,name,col] of kiosks){for(let k=0;k<6&&!onBw(x,8);k++)x+=12; /* step off a highway gap */if(!onBw(x,8))continue;
   const z=bwz-13,w=name==='NEON ARCADE'?13:10,d=8;
   bakeG('plain',GEO.box,x,1.8,z,0,w,3.6,d,[.86,.78,.62]);
   bakeG('plain',GEO.box,x,3.72,z,0,w+1,.35,d+.7,col);
@@ -2434,6 +2443,14 @@ defineRoads=function(){
  pgOldDefineRoads();PG.paths=[];PG.homes=[];PG.signs=[];
  // Remove every road segment entering Palmetto Grove.
  const noRoadZones=[{x0:-345,x1:425,z0:445,z1:1115}]; // Palmetto Grove
+ // BOARDWALK_FIX_V1: city streets used to run straight across the boardwalk and down to the water; they now end at
+ // its land side (highways carry on, and the boardwalk leaves a gap for them)
+ {const B=BOARDWALK;for(let i=roads.length-1;i>=0;i--){const r=roads[i];if(r.type!=='city'||r.o!=='v'||r.c<B.x0-10||r.c>B.x1+10)continue;const lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b);if(lo>=B.land)continue;
+  if(hi<=B.land+20){roads.splice(i,1);continue}r.a=B.land;r.b=hi}}
+ // ...and no city street runs along the beach strip beside it: those sections are cut out for the boardwalk's length
+ {const B=BOARDWALK,cut0=B.x0-12,cut1=B.x1+12;for(let i=roads.length-1;i>=0;i--){const r=roads[i];if(r.type!=='city'||r.o!=='h'||r.c>=B.land+r.hw||r.c<B.z-140)continue;
+  const lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b);if(hi<=cut0||lo>=cut1)continue;roads.splice(i,1);
+  if(cut0-lo>20)addRoad('h',r.c,lo,cut0,r.w,r.type,r.sig);if(hi-cut1>20)addRoad('h',r.c,cut1,hi,r.w,r.type,r.sig)}}
  // VCIA_MIA_LAYOUT_V1: roads that run into the airport are cut short at its fence; roads entirely inside it are dropped.
  {const A={x0:200,x1:1440,z0:470,z1:1320},pad=6;for(let i=roads.length-1;i>=0;i--){const r=roads[i],hw=r.hw||r.w/2,lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),[c0,c1,a0,a1]=r.o==='h'?[A.z0,A.z1,A.x0,A.x1]:[A.x0,A.x1,A.z0,A.z1];
   if(r.c<c0-hw||r.c>c1+hw||hi<a0-hw||lo>a1+hw)continue;const before=a0-hw-pad-lo,after=hi-(a1+hw+pad);
