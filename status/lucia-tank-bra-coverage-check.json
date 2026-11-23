@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "branch": "main",
+  "neckline": "higher narrower rounded U-neck",
+  "strapWidth": 0.046,
+  "underarmEdgesRaised": true,
+  "coverageSamples": 766,
+  "coveredSamples": 766,
+  "minimumRestPoseBraPanelCoverage": 1,
+  "poseChecks": 6,
+  "braNotRemovedOrHidden": true,
+  "defaultDarkGreyRibbedTankPreserved": true,
+  "bodySkinToneBaseGarmentsAndRigUnchanged": true,
+  "otherCharactersUnchanged": true,
+  "scope": "Coverage samples exclude bra shoulder straps and decorative edging. Rest-pose panel ray checks and finite-pose checks do not guarantee coverage from every camera angle, all-pose clipping, rendered appearance or live deployment."
+}
