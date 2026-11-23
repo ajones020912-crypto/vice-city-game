@@ -1,0 +1,111 @@
+name: Repair Lucia jean shorts installation with diagnostics
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/lucia-jean-shorts-install-repair.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  repair:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [main, lucia-outfits]
+    concurrency:
+      group: lucia-u-neck-${{ matrix.target }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    env:
+      TARGET_BRANCH: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.target }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/lucia-jeans" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+      - name: Run original shorts preparation and checks with leg-aware fit and error capture
+        run: |
+          git fetch origin main
+          git show origin/main:.github/workflows/lucia-textured-jean-shorts.yml > /tmp/lucia-jeans-original.yml
+          python3 <<'PY'
+          import json, os, pathlib, subprocess, traceback
+          model = pathlib.Path('js/reference-characters.js')
+          baseline = model.read_bytes()
+          report = {'passed': False, 'branch': os.environ['TARGET_BRANCH'], 'scope': 'Shorts installation and structural validation only. Does not verify rendered appearance, all-pose clearance or live deployment.'}
+          results = []
+          try:
+              if b'// LUCIA_TEXTURED_JEAN_SHORTS_V1' in baseline:
+                  check = pathlib.Path('status/lucia-textured-jean-shorts-check.json')
+                  if not check.exists() or not json.loads(check.read_text()).get('passed'):
+                      raise RuntimeError('Shorts marker exists without a passing report; refusing duplicate installation')
+                  report.update(passed=True, outcome='already installed with passing structural report', phase='complete')
+              else:
+                  lines = pathlib.Path('/tmp/lucia-jeans-original.yml').read_text().splitlines()
+                  blocks = []
+                  for i, line in enumerate(lines):
+                      if line != '        run: |':
+                          continue
+                      body = []
+                      for item in lines[i+1:]:
+                          if item and not item.startswith('          '):
+                              break
+                          body.append(item[10:] if item else '')
+                      blocks.append('\n'.join(body)+'\n')
+                  if len(blocks) != 3:
+                      raise RuntimeError('Original installer layout changed; expected preparation, validation and publish blocks')
+                  prepare, validate, unused_publish = blocks
+                  old = 'if(!hits.length)continue;const point=hits[0].point.clone().applyMatrix4(inverse),bodyRadius=point.sub(center).dot(radial);'
+                  new = 'const fittingHit=hits.find(hit=>split<=.15||(v.x<0?-1:1)*hit.point.clone().applyMatrix4(inverse).x>=-.002);if(!fittingHit)continue;const point=fittingHit.point.clone().applyMatrix4(inverse),bodyRadius=point.sub(center).dot(radial);'
+                  if prepare.count(old) != 1:
+                      raise RuntimeError('Reviewed radial fitting code changed; refusing ambiguous repair')
+                  prepare = prepare.replace(old, new)
+                  for phase, script in [('prepare', prepare), ('validate', validate)]:
+                      report['phase'] = phase
+                      path = pathlib.Path('/tmp/lucia-jeans-repair-'+phase+'.sh')
+                      path.write_text(script)
+                      run = subprocess.run(['bash', '-e', str(path)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                      log = run.stdout or ''
+                      pathlib.Path('/tmp/lucia-jeans-repair-'+phase+'.log').write_text(log)
+                      results.append({'phase': phase, 'exitCode': run.returncode, 'outputTail': log[-16000:]})
+                      if run.returncode:
+                          raise RuntimeError(phase+' failed with exit code '+str(run.returncode))
+                  check = pathlib.Path('status/lucia-textured-jean-shorts-check.json')
+                  if not check.exists() or not json.loads(check.read_text()).get('passed'):
+                      raise RuntimeError('Installer finished without a passing structural report')
+                  if b'// LUCIA_TEXTURED_JEAN_SHORTS_V1' not in model.read_bytes():
+                      raise RuntimeError('Validated shorts installation marker missing')
+                  report.update(passed=True, phase='complete', outcome='installed and structurally validated', fitRepair='Exclude opposite-leg intersections in the split-thigh region while retaining the original expansion guard', latestBodyAndTankPreservationChecked=True)
+          except Exception as exc:
+              model.write_bytes(baseline)
+              check = pathlib.Path('status/lucia-textured-jean-shorts-check.json')
+              tracked = subprocess.run(['git','ls-files','--error-unmatch',str(check)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+              if tracked:
+                  subprocess.run(['git','restore','--',str(check)], check=True)
+              elif check.exists():
+                  check.unlink()
+              report.update(error=str(exc), traceback=traceback.format_exc()[-12000:], modelRestored=True, outcome='not installed; baseline preserved')
+          report['steps'] = results
+          path = pathlib.Path('status/lucia-jean-shorts-install-repair-check.json')
+          path.parent.mkdir(exist_ok=True)
+          path.write_text(json.dumps(report, indent=2)+'\n')
+          pathlib.Path('/tmp/lucia-jeans-repair-passed').write_text('yes' if report['passed'] else 'no')
+          PY
+      - name: Publish validated shorts or diagnostic report without unvalidated model changes
+        run: |
+          git fetch origin "$TARGET_BRANCH"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/"$TARGET_BRANCH")" || { echo 'Branch changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/lucia-jean-shorts-install-repair-check.json
+          if test "$(cat /tmp/lucia-jeans-repair-passed)" = yes; then
+            git add -- js/reference-characters.js status/lucia-textured-jean-shorts-check.json
+          fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Repair Lucia textured shorts installation or record exact validation failure'
+            git push origin HEAD:"refs/heads/$TARGET_BRANCH"
+          fi
+          test "$(cat /tmp/lucia-jeans-repair-passed)" = yes || { echo 'Shorts not installed; exact error recorded in repair status report.'; exit 1; }
