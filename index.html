@@ -690,7 +690,7 @@ function buildAFB(){
  const C=AFB,box=(x,y,z,sx,sy,sz,col,ry=0,solid=false)=>{bakeG('plain',GEO.box,x,y,z,ry,sx,sy,sz,col);if(solid)addCol(x-sx/2,z-sz/2,x+sx/2,z+sz/2,y+sy)};
  const ASPH=[.24,.25,.26],CON=[.56,.57,.54],WHITE=[.92,.92,.9],YEL=[.95,.78,.2];
  // runway (flat deck so take-offs are smooth)
- const r0=C.cx-460,r1=C.cx+460;decks.push({x0:r0,x1:r1,z0:C.runZ-24,z1:C.runZ+24,y:.32});
+ const r0=C.cx-460,r1=C.cx+460;decks.push({x0:r0,x1:r1,z0:C.runZ-24,z1:C.runZ+24,y:.32});runwayDecks.push({x0:r0,x1:r1,z0:C.runZ-24,z1:C.runZ+24,y:.32});
  // AFB runway, taxiway, connectors and apron all have supporting collision-height decks.
  decks.push({x0:C.cx-350,x1:C.cx+350,z0:C.taxiZ-12,z1:C.taxiZ+12,y:.28});
  decks.push({x0:C.cx-341,x1:C.cx-319,z0:Math.min(C.runZ,C.taxiZ),z1:Math.max(C.runZ,C.taxiZ),y:.27});
@@ -770,9 +770,13 @@ function heightAt(x,z){
  const ix=gx|0,iz=gz|0,fx=gx-ix,fz=gz-iz,i=iz*(TN+1)+ix;
  let h=lerp(lerp(hg[i],hg[i+1],fx),lerp(hg[i+TN+1],hg[i+TN+2],fx),fz);
  for(const d of decks)if(x>d.x0&&x<d.x1&&z>d.z0&&z<d.z1&&h<d.y)h=d.y;
+ // Dedicated runway hitboxes are checked by the same ground-height system used by aircraft and vehicles.
+ for(const d of runwayDecks)if(x>d.x0&&x<d.x1&&z>d.z0&&z<d.z1&&h<d.y)h=d.y;
+ // Dedicated paved-ground hitboxes cover airport taxiways, aprons and ramps.
+ for(const d of airportGroundDecks)if(x>d.x0&&x<d.x1&&z>d.z0&&z<d.z1&&h<d.y)h=d.y;
  return h;
 }
-const decks=[];
+const decks=[],runwayDecks=[],airportGroundDecks=[];
 function bakeTerrain(){
  for(let iz=0;iz<=TN;iz++)for(let ix=0;ix<=TN;ix++)hg[iz*(TN+1)+ix]=rawH(-WS+ix*TS,-WS+iz*TS);
  // carve roads flat (causeways, swamp boardwalks) with soft shoulders
@@ -1675,21 +1679,36 @@ function buildBaseMap(){
  x.fillStyle='rgba(60,60,70,.55)';for(const b of colAll)if(b.h>6&&b.x1-b.x0>6)x.fillRect((b.x0+WS)/MAPPX,(b.z0+WS)/MAPPX,(b.x1-b.x0)/MAPPX,(b.z1-b.z0)/MAPPX);
  for(const r of roads){x.strokeStyle=r.type==='hwy'?'#f2c14e':r.type==='dirt'?'#8a6c42':'#d8d8d8';x.lineWidth=Math.max(1.6,r.w/MAPPX*(r.type==='hwy'?.9:.8));x.beginPath();
   if(r.o==='h'){x.moveTo((r.a+WS)/MAPPX,(r.c+WS)/MAPPX);x.lineTo((r.b+WS)/MAPPX,(r.c+WS)/MAPPX)}else{x.moveTo((r.c+WS)/MAPPX,(r.a+WS)/MAPPX);x.lineTo((r.c+WS)/MAPPX,(r.b+WS)/MAPPX)}x.stroke()}
- // VCIA_SATELLITE_LAYOUT_V2: two runways, looping taxiways, broad aprons and terminal complex.
- {const ax=650,az=820,px=v=>(ax+v+WS)/MAPPX,pz=v=>(az+v+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w/MAPPX,h/MAPPX)};
-  const path=(pts,color,width)=>{x.strokeStyle=color;x.lineWidth=width/MAPPX;x.lineCap='round';x.lineJoin='round';x.beginPath();pts.forEach((p,i)=>i?x.lineTo(px(p[0]),pz(p[1])):x.moveTo(px(p[0]),pz(p[1])));x.stroke()};
-  x.save();rect(0,0,820,580,'#a4a8a5');rect(0,0,790,550,'#858b89');
-  rect(0,-220,760,56,'#c9cbc5');rect(0,-150,690,24,'#b8bcb7');path([[-350,-220],[350,-220]],'#e5e6df',2);
-  for(let xx=-310;xx<=310;xx+=48)rect(xx,-220,22,7,'#969b98');
-  path([[-340,245],[310,-80]],'#c9cbc5',56);path([[-340,245],[310,-80]],'#e7e7df',2.2);
-  for(let t=0;t<7;t++){path([[-360+t*3,222+t*1.5],[-347+t*3,248+t*1.5]],'#e7e7df',2);path([[300+t*3,-100+t*1.5],[313+t*3,-74+t*1.5]],'#e7e7df',2)}
-  path([[-360,-185],[-405,-150],[-405,65],[-350,115],[-230,130]],'#b7bbb6',22);path([[360,-185],[405,-145],[405,95],[350,145],[245,150]],'#b7bbb6',22);
-  path([[-220,-112],[-170,-70],[-120,-35],[120,-35],[180,-75],[250,-125]],'#b7bbb6',18);path([[-255,170],[-190,115],[-120,65],[-40,28],[80,12],[205,35],[300,90]],'#b7bbb6',18);
-  rect(210,165,250,205,'#aeb3af');rect(320,95,118,90,'#aeb3af');rect(225,150,118,75,'#65777a');rect(225,108,145,18,'#899594');
-  rect(300,220,180,92,'#747e7c');rect(110,210,90,72,'#969d99');for(let zz=115;zz<=195;zz+=18)path([[155,zz],[205,zz]],'#e1e2d9',2);
-  rect(-260,-70,115,80,'#929a98');rect(-260,-70,72,38,'#778381');rect(-120,185,120,74,'#9ba19d');rect(-115,185,90,46,'#75817e');rect(35,250,110,55,'#8f9692');rect(365,-5,65,120,'#8e9693');
-  path([[-430,285],[-380,315],[-210,325],[0,315],[220,320],[430,270]],'#c4c7c0',7);path([[-420,-290],[-300,-310],[0,-315],[300,-300],[420,-260]],'#c4c7c0',7);
-  x.strokeStyle='#777f77';x.lineWidth=1.5/MAPPX;x.strokeRect(px(-410),pz(-290),820/MAPPX,580/MAPPX);x.restore();
+ // VCIA_SATELLITE_LAYOUT_V3: minimap drawn from the current expanded airport geometry.
+ {const ax=650,az=820,sc=1.5,px=v=>(ax+v*sc+WS)/MAPPX,pz=v=>(az+v*sc+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w*sc/MAPPX,h*sc/MAPPX)};
+  const path=(pts,color,width)=>{x.strokeStyle=color;x.lineWidth=width*sc/MAPPX;x.lineCap='round';x.lineJoin='round';x.beginPath();pts.forEach((p,i)=>i?x.lineTo(px(p[0]),pz(p[1])):x.moveTo(px(p[0]),pz(p[1])));x.stroke()};
+  x.save();
+  // Asphalt airport field: near-black pavement, with the runway and taxiways clearly separated.
+  rect(60,0,720,570,'#252a2c');
+  // Main runway remains the darkest, widest paved strip with bright edge markings.
+  rect(0,-220,760,56,'#171b1d');
+  path([[-374,-249],[374,-249]],'#e9e8dc',1.8);path([[-374,-191],[374,-191]],'#e9e8dc',1.8);
+  path([[-330,-150],[330,-150]],'#080b0d',32);
+  path([[-330,-150],[330,-150]],'#e2bd55',1.7);
+  // Parallel taxiway and runway connectors: wider charcoal lanes, yellow centerlines, pale edges.
+  path([[-374,-150],[374,-150]],'#111719',22);
+  path([[-374,-150],[374,-150]],'#e4c45f',1.8);
+  path([[-374,-164],[374,-164]],'#d9dedb',.9);path([[-374,-136],[374,-136]],'#d9dedb',.9);
+  for(const xx of[-330,330]){
+   path([[xx,-235],[xx,-85]],'#111719',30);
+   path([[xx,-235],[xx,-85]],'#e4c45f',1.7);
+  }
+  // Dark asphalt aprons with visible taxi lead-ins.
+  rect(-125,94,190,84,'#383e40');rect(200,112,120,151,'#383e40');rect(90,62,44,55,'#383e40');
+  path([[-125,63],[-125,94]],'#111719',30);path([[-125,63],[-125,94]],'#e4c45f',1.7);
+  for(const xx of[-190,-135,-80]){path([[xx,91],[xx,112]],'#111719',18);path([[xx,91],[xx,112]],'#e4c45f',1.5);}
+  rect(-153,158,270,104,'#34434a');rect(-153,105,258,2,'#315e70');
+  rect(-330,155,80,46,'#34434a');rect(24,155,80,46,'#34434a');
+  for(const xx of[-255,-185,-115,-45]){path([[xx,102],[xx,28]],'#315e70',8);rect(xx,18,15,17,'#34434a');}
+  path([[-420,192],[420,192]],'#454a4d',9);rect(-320,220,170,80,'#454a4d');
+  for(let xx=-400;xx<=-240;xx+=18)path([[xx,181],[xx,259]],'#e9e8dc',.7);
+  rect(205,140,108,86,'#34434a');rect(13,154,17,15,'#315e70');rect(82,155,35,20,'#b5b8b2');
+  x.strokeStyle='#777f77';x.lineWidth=1.5/MAPPX;x.strokeRect(px(-410),pz(-290),820*sc/MAPPX,580*sc/MAPPX);x.restore();
  }
  // LEONIDA_WEST_REGIONAL_AIRPORT_SATELLITE_V1
  {const ax=4900,az=2800,px=v=>(ax+v+WS)/MAPPX,pz=v=>(az+v+WS)/MAPPX,rect=(xx,zz,w,h,color)=>{x.fillStyle=color;x.fillRect(px(xx-w/2),pz(zz-h/2),w/MAPPX,h/MAPPX)};x.save();rect(0,0,900,620,'#53694a');rect(0,-45,560,48,'#343b3d');rect(0,35,470,22,'#454b4b');x.strokeStyle='#e3e4dc';x.lineWidth=1.2;x.setLineDash([5,4]);x.beginPath();x.moveTo(px(-245),pz(-45));x.lineTo(px(245),pz(-45));x.stroke();x.setLineDash([]);rect(-125,110,180,100,'#898d87');rect(195,125,125,105,'#858b85');rect(-310,220,175,90,'#454b4b');rect(0,155,112,44,'#46545a');rect(185,115,100,72,'#59645f');rect(10,155,20,18,'#68777a');x.strokeStyle='#9ba184';x.lineWidth=1;x.strokeRect(px(-430),pz(-285),860/MAPPX,570/MAPPX);x.restore();}
@@ -1865,7 +1884,18 @@ function buildAirport(){
  // Shortened airport apron shifted east so its western edge no longer spills into downtown.
  decks.push({x0:cx-450,x1:cx+550,z0:cz-400,z1:cz+400,y:ground});
  // Raised collision-height support for the runway and main taxiway.
- decks.push({x0:cx-570,x1:cx+570,z0:cz-262,z1:cz-178,y:ground+.41});
+ // Main runway is centered at local z=-220 and scaled 1.5; match the actual pavement footprint.
+ runwayDecks.push({x0:cx-570,x1:cx+570,z0:cz-372,z1:cz-288,y:ground+.41});
+ decks.push({x0:cx-570,x1:cx+570,z0:cz-372,z1:cz-288,y:ground+.41});
+ // Paved airport ground: parallel taxiway, three runway connectors, and both terminal aprons.
+ airportGroundDecks.push({x0:cx-517.5,x1:cx+517.5,z0:cz-243,z1:cz-207,y:ground+.32});
+ // Taxiway connectors at local x=-330 and +330, plus the broad terminal-side apron pads.
+ for(const x of[cx-495,cx,cx+495])airportGroundDecks.push({x0:x-18,x1:x+18,z0:cz-240,z1:cz-15,y:ground+.30});
+ airportGroundDecks.push({x0:cx-330,x1:cx-45,z0:cz+78,z1:cz+204,y:ground+.22});
+ airportGroundDecks.push({x0:cx+210,x1:cx+390,z0:cz+54.75,z1:cz+281.25,y:ground+.22});
+ airportGroundDecks.push({x0:cx-427.5,x1:cx-172.5,z0:cz+258,z1:cz+342,y:ground+.30});
+ airportGroundDecks.push({x0:cx-450,x1:cx+550,z0:cz-400,z1:cz+400,y:ground+.02});
+
  decks.push({x0:cx-517.5,x1:cx+517.5,z0:cz-237,z1:cz-213,y:ground+.40});
  decks.push({x0:cx-517.5,x1:cx+517.5,z0:cz-262.5,z1:cz-37.5,y:ground+.40});
  decks.push({x0:cx-375,x1:cx+375,z0:cz-103.5,z1:cz-31.5,y:ground+.41});
@@ -1874,14 +1904,15 @@ function buildAirport(){
  decks.push({x0:cx-285,x1:cx-142.5,z0:cz+69,z1:cz+195,y:ground+.18});
  decks.push({x0:cx+120,x1:cx+280,z0:cz+91.5,z1:cz+195,y:ground+.18});
  const mat=(color,roughness=.9)=>new T.MeshStandardMaterial({color,roughness});
- const asphalt=mat(0x454a4d),concrete=mat(0xb5b8b2),grass=mat(0x68765a),white=mat(0xe9e8dc),yellow=mat(0xe5bd42),metal=mat(0x64747a),roof=mat(0x34434a),glass=mat(0x315e70,.28);
- asphalt.map=makeNoiseTex(256,120,30,[1,1.01,1.02],8);
- concrete.map=makeNoiseTex(256,205,18,[1,1,.98],6);
+ const asphalt=mat(0x24282b),concrete=mat(0x292e31),grass=mat(0x68765a),white=mat(0xe9e8dc),yellow=mat(0xe5bd42),metal=mat(0x64747a),roof=mat(0x34434a),glass=mat(0x315e70,.28);
+ asphalt.map=makeNoiseTex(256,76,22,[1,1.01,1.02],8);
+ concrete.map=makeNoiseTex(256,82,18,[1,1,.98],6);
  const blueLight=new T.MeshBasicMaterial({color:0x668edb}),warmLight=new T.MeshBasicMaterial({color:0xffe2aa});
  const batches=new Map();
  const box=(w,h,d,m,x,y,z,solid=false)=>{w*=SCALE;d*=SCALE;x*=SCALE;z*=SCALE;const lift=m===asphalt?.22:0;if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,cx+x,ground+y+lift,cz+z]);if(solid)addCol(cx+x-w/2,cz+z-d/2,cx+x+w/2,cz+z+d/2,ground+y+lift+h/2);};
  const paint=(w,d,m,x,z)=>box(w,.018,d,m,x,.455,z);
- box(720,.4,570,grass,60,-.21,0);
+ // Entire VCIA airfield apron/ground is asphalt, not grass.
+ box(720,.4,570,asphalt,60,-.21,0);
  box(760,.18,56,asphalt,0,.10,-220);
  for(const z of [-249,-191])paint(748,.35,white,0,z);
  for(let x=-330;x<=330;x+=30)paint(13,.8,white,x,-220);
@@ -1893,10 +1924,10 @@ function buildAirport(){
  box(690,.16,24,asphalt,0,.10,-150);
  for(const x of [-330,330]){box(24,.16,150,asphalt,x,.10,-160);paint(.35,150,yellow,x,-160);}
  paint(680,.35,yellow,0,-150);
- box(190,.16,84,concrete,-125,.10,94);
+ box(190,.16,84,asphalt,-125,.10,94);
  box(24,.16,65,asphalt,-125,.10,63);paint(.35,65,yellow,-125,63);
- box(120,.16,151,concrete,200,.10,112);
- box(44,.16,55,concrete,90,.10,62);
+ box(120,.16,151,asphalt,200,.10,112);
+ box(44,.16,55,asphalt,90,.10,62);
  for(const x of [-190,-135,-80]){paint(.35,47,yellow,x,91);paint(20,.35,yellow,x,112);}
  for(let x=-240;x<=240;x+=24)for(const z of [-71,-19])box(.35,.18,.35,warmLight,x,.34,z);
  for(let x=-210;x<=210;x+=30)for(const z of [21,49])box(.3,.18,.3,blueLight,x,.32,z);
@@ -1955,7 +1986,7 @@ function buildAirport(){
  }
  // Accessible spaces and pedestrian walkway near the terminal-side entrance
  paint(18,.55,yellow,-245,184);paint(18,.55,yellow,-245,256);
- box(22,.12,5,concrete,-225,.10,220);
+ box(22,.12,5,asphalt,-225,.10,220);
 
  box(38,.16,35,asphalt,-78,.10,176);
  for(let x=-200;x<=-110;x+=10)paint(.16,9,white,x,182);
@@ -1966,7 +1997,7 @@ function buildAirport(){
  box(.3,5,.3,metal,13,30.7,154);
  box(4,.4,.8,warmLight,13,33.3,154);
  const hx=205,hz=140;
- box(108,.16,86,concrete,hx,.10,hz);
+ box(108,.16,86,asphalt,hx,.10,hz);
  box(108,17,2,metal,hx,8.7,hz+43,true);
  for(const side of [-1,1]){box(2,17,86,metal,hx+side*54,8.7,hz,true);box(26,17,2,metal,hx+side*41,8.7,hz-43,true);}
  box(56,3,2,metal,hx,15.7,hz-43,true);
@@ -1989,8 +2020,13 @@ function buildWestAirport(){
  const SCALE=1.35,cx=4900,cz=2800,ground=heightAt(cx,cz)+.65;
  // Collision-height support for the full LWRA grounds and each paved aircraft surface.
  decks.push({x0:cx-470,x1:cx+470,z0:cz-340,z1:cz+340,y:ground});
+ runwayDecks.push({x0:cx-290.25,x1:cx+290.25,z0:cz-92.475,z1:cz-27.675,y:ground+.41});
  decks.push({x0:cx-290.25,x1:cx+290.25,z0:cz-92.475,z1:cz-27.675,y:ground+.41});
  decks.push({x0:cx-263.25,x1:cx+263.25,z0:cz+32.175,z1:cz+61.875,y:ground+.40});
+ airportGroundDecks.push({x0:cx-263.25,x1:cx+263.25,z0:cz+32.4,z1:cz+62.1,y:ground+.32});
+ airportGroundDecks.push({x0:cx-222.75,x1:cx-195.75,z0:cz-60.75,z1:cz+47.25,y:ground+.30});
+ airportGroundDecks.push({x0:cx-249.75,x1:cx-7.5,z0:cz+70.875,z1:cz+205.875,y:ground+.22});
+ airportGroundDecks.push({x0:cx+33.75,x1:cx+222.75,z0:cz+14.85,z1:cz+155.25,y:ground+.22});
  for(const x of[cx-209.25,cx+209.25])decks.push({x0:x-13.5,x1:x+13.5,z0:cz-6.75,z1:cz+101.25,y:ground+.40});
  decks.push({x0:cx-249.75,x1:cx-7.5,z0:cz+70.875,z1:cz+205.875,y:ground+.18});
  decks.push({x0:cx+33.75,x1:cx+222.75,z0:cz+14.85,z1:cz+155.25,y:ground+.18});
@@ -4478,21 +4514,18 @@ function bustPlayer(){if(G.busted||!pl.alive)return;G.busted=true;pl.alive=false
 // ================= HUD / MAPS =================
 const mini=$('#minic').getContext('2d'),mapx=$('#mapc').getContext('2d');
 
-const STORE_MAP_ICONS={burger:'🍔',ammu:'🔫',clothes:'👕',safe:'🏠'};
-const MAP_EMOJI_FONT='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
-function mapEmoji(ctx,icon,x,y,size=17){
- ctx.save();ctx.shadowColor='#0008';ctx.shadowBlur=3;ctx.fillStyle='#091b2bef';ctx.strokeStyle='#d5f6ff77';ctx.lineWidth=1;
- ctx.beginPath();ctx.arc(x,y,size*.64,0,TAU);ctx.fill();ctx.stroke();ctx.shadowBlur=0;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=size+'px '+MAP_EMOJI_FONT;ctx.fillStyle='#fff';ctx.fillText(icon,x,y+1);ctx.restore();
-}
+const STORE_MAP_ICONS={burger:'food',ammu:'shop',clothes:'clothing',safe:'home'};
+function drawMapGlyph(ctx,key,x,y,size=18){const keys={'🍔':'food','👕':'clothing','🏠':'home','🛒':'shop','⛽':'fuel','🔧':'garage','🚘':'car','🏥':'hospital','🚓':'police','🏷':'property','🏁':'race','⚓':'boat','⛵':'boat','🚁':'aircraft','✈':'airport','📍':'waypoint'};key=keys[key]||key;const r=size*.43;ctx.save();ctx.translate(x,y);ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=Math.max(1.35,size*.095);ctx.strokeStyle='#f4fbff';ctx.fillStyle='#f4fbff';const line=p=>{ctx.beginPath();ctx.moveTo(p[0][0],p[0][1]);for(let i=1;i<p.length;i++)ctx.lineTo(p[i][0],p[i][1]);ctx.stroke()};const circle=(a,b,c,f=false)=>{ctx.beginPath();ctx.arc(a,b,c,0,TAU);f?ctx.fill():ctx.stroke()};switch(key){case'food':line([[-r,-r],[ -r,r]]);line([[r*.25,-r],[r*.25,r]]);line([[r*.25,-r],[r*.65,-r*.55],[r*.65,0],[r*.25,0]]);break;case'clothing':ctx.beginPath();ctx.moveTo(-r,-r*.45);ctx.lineTo(-r*.45,-r);ctx.lineTo(0,-r*.65);ctx.lineTo(r*.45,-r);ctx.lineTo(r,-r*.45);ctx.lineTo(r*.65,-r*.05);ctx.lineTo(r*.48,-r*.25);ctx.lineTo(r*.48,r);ctx.lineTo(-r*.48,r);ctx.closePath();ctx.stroke();break;case'home':ctx.beginPath();ctx.moveTo(-r,-r*.05);ctx.lineTo(0,-r);ctx.lineTo(r,-r*.05);ctx.lineTo(r,r);ctx.lineTo(-r,r);ctx.closePath();ctx.stroke();ctx.strokeRect(-r*.28,r*.25,r*.56,r*.75);break;case'car':case'garage':ctx.strokeRect(-r,-r*.45,r*2,r*1.15);ctx.beginPath();ctx.moveTo(-r*.7,-r*.45);ctx.lineTo(-r*.4,-r*.85);ctx.lineTo(r*.4,-r*.85);ctx.lineTo(r*.7,-r*.45);ctx.stroke();circle(-r*.55,r*.8,r*.17);circle(r*.55,r*.8,r*.17);break;case'fuel':ctx.strokeRect(-r*.7,-r,r*.95,r*1.8);ctx.strokeRect(-r*.52,-r*.72,r*.58,r*.45);line([[r*.25,-r*.65],[r*.65,-r*.35],[r*.65,r*.55],[r*.4,r*.72]]);break;case'hospital':ctx.strokeRect(-r,-r,r*2,r*2);ctx.fillRect(-r*.14,-r*.68,r*.28,r*1.36);ctx.fillRect(-r*.68,-r*.14,r*1.36,r*.28);break;case'police':circle(0,0,r);line([[-r*.45,-r*.05],[0,-r*.55],[r*.45,-r*.05],[r*.3,r*.45],[-r*.3,r*.45],[-r*.45,-r*.05]]);break;case'airport':case'aircraft':line([[-r,-r*.12],[r,-r*.12]]);line([[0,-r],[0,r]]);line([[-r*.8,-r*.12],[-r*.18,r*.18],[0,r*.72],[r*.18,r*.18],[r*.8,-r*.12]]);break;case'race':line([[-r,-r],[r,-r]]);line([[-r,-r],[-r,r]]);ctx.fillStyle='#f4fbff';for(let i=0;i<3;i++)for(let j=0;j<2;j++)if((i+j)%2===0)ctx.fillRect(-r+i*r*.55,-r+j*r*.55,r*.55,r*.55);break;case'boat':line([[-r,-r*.2],[r,-r*.2],[r*.55,r*.55],[-r*.55,r*.55],[-r,-r*.2]]);line([[0,-r],[0,-r*.2]]);break;case'waypoint':circle(0,-r*.25,r*.5);ctx.beginPath();ctx.moveTo(-r*.35,r*.1);ctx.lineTo(0,r);ctx.lineTo(r*.35,r*.1);ctx.stroke();break;case'shop':ctx.strokeRect(-r*.85,-r*.45,r*1.7,r*1.35);line([[-r,-r*.45],[-r*.7,-r],[r*.7,-r],[r,-r*.45]]);break;default:circle(0,0,r*.28,true);break;}ctx.restore();}
+function mapEmoji(ctx,icon,x,y,size=17){ctx.save();ctx.shadowColor='#0009';ctx.shadowBlur=3;ctx.fillStyle='#091b2bef';ctx.strokeStyle='#d5f6ff99';ctx.lineWidth=1;ctx.beginPath();ctx.arc(x,y,size*.64,0,TAU);ctx.fill();ctx.stroke();ctx.shadowBlur=0;drawMapGlyph(ctx,icon,x,y,size*.85);ctx.restore();}
 
 // world marker + auto-clear on arrival
 function setWaypoint(p){G.waypoint=p?{x:p.x,z:p.z}:null;if(!setWaypoint.beam){const m=new T.Mesh(new T.CylinderGeometry(1.6,1.6,140,16,1,true),new T.MeshBasicMaterial({color:0xc77dff,transparent:true,opacity:.35,depthWrite:false,side:T.DoubleSide}));m.renderOrder=3;m.visible=false;world.add(m);setWaypoint.beam=m}
  const b=setWaypoint.beam;b.visible=!!p;if(p)b.position.set(p.x,heightAt(p.x,p.z)+70,p.z)}
 function updateWaypoint(){const w=G.waypoint;if(!w)return;const b=setWaypoint.beam;if(b)b.material.opacity=.25+.12*Math.sin(G.time*3);
  if(Math.hypot(pl.x-w.x,pl.z-w.z)<20){setWaypoint(null);toast('📍 Waypoint reached',1400);audio.beep&&audio.beep(880)}}
-function blips(){const b=[];if(G.waypoint)b.push({x:G.waypoint.x,z:G.waypoint.z,c:'#c77dff',s:'📍',icon:true,edge:true,big:true,label:'Waypoint'});for(const m of(G.mapMarks||[]))b.push({x:m.x,z:m.z,c:'#ff83bd',s:'📍',icon:true,label:m.name||'Waypoint'});for(const q of givers)if(q.g.visible)b.push({x:q.m.giver[0],z:q.m.giver[1],c:'#ffe17a',s:'◆'});
- for(const d of doors)b.push({x:d.x,z:d.z,c:d.col,s:STORE_MAP_ICONS[d.kind]||'🛒',icon:true,label:d.name,kind:d.kind});for(const g of G.spray)b.push({x:g.x,z:g.z,c:'#b36bff',s:'🔧',icon:true,label:"Pay 'n' Spray"});
- b.push({x:HOSP.x,z:HOSP.z,c:'#ff5d6e',s:'🏥',icon:true,label:'Hospital'},{x:PD.x,z:PD.z,c:'#5aa0ff',s:'🚓',icon:true,label:'Police station'});extraBlips(b);
+function blips(){const b=[];if(G.waypoint)b.push({x:G.waypoint.x,z:G.waypoint.z,c:'#c77dff',s:'waypoint',icon:true,edge:true,big:true,label:'Waypoint'});for(const m of(G.mapMarks||[]))b.push({x:m.x,z:m.z,c:'#ff83bd',s:'waypoint',icon:true,label:m.name||'Waypoint'});for(const q of givers)if(q.g.visible)b.push({x:q.m.giver[0],z:q.m.giver[1],c:'#ffe17a',s:'◆'});
+ for(const d of doors)b.push({x:d.x,z:d.z,c:d.col,s:STORE_MAP_ICONS[d.kind]||'🛒',icon:true,label:d.name,kind:d.kind});for(const g of G.spray)b.push({x:g.x,z:g.z,c:'#b36bff',s:'garage',icon:true,label:"Pay 'n' Spray"});
+ b.push({x:HOSP.x,z:HOSP.z,c:'#ff5d6e',s:'hospital',icon:true,label:'Hospital'},{x:PD.x,z:PD.z,c:'#5aa0ff',s:'police',icon:true,label:'Police station'});extraBlips(b);
  const s=MS.steps[MS.i];if(MS.active&&s){if(s.type==='kill'&&MS.target&&!MS.target.dead)b.push({x:MS.target.x,z:MS.target.z,c:'#ff4d4d',s:'☠',big:1});else if((s.type==='getcar'||s.type==='inboat')&&MS.car&&!MS.car.dead)b.push({x:MS.car.x,z:MS.car.z,c:'#ffe17a',s:'●',big:1});else if(s.pos)b.push({x:s.pos[0],z:s.pos[1],c:'#ff4f9a',s:'●',big:1,edge:1})}
  if(pl.wanted>0){for(const c of cars)if(c.mode==='cop'&&!c.dead)b.push({x:c.x,z:c.z,c:Math.floor(G.time*3)%2?'#ff3b3b':'#3b6bff',s:'●',small:1});for(const p of cops)if(p.active&&!p.dead)b.push({x:p.x,z:p.z,c:'#7aa0ff',s:'•',small:1})}
  return b}
@@ -4540,7 +4573,7 @@ function drawMini(){
  if(pl.wanted>0&&G.lastSeen){const q=project(G.lastSeen.x,G.lastSeen.z);ctx.fillStyle='#f16e7c27';ctx.strokeStyle='#fa879477';ctx.lineWidth=1;ctx.beginPath();ctx.arc(q[0],q[1],70*scale,0,TAU);ctx.fill();ctx.stroke()}
  let target=G.work?G.work.target:null;if(!target&&!MS.active&&G.waypoint)target=G.waypoint;if(!target&&MS.active){const step=MS.steps&&MS.steps[MS.i];if(step&&step.pos)target={x:step.pos[0],z:step.pos[1]};else if(MS.car)target=MS.car;else if(MS.target)target=MS.target}
  if(target){const q=project(target.x,target.z),dx=q[0]-cx,dy=q[1]-cy,k=Math.min(1,(cx-15)/Math.max(.01,Math.abs(dx)),((bottom-top)/2-14)/Math.max(.01,Math.abs(dy)));ctx.strokeStyle=G.work?'#6ee8f5aa':'#ffd978aa';ctx.lineWidth=1.5;ctx.setLineDash([3,5]);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+dx*k,cy+dy*k);ctx.stroke();ctx.setLineDash([])}
- const storeIcons={burger:'🍔',ammu:'🔫',clothes:'👕',safe:'🏠'},emojiFont='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',items=[];
+ const storeIcons={burger:'food',ammu:'shop',clothes:'clothing',safe:'home'},emojiFont='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',items=[];
  for(const b of blips()){
   if(!Number.isFinite(b.x)||!Number.isFinite(b.z))continue;let icon=storeIcons[b.kind]||String(b.s||'•');
   if((icon==='$'||icon==='✚')&&typeof doors!=='undefined'){const door=doors.find(d=>Math.hypot(d.x-b.x,d.z-b.z)<1);if(door)icon=storeIcons[door.kind]||'🛒'}
@@ -4552,7 +4585,7 @@ function drawMini(){
  items.sort((a,b)=>b.priority-a.priority||a.distance-b.distance);const shown=[];
  for(const item of items){if(item.emoji){const close=shown.find(p=>p.emoji&&Math.hypot(p.q[0]-item.q[0],p.q[1]-item.q[1])<22);if(close){close.count++;continue}}shown.push(item);if(shown.length>=28)break}
  for(const p of shown){const[x,y]=p.q;ctx.save();ctx.translate(x,y);ctx.shadowColor='#0009';ctx.shadowBlur=3;
-  if(p.emoji){ctx.fillStyle='#101d2df2';ctx.strokeStyle='#b6cbdc99';ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,0,10,0,TAU);ctx.fill();ctx.stroke();ctx.shadowBlur=0;ctx.font='15px '+emojiFont;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff';ctx.fillText(p.icon,0,1);if(p.count>1){ctx.fillStyle='#f2f7fa';ctx.beginPath();ctx.arc(8,-8,5.5,0,TAU);ctx.fill();ctx.fillStyle='#112438';ctx.font='bold 8px Arial';ctx.fillText(String(p.count),8,-7.5)}}
+  if(p.emoji){ctx.fillStyle='#101d2df2';ctx.strokeStyle='#b6cbdc99';ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,0,10,0,TAU);ctx.fill();ctx.stroke();ctx.shadowBlur=0;drawMapGlyph(ctx,p.icon,0,0,15);if(p.count>1){ctx.fillStyle='#f2f7fa';ctx.beginPath();ctx.arc(8,-8,5.5,0,TAU);ctx.fill();ctx.fillStyle='#112438';ctx.font='bold 8px Arial';ctx.fillText(String(p.count),8,-7.5)}}
   else if(p.priority===3){ctx.fillStyle=p.b.c||'#ffdc86';ctx.strokeStyle='#182536';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(6,0);ctx.lineTo(0,7);ctx.lineTo(-6,0);ctx.closePath();ctx.fill();ctx.stroke()}
   else{ctx.fillStyle=p.b.c||'#fff';ctx.strokeStyle='#152433';ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(0,0,p.b.small?2.5:3.5,0,TAU);ctx.fill();ctx.stroke()}ctx.restore();
  }
@@ -5370,15 +5403,15 @@ function carPrompt(){const c=pl.car;if(!c||c.dead)return'';
  if(G.exp&&hyp(c.x,c.z,EXPORT.x,EXPORT.z)<14)return c.tk===G.exp.tk?'Stop in the marker to export':'The dock wants a '+CAR_TYPES[G.exp.tk].name;
  if(c.tk==='taxi')return'[R] Start taxi job';return''}
 function extraBlips(b){
- if(airport)b.push({x:airport.x,z:airport.z,c:'#ffd23a',s:'✈',icon:true,label:'Vice City International Airport'});
- for(const s of GAS)b.push({x:s.x,z:s.z,c:'#5dff8a',s:'⛽',icon:true,label:'Fuel station'});
- b.push({x:DEALER.x,z:DEALER.z,c:'#ffd23a',s:'🚘',icon:true,label:'Vehicle dealership'});
- for(const p of PROPS)b.push({x:p.x,z:p.z,c:pl.props[p.id]?'#59ffa0':'#cccccc',s:pl.props[p.id]?'🏠':'🏷',small:!pl.props[p.id]});
- if(!SJ.kind)for(const r of RACES)b.push({x:r.start[0],z:r.start[1],c:'#ffffff',s:'🏁',small:true});
- if(G.exp)b.push({x:EXPORT.x,z:EXPORT.z,c:'#ff9a2e',s:'⚓'});
- for(const c of cars)if(c.t.boat&&c.gid&&!c.dead)b.push({x:c.x,z:c.z,c:'#2ec4e8',s:'⛵',small:true});
+ if(airport)b.push({x:airport.x,z:airport.z,c:'#ffd23a',s:'airport',icon:true,label:'Vice City International Airport'});
+ for(const s of GAS)b.push({x:s.x,z:s.z,c:'#5dff8a',s:'fuel',icon:true,label:'Fuel station'});
+ b.push({x:DEALER.x,z:DEALER.z,c:'#ffd23a',s:'car',icon:true,label:'Vehicle dealership'});
+ for(const p of PROPS)b.push({x:p.x,z:p.z,c:pl.props[p.id]?'#59ffa0':'#cccccc',s:pl.props[p.id]?'home':'property',small:!pl.props[p.id]});
+ if(!SJ.kind)for(const r of RACES)b.push({x:r.start[0],z:r.start[1],c:'#ffffff',s:'race',icon:true,small:true});
+ if(G.exp)b.push({x:EXPORT.x,z:EXPORT.z,c:'#ff9a2e',s:'boat',icon:true});
+ for(const c of cars)if(c.t.boat&&c.gid&&!c.dead)b.push({x:c.x,z:c.z,c:'#2ec4e8',s:'boat',icon:true,small:true});
  if(SJ.kind&&jobRing.visible)b.push({x:jobRing.position.x,z:jobRing.position.z,c:'#2ee6ff',s:'●',big:1,edge:1});
- if(heli.active&&!heli.dead)b.push({x:heli.x,z:heli.z,c:'#ff3b3b',s:'🚁',small:true});
+ if(heli.active&&!heli.dead)b.push({x:heli.x,z:heli.z,c:'#ff3b3b',s:'aircraft',icon:true,small:true});
  for(const p of gangs)if(p.active&&!p.dead&&p.hostile)b.push({x:p.x,z:p.z,c:'#ff3b3b',s:'•',small:1})}
 
 // ---------- economy: battery, property income, partner gifts ----------
