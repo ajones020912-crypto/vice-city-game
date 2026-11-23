@@ -4294,21 +4294,18 @@ function bustPlayer(){if(G.busted||!pl.alive)return;G.busted=true;pl.alive=false
 // ================= HUD / MAPS =================
 const mini=$('#minic').getContext('2d'),mapx=$('#mapc').getContext('2d');
 
-const STORE_MAP_ICONS={burger:'🍔',ammu:'🔫',clothes:'👕',safe:'🏠'};
-const MAP_EMOJI_FONT='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
-function mapEmoji(ctx,icon,x,y,size=17){
- ctx.save();ctx.shadowColor='#0008';ctx.shadowBlur=3;ctx.fillStyle='#091b2bef';ctx.strokeStyle='#d5f6ff77';ctx.lineWidth=1;
- ctx.beginPath();ctx.arc(x,y,size*.64,0,TAU);ctx.fill();ctx.stroke();ctx.shadowBlur=0;ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=size+'px '+MAP_EMOJI_FONT;ctx.fillStyle='#fff';ctx.fillText(icon,x,y+1);ctx.restore();
-}
+const STORE_MAP_ICONS={burger:'food',ammu:'shop',clothes:'clothing',safe:'home'};
+function drawMapGlyph(ctx,key,x,y,size=18){const keys={'🍔':'food','👕':'clothing','🏠':'home','🛒':'shop','⛽':'fuel','🔧':'garage','🚘':'car','🏥':'hospital','🚓':'police','🏷':'property','🏁':'race','⚓':'boat','⛵':'boat','🚁':'aircraft','✈':'airport','📍':'waypoint'};key=keys[key]||key;const r=size*.43;ctx.save();ctx.translate(x,y);ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=Math.max(1.35,size*.095);ctx.strokeStyle='#f4fbff';ctx.fillStyle='#f4fbff';const line=p=>{ctx.beginPath();ctx.moveTo(p[0][0],p[0][1]);for(let i=1;i<p.length;i++)ctx.lineTo(p[i][0],p[i][1]);ctx.stroke()};const circle=(a,b,c,f=false)=>{ctx.beginPath();ctx.arc(a,b,c,0,TAU);f?ctx.fill():ctx.stroke()};switch(key){case'food':line([[-r,-r],[ -r,r]]);line([[r*.25,-r],[r*.25,r]]);line([[r*.25,-r],[r*.65,-r*.55],[r*.65,0],[r*.25,0]]);break;case'clothing':ctx.beginPath();ctx.moveTo(-r,-r*.45);ctx.lineTo(-r*.45,-r);ctx.lineTo(0,-r*.65);ctx.lineTo(r*.45,-r);ctx.lineTo(r,-r*.45);ctx.lineTo(r*.65,-r*.05);ctx.lineTo(r*.48,-r*.25);ctx.lineTo(r*.48,r);ctx.lineTo(-r*.48,r);ctx.closePath();ctx.stroke();break;case'home':ctx.beginPath();ctx.moveTo(-r,-r*.05);ctx.lineTo(0,-r);ctx.lineTo(r,-r*.05);ctx.lineTo(r,r);ctx.lineTo(-r,r);ctx.closePath();ctx.stroke();ctx.strokeRect(-r*.28,r*.25,r*.56,r*.75);break;case'car':case'garage':ctx.strokeRect(-r,-r*.45,r*2,r*1.15);ctx.beginPath();ctx.moveTo(-r*.7,-r*.45);ctx.lineTo(-r*.4,-r*.85);ctx.lineTo(r*.4,-r*.85);ctx.lineTo(r*.7,-r*.45);ctx.stroke();circle(-r*.55,r*.8,r*.17);circle(r*.55,r*.8,r*.17);break;case'fuel':ctx.strokeRect(-r*.7,-r,r*.95,r*1.8);ctx.strokeRect(-r*.52,-r*.72,r*.58,r*.45);line([[r*.25,-r*.65],[r*.65,-r*.35],[r*.65,r*.55],[r*.4,r*.72]]);break;case'hospital':ctx.strokeRect(-r,-r,r*2,r*2);ctx.fillRect(-r*.14,-r*.68,r*.28,r*1.36);ctx.fillRect(-r*.68,-r*.14,r*1.36,r*.28);break;case'police':circle(0,0,r);line([[-r*.45,-r*.05],[0,-r*.55],[r*.45,-r*.05],[r*.3,r*.45],[-r*.3,r*.45],[-r*.45,-r*.05]]);break;case'airport':case'aircraft':line([[-r,-r*.12],[r,-r*.12]]);line([[0,-r],[0,r]]);line([[-r*.8,-r*.12],[-r*.18,r*.18],[0,r*.72],[r*.18,r*.18],[r*.8,-r*.12]]);break;case'race':line([[-r,-r],[r,-r]]);line([[-r,-r],[-r,r]]);ctx.fillStyle='#f4fbff';for(let i=0;i<3;i++)for(let j=0;j<2;j++)if((i+j)%2===0)ctx.fillRect(-r+i*r*.55,-r+j*r*.55,r*.55,r*.55);break;case'boat':line([[-r,-r*.2],[r,-r*.2],[r*.55,r*.55],[-r*.55,r*.55],[-r,-r*.2]]);line([[0,-r],[0,-r*.2]]);break;case'waypoint':circle(0,-r*.25,r*.5);ctx.beginPath();ctx.moveTo(-r*.35,r*.1);ctx.lineTo(0,r);ctx.lineTo(r*.35,r*.1);ctx.stroke();break;case'shop':ctx.strokeRect(-r*.85,-r*.45,r*1.7,r*1.35);line([[-r,-r*.45],[-r*.7,-r],[r*.7,-r],[r,-r*.45]]);break;default:circle(0,0,r*.28,true);break;}ctx.restore();}
+function mapEmoji(ctx,icon,x,y,size=17){ctx.save();ctx.shadowColor='#0009';ctx.shadowBlur=3;ctx.fillStyle='#091b2bef';ctx.strokeStyle='#d5f6ff99';ctx.lineWidth=1;ctx.beginPath();ctx.arc(x,y,size*.64,0,TAU);ctx.fill();ctx.stroke();ctx.shadowBlur=0;drawMapGlyph(ctx,icon,x,y,size*.85);ctx.restore();}
 
 // world marker + auto-clear on arrival
 function setWaypoint(p){G.waypoint=p?{x:p.x,z:p.z}:null;if(!setWaypoint.beam){const m=new T.Mesh(new T.CylinderGeometry(1.6,1.6,140,16,1,true),new T.MeshBasicMaterial({color:0xc77dff,transparent:true,opacity:.35,depthWrite:false,side:T.DoubleSide}));m.renderOrder=3;m.visible=false;world.add(m);setWaypoint.beam=m}
  const b=setWaypoint.beam;b.visible=!!p;if(p)b.position.set(p.x,heightAt(p.x,p.z)+70,p.z)}
 function updateWaypoint(){const w=G.waypoint;if(!w)return;const b=setWaypoint.beam;if(b)b.material.opacity=.25+.12*Math.sin(G.time*3);
  if(Math.hypot(pl.x-w.x,pl.z-w.z)<20){setWaypoint(null);toast('📍 Waypoint reached',1400);audio.beep&&audio.beep(880)}}
-function blips(){const b=[];if(G.waypoint)b.push({x:G.waypoint.x,z:G.waypoint.z,c:'#c77dff',s:'📍',icon:true,edge:true,big:true,label:'Waypoint'});for(const m of(G.mapMarks||[]))b.push({x:m.x,z:m.z,c:'#ff83bd',s:'📍',icon:true,label:m.name||'Waypoint'});for(const q of givers)if(q.g.visible)b.push({x:q.m.giver[0],z:q.m.giver[1],c:'#ffe17a',s:'◆'});
- for(const d of doors)b.push({x:d.x,z:d.z,c:d.col,s:STORE_MAP_ICONS[d.kind]||'🛒',icon:true,label:d.name,kind:d.kind});for(const g of G.spray)b.push({x:g.x,z:g.z,c:'#b36bff',s:'🔧',icon:true,label:"Pay 'n' Spray"});
- b.push({x:HOSP.x,z:HOSP.z,c:'#ff5d6e',s:'🏥',icon:true,label:'Hospital'},{x:PD.x,z:PD.z,c:'#5aa0ff',s:'🚓',icon:true,label:'Police station'});extraBlips(b);
+function blips(){const b=[];if(G.waypoint)b.push({x:G.waypoint.x,z:G.waypoint.z,c:'#c77dff',s:'waypoint',icon:true,edge:true,big:true,label:'Waypoint'});for(const m of(G.mapMarks||[]))b.push({x:m.x,z:m.z,c:'#ff83bd',s:'waypoint',icon:true,label:m.name||'Waypoint'});for(const q of givers)if(q.g.visible)b.push({x:q.m.giver[0],z:q.m.giver[1],c:'#ffe17a',s:'◆'});
+ for(const d of doors)b.push({x:d.x,z:d.z,c:d.col,s:STORE_MAP_ICONS[d.kind]||'🛒',icon:true,label:d.name,kind:d.kind});for(const g of G.spray)b.push({x:g.x,z:g.z,c:'#b36bff',s:'garage',icon:true,label:"Pay 'n' Spray"});
+ b.push({x:HOSP.x,z:HOSP.z,c:'#ff5d6e',s:'hospital',icon:true,label:'Hospital'},{x:PD.x,z:PD.z,c:'#5aa0ff',s:'police',icon:true,label:'Police station'});extraBlips(b);
  const s=MS.steps[MS.i];if(MS.active&&s){if(s.type==='kill'&&MS.target&&!MS.target.dead)b.push({x:MS.target.x,z:MS.target.z,c:'#ff4d4d',s:'☠',big:1});else if((s.type==='getcar'||s.type==='inboat')&&MS.car&&!MS.car.dead)b.push({x:MS.car.x,z:MS.car.z,c:'#ffe17a',s:'●',big:1});else if(s.pos)b.push({x:s.pos[0],z:s.pos[1],c:'#ff4f9a',s:'●',big:1,edge:1})}
  if(pl.wanted>0){for(const c of cars)if(c.mode==='cop'&&!c.dead)b.push({x:c.x,z:c.z,c:Math.floor(G.time*3)%2?'#ff3b3b':'#3b6bff',s:'●',small:1});for(const p of cops)if(p.active&&!p.dead)b.push({x:p.x,z:p.z,c:'#7aa0ff',s:'•',small:1})}
  return b}
@@ -4356,7 +4353,7 @@ function drawMini(){
  if(pl.wanted>0&&G.lastSeen){const q=project(G.lastSeen.x,G.lastSeen.z);ctx.fillStyle='#f16e7c27';ctx.strokeStyle='#fa879477';ctx.lineWidth=1;ctx.beginPath();ctx.arc(q[0],q[1],70*scale,0,TAU);ctx.fill();ctx.stroke()}
  let target=G.work?G.work.target:null;if(!target&&!MS.active&&G.waypoint)target=G.waypoint;if(!target&&MS.active){const step=MS.steps&&MS.steps[MS.i];if(step&&step.pos)target={x:step.pos[0],z:step.pos[1]};else if(MS.car)target=MS.car;else if(MS.target)target=MS.target}
  if(target){const q=project(target.x,target.z),dx=q[0]-cx,dy=q[1]-cy,k=Math.min(1,(cx-15)/Math.max(.01,Math.abs(dx)),((bottom-top)/2-14)/Math.max(.01,Math.abs(dy)));ctx.strokeStyle=G.work?'#6ee8f5aa':'#ffd978aa';ctx.lineWidth=1.5;ctx.setLineDash([3,5]);ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+dx*k,cy+dy*k);ctx.stroke();ctx.setLineDash([])}
- const storeIcons={burger:'🍔',ammu:'🔫',clothes:'👕',safe:'🏠'},emojiFont='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',items=[];
+ const storeIcons={burger:'food',ammu:'shop',clothes:'clothing',safe:'home'},emojiFont='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif',items=[];
  for(const b of blips()){
   if(!Number.isFinite(b.x)||!Number.isFinite(b.z))continue;let icon=storeIcons[b.kind]||String(b.s||'•');
   if((icon==='$'||icon==='✚')&&typeof doors!=='undefined'){const door=doors.find(d=>Math.hypot(d.x-b.x,d.z-b.z)<1);if(door)icon=storeIcons[door.kind]||'🛒'}
@@ -4368,7 +4365,7 @@ function drawMini(){
  items.sort((a,b)=>b.priority-a.priority||a.distance-b.distance);const shown=[];
  for(const item of items){if(item.emoji){const close=shown.find(p=>p.emoji&&Math.hypot(p.q[0]-item.q[0],p.q[1]-item.q[1])<22);if(close){close.count++;continue}}shown.push(item);if(shown.length>=28)break}
  for(const p of shown){const[x,y]=p.q;ctx.save();ctx.translate(x,y);ctx.shadowColor='#0009';ctx.shadowBlur=3;
-  if(p.emoji){ctx.fillStyle='#101d2df2';ctx.strokeStyle='#b6cbdc99';ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,0,10,0,TAU);ctx.fill();ctx.stroke();ctx.shadowBlur=0;ctx.font='15px '+emojiFont;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff';ctx.fillText(p.icon,0,1);if(p.count>1){ctx.fillStyle='#f2f7fa';ctx.beginPath();ctx.arc(8,-8,5.5,0,TAU);ctx.fill();ctx.fillStyle='#112438';ctx.font='bold 8px Arial';ctx.fillText(String(p.count),8,-7.5)}}
+  if(p.emoji){ctx.fillStyle='#101d2df2';ctx.strokeStyle='#b6cbdc99';ctx.lineWidth=1;ctx.beginPath();ctx.arc(0,0,10,0,TAU);ctx.fill();ctx.stroke();ctx.shadowBlur=0;drawMapGlyph(ctx,p.icon,0,0,15);if(p.count>1){ctx.fillStyle='#f2f7fa';ctx.beginPath();ctx.arc(8,-8,5.5,0,TAU);ctx.fill();ctx.fillStyle='#112438';ctx.font='bold 8px Arial';ctx.fillText(String(p.count),8,-7.5)}}
   else if(p.priority===3){ctx.fillStyle=p.b.c||'#ffdc86';ctx.strokeStyle='#182536';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(6,0);ctx.lineTo(0,7);ctx.lineTo(-6,0);ctx.closePath();ctx.fill();ctx.stroke()}
   else{ctx.fillStyle=p.b.c||'#fff';ctx.strokeStyle='#152433';ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(0,0,p.b.small?2.5:3.5,0,TAU);ctx.fill();ctx.stroke()}ctx.restore();
  }
@@ -5186,15 +5183,15 @@ function carPrompt(){const c=pl.car;if(!c||c.dead)return'';
  if(G.exp&&hyp(c.x,c.z,EXPORT.x,EXPORT.z)<14)return c.tk===G.exp.tk?'Stop in the marker to export':'The dock wants a '+CAR_TYPES[G.exp.tk].name;
  if(c.tk==='taxi')return'[R] Start taxi job';return''}
 function extraBlips(b){
- if(airport)b.push({x:airport.x,z:airport.z,c:'#ffd23a',s:'✈',icon:true,label:'Vice City International Airport'});
- for(const s of GAS)b.push({x:s.x,z:s.z,c:'#5dff8a',s:'⛽',icon:true,label:'Fuel station'});
- b.push({x:DEALER.x,z:DEALER.z,c:'#ffd23a',s:'🚘',icon:true,label:'Vehicle dealership'});
- for(const p of PROPS)b.push({x:p.x,z:p.z,c:pl.props[p.id]?'#59ffa0':'#cccccc',s:pl.props[p.id]?'🏠':'🏷',small:!pl.props[p.id]});
- if(!SJ.kind)for(const r of RACES)b.push({x:r.start[0],z:r.start[1],c:'#ffffff',s:'🏁',small:true});
- if(G.exp)b.push({x:EXPORT.x,z:EXPORT.z,c:'#ff9a2e',s:'⚓'});
- for(const c of cars)if(c.t.boat&&c.gid&&!c.dead)b.push({x:c.x,z:c.z,c:'#2ec4e8',s:'⛵',small:true});
+ if(airport)b.push({x:airport.x,z:airport.z,c:'#ffd23a',s:'airport',icon:true,label:'Vice City International Airport'});
+ for(const s of GAS)b.push({x:s.x,z:s.z,c:'#5dff8a',s:'fuel',icon:true,label:'Fuel station'});
+ b.push({x:DEALER.x,z:DEALER.z,c:'#ffd23a',s:'car',icon:true,label:'Vehicle dealership'});
+ for(const p of PROPS)b.push({x:p.x,z:p.z,c:pl.props[p.id]?'#59ffa0':'#cccccc',s:pl.props[p.id]?'home':'property',small:!pl.props[p.id]});
+ if(!SJ.kind)for(const r of RACES)b.push({x:r.start[0],z:r.start[1],c:'#ffffff',s:'race',icon:true,small:true});
+ if(G.exp)b.push({x:EXPORT.x,z:EXPORT.z,c:'#ff9a2e',s:'boat',icon:true});
+ for(const c of cars)if(c.t.boat&&c.gid&&!c.dead)b.push({x:c.x,z:c.z,c:'#2ec4e8',s:'boat',icon:true,small:true});
  if(SJ.kind&&jobRing.visible)b.push({x:jobRing.position.x,z:jobRing.position.z,c:'#2ee6ff',s:'●',big:1,edge:1});
- if(heli.active&&!heli.dead)b.push({x:heli.x,z:heli.z,c:'#ff3b3b',s:'🚁',small:true});
+ if(heli.active&&!heli.dead)b.push({x:heli.x,z:heli.z,c:'#ff3b3b',s:'aircraft',icon:true,small:true});
  for(const p of gangs)if(p.active&&!p.dead&&p.hostile)b.push({x:p.x,z:p.z,c:'#ff3b3b',s:'•',small:1})}
 
 // ---------- economy: battery, property income, partner gifts ----------
