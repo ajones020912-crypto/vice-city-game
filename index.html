@@ -1904,14 +1904,15 @@ function buildAirport(){
  decks.push({x0:cx-285,x1:cx-142.5,z0:cz+69,z1:cz+195,y:ground+.18});
  decks.push({x0:cx+120,x1:cx+280,z0:cz+91.5,z1:cz+195,y:ground+.18});
  const mat=(color,roughness=.9)=>new T.MeshStandardMaterial({color,roughness});
- const asphalt=mat(0x454a4d),concrete=mat(0xb5b8b2),grass=mat(0x68765a),white=mat(0xe9e8dc),yellow=mat(0xe5bd42),metal=mat(0x64747a),roof=mat(0x34434a),glass=mat(0x315e70,.28);
- asphalt.map=makeNoiseTex(256,120,30,[1,1.01,1.02],8);
- concrete.map=makeNoiseTex(256,205,18,[1,1,.98],6);
+ const asphalt=mat(0x24282b),concrete=mat(0x292e31),grass=mat(0x68765a),white=mat(0xe9e8dc),yellow=mat(0xe5bd42),metal=mat(0x64747a),roof=mat(0x34434a),glass=mat(0x315e70,.28);
+ asphalt.map=makeNoiseTex(256,76,22,[1,1.01,1.02],8);
+ concrete.map=makeNoiseTex(256,82,18,[1,1,.98],6);
  const blueLight=new T.MeshBasicMaterial({color:0x668edb}),warmLight=new T.MeshBasicMaterial({color:0xffe2aa});
  const batches=new Map();
  const box=(w,h,d,m,x,y,z,solid=false)=>{w*=SCALE;d*=SCALE;x*=SCALE;z*=SCALE;const lift=m===asphalt?.22:0;if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,cx+x,ground+y+lift,cz+z]);if(solid)addCol(cx+x-w/2,cz+z-d/2,cx+x+w/2,cz+z+d/2,ground+y+lift+h/2);};
  const paint=(w,d,m,x,z)=>box(w,.018,d,m,x,.455,z);
- box(720,.4,570,grass,60,-.21,0);
+ // Entire VCIA airfield apron/ground is asphalt, not grass.
+ box(720,.4,570,asphalt,60,-.21,0);
  box(760,.18,56,asphalt,0,.10,-220);
  for(const z of [-249,-191])paint(748,.35,white,0,z);
  for(let x=-330;x<=330;x+=30)paint(13,.8,white,x,-220);
@@ -1923,10 +1924,10 @@ function buildAirport(){
  box(690,.16,24,asphalt,0,.10,-150);
  for(const x of [-330,330]){box(24,.16,150,asphalt,x,.10,-160);paint(.35,150,yellow,x,-160);}
  paint(680,.35,yellow,0,-150);
- box(190,.16,84,concrete,-125,.10,94);
+ box(190,.16,84,asphalt,-125,.10,94);
  box(24,.16,65,asphalt,-125,.10,63);paint(.35,65,yellow,-125,63);
- box(120,.16,151,concrete,200,.10,112);
- box(44,.16,55,concrete,90,.10,62);
+ box(120,.16,151,asphalt,200,.10,112);
+ box(44,.16,55,asphalt,90,.10,62);
  for(const x of [-190,-135,-80]){paint(.35,47,yellow,x,91);paint(20,.35,yellow,x,112);}
  for(let x=-240;x<=240;x+=24)for(const z of [-71,-19])box(.35,.18,.35,warmLight,x,.34,z);
  for(let x=-210;x<=210;x+=30)for(const z of [21,49])box(.3,.18,.3,blueLight,x,.32,z);
@@ -1985,7 +1986,7 @@ function buildAirport(){
  }
  // Accessible spaces and pedestrian walkway near the terminal-side entrance
  paint(18,.55,yellow,-245,184);paint(18,.55,yellow,-245,256);
- box(22,.12,5,concrete,-225,.10,220);
+ box(22,.12,5,asphalt,-225,.10,220);
 
  box(38,.16,35,asphalt,-78,.10,176);
  for(let x=-200;x<=-110;x+=10)paint(.16,9,white,x,182);
@@ -1996,7 +1997,7 @@ function buildAirport(){
  box(.3,5,.3,metal,13,30.7,154);
  box(4,.4,.8,warmLight,13,33.3,154);
  const hx=205,hz=140;
- box(108,.16,86,concrete,hx,.10,hz);
+ box(108,.16,86,asphalt,hx,.10,hz);
  box(108,17,2,metal,hx,8.7,hz+43,true);
  for(const side of [-1,1]){box(2,17,86,metal,hx+side*54,8.7,hz,true);box(26,17,2,metal,hx+side*41,8.7,hz-43,true);}
  box(56,3,2,metal,hx,15.7,hz-43,true);
