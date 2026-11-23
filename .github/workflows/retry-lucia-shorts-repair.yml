@@ -1,0 +1,60 @@
+name: Retry Lucia shorts repair
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/retry-lucia-shorts-repair.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  retry:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [main, lucia-outfits]
+    concurrency:
+      group: lucia-u-neck-${{ matrix.target }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      TARGET_BRANCH: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.target }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install the original validation dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/lucia-photo-denim" --no-package-lock --ignore-scripts three@0.128.0 acorn@8
+          python -m pip install 'Pillow>=10,<13'
+      - name: Retry the exact reviewed fitting and guarded publication steps
+        run: |
+          git fetch origin main
+          python <<'PY'
+          import pathlib, subprocess
+          source='origin/main:.github/workflows/repair-lucia-shorts-validation.yml'
+          sha=subprocess.check_output(['git','rev-parse',source],text=True).strip()
+          if sha!='f1ea0d37606a1951f434c93e7f37b29c7ac04ebc':
+              raise RuntimeError('Original repair changed since review; refusing to run unreviewed content')
+          text=subprocess.check_output(['git','show',source],text=True)
+          lines=text.splitlines();blocks=[]
+          for i,line in enumerate(lines):
+              if line!='        run: |': continue
+              body=[]
+              for value in lines[i+1:]:
+                  if value and not value.startswith('          '): break
+                  body.append(value[10:] if value else '')
+              blocks.append('\n'.join(body)+'\n')
+          if len(blocks)!=2: raise RuntimeError('Unexpected original workflow layout')
+          for i,body in enumerate(blocks):
+              path=pathlib.Path('/tmp/lucia-shorts-reviewed-retry-'+str(i)+'.sh')
+              path.write_text(body)
+              subprocess.run(['bash','-e',str(path)],check=True)
+          PY
