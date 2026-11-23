@@ -4359,6 +4359,8 @@ function carpetTex(hex,n){
 function buildInterior(kind,idx){
  const cx=6000+idx*80,cz=0,g=new T.Group();g.position.set(cx,0,cz);intGroup.add(g);
  const M=(c,o={})=>new T.MeshStandardMaterial(Object.assign({color:c,roughness:.7,envMapIntensity:.3},o));
+ // Safe default materials for specialty interiors; individual venue branches may shadow these.
+ const wood=M(0x684b38),metal=M(0x59636b,{metalness:.55}),table=M(0xc49a68),seat=M(0x245b64);
  // Box helper — slight y offset avoids floor z-fight
  const bx=(w,h,d,x,y,z,mat,cast=true)=>{const m=new T.Mesh(new T.BoxGeometry(w,h,d),mat);m.position.set(x,y+h/2,z);m.receiveShadow=true;m.castShadow=cast;g.add(m);return m};
  const plane=(w,d,x,y,z,mat,rx=-Math.PI/2)=>{const m=new T.Mesh(new T.PlaneGeometry(w,d),mat);m.rotation.x=rx;m.position.set(x,y,z);m.receiveShadow=true;g.add(m);return m};
