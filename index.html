@@ -1856,6 +1856,58 @@ function updateSignals(t){
 
 // --- base map canvas (used by minimap + full map)
 const MAPPX=4;let baseMap=null;
+
+function buildCityRivers(){
+ // CITY_WATERWAYS_V1: branching tidal rivers divide the urban districts and feed the eastern bay.
+ const water=new T.MeshBasicMaterial({color:0x087f9b,transparent:true,opacity:.94,side:T.DoubleSide,depthWrite:false});
+ const make=(start,segments)=>{
+  const sh=new T.Shape();sh.moveTo(start[0],start[1]);
+  for(const q of segments)sh.bezierCurveTo(q[0],q[1],q[2],q[3],q[4],q[5]);
+  const g=new T.ShapeGeometry(sh,18);g.rotateX(-Math.PI/2);
+  const mesh=new T.Mesh(g,water);mesh.position.y=.16;mesh.renderOrder=2;scene.add(mesh);
+ };
+ // Main north-south river through the central city, widening toward the southern waterfront.
+ make([1120,-260],[
+  [1060,-80,1190,80,1135,250],
+  [1080,390,930,470,990,650],
+  [1050,820,1190,900,1150,1080],
+  [1090,1260,1010,1410,1080,1580],
+  [1110,1690,1270,1780,1390,1830],
+  [1450,1850,1560,1830,1660,1810],
+  [1640,1740,1510,1660,1510,1540],
+  [1490,1370,1590,1210,1540,1040],
+  [1500,860,1350,770,1390,600],
+  [1410,430,1510,310,1470,130],
+  [1500,-50,1370,-190,1390,-260],
+  [1310,-300,1200,-290,1120,-260]
+ ]);
+ // Western branch bends across the city toward the river.
+ make([480,520],[
+  [620,470,700,390,820,410],
+  [930,425,1010,520,1110,550],
+  [1220,590,1310,560,1420,590],
+  [1540,625,1660,690,1810,700],
+  [1910,710,2020,650,2130,620],
+  [2100,570,1990,545,1870,555],
+  [1690,570,1580,500,1440,490],
+  [1300,465,1220,500,1100,470],
+  [980,430,900,350,800,340],
+  [670,320,550,405,480,520]
+ ]);
+ // Southern canal/estuary opens the downtown waterfront toward the bay.
+ make([1030,1120],[
+  [900,1200,820,1320,850,1440],
+  [870,1570,1010,1640,1160,1660],
+  [1310,1690,1440,1630,1530,1540],
+  [1610,1450,1710,1410,1840,1430],
+  [1930,1460,2010,1540,2110,1570],
+  [2070,1620,1950,1640,1840,1580],
+  [1690,1510,1600,1510,1510,1600],
+  [1390,1730,1250,1780,1090,1740],
+  [920,1710,760,1610,760,1450],
+  [750,1310,870,1190,1030,1120]
+ ]);
+}
 function buildBaseMap(){
  const S=WS*2/MAPPX,[c,x]=cv(S,S),id=x.createImageData(S,S),o=[0,0,0],d=id.data;
  for(let j=0;j<S;j+=2)for(let i=0;i<S;i+=2){const wx=-WS+i*MAPPX,wz=-WS+j*MAPPX,h=heightAt(wx,wz);groundCol(wx,wz,h,o);let r=o[0],g=o[1],b=o[2];
@@ -1878,6 +1930,15 @@ function buildBaseMap(){
   const R=Math.min(255,r*300),Gc=Math.min(255,g*300),Bc=Math.min(255,b*300);
   for(let dj=0;dj<2;dj++)for(let di=0;di<2;di++){const p=((j+dj)*S+i+di)*4;d[p]=R;d[p+1]=Gc;d[p+2]=Bc;d[p+3]=255}}
  x.putImageData(id,0,0);
+
+ // Draw the same river network into the satellite map so waterways read clearly at every zoom.
+ {const river=(pts,width)=>{x.strokeStyle='#087f9b';x.lineWidth=width/MAPPX;x.lineCap='round';x.lineJoin='round';x.beginPath();pts.forEach((p,i)=>x[i?'lineTo':'moveTo']((p[0]+WS)/MAPPX,(p[1]+WS)/MAPPX));x.stroke();};
+  x.save();
+  river([[1120,-260],[1060,-80],[1190,80],[1135,250],[1080,390],[930,470],[990,650],[1050,820],[1190,900],[1150,1080],[1090,1260],[1010,1410],[1080,1580],[1110,1690],[1270,1780],[1390,1830]],76);
+  river([[480,520],[620,470],[700,390],[820,410],[930,425],[1010,520],[1110,550],[1220,590],[1310,560],[1420,590],[1540,625],[1660,690],[1810,700],[1910,710],[2020,650],[2130,620]],56);
+  river([[1030,1120],[900,1200],[820,1320],[850,1440],[870,1570],[1010,1640],[1160,1660],[1310,1690],[1440,1630],[1530,1540],[1610,1450],[1710,1410],[1840,1430],[1930,1460],[2010,1540],[2110,1570]],48);
+  x.restore();
+ }
  // Buildings and developed blocks: soft slate-lavender, like the reference map.
  x.fillStyle='rgba(177,185,216,.62)';for(const b of colAll)if(b.h>6&&b.x1-b.x0>6)x.fillRect((b.x0+WS)/MAPPX,(b.z0+WS)/MAPPX,(b.x1-b.x0)/MAPPX,(b.z1-b.z0)/MAPPX);
  for(const r of roads){x.strokeStyle=r.type==='hwy'?'#f4d77a':r.type==='dirt'?'#b49a70':'#f0f0e8';x.lineWidth=Math.max(1.6,r.w/MAPPX*(r.type==='hwy'?.9:.8));x.beginPath();
@@ -2326,6 +2387,7 @@ function worldSteps(){const buildOne=p=>{if(p.style==='house')buildHouse(p);else
   ['Planting the countryside',8,()=>bigMapProps()],
   ['Traffic lights, airports and air base',4,()=>{buildSignals();buildAirport();buildWestAirport();buildAFB();spawnAirportPlanes()}],
   ['Palmetto Grove cleared',4,()=>{PG.paths=[];PG.homes=[];PG.signs=[];}],
+  ['Carving city rivers',2,()=>buildCityRivers()],
   ['Drawing the map',7,()=>buildBaseMap()]]}
 function buildWorld(){for(const [,,f] of worldSteps()){if(typeof f==='function')f();else for(const p of f.each())f.fn(p)}}
 const nextPaint=()=>new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
