@@ -1837,9 +1837,19 @@ const nextPaint=()=>new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
 function setLoadProgress(frac,label,toFrac,ms){const lm=document.getElementById('loadmsg');if(!lm)return;let bar=lm.querySelector('.lp-fill');
  if(!bar){if(!document.getElementById('lpStyle')){const st=document.createElement('style');st.id='lpStyle';st.textContent='@keyframes lpShine{from{transform:translateX(-100%)}to{transform:translateX(300%)}}';document.head.appendChild(st)}
   lm.innerHTML='<div style="width:min(340px,80vw);margin:6px auto 0"><div style="position:relative;height:10px;border-radius:6px;background:#0007;overflow:hidden;box-shadow:inset 0 0 0 1px #ffffff1f"><div class="lp-fill" style="position:absolute;inset:0;border-radius:6px;background:linear-gradient(90deg,#ff4fa3,#ffb35c,#3fd1c4);transform-origin:0 50%;transform:scaleX(0);will-change:transform"></div><div style="position:absolute;top:0;bottom:0;width:30%;background:linear-gradient(90deg,#fff0,#ffffff55,#fff0);animation:lpShine 1.4s linear infinite;will-change:transform"></div></div><small class="lp-text" style="display:block;margin-top:6px;color:#fff;font-weight:600;text-shadow:0 1px 3px #000c"></small></div>';bar=lm.querySelector('.lp-fill')}
- // jump to where we really are, then glide toward where this stage should end
- bar.style.transition='none';bar.style.transform='scaleX('+Math.max(0,Math.min(1,frac))+')';void bar.offsetWidth;
- if(toFrac>frac&&ms>0){bar.style.transition='transform '+Math.round(ms)+'ms cubic-bezier(.25,.6,.4,1)';bar.style.transform='scaleX('+Math.min(1,toFrac)+')'}
+ // SMOOTH_LOADBAR_V3: never snap. The page's animation clock stalls while generation blocks it (the compositor keeps
+ // drawing), so reading the bar back gives stale values. Instead each animation gets an explicit start time and the
+ // current position is computed from the clock, so every new segment starts exactly where the bar is on screen.
+ const now=performance.now(),M=bar._m;let cur=0;
+ if(M){const t=now-M.t0;cur=M.pts[M.pts.length-1][1];for(let i=1;i<M.pts.length;i++){const [ta,va]=M.pts[i-1],[tb,vb]=M.pts[i];if(t<=tb){cur=t<=ta?va:va+(vb-va)*(t-ta)/Math.max(1,tb-ta);break}}}
+ if(bar._anim)bar._anim.cancel();bar.style.transform='scaleX('+cur+')';
+ const real=Math.max(cur,Math.min(1,frac)),end=Math.max(real,Math.min(1,toFrac==null?frac:toFrac)),
+  catchMs=real>cur+.001?Math.min(frac>=1?450:900,250+(real-cur)*2500):0,glideMs=end>real?Math.max(200,ms||300):0;
+ const pts=[[0,cur]];if(catchMs)pts.push([catchMs,real]);if(glideMs)pts.push([catchMs+glideMs,end]);bar._m={t0:now,pts};
+ if(pts.length>1&&bar.animate){const dur=pts[pts.length-1][0];
+  bar._anim=bar.animate(pts.map(([t,v])=>({transform:'scaleX('+v+')',offset:t/dur})),{duration:dur,easing:'linear',fill:'forwards'});
+  try{bar._anim.startTime=document.timeline.currentTime!=null?now:null}catch(e){}}
+ else bar.style.transform='scaleX('+end+')';
  lm.querySelector('.lp-text').textContent='Generating Vice City… '+Math.round(frac*100)+'% · '+label}
 async function buildWorldStaged(after){const steps=worldSteps().concat(after),total=steps.reduce((a,s)=>a+s[1],0);let done=0,msPerW=140,spent=0;
  for(const [label,w,f] of steps){const est=w*msPerW;setLoadProgress(done/total,label,(done+w*.92)/total,est*1.15);await nextPaint();const t0=performance.now();
@@ -1847,7 +1857,7 @@ async function buildWorldStaged(after){const steps=worldSteps().concat(after),to
   else{const list=f.each(),n=list.length||1,ch=Math.max(60,Math.round(f.chunk/2));for(let i=0;i<list.length;i+=ch){const c0=performance.now();for(let j=i;j<Math.min(list.length,i+ch);j++)f.fn(list[j]);
     const a=(done+w*Math.min(1,(i+ch)/n))/total,b=(done+w*Math.min(1,(i+2*ch)/n))/total;setLoadProgress(a,label+' '+Math.min(list.length,i+ch)+'/'+list.length,b,(performance.now()-c0)*1.1);await nextPaint()}}
   const dt=performance.now()-t0;spent+=dt;done+=w;msPerW=spent/done}
- setLoadProgress(1,'Ready')}
+ setLoadProgress(1,'Ready');await new Promise(r=>setTimeout(r,500))}
 
 
 // ================= PARTICLES =================
