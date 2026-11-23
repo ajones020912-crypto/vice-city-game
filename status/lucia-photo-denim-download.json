@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "source": "https://polyhaven.com/a/denim_fabric",
+  "author": "Rob Tuytel",
+  "license": "CC0-1.0",
+  "downloadURL": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/denim_fabric/denim_fabric_diff_1k.jpg",
+  "sourceSHA256": "d6d0254e2c90768482b0be8cfdc16e18117acc92bad00d406fd4b9be24facdec",
+  "processedSHA256": "aa9a4877d2ee911106cc32501ec5c78d5b54266c25e89bf006620ae9420dc961",
+  "size": [
+    256,
+    256
+  ],
+  "bytes": 13568,
+  "processing": "Lanczos downscale, mild blur, restrained contrast and saturation; JPEG quality 84"
+}

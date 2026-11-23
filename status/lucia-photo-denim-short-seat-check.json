@@ -1,0 +1,9 @@
+{
+  "passed": false,
+  "branch": "lucia-outfits",
+  "scope": "Photo asset and neutral sampled seat coverage with finite-pose checks; rendered appearance and all-animation clipping still require in-game review.",
+  "phase": "validate",
+  "error": "Error: Unexpected full-seat expansion",
+  "stack": "Error: Unexpected full-seat expansion\n    at fitLuciaPhotoDenim (evalmachine.<anonymous>:180:2872)\n    at lucia (evalmachine.<anonymous>:238:62)\n    at api.build (evalmachine.<anonymous>:646:421)\n    at [stdin]:5:1427\n    at runScriptInThisContext (node:internal/vm:209:10)\n    at node:internal/process/execution:118:14\n    at [stdin]-wrapper:6:24\n    at runScript (node:internal/process/execution:101:62)\n    at evalScript (node:internal/process/execution:133:3)\n    at node:internal/main/eval_stdin:32:5",
+  "baselinePreserved": true
+}
