@@ -2192,10 +2192,9 @@ function buildAirport(){
  // VCIA_MIA_LAYOUT_V1: laid out like Miami International. North is world -x and west is world +z.
  //  - two close parallel runways along the north edge (like 8L/26R and 8R/26L) with a parallel taxiway
  //  - the longest runway along the south edge (like 9/27) with its own taxiway
- //  - a diagonal crosswind runway in the north-west (like 12/30)
- //  - a horseshoe terminal opening east, with the parking garages and hotel inside the horseshoe
- //  - long concourse D running west along the north apron, and fingers E, F, G and J reaching out west and south
- //  - cargo warehouses in the south-west corner and a control tower west of the terminal
+ //  - the terminal complex traced from the MIA terminal diagram (VCIA_MIA_TERMINAL_V2 below): C-shaped main terminal
+ //    open to the east around the garages, long concourse D to the north, E pier and satellite, F/G/H/J piers
+ //  - cargo warehouses and the control tower in the south-west
  const X0=200,X1=1440,Z0=470,Z1=1320,cx=(X0+X1)/2,cz=(Z0+Z1)/2,G0=heightAt(cx,cz)+.15,PAVE=G0+.12;
  const mat=(color,roughness=.9)=>new T.MeshStandardMaterial({color,roughness});
  const asphalt=mat(0x2b3033),apronM=mat(0x7d8283),grass=mat(0x6d7d58),white=mat(0xe9e8dc),yellow=mat(0xe5bd42),metal=mat(0x64747a),
@@ -2241,37 +2240,66 @@ function buildAirport(){
  runway(245,580,1240,46);    // north outer runway
  runway(335,500,1290,52);    // north inner runway
  runway(1380,480,1305,52);   // south runway, the longest
- // diagonal crosswind runway running north-west to south-east
- {const ax=500,az=1300,bx=840,bz=1070,L=Math.hypot(bx-ax,bz-az),dx=(bx-ax)/L,dz=(bz-az)/L,mx=(ax+bx)/2,mz=(az+bz)/2,w=46,a=Math.atan2(-dz,dx);
-  put(asphalt,L,.2,w,mx,PAVE+.02-.1,mz,a);shape(mx,mz,L,w,Math.atan2(dz,dx),'#1c2022');
-  for(let t=-L/2;t<=L/2;t+=8){const px=mx+dx*t,pz=mz+dz*t;runwayDecks.push({x0:px-16,x1:px+16,z0:pz-16,z1:pz+16,y:PAVE+.02})}
-  for(let t=-L/2+60;t<L/2-60;t+=42)put(white,22,.02,1,mx+dx*t,PAVE+.045,mz+dz*t,a);
-  for(const s of[-1,1]){put(white,L-8,.02,.7,mx-dz*s*(w/2-1.4),PAVE+.045,mz+dx*s*(w/2-1.4),a);
-   for(let t=-L/2;t<=L/2;t+=30)put(warmLight,.5,.3,.5,mx+dx*t-dz*s*(w/2+1.5),PAVE+.15,mz+dz*t+dx*s*(w/2+1.5))}}
-
  const term='#cfd6de';
- // concourse D: long and straight, running west along the north apron, gates on its north face
- block(white,640,855,30,590,13,term);put(roof,34,1.2,594,640,G0+13.6,855);
- for(const s of[-1,1])put(glass,.6,5,578,640+s*15.3,G0+8,855);
- const gateZ=[600,665,730,795,860,925,990,1055,1120];
- for(const g of gateZ){block(white,616,g,18,5,4.5,null,G0+3.2);put(glass,4,4.4,7,608,G0+5.4,g);put(metal,.8,3.2,.8,609,G0+1.6,g);paint(418,604,g-.3,g+.3,yellow)}
- // horseshoe terminal, opening east around the landside
- const C={x:810,z:575};
- for(let th=0;th<=180.1;th+=7.5){const r=Math.PI/180*th,sx=Math.sin(r),cx2=Math.cos(r),px=C.x-157.5*cx2,pz=C.z+157.5*sx;
-  slab(white,px,pz,22,35,15,sx,cx2,term);put(roof,23,1.2,37,px,G0+15.6,pz,Math.atan2(-cx2,sx));
-  put(glass,21,6,.6,C.x-175.4*cx2,G0+9,C.z+175.4*sx,Math.atan2(-cx2,sx))}
- // fingers reaching out from the horseshoe, gate pods on both sides
+ // VCIA_MIA_TERMINAL_V2: terminal traced from the MIA terminal diagram (north up). Diagram pixels map to the world
+ // at 0.75 m per pixel: right (east) is -z and down (south) is +x.
+ const P=(px,py)=>[580+(py-97)*.75,1339-px*.75];
+ // a straight building between two diagram points (width in diagram pixels), with roof and glass bands
+ const wing=(a,b,wpx,h,col=term,glassBands=true)=>{const [x1,z1]=P(...a),[x2,z2]=P(...b),L=Math.hypot(x2-x1,z2-z1),dx=(x2-x1)/L,dz=(z2-z1)/L,w=wpx*.75,mx=(x1+x2)/2,mz=(z1+z2)/2,ang=Math.atan2(-dz,dx);
+  slab(white,mx,mz,L+w*.5,w,h,dx,dz,col);put(roof,L+w*.5+1,1,w+2,mx,G0+h+.5,mz,ang);
+  if(glassBands)for(const s of[-1,1])put(glass,Math.max(1,L-4),h*.4,.6,mx-dz*s*(w/2+.3),G0+h*.6,mz+dx*s*(w/2+.3),ang);return {x1,z1,x2,z2,dx,dz,L,w}};
+ const chain=(pts,wpx,h,col)=>{const out=[];for(let i=1;i<pts.length;i++)out.push(wing(pts[i-1],pts[i],wpx,h,col));return out};
+ const rectPx=(px0,py0,px1,py1,h,m=white,col=term)=>{const [xa,za]=P(px0,py0),[xb,zb]=P(px1,py1),x0=Math.min(xa,xb),x1=Math.max(xa,xb),z0=Math.min(za,zb),z1=Math.max(za,zb);
+  block(m,(x0+x1)/2,(z0+z1)/2,x1-x0,z1-z0,h,col);put(roof,x1-x0+1,1,z1-z0+1,(x0+x1)/2,G0+h+.5,(z0+z1)/2)};
+ // gate pods (jet bridges) along one side of a wing, every `every` metres
+ const pods=(s,side,every,start=10)=>{for(let t=start;t<s.L-6;t+=every){const nx=-s.dz*side,nz=s.dx*side,px=s.x1+s.dx*t+nx*(s.w/2+7),pz=s.z1+s.dz*t+nz*(s.w/2+7);slab(white,px,pz,14,5,4.5,nx,nz,null,G0+3.2)}};
  const letter=(id)=>{const [c,g]=cv(192,128);g.fillStyle='#102d40';g.fillRect(0,0,192,128);g.fillStyle='#fff';g.font='bold 90px Arial';g.textAlign='center';g.textBaseline='middle';g.fillText(id,96,66);return new T.MeshBasicMaterial({map:mkTex(c)})};
- put(letter('D'),1,9,16,624,G0+19,575);
- for(const [id,th,len] of[['E',75,140],['F',105,150],['G',135,140],['J',165,120]]){const r=Math.PI/180*th,dx=-Math.cos(r),dz=Math.sin(r),sx=C.x+dx*175,sz=C.z+dz*175,mx=sx+dx*len/2,mz=sz+dz*len/2,a=Math.atan2(-dz,dx);
-  slab(white,mx,mz,len,24,12,dx,dz,term);put(roof,len+4,1.2,28,mx,G0+12.6,mz,a);for(const s of[-1,1])put(glass,len-10,4.5,.6,mx-dz*s*12.3,G0+7.5,mz+dx*s*12.3,a);
-  for(let t=30;t<len-5;t+=40)for(const s of[-1,1]){const px=sx+dx*t-dz*s*21,pz=sz+dz*t+dx*s*21;slab(white,px,pz,18,5,4.5,-dz*s,dx*s,null,G0+3.2)}
-  put(letter(id),16,9,1,sx+dx*12,G0+18,sz+dz*12,a+Math.PI/2)}
- // landside: two parking garages and the airport hotel inside the horseshoe
- for(const gx of[760,860]){block(concrete,gx,520,45,70,22,'#a7adb5');put(roof,46,1,71,gx,G0+22.5,520)}
- block(white,810,615,36,30,34,'#dfe5ec');for(const s of[-1,1])put(glass,37,24,.6,810,G0+20,615+s*15.3);
- // control tower west of the terminal
- block(concrete,770,985,8,8,52,'#dfe5ec');put(glass,16,7,16,770,G0+55.5,985);put(roof,18,1,18,770,G0+59.5,985);put(metal,.4,8,.4,770,G0+64,985);
+ const sign=(id,px,py,h)=>{const [x,z]=P(px,py);put(letter(id),3,9,14,x,G0+h+5,z)};
+
+ // --- D: long concourse north of the terminal ---
+ const dWest=wing([62,97],[425,97],26,13);                 // D40-D60, far west arm
+ const dStep=wing([425,97],[485,158],30,13);               // D30-D39 step
+ const dMain=wing([485,158],[885,162],26,13);              // D20-D29
+ const dNE=wing([885,162],[1000,80],26,13);                // D15-D19 bend to the north-east
+ rectPx(995,55,1130,100,13);                               // D1-D14 block at the east end
+ wing([425,105],[540,255],26,12);                          // D31-D36 leg down to the terminal
+ for(const px of[700,775,840])wing([px,170],[px,216],14,9,term,false); // connectors to the terminal
+ // D60's walkway frame at the far west tip
+ { const [x,z]=P(62,97);block(white,x,z+6,32,4,7,term)}
+ sign('D',60,97,13);sign('D',1125,78,13);
+ // jet bridges on D's north face: these are the airliner gates
+ const gateWest=[1268,1203,1138,1073],gateMain=[960,895,830,765];
+ for(const g of[...gateWest,...gateMain]){const xFace=(g>1000?P(0,97)[0]-13:P(0,160)[0]-13);block(white,xFace-7,g,14,5,4.5,null,G0+3.2);put(glass,4,4.4,7,xFace-15,G0+5.4,g);put(metal,.8,3.2,.8,xFace-14,G0+1.6,g);paint(418,xFace-16,g-.3,g+.3,yellow)}
+ pods(dNE,1,40,15);pods(dMain,-1,45,20);
+
+ // --- the C-shaped main terminal, open to the east around the parking garages ---
+ wing([605,230],[885,230],34,16);                          // north side (doors 1-6)
+ chain([[612,232],[596,290],[598,360],[622,420],[662,452]],40,16);   // west curve (doors 7-17)
+ wing([662,455],[945,455],34,16);                          // south side (doors 18-33)
+ rectPx(528,258,598,330,30,white,'#dfe5ec');               // airport hotel
+ rectPx(540,335,600,445,16);                               // west terminal hall
+ rectPx(700,255,862,330,20,concrete,'#a7adb5');            // Dolphin garage
+ rectPx(628,290,690,438,20,concrete,'#a7adb5');            // central parking
+ rectPx(702,358,792,438,20,concrete,'#a7adb5');            // Flamingo garage
+ rectPx(798,358,900,438,20,concrete,'#a7adb5');            // Ibis garage
+
+ // --- E: pier to the west, then the cross-shaped E satellite reached by the skytrain ---
+ const ePier=wing([548,338],[385,346],30,12);pods(ePier,1,40,25);pods(ePier,-1,40,25);
+ rectPx(475,322,548,372,13);                               // E1-E5 hub
+ const eSat=wing([218,252],[218,382],30,12);pods(eSat,1,35,12);pods(eSat,-1,35,12);
+ wing([178,315],[275,315],26,12);
+ sign('E',385,346,12);sign('E',218,252,12);
+ { const [x1,z1]=P(385,342),[x2,z2]=P(262,318),L=Math.hypot(x2-x1,z2-z1),dx=(x2-x1)/L,dz=(z2-z1)/L,a=Math.atan2(-dz,dx);  // elevated skytrain
+   put(glass,L,3,4,(x1+x2)/2,G0+9,(z1+z2)/2,a);for(let t=10;t<L;t+=25)put(metal,1.2,8,1.2,x1+dx*t,G0+4,z1+dz*t) }
+
+ // --- F and G angle south-west, H runs south, J hooks south from the south-east corner ---
+ const f=wing([548,445],[352,556],28,12);pods(f,1,38,20);pods(f,-1,38,20);sign('F',352,556,12);
+ const g=wing([588,468],[448,690],28,12);pods(g,1,38,20);pods(g,-1,38,20);sign('G',448,690,12);
+ wing([652,470],[735,512],34,12);const h=wing([737,512],[741,735],28,12);pods(h,1,38,15);pods(h,-1,38,15);sign('H',741,735,12);
+ wing([828,520],[958,520],34,12);const j=wing([930,525],[925,640],28,12);pods(j,1,38,12);pods(j,-1,38,12);sign('J',925,640,12);wing([940,470],[945,515],24,10,term,false);
+ const C={x:P(760,345)[0],z:P(760,345)[1]};
+ // control tower south-west of the terminal, clear of the F and G piers
+ block(concrete,990,1160,8,8,52,'#dfe5ec');put(glass,16,7,16,990,G0+55.5,1160);put(roof,18,1,18,990,G0+59.5,1160);put(metal,.4,8,.4,990,G0+64,1160);
  // cargo warehouses in the south-west corner
  for(const z of[1150,1265]){block(cargoM,1165,z,70,50,14,'#b8b19f');put(roof,72,1,52,1165,G0+14.5,z)}
  // entrance sign facing the city to the east
@@ -2282,7 +2310,7 @@ function buildAirport(){
  for(const [material,items] of batches){const mesh=new T.InstancedMesh(geometry,material,items.length);
   for(let i=0;i<items.length;i++){const [w,h,d,x,y,z,a]=items[i];rotation.setFromAxisAngle(up,a||0);matrix.compose(new T.Vector3(x,y,z),rotation,new T.Vector3(w,h,d));mesh.setMatrixAt(i,matrix)}
   mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;mesh.receiveShadow=true;world.add(mesh)}
- airport={x:cx,z:cz,ground:G0,box:{x0:X0,x1:X1,z0:Z0,z1:Z1},C,shapes,gateZ,gateNoseX:603,
+ airport={x:cx,z:cz,ground:G0,box:{x0:X0,x1:X1,z0:Z0,z1:Z1},C,shapes,landside:{x0:P(0,225)[0],x1:P(0,470)[0],zMax:P(595,0)[1]},
   ga:[{x:1215,z:540,h:0},{x:1215,z:590,h:0}],takeout:{x:1180,z:650,h:0},cargo:{x:1225,z:1210}};
 }
 let airport=null;
@@ -2324,10 +2352,11 @@ function buildWestAirport(){
 function spawnAirportPlanes(){spawnAFBJets();for(const c of cars.slice())if(c.airportStatic)removeCar(c);
  if(airport){const A=airport;
   for(const [tk,col,i] of[['propPlane',0xe8e5d8,0],['smallJet',0xf1f3f5,1]]){const g=A.ga[i],c=spawnCar(tk,g.x,g.z,g.h,'parked',col);c.airportStatic=true;c.keep=true}
-  // AIRLINER_GATES_V3: nose-in at concourse D's jet bridges facing the north runways; each nose stops ~4 m short of
-  // its bridge. Wide-bodies take gates with an empty or narrow-body neighbour so the wings clear.
-  for(const [tk,z,nose] of[['a330',600,31.9],['a321neo',730,22.3],['b737',860,19.8],['b747',1055,35.3]]){
-   const g=spawnCar(tk,A.gateNoseX-nose,z,Math.PI/2,'parked',CAR_TYPES[tk].colors[0]);g.airportStatic=true;g.keep=true}}
+  // AIRLINER_GATES_V4: nose-in at concourse D's jet bridges facing the north runways. Wide-bodies take gates with an
+  // empty or narrow-body neighbour so the wings clear.
+  // D's far west arm noses stop at x 550, the main D20-D29 run at x 597 (each ~3 m short of its jet bridge)
+  for(const [tk,z,noseX,nose] of[['b747',1268,550,35.3],['b757',1203,550,23.7],['a321neo',1138,550,22.3],['a330',895,597,31.9],['b737',830,597,19.8]]){
+   const g=spawnCar(tk,noseX-nose,z,Math.PI/2,'parked',CAR_TYPES[tk].colors[0]);g.airportStatic=true;g.keep=true}}
  if(westAirport){const w=spawnCar('propPlane',westAirport.x+260,westAirport.z+155,Math.PI/2,'parked',0xf1f3f5);w.airportStatic=true;w.keep=true}}
 
 // PALMETTO_GROVE_V1
@@ -2484,6 +2513,7 @@ CAR_TYPES.smallJet={name:'Small jet',aircraft:true,L:14,W:13,wb:4,wr:.2,mass:420
 CAR_TYPES.fighterJet={name:'Fighter jet',aircraft:true,aiOnly:true,L:19,W:13.6,wb:5,wr:.3,mass:19000,power:1,top:125,grip:2,steer:.6,hp:320,colors:[0x7c858d,0x6f777e]};
 CAR_TYPES.a321neo={name:'Airbus A321neo',aircraft:true,airliner:true,L:44.5,W:35.8,wb:18,wr:.5,mass:80000,power:1,top:95,grip:2,steer:.35,hp:520,colors:[0x1e7fd6,0xff4f9a,0x20b6a4]};
 CAR_TYPES.b737={name:'Boeing 737-800',aircraft:true,airliner:true,L:39.5,W:35.8,wb:15.6,wr:.5,mass:70000,power:1,top:92,grip:2,steer:.38,hp:480,colors:[0xe8492f,0x2a4b8d,0xf2b134]};
+CAR_TYPES.b757={name:'Boeing 757-200',aircraft:true,airliner:true,L:47.3,W:38.05,wb:20.4,wr:.56,mass:100000,power:1,top:94,grip:2,steer:.34,hp:560,colors:[0x0d6e5f,0xd4462a,0x34307a]};
 CAR_TYPES.b747={name:'Boeing 747-400',aircraft:true,airliner:true,L:70.7,W:64.4,wb:25,wr:.6,mass:180000,power:1,top:95,grip:2,steer:.3,hp:900,colors:[0x1d3f8f,0xc8102e,0x0f8f6a]};
 CAR_TYPES.a330={name:'Airbus A330-300',aircraft:true,airliner:true,L:63.7,W:60.3,wb:25,wr:.6,mass:150000,power:1,top:94,grip:2,steer:.32,hp:780,colors:[0x0f9db5,0x6b2d8f,0xe36414]};
 CAR_TYPES.speedboat={name:'Speedboat',boat:true,L:6.2,W:2.3,wb:3,wr:.3,mass:1300,power:11,top:42,grip:2.6,steer:.55,hp:120,colors:[0xffffff,0xff4f9a,0x2ec4e8,0xf0c44d,0x20252d]};
@@ -2844,6 +2874,57 @@ function makeB737Visual(color){
  AC.merge(ch,new Set([body]));
  return{g,ch,body,wheels,beam:{visible:false},tail:{material:dark},head:{material:white},bar:null,pm:paint};
 }
+// B757_200_V1: Boeing 757-200 (47.3 m long, 38.05 m span) in a made-up "PALMETTO AIR" livery: long slender fuselage,
+// tall stance on long gear legs, big high-bypass engines slung low, plain wingtips (no winglets), tall fin, and
+// retracting gear (nose leg plus two four-wheel main bogies).
+function makeB757Visual(color){
+ const g=new T.Group(),ch=new T.Group();g.add(ch);const O=3.05; // fuselage centre height (wheels touch at y=-0.88)
+ const white=AC.mat(0xf6f6f4,{roughness:.35,metalness:.2}),belly=AC.mat(0xb7bec6,{roughness:.4,metalness:.25}),paint=AC.mat(color,{roughness:.35,metalness:.25}),
+  glass=AC.mat(0x0c1722,{roughness:.05,metalness:.7}),dark=AC.mat(0x22262b,{roughness:.6,metalness:.4}),metal=AC.mat(0xb9c2c9,{roughness:.25,metalness:.85}),
+  nac=AC.mat(0xeceeef,{roughness:.3,metalness:.35}),rubber=AC.mat(0x0b0c0e,{roughness:.95,metalness:0}),door=AC.mat(0x9aa2aa,{roughness:.5,metalness:.3});
+ const add=(geo,mat,x=0,y=0,z=0)=>{const m=new T.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;ch.add(m);return m};
+ // the 757's nose droops slightly below the cabin line
+ const fus=[[23.65,O-.2,.04,.04,.04],[23.1,O-.22,.78,.72,.66],[22.0,O-.12,1.4,1.36,1.24],[20.6,O-.02,1.82,1.86,1.74],[19.0,O,1.88,1.88,1.88],[-13.6,O,1.88,1.88,1.88],[-17.6,O+.3,1.6,1.6,1.3],[-20.8,O+.85,1.05,1.0,.7],[-22.9,O+1.25,.5,.46,.3],[-23.65,O+1.4,.18,.16,.12]];
+ const body=add(AC.loft(fus,32),white);
+ add(AC.loft(fus.slice(2,8),12,Math.PI*1.2,Math.PI*1.8,1.006,false),belly);
+ for(const [b0,b1] of[[-.24,-.04],[Math.PI+.04,Math.PI+.24]])add(AC.loft(fus.slice(2,8),3,b0,b1,1.009,false),paint);   // cheat line
+ add(AC.loft([[22.6,O-.14,1.06,1.02,.95],[21.75,O-.05,1.55,1.54,1.43]],16,Math.PI*.24,Math.PI*.76,1.012,false),glass); // cockpit windows
+ const win=new T.BoxGeometry(.04,.32,.23),dr=new T.BoxGeometry(.03,1.85,.84);
+ for(const s of[-1,1]){for(let i=0;i<44;i++){const z=18.2-i*.8;if(Math.abs(z-6)<.7||Math.abs(z+3.2)<.6)continue;add(win,glass,s*1.875,O+.5,z)}
+  for(const z of[19.6,6,-3.2,-16.6])add(dr,door,s*1.88,O+.1,z)}
+ const cv=document.createElement('canvas');cv.width=512;cv.height=96;const cx=cv.getContext('2d');cx.font='bold 60px Arial';cx.fillStyle='#'+new T.Color(color).getHexString();cx.textAlign='center';cx.textBaseline='middle';cx.fillText('PALMETTO AIR',256,50);
+ const tt=new T.CanvasTexture(cv);tt.encoding=T.sRGBEncoding;const titleMat=new T.MeshBasicMaterial({map:tt,transparent:true,depthWrite:false});
+ for(const s of[-1,1]){const t=new T.Mesh(new T.PlaneGeometry(8.5,1.4),titleMat);t.position.set(s*1.89,O+1.05,10.5);t.rotation.y=s*Math.PI/2;ch.add(t)}
+ const fair=add(new T.SphereGeometry(1,24,12),belly,0,O-1.25,.2);fair.scale.set(2.2,.95,7.2);
+ const wy=O-1.2;
+ for(const mir of[false,true]){const s=mir?-1:1;
+  add(AC.wing([[0,wy,4.6,7.4,.14],[2,wy,4.1,7.0,.14],[6.5,wy+.32,1.5,4.7,.13],[19.0,wy+1.3,-4.5,1.6,.1]],false,mir),white);
+  // RB211 / PW2000-sized nacelle, round and hung well below and ahead of the wing
+  const ex=s*6.1,ey=wy-1.25,ez=4.4;
+  add(AC.lathe([[.98,2.4],[1.14,2.2],[1.17,1.4],[1.13,-.5],[.96,-1.75],[.66,-2.2]],32),nac,ex,ey,ez);
+  add(AC.lathe([[1.0,2.41],[1.14,2.24],[1.12,2.06],[1.03,2.1]],32),paint,ex,ey,ez);
+  add(new T.CircleGeometry(.98,28),dark,ex,ey,ez+2.18);
+  const cone=add(new T.ConeGeometry(.44,1.0,16),metal,ex,ey,ez-2.6);cone.rotation.x=-Math.PI/2;
+  add(AC.wing([[0,ey+1.0,ez+.6,3.8,.13],[.6,ey+1.0,ez,3.2,.13]],true),white).position.x=ex-.06;
+ }
+ // tall fin with a dorsal fillet, stabiliser
+ add(AC.wing([[0,O+1.45,-12.8,4.6,.06],[.8,O+1.45,-15.6,3.2,.06]],true),paint);
+ add(AC.wing([[0,O+1.45,-15.9,7.8,.11],[4.3,O+1.45,-19.3,4.8,.1],[7.6,O+1.45,-22.3,2.8,.09]],true),paint);
+ for(const mir of[false,true])add(AC.wing([[0,O+.95,-19.6,4.4,.1],[7.6,O+1.3,-23.2,1.7,.09]],false,mir),white);
+ const wheels=[];
+ const gear=(name,x,z,len,r,front,axles)=>{const gg=new T.Group();gg.name='cs-'+name;gg.position.set(x,O-1.8,z);ch.add(gg);
+  const st=new T.Mesh(new T.CylinderGeometry(.12,.14,len,10),metal);st.position.y=-len/2;gg.add(st);
+  for(const az of axles)for(const o of[-.34,.34])wheels.push(AC.wheel(gg,add,rubber,metal,o,-len,az,r,.3,front))};
+ gear('gearN',0,19.2,O-1.8+.88-.4,.4,true,[0]);
+ for(const s of[1,-1])gear(s>0?'gearL':'gearR',s*3.7,-1.6,O-1.8+.88-.56,.56,false,[-.75,.75]);
+ for(const s of[1,-1])AC.surf(ch,s>0?'ailL':'ailR',s*15.6,wy+1.05,-3.9,new T.Mesh(new T.BoxGeometry(3.2,.06,.55),white),0,0,-.27,s*.45);
+ AC.surf(ch,'elev',0,O+1.1,-23.3,new T.Mesh(new T.BoxGeometry(13,.06,.55),white),0,0,-.27);
+ AC.surf(ch,'rud',0,O+4.9,-21.8,new T.Mesh(new T.BoxGeometry(.1,6.2,.75),paint),0,0,-.37,0,-.42);
+ AC.navLights(ch,add,19.1,wy+1.35,-4.6);
+ add(new T.SphereGeometry(.12,8,6),new T.MeshStandardMaterial({color:0xff2020,emissive:0xff2020,emissiveIntensity:1.2}),0,O+1.92,0);
+ AC.merge(ch,new Set([body]));
+ return{g,ch,body,wheels,beam:{visible:false},tail:{material:dark},head:{material:white},bar:null,pm:paint};
+}
 // B747_400_V1: Boeing 747-400 (70.7 m long, 64.4 m span) in a made-up "SUNCOAST GLOBAL" livery: upper-deck hump with
 // the cockpit on top, two rows of windows, 37.5° swept wing with canted winglets, four engines, tall fin, and five
 // retracting gear legs (nose plus four four-wheel main bogies).
@@ -2947,6 +3028,7 @@ function makeAircraftVisual(tk,color){
  if(tk==='propPlane')return makeLowPolyPropPlaneVisual(color);
  if(tk==='a321neo')return makeA321Visual(color);
  if(tk==='b737')return makeB737Visual(color);
+ if(tk==='b757')return makeB757Visual(color);
  if(tk==='b747')return makeB747Visual(color);
  if(tk==='a330')return makeA330Visual(color);
  if(tk==='fighterJet')return makeFighterVisual(color);
@@ -3565,7 +3647,7 @@ const _cc=[null,null,null];
 // FLIGHT_V2: arcade flight model. Throttle is held (W/S), A/D bank and the plane turns by banking, Space pulls the nose
 // up / Shift pushes it down, the nose auto-levels when you let go. Stalls below stall speed, takes off by rotating past
 // Vr, lands if you come down gently on your wheels, and crashes (with the airframe crumpling) if you don't.
-function flyCfg(c){if(c.tk==='a330')return{acc:7.1,vs:42,vr:50,roll:.85,pitch:.4,maxBank:.68,retract:true,half:30.2,len:31.9,flare:1.8};if(c.tk==='b747')return{acc:6.8,vs:44,vr:52,roll:.8,pitch:.38,maxBank:.65,retract:true,half:32.2,len:35.3,flare:1.8};if(c.tk==='b737')return{acc:7.9,vs:39,vr:45,roll:1.0,pitch:.48,maxBank:.75,retract:true,half:17.9,len:19.8,flare:1.7};if(c.tk==='a321neo')return{acc:7.5,vs:40,vr:46,roll:.95,pitch:.45,maxBank:.75,retract:true,half:17.9,len:22.2,flare:1.7};if(c.tk==='fighterJet')return{acc:21,vs:42,vr:48,roll:3.2,pitch:1.25,maxBank:1.35,retract:true,half:6.8,len:9.4};return c.tk==='smallJet'
+function flyCfg(c){if(c.tk==='a330')return{acc:7.1,vs:42,vr:50,roll:.85,pitch:.4,maxBank:.68,retract:true,half:30.2,len:31.9,flare:1.8};if(c.tk==='b747')return{acc:6.8,vs:44,vr:52,roll:.8,pitch:.38,maxBank:.65,retract:true,half:32.2,len:35.3,flare:1.8};if(c.tk==='b757')return{acc:8.3,vs:39,vr:44,roll:.95,pitch:.47,maxBank:.75,retract:true,half:19.1,len:23.7,flare:1.7};if(c.tk==='b737')return{acc:7.9,vs:39,vr:45,roll:1.0,pitch:.48,maxBank:.75,retract:true,half:17.9,len:19.8,flare:1.7};if(c.tk==='a321neo')return{acc:7.5,vs:40,vr:46,roll:.95,pitch:.45,maxBank:.75,retract:true,half:17.9,len:22.2,flare:1.7};if(c.tk==='fighterJet')return{acc:21,vs:42,vr:48,roll:3.2,pitch:1.25,maxBank:1.35,retract:true,half:6.8,len:9.4};return c.tk==='smallJet'
  ?{acc:12.5,vs:30,vr:34,roll:1.5,pitch:.7,maxBank:1.15,retract:true,half:6.5,len:7}
  :{acc:8.5,vs:19,vr:22,roll:2.1,pitch:.95,maxBank:1.2,retract:false,half:5.75,len:4.7}}
 function stepAircraft(c,dt){
@@ -3943,7 +4025,7 @@ function updateCamera(dt){
  else if(pl.car){const c=pl.car;tx=c.x;ty=c.y+1.2;tz=c.z;const sp=c.speed;
   mouseIdle+=dt;if(mouseIdle>1.4||!mouseLocked){const target=c.h+Math.PI;const rate=sp>2?(c.vf>=-1?3.2:1.2):0;camYaw+=wrapA(target-camYaw)*(1-Math.exp(-rate*dt))}
   dist=(camMode===1?6.2:9.6)+sp*.05;height=camMode===1?2.4:3.6;fov=70+Math.min(22,sp*.7);camPitch=lerp(camPitch,.2,dt*.8*(mouseIdle>1.4?1:0));
-  if(c.t.aircraft){const jet=c.tk==='smallJet'||c.tk==='fighterJet'||c.t.airliner;dist=(c.t.airliner?(c.tk==='b747'?80:c.tk==='a330'?72:c.tk==='a321neo'?52:48):c.tk==='fighterJet'?23:jet?19:14)+sp*.06;height=jet?4.2:3.4;fov=62+Math.min(16,sp*.18);ty+=.6;
+  if(c.t.aircraft){const jet=c.tk==='smallJet'||c.tk==='fighterJet'||c.t.airliner;dist=(c.t.airliner?(c.tk==='b747'?80:c.tk==='a330'?72:c.tk==='a321neo'?52:c.tk==='b757'?54:48):c.tk==='fighterJet'?23:jet?19:14)+sp*.06;height=jet?4.2:3.4;fov=62+Math.min(16,sp*.18);ty+=.6;
    if(mouseIdle>1.4||!mouseLocked)camPitch=lerp(camPitch,clamp(.16-(c.gam||0)*.85,-.5,.9),Math.min(1,dt*2.5))}
   if(camMode===2){const sn=Math.sin(c.h),cs=Math.cos(c.h);camPos.set(c.x+sn*.3,c.y+1.2,c.z+cs*.3);camera.position.lerp(camPos,1);camera.lookAt(c.x+sn*20,c.y+1.2,c.z+cs*20);camera.fov=lerp(camera.fov,fov,.1);camera.updateProjectionMatrix();return}}
  else{tx=pl.x;ty=pl.y+1.65;tz=pl.z;dist=pl.weapon!=='fists'&&pl.aim>0?2.6:4.4;height=.2;
@@ -6666,14 +6748,14 @@ G.stepFighter=stepFighter;G.fighterSees=()=>!!pl.car&&FJ.list.some(c=>!c.fighter
 // apron) is restricted: linger there outside an aircraft and you get a star. They respond to wanted players at the
 // airport: at one star they only come for you on foot (and arrest), from two stars they chase anything on the ground.
 const APOL={cars:[],feet:[],trespassT:0,warned:false,near:false};
-function apolAirside(x,z){if(!airport)return false;const b=airport.box;if(x<b.x0+150||x>b.x1||z<b.z0||z>b.z1)return false;/* landside: inside the horseshoe and the garages east of it */if(Math.hypot(x-airport.C.x,z-airport.C.z)<140||(x>640&&x<980&&z<575))return false;return true}
+function apolAirside(x,z){if(!airport)return false;const b=airport.box;if(x<b.x0+150||x>b.x1||z<b.z0||z>b.z1)return false;/* landside: inside the C-shaped terminal and the garages east of it */const L=airport.landside;if(x>L.x0&&x<L.x1&&z<L.zMax)return false;return true}
 function apolNear(){return airport&&Math.hypot(pl.x-airport.x,pl.z-airport.z)<900}
 function apolSpawn(){if(!airport)return;const A=airport,R=(x,z)=>[A.x+x,A.z+z];
- /* patrol loop runs behind the parked airliners' tails, clear of the gates and the taxiway *//* VCIA_MIA_LAYOUT_V1: patrol loops behind the parked airliners and along the south apron */const L=(pts)=>pts.map(([x,z])=>[x,z]),loops=[L([[470,520],[470,1260],[450,1260],[450,520]]),L([[450,1260],[450,520],[470,520],[470,1260]]),L([[1250,520],[1250,1100],[1235,1100],[1235,520]])];
+ /* patrol loop runs behind the parked airliners' tails, clear of the gates and the taxiway *//* VCIA_MIA_LAYOUT_V1: patrol loops behind the parked airliners and along the south apron */const L=(pts)=>pts.map(([x,z])=>[x,z]),loops=[L([[448,520],[448,1290],[432,1290],[432,520]]),L([[432,1290],[432,520],[448,520],[448,1290]]),L([[1250,520],[1250,1100],[1235,1100],[1235,520]])];
  for(const wps of loops){const [x,z]=wps[0],[nx,nz]=wps[1],h=Math.atan2(nx-x,nz-z);
   const c=spawnCarSafe('airportPolice',x,z,h);if(!c)continue;c.mode='cop';c.occ='cop';c.cops=2;c.keep=true;c.apol=true;
   c.ai={airport:true,wps,i:1,offduty:true,unloaded:false};APOL.cars.push(c)}
- for(const [x,z] of[[590,520],[590,1185]]){const p=activatePed(x,z,true);if(p){p.state='walk';p.speed=1.3;p.apol=true;APOL.feet.push(p)}}}
+ for(const [x,z] of[[520,700],[520,1100]]){const p=activatePed(x,z,true);if(p){p.state='walk';p.speed=1.3;p.apol=true;APOL.feet.push(p)}}}
 function spawnCarSafe(tk,x,z,h){try{return spawnCar(tk,x,z,h,'cop')}catch(e){console.error(e);return null}}
 function apolClear(){for(const c of APOL.cars)if(cars.includes(c))removeCar(c);APOL.cars=[];for(const p of APOL.feet)if(p.active&&!p.dead&&p.kill)p.kill();APOL.feet=[]}
 function apolDrive(c,dt){const ai=c.ai,inp=c.inp;if(c.dead)return;
