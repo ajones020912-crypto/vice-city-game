@@ -2350,7 +2350,10 @@ function buildWestAirport(){
  const asphalt=mat(0x454a4d),concrete=mat(0xb5b8b2),grass=mat(0x68765a),white=mat(0xe9e8dc),yellow=mat(0xe5bd42),roof=mat(0x34434a),glass=mat(0x315e70,.28);
  asphalt.map=makeNoiseTex(256,120,30,[1,1.01,1.02],8);concrete.map=makeNoiseTex(256,205,18,[1,1,.98],6);
  const batches=new Map(),up=new T.Vector3(0,1,0),box=(w,h,d,m,x,y,z,solid=false,ry=0)=>{w*=SCALE;d*=SCALE;x*=SCALE;z*=SCALE;const lift=m===asphalt?.22:0;if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,cx+x,ground+y+lift,cz+z,ry]);if(solid)addCol(cx+x-w/2,cz+z-d/2,cx+x+w/2,cz+z+d/2,ground+y+lift+h/2,'west-airport-structure')},paint=(w,d,m,x,z,ry=0)=>box(w,.018,d,m,x,.455,z,false,ry);
- box(690,.32,900,grass,0,-.22,0);
+ // Match the 3D island ground to the irregular coastal outline instead of a floating rectangle.
+ const islandShape=new T.Shape(),islandPts=[[-80,-535],[175,-500],[345,-390],[405,-190],[415,110],[360,365],[210,500],[-80,535],[-300,450],[-405,250],[-425,-30],[-340,-330],[-205,-475]];
+ islandPts.forEach(([ix,iz],i)=>i?islandShape.lineTo(ix,iz):islandShape.moveTo(ix,iz));islandShape.closePath();
+ const islandGround=new T.Mesh(new T.ShapeGeometry(islandShape),grass);islandGround.rotation.x=Math.PI/2;islandGround.position.set(cx,ground-.06,cz);islandGround.receiveShadow=true;world.add(islandGround);
  const runway=(len,w,x,z,ang)=>{box(len,.2,w,asphalt,x,.12,z,false,ang);for(const end of[-1,1])for(let k=-3;k<=3;k++){const t=end*(len/2-12),ox=Math.cos(ang)*t+Math.sin(ang)*k*4,oz=-Math.sin(ang)*t+Math.cos(ang)*k*4;paint(2.5,2.2,white,x+ox,z+oz,ang)}for(let t=-len/2+26;t<len/2-20;t+=22)paint(10,1.1,white,x+Math.cos(ang)*t,z-Math.sin(ang)*t,ang);runwayDecks.push({x0:cx-len*SCALE/2-18,x1:cx+len*SCALE/2+18,z0:cz-w*SCALE/2-18,z1:cz+w*SCALE/2+18,y:ground+.42});decks.push({x0:cx-len*SCALE/2-18,x1:cx+len*SCALE/2+18,z0:cz-w*SCALE/2-18,z1:cz+w*SCALE/2+18,y:ground+.42})};
  runway(610,48,-5,-70,-.58);runway(535,44,5,38,.62);
  box(560,.16,20,asphalt,0,-4,205);box(510,.16,20,asphalt,0,-4,-285);
