@@ -804,7 +804,7 @@ function groundCol(x,z,h,o){
  const n=fbm(x*.02,z*.02);let r=.34+(n-.5)*.14,g=.55+(n-.5)*.22,b=.28+(n-.5)*.09;
  const S=seaD(x,z),sw=swampMask(x,z),hm=hillMask(x,z);
  // urban concrete / asphalt blocks
- if((x>-345&&x<425&&z>-345&&z<445)||(x>-1110&&x<-515&&z>395&&z<1045)){r=.42;g=.41;b=.40}
+ if((x>-345&&x<425&&z>-345&&z<445)||(x>-1110&&x<-515&&z>395&&z<1045)||(x>410&&x<2140&&z>-140&&z<1710)){r=.42;g=.41;b=.40}
  else if(x>-345&&x<425&&z>445&&z<1115){r=.32+(n-.5)*.12;g=.58+(n-.5)*.16;b=.26} // greener suburbs
  else if(hhIsle(x,z)<-30){r=.42;g=.41;b=.40} // Harbor Heights island
  else if(x>-435&&x<895&&z>1625&&z<2415){r=.33+(n-.5)*.12;g=.57+(n-.5)*.16;b=.27} // Coral Ridge lawns
@@ -1302,6 +1302,11 @@ function defineRoads(){
  for(const x of[-270,-210,-150,-90,-30])addRoad('v',x,420,1100,14,'city');
  // East-west neighborhood streets stop at the western airport boundary.
  for(const z of[540,660,780,900,1020])addRoad('h',z,-330,20,14,'city');
+ // VCIA_CITY_ENVELOPE_V1: urban streets wrap the north, east and south sides of the airport.
+ for(const z of[-120,0,120,240,360])addRoad('h',z,420,2100,16,'city',true);
+ for(const z of[1320,1440,1560,1680])addRoad('h',z,900,2100,15,'city',true);
+ for(const x of[1500,1620,1740,1860,1980,2100])addRoad('v',x,-120,1680,16,'city',true);
+ for(const x of[540,660,780,900,1020,1140,1260,1380]){addRoad('v',x,-120,360,13,'city');addRoad('v',x,1320,1680,13,'city')}
  // outer ring / expanded countryside roads
  addRoad('h',1400,-400,900,16,'city');
  addRoad('v',1360,420,1300,16,'city');
@@ -1499,6 +1504,14 @@ function makeParcels(){
  for(let i=0;i<7;i++)for(let j=0;j<7;j++)lot(px[i]+8+2.9,pz[j]+8+2.9,px[i+1]-8-2.9,pz[j+1]-8-2.9,'port');
  // row between expressway and first port street
  for(let i=0;i<7;i++)lot(px[i]+8+2.9,420+14+3,px[i+1]-8-2.9,490-8-2.9,'port');
+ // Airport-side city blocks: dense development east of VCIA, with neighborhoods on its north and south edges.
+ const vx=[420,540,660,780,900,1020,1140,1260,1380,1500,1620,1740,1860,1980,2100];
+ const nz=[-120,0,120,240,360];
+ for(let i=0;i<vx.length-1;i++)for(let j=0;j<nz.length-1;j++)lot(vx[i]+11.9,nz[j]+11.9,vx[i+1]-11.9,nz[j+1]-11.9,'core');
+ const ez=[360,480,600,720,840,960,1080,1200,1320];
+ for(let i=0;i<5;i++)for(let j=0;j<ez.length-1;j++)lot(1500+11.9+i*120,ez[j]+11.9,1500+(i+1)*120-11.9,ez[j+1]-11.9,'core');
+ const sz=[1320,1440,1560,1680];
+ for(let i=0;i<10;i++)for(let j=0;j<sz.length-1;j++)lot(900+11.9+i*120,sz[j]+11.9,900+(i+1)*120-11.9,sz[j+1]-11.9,'low');
  // Harbor Heights: irregular blocks; warehouses by the water, homes and shops inland; nothing hangs over the shore
  for(const [x0,z0,x1,z1] of HH.blocks){if(x1-x0<40||z1-z0<40)continue;const n0=parcels.length,coast=hhIsle((x0+x1)/2,(z0+z1)/2)>-90;
   lot(x0+8+2.9,z0+8+2.9,x1-8-2.9,z1-8-2.9,coast?'port':'low');
@@ -1688,7 +1701,7 @@ function hillProps(){
 // BIG_MAP_V1 scenery: countryside trees, pine forest on the western hills, cypress and reeds in the glades,
 // a few farmsteads, palms on the new keys. No new towns.
 function bigMapProps(){
- const inCity=(x,z)=>(x>-360&&x<440&&z>-360&&z<1130)||(x>-1120&&x<-505&&z>385&&z<1055)||(x>-440&&x<900&&z>1620&&z<2420)||hhIsle(x,z)<20||airportMask(x,z)>.05;
+ const inCity=(x,z)=>(x>-360&&x<440&&z>-360&&z<1130)||(x>-1120&&x<-505&&z>385&&z<1055)||(x>-440&&x<900&&z>1620&&z<2420)||(x>410&&x<2140&&z>-140&&z<1710)||hhIsle(x,z)<20||airportMask(x,z)>.05;
  const land=(x,z,m)=>seaD(x,z)<-m&&heightAt(x,z)>-.1;
  // open countryside: oak copses and the odd palm
  for(let i=0;i<4600;i++){let x=rr(-5300,3500),z=rr(-300,5200);if(!land(x,z,25)||inCity(x,z)||swampMask(x,z)>.3||hillMask(x,z)>.15||nearRoad(x,z,9))continue;
@@ -1856,6 +1869,7 @@ function buildBaseMap(){
    const inDistrict=(wx>-360&&wx<440&&wz>-360&&wz<1130)||
     (wx>-1120&&wx<-505&&wz>385&&wz<1055)||
     (wx>-440&&wx<900&&wz>1620&&wz<2420)||
+    (wx>410&&wx<2140&&wz>-140&&wz<1710)||
     (wx>240&&wx<1120&&wz>420&&wz<1220);
    if(inDistrict){r=.61;g=.63;b=.75;}
   }
