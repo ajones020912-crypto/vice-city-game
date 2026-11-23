@@ -933,7 +933,7 @@ function B(key,x,z){const k=key+'|'+Math.floor((x+WS)/CH)+','+Math.floor((z+WS)/
 const _m=new T.Matrix4(),_q=new T.Quaternion(),_e=new T.Euler(),_p=new T.Vector3(),_sc=new T.Vector3();
 let _yOff=0; // set while baking props that should sit on the terrain (see grounded())
 const grounded=(fn,x,z,s)=>{_yOff=heightAt(x,z);try{fn(x,z,s)}finally{_yOff=0}};
-function bakeG(key,g,x,y,z,ry,sx,sy,sz,col,rx=0,rz=0){if(key==='palm')return;_e.set(rx,ry,rz);_q.setFromEuler(_e);_m.compose(_p.set(x,y+_yOff,z),_q,_sc.set(sx,sy,sz));B(key,x,z).geo(g,_m,col)}
+function bakeG(key,g,x,y,z,ry,sx,sy,sz,col,rx=0,rz=0){_e.set(rx,ry,rz);_q.setFromEuler(_e);_m.compose(_p.set(x,y+_yOff,z),_q,_sc.set(sx,sy,sz));B(key,x,z).geo(g,_m,col)}
 function finalizeBatches(){
  for(const [k,b] of chunkMap){const d=MATS[b.key];if(b.bad)console.warn('[World geometry] skipped',b.bad,'invalid primitive(s) in chunk',k);if(!d||!b.v)continue;const m=new T.Mesh(b.toGeometry(),d.mat);m.castShadow=d.shadow;m.receiveShadow=d.recv;m.matrixAutoUpdate=false;world.add(m)}
  chunkMap.clear();
@@ -1503,7 +1503,11 @@ function initPalm(){
   if(pl){const c1=[.2,.5,.18],c2=[.3,.62,.22];fb.quad(pl[1],pl[0],cur[0],cur[1],0,1,0,0,0,1,1,c1);fb.quad(pl[0],pl[2],cur[2],cur[0],0,1,0,0,0,1,1,c2)}pl=cur}
  PALM.frond=fb.toGeometry();
 }
-function palm(x,z,s=1){/* PALM_TREES_REMOVED: intentionally disabled across the entire map. */ return;}
+// PALM_TREES_RESTORED: palms are back across the map (they had been switched off).
+function palm(x,z,s=1){const rot=rnd()*TAU,bx=Math.cos(rot)*PALM.top[0]*s,bz=Math.sin(rot)*PALM.top[0]*s;
+ bakeG('plain',PALM.trunk,x,0,z,-rot,s,s,s,WH);
+ const nf=9+Math.floor(rnd()*3);for(let i=0;i<nf;i++){bakeG('palm',PALM.frond,x+bx,PALM.top[1]*s,z+bz,i/nf*TAU+rnd()*.4,s*(.85+rnd()*.3),s,s,[.8+rnd()*.3,.85+rnd()*.2,.8],0,rr(-.15,.35))}
+ addCol(x-.3,z-.3,x+.3,z+.3,6)}
 function oak(x,z,s=1){bakeG('plain',GEO.cyl6,x,0,z,0,.28*s,3.4*s,.28*s,[.34,.26,.18]);for(let i=0;i<4;i++){const a=rnd()*TAU;bakeG('plain',GEO.ico,x+Math.cos(a)*1.3*s,3.6*s+rnd()*1.2*s,z+Math.sin(a)*1.3*s,rnd()*6,2.1*s,1.6*s,2.1*s,[.16+rnd()*.12,.4+rnd()*.15,.14])}addCol(x-.3,z-.3,x+.3,z+.3,6)}
 function cypress(x,z,s=1){const h=7+rnd()*5;bakeG('plain',GEO.cyl6,x,0,z,0,.55*s,h*s,.3*s,[.4,.34,.27]);bakeG('plain',GEO.cyl6,x,0,z,0,.95*s,1.2*s,.95*s,[.36,.3,.24]);
  for(let i=0;i<3;i++)bakeG('plain',GEO.ico,x+rr(-1,1),h*s+rr(-.5,1),z+rr(-1,1),rnd()*6,rr(2.4,3.4)*s,1.2*s,rr(2.4,3.4)*s,[.2+rnd()*.06,.34+rnd()*.08,.22]);
@@ -1534,10 +1538,10 @@ function building(p){
  for(let t=0;t<tiers;t++){const th=H*fr[t];
   if(t===0&&style!=='ware'&&th>5){wallQ('f_store','s',ax0,az0,ax1,az1,0,4.5,[1,1,1],12,4.5);for(const f of['n','e','w'])wallQ('f_store',f,ax0,az0,ax1,az1,0,4.5,[1,1,1],12,4.5);
    for(const f of['s','n','e','w'])wallQ('f_'+style,f,ax0,az0,ax1,az1,4.5,th,col);
-   B('roof',ax0,az0).quad([ax0,th,az1],[ax1,th,az1],[ax1,th,az0],[ax0,th,az0],0,1,0,0,0,1,1,[.4,.4,.42]);
+   B('roof',ax0,az0).quad([ax0,th,az1],[ax1,th,az1],[ax1,th,az0],[ax0,th,az0],0,1,0,0,0,1,1,p.roofCol||(p.roofCol=pick([[.74,.72,.68],[.8,.78,.74],[.66,.64,.6],[.7,.62,.55],[.62,.68,.7]])));
    bakeG('plain',GEO.box,(ax0+ax1)/2,4.5,(az0+az1)/2,0,ax1-ax0+.6,.35,az1-az0+.6,[.93,.9,.82])}
   else{for(const f of['s','n','e','w'])wallQ('f_'+style,f,ax0,az0,ax1,az1,y,y+th,col);
-   B('roof',ax0,az0).quad([ax0,y+th,az1],[ax1,y+th,az1],[ax1,y+th,az0],[ax0,y+th,az0],0,1,0,0,0,1,1,[.4,.4,.42]);
+   B('roof',ax0,az0).quad([ax0,y+th,az1],[ax1,y+th,az1],[ax1,y+th,az0],[ax0,y+th,az0],0,1,0,0,0,1,1,p.roofCol||(p.roofCol=pick([[.74,.72,.68],[.8,.78,.74],[.66,.64,.6],[.7,.62,.55],[.62,.68,.7]])));
    if(style!=='glass')bakeG('plain',GEO.box,(ax0+ax1)/2,y+th,(az0+az1)/2,0,ax1-ax0+.5,.4,az1-az0+.5,[.93,.9,.82])}
   y+=th;if(t<tiers-1){const ins=3+rnd()*2;ax0+=ins;az0+=ins;ax1-=ins;az1-=ins}}
  rooftop(ax0,az0,ax1,az1,y,H>60&&rnd()<.6);
@@ -1552,6 +1556,41 @@ function policeLineOfSight(x,y,z){const dx=pl.x-x,dz=pl.z-z,dy=pl.y+1.2-y,d=Math
 function safeDeliverySpot(c){for(let r=12;r<=60;r+=8)for(let i=0;i<12;i++){const a=i/12*TAU,rs=roadSpotNear(pl.x+Math.cos(a)*r,pl.z+Math.sin(a)*r);if(!rs||Math.hypot(rs.x-pl.x,rs.z-pl.z)<8||Math.hypot(rs.x-pl.x,rs.z-pl.z)>100||heightAt(rs.x,rs.z)<WL+.2)continue;if(cars.some(v=>v!==c&&Math.hypot(v.x-rs.x,v.z-rs.z)<7))continue;if(queryCols(rs.x,rs.z,4).some(b=>circleBox([rs.x,rs.z],3,b)))continue;return rs}return null}
 function collideNearbyCars(){const grid=new Map();for(const a of cars){const gx=Math.floor(a.x/8),gz=Math.floor(a.z/8);for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++){const list=grid.get((gx+dx)+','+(gz+dz));if(list)for(const b of list)carCarCollide(a,b)}const key=gx+','+gz;if(!grid.has(key))grid.set(key,[]);grid.get(key).push(a)}}
 
+// CITY_LOT_CLUSTERS_V1: a city lot used to be ONE building filling the whole ~77 m square (giant flat slabs), and a
+// lot touched by any street was thrown away whole (bare concrete). Now each lot becomes either a tower on a sensible
+// footprint with a plaza around it, or a cluster of smaller buildings with alleys between them; each piece is checked
+// against the streets on its own, so a street only removes the pieces it actually crosses. Roads, blocks and the
+// coastline are untouched.
+const CITY_LOTS=[];
+function cityLotCluster(a,b,c,e,H,style,mode,southEdge){
+ const W=c-a,D=e-b,rec={x0:a,z0:b,x1:c,z1:e,cells:[],lawns:[]};CITY_LOTS.push(rec);
+ const mk=(x0,z0,x1,z1,h,st,edgeS)=>{const natural=st==='brick'||st==='concrete';const q={x0,z0,x1,z1,cx:(x0+x1)/2,cz:(z0+z1)/2,H:h,style:st,col:natural?[1-rnd()*.06,1-rnd()*.07,1-rnd()*.08]:undefined,mode,edgeS,cityId:mode==='port'?'port':'dt'};parcels.push(q);rec.cells.push(q)};
+ if(W<46||D<46){mk(a,b,c,e,H,style,southEdge);return}
+ if(H>58){ // tower: a footprint of 34-50 m, set back from the lot edges, with a plaza around it
+  const tw=Math.min(W-14,34+rnd()*16),td=Math.min(D-14,34+rnd()*16),ox=(rnd()-.5)*(W-tw-14),oz=(rnd()-.5)*(D-td-14),mx=(a+c)/2+ox,mz=(b+e)/2+oz;
+  mk(mx-tw/2,mz-td/2,mx+tw/2,mz+td/2,H,style,southEdge&&mz+td/2>e-12);return}
+ // cluster: 2-3 by 2-3 buildings with 5-7 m alleys
+ const nx=W>70&&rnd()<.55?3:2,nz=D>70&&rnd()<.45?3:2,al=5+rnd()*2,cw=(W-al*(nx-1))/nx,cd=(D-al*(nz-1))/nz;
+ const styles=mode==='port'?['ware','brick','concrete','apt']:mode==='core'?['deco','deco','apt','mission','hotel','brick','stone','deco']:['deco','apt','mission','brick'];
+ let lawnLeft=rnd()<.35?1:0;
+ for(let i=0;i<nx;i++)for(let k=0;k<nz;k++){const x0=a+i*(cw+al),z0=b+k*(cd+al),x1=x0+cw,z1=z0+cd;
+  if(lawnLeft&&k<nz-1&&rnd()<.4){lawnLeft=0;rec.lawns.push([x0,z0,x1,z1]);continue}
+  const h=Math.max(9,H*(.55+rnd()*.75)),st=rnd()<.45?style:pick(styles);
+  // small setbacks so the pieces do not read as one wall
+  const sx=rnd()*2.5,sz=rnd()*2.5;mk(x0+sx,z0+sz,x1-rnd()*2.5,z1-rnd()*2.5,h>58?58:h,h>58&&st==='deco'?'stone':st,southEdge&&k===nz-1)}
+}
+// paving and small lawns for the lots, laid once the buildings are up (only where no street, park or plaza sits)
+function decorateCityLots(){
+ const built=new Set(BLD);const paver=[.80,.77,.70],lawn=[.40,.62,.33],edge=[.88,.86,.80];
+ for(const L of CITY_LOTS){if(!L.cells.some(q=>built.has(q)))continue;
+  const clear=(x0,z0,x1,z1)=>!footprintHitsRoad(x0,z0,x1,z1,.6)&&!colAll.some(o=>o.h>1&&!built.has(o.p)&&o.x1>x0&&o.x0<x1&&o.z1>z0&&o.z0<z1&&!L.cells.some(q=>built.has(q)&&o.x0>=q.x0-.01&&o.x1<=q.x1+.01&&o.z0>=q.z0-.01&&o.z1<=q.z1+.01));
+  const slab=(x0,z0,x1,z1,col,t)=>{const y=heightAt((x0+x1)/2,(z0+z1)/2);bakeG('plain',GEO.box,(x0+x1)/2,y+t-.1,(z0+z1)/2,0,x1-x0,.1,z1-z0,col)};
+  if(clear(L.x0,L.z0,L.x1,L.z1)){slab(L.x0,L.z0,L.x1,L.z1,paver,.06);slab(L.x0,L.z0,L.x1,L.z0+.5,edge,.09);slab(L.x0,L.z1-.5,L.x1,L.z1,edge,.09);slab(L.x0,L.z0,L.x0+.5,L.z1,edge,.09);slab(L.x1-.5,L.z0,L.x1,L.z1,edge,.09)}
+  for(const [x0,z0,x1,z1] of L.lawns)if(clear(x0,z0,x1,z1)){slab(x0+1,z0+1,x1-1,z1-1,lawn,.1);const n=2+((rnd()*3)|0);for(let t=0;t<n;t++)(rnd()<.75?palm:oak)(x0+4+rnd()*(x1-x0-8),z0+4+rnd()*(z1-z0-8),.8+rnd()*.4)}
+  // a tower's plaza gets a lawn strip and a few trees along its longer open side
+  if(L.cells.length===1&&built.has(L.cells[0])&&L.x1-L.x0>=46){const q=L.cells[0],gapS=L.z1-q.z1,gapN=q.z0-L.z0,[z0,z1]=gapS>gapN?[q.z1+3,L.z1-3]:[L.z0+3,q.z0-3];
+   if(z1-z0>8&&clear(L.x0+3,z0,L.x1-3,z1)){slab(L.x0+3,z0,L.x1-3,z1,lawn,.1);for(let x=L.x0+8;x<L.x1-6;x+=12)palm(x,(z0+z1)/2,.9+rnd()*.25)}}}
+}
 function makeParcels(){
  const lot=(x0,z0,x1,z1,mode,cx0,cz0)=>{ // subdivide a block lot
   // CITY_BLOCK_QUADRANTS_V1: every city block is divided into four buildable lots (2 x 2).
@@ -1562,18 +1601,19 @@ function makeParcels(){
    if(mode==='core'){const dd=Math.hypot(cx/280,(cz+10)/300),core=clamp(1.05-dd,0,1);H=20+rnd()*24+Math.pow(core,1.55)*(65+rnd()*125);style=H>52&&rnd()<.82?pick(['glass','glass','glass','office','stone','concrete']):pick(['deco','deco','apt','mission','hotel','brick','stone']);if(cz<-250){H=17+rnd()*23+Math.pow(core,1.3)*(18+rnd()*30);style=H>42?pick(['glass','office','stone']):pick(['deco','hotel','mission','apt'])}}
    else if(mode==='port'){H=13+rnd()*17;style=rnd()<.55?'ware':pick(['brick','brick','concrete','apt','deco'])}
    else{H=15+rnd()*22;style=pick(['deco','apt','mission','brick'])}
-   const natural=style==='brick'||style==='concrete';
-   parcels.push({x0:a,z0:b,x1:c,z1:e,cx,cz,H,style,col:natural?[1-rnd()*.06,1-rnd()*.07,1-rnd()*.08]:undefined,mode,edgeS:j===nz-1,cityId:mode==='port'?'port':'dt'})}};
+   cityLotCluster(a,b,c,e,H,style,mode,j===nz-1)}};
  const xr=[],zr=[];
  const used=new Set(),K=(x,z)=>x+','+z;G.plazas=[];
  // CITY_LAYOUT_REFERENCE_FIX_V3: dense urban footprint north and east of VCIA.
  const gx=[-1500,-1320,-1140,-960,-780,-600,-420,-240,-60,120,300,480,660,840,1020,1200,1380,1560];
  const gz=[-1380,-1200,-1020,-840,-660,-480,-300,-120,60,240,420,600,780,960,1140];
  const airportBox={x0:80,x1:1460,z0:380,z1:1340};
- const addCityBlock=(x0,z0,x1,z1,mode='core')=>{
-  if(x0<airportBox.x1&&x1>airportBox.x0&&z0<airportBox.z1&&z1>airportBox.z0)return;
+ const addCityBlock=(x0,z0,x1,z1,mode='core',box=airportBox)=>{
+  if(x0<box.x1&&x1>box.x0&&z0<box.z1&&z1>box.z0)return;
   lot(x0+11.9,z0+11.9,x1-11.9,z1-11.9,mode);
  };
+ // the real airport fence (plus a margin): the east district and the column straddling x=220 only stay clear of this
+ const vciaFence={x0:190,x1:1450,z0:460,z1:1330};
  for(let i=0;i<gx.length-1;i++)for(let j=0;j<gz.length-1;j++){
   const x0=gx[i],x1=gx[i+1],z0=gz[j],z1=gz[j+1];
   if(x1<=220&&z0<1080)addCityBlock(x0,z0,x1,z1,'core');
@@ -1581,7 +1621,9 @@ function makeParcels(){
  for(let i=0;i<gx.length-1;i++)for(let j=0;j<gz.length-1;j++){
   const x0=gx[i],x1=gx[i+1],z0=gz[j],z1=gz[j+1];
   // Start the east-side district beyond the northern district so no block is generated twice.
-  if(x0>=220&&x0<1560&&z1<=420)addCityBlock(x0,z0,x1,z1,'core');
+  if(x0>=220&&x0<1560&&z1<=420)addCityBlock(x0,z0,x1,z1,'core',vciaFence);
+  // CITY_GAP_FILL_V1: the column x 120..300 matched neither district rule (x1<=220 / x0>=220) and was never built
+  else if(x0<220&&x1>220&&z1<=420)addCityBlock(x0,z0,x1,z1,'core',vciaFence);
  }
  // Harbor Heights: irregular blocks; warehouses by the water, homes and shops inland; nothing hangs over the shore
  for(const [x0,z0,x1,z1] of HH.blocks){if(x1-x0<40||z1-z0<40)continue;const n0=parcels.length,coast=hhIsle((x0+x1)/2,(z0+z1)/2)>-90;
@@ -2440,7 +2482,7 @@ function worldSteps(){const buildOne=p=>{if(p.style==='house')buildHouse(p);else
    for(let i=parcels.length-1;i>=0;i--){const p=parcels[i];if(p.cx>60&&p.cx<180&&p.cz>30&&p.cz<150)parcels.splice(i,1)}
    filterRoadParcels();clearPromenadeParcels();assignShops()}],
   ['Raising buildings',30,{each:()=>parcels,fn:buildOne,chunk:250}],
-  ['Parks, plazas and shops',3,()=>{buildDowntownPark();buildPlazasAndPromenade();forceShopDoors()}],
+  ['Parks, plazas and shops',3,()=>{buildDowntownPark();buildPlazasAndPromenade();forceShopDoors();decorateCityLots()}],
   ['Streetlights and palm trees',6,()=>{portExtras();streetProps();addOuterStreetlights();beachProps()}],
   ['Swamps, hills and keys',6,()=>{swampProps();hillProps();keysProps()}],
   ['Planting the countryside',8,()=>bigMapProps()],
