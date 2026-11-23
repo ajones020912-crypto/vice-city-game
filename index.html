@@ -3242,8 +3242,11 @@ function stepAircraft(c,dt){
  const auth=clamp((v-F.vs*.4)/(F.vs*.8),0,1);
  if(!c.airborne){
   // ---- ground roll: steer with the nose wheel, rotate past Vr to lift off
-  v+=(c.thr*F.acc-k*v*v-(brake?8:.45)*(v>0?1:0))*dt;v=Math.max(0,v);
-  c.h+=ctlR*.6*dt*clamp(v/6,0,1)*(v<F.vs?1:.35);
+  // PUSHBACK_V1: stopped on the ground with S held (throttle at idle) rolls you slowly backwards, like a tug
+  c.pushT=brake&&v<=.3?(c.pushT||0)+dt:0;
+  if(c.pushT>.6){v+=(-3-v)*Math.min(1,dt*1.2)}
+  else{v+=(c.thr*F.acc-k*v*Math.abs(v)-(brake?8:.45)*Math.sign(v))*dt;if(Math.abs(v)<.05&&!c.thr)v=0;if(v<0&&!(c.pushT>0))v=Math.min(0,v+2*dt)}
+  c.h+=ctlR*.6*dt*clamp(Math.abs(v)/3,0,1)*(Math.abs(v)<F.vs?1:.35)*Math.sign(v||1);
   c.bank+=(0-c.bank)*Math.min(1,dt*6);c.gam=0;
   c.ap+=((ctlP>0&&v>F.vr*.8?.17:0)-c.ap)*Math.min(1,dt*2.2);
   if(c.ap>.11&&v>=F.vr){c.airborne=true;c.gam=.07;c.vy=v*Math.sin(.07)}
@@ -3274,7 +3277,7 @@ function stepAircraft(c,dt){
  c.x+=c.vx*dt;c.z+=c.vz*dt;c.y+=c.vy*dt;
  const gnd=heightAt(c.x,c.z)+.88;
  // ---- buildings: nose and both wingtips
- if(c.airborne||v>3)aircraftHitWorld(c,F);
+ if(c.airborne||Math.abs(v)>1.5)aircraftHitWorld(c,F);
  if(c.dead)return;
  // ---- ground contact
  if(!c.airborne)c.y=gnd;
@@ -3312,7 +3315,7 @@ function aircraftHitWorld(c,F){const sn=Math.sin(c.h),cs=Math.cos(c.h),cb=Math.c
    c.as=(c.as||0)*.3;c.h+=(Math.random()-.5)*.6;return}}}
 function aircraftCrash(c,p,impact,part){
  const now=G.time||0;if(now-(c.crashT||-9)<.25)return;c.crashT=now;
- const sn=Math.sin(c.h),cs=Math.cos(c.h),lx=(p.x-c.x)*cs-(p.z-c.z)*sn,lz=(p.x-c.x)*sn+(p.z-c.z)*cs,ly=(p.y||c.y)-c.y;
+ const sn=Math.sin(c.h),cs=Math.cos(c.h),lx=(p.x-c.x)*cs-(p.z-c.z)*sn,lz=(p.x-c.x)*sn+(p.z-c.z)*cs,ly=clamp((p.y||c.y)-c.y,-1.5,1.5);/* keep the dent on the airframe, not in the air under it */
  const s=clamp(impact/30,0,1);
  // crumple toward the impact: nose pushes back, wingtips fold up and back, belly squashes up
  const dir=part==='wing'?[-Math.sign(lx)*.35,.55,-.75]:part==='belly'?[0,1,-.2]:[0,.25,-1];
@@ -3329,13 +3332,13 @@ function aircraftCrash(c,p,impact,part){
  if(!c.dead&&s>.85&&!(typeof DEV!=='undefined'&&DEV.god&&c===pl.car))damageCar(c,9999,'crash'); // a truly hard hit is not survivable
 }
 function aircraftCrumple(c,lx,ly,lz,dx,dy,dz,amount){
- if(typeof crumpleParts!=='function')return;const state=crumpleParts(c);const R=c.tk==='b747'||c.tk==='a330'?8.5:c.t.airliner?6:c.tk==='smallJet'?3.2:2.4,base=new T.Vector3(),pt=new T.Vector3();
+ if(typeof crumpleParts!=='function')return;const state=crumpleParts(c);const K=clamp(c.t.L/18,1,3);amount*=K;/* big airframes dent deeper */const R=c.tk==='b747'||c.tk==='a330'?8.5:c.t.airliner?6:c.tk==='smallJet'?3.2:2.4,base=new T.Vector3(),pt=new T.Vector3();
  for(const part of state.parts){const a=part.geometry.attributes.position.array;part.from=new Float32Array(a);part.to=new Float32Array(a);
   for(let i=0;i<a.length;i+=3){base.fromArray(part.base,i).applyMatrix4(part.toCh);pt.fromArray(a,i).applyMatrix4(part.toCh);
    const d2=(base.x-lx)**2+(base.y-ly)**2+(base.z-lz)**2;if(d2>R*R*4)continue;const w=Math.exp(-d2/(R*R));
    const n=Math.sin(base.x*7.1+base.z*5.3)*Math.cos(base.y*9.7+base.z*3.1); // wrinkles
    pt.x+=(dx*amount+n*.12*amount)*w;pt.y+=(dy*amount*.6+n*.1*amount)*w;pt.z+=(dz*amount)*w;
-   pt.x=clamp(pt.x,base.x-1.4,base.x+1.4);pt.y=clamp(pt.y,base.y-1,base.y+1.2);pt.z=clamp(pt.z,base.z-2,base.z+1);
+   pt.x=clamp(pt.x,base.x-1.4*K,base.x+1.4*K);pt.y=clamp(pt.y,base.y-K,base.y+1.2*K);pt.z=clamp(pt.z,base.z-2*K,base.z+K);
    pt.applyMatrix4(part.fromCh).toArray(part.to,i)}}
  state.dirty=true;state.morph=true;state.start=G.time||0;
 }
