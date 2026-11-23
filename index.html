@@ -1811,19 +1811,37 @@ function buildPalmettoGrove(){
 }
 const pgOldBaseMap=buildBaseMap;buildBaseMap=function(){pgOldBaseMap();const ctx=baseMap.getContext('2d');ctx.save();ctx.strokeStyle='#d8d8d8';ctx.lineCap='round';ctx.lineJoin='round';for(const path of PG.paths){ctx.lineWidth=Math.max(1.6,path.width/MAPPX*.8);ctx.beginPath();path.points.forEach((p,i)=>ctx[i?'lineTo':'moveTo']((p.x+WS)/MAPPX,(p.z+WS)/MAPPX));ctx.stroke()}ctx.restore()};
 
-function buildWorld(){
- initMaterials();initPalm();defineRoads();buildNodes();bakeTerrain();buildTerrainMesh();buildRoadMeshes();
- makeParcels();houses();
- // Reserve one complete 2-by-2 downtown block for the park.
- for(let i=parcels.length-1;i>=0;i--){const p=parcels[i];if(p.cx>60&&p.cx<180&&p.cz>30&&p.cz<150)parcels.splice(i,1)}
- filterRoadParcels();clearPromenadeParcels();assignShops();
- for(const p of parcels){if(p.style==='house')buildHouse(p);else{const built=building(p);if(built!==false&&p.shop)placeShopDoor(p)}}
- buildDowntownPark();
- buildPlazasAndPromenade();
- forceShopDoors();
- portExtras();streetProps();addOuterStreetlights();beachProps();swampProps();hillProps();keysProps();bigMapProps();buildSignals();buildAirport();
- buildPalmettoGrove();finalizeBatches();buildBaseMap();
-}
+// LOAD_PROGRESS_V1: world generation as weighted stages so the home screen can show real progress
+function worldSteps(){const buildOne=p=>{if(p.style==='house')buildHouse(p);else{const built=building(p);if(built!==false&&p.shop)placeShopDoor(p)}};
+ return[
+  ['Laying out the roads',2,()=>{initMaterials();initPalm();defineRoads();buildNodes()}],
+  ['Shaping the land',9,()=>bakeTerrain()],
+  ['Building the ground',7,()=>buildTerrainMesh()],
+  ['Paving the streets',3,()=>buildRoadMeshes()],
+  ['Planning city blocks',2,()=>{makeParcels();houses();
+   // Reserve one complete 2-by-2 downtown block for the park.
+   for(let i=parcels.length-1;i>=0;i--){const p=parcels[i];if(p.cx>60&&p.cx<180&&p.cz>30&&p.cz<150)parcels.splice(i,1)}
+   filterRoadParcels();clearPromenadeParcels();assignShops()}],
+  ['Raising buildings',30,{each:()=>parcels,fn:buildOne,chunk:250}],
+  ['Parks, plazas and shops',3,()=>{buildDowntownPark();buildPlazasAndPromenade();forceShopDoors()}],
+  ['Streetlights and palm trees',6,()=>{portExtras();streetProps();addOuterStreetlights();beachProps()}],
+  ['Swamps, hills and keys',6,()=>{swampProps();hillProps();keysProps()}],
+  ['Planting the countryside',8,()=>bigMapProps()],
+  ['Traffic lights and the airport',3,()=>{buildSignals();buildAirport()}],
+  ['Palmetto Grove',4,()=>{buildPalmettoGrove();finalizeBatches()}],
+  ['Drawing the map',7,()=>buildBaseMap()]]}
+function buildWorld(){for(const [,,f] of worldSteps()){if(typeof f==='function')f();else for(const p of f.each())f.fn(p)}}
+const nextPaint=()=>new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
+function setLoadProgress(frac,label){const lm=document.getElementById('loadmsg');if(!lm)return;let bar=lm.querySelector('.lp-fill');
+ if(!bar){lm.innerHTML='<div style="width:min(340px,80vw);margin:6px auto 0"><div style="height:10px;border-radius:6px;background:#0007;overflow:hidden;box-shadow:inset 0 0 0 1px #ffffff1f"><div class="lp-fill" style="height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,#ff4fa3,#ffb35c,#3fd1c4)"></div></div><small class="lp-text" style="display:block;margin-top:6px;color:#fff;font-weight:600;text-shadow:0 1px 3px #000c"></small></div>';bar=lm.querySelector('.lp-fill')}
+ const pc=Math.max(0,Math.min(100,Math.round(frac*100)));bar.style.width=pc+'%';lm.querySelector('.lp-text').textContent='Generating Vice City… '+pc+'% · '+label}
+async function buildWorldStaged(after){const steps=worldSteps().concat(after),total=steps.reduce((a,s)=>a+s[1],0);let done=0;
+ for(const [label,w,f] of steps){setLoadProgress(done/total,label);await nextPaint();
+  if(typeof f==='function')f();
+  else{const list=f.each(),n=list.length||1;for(let i=0;i<list.length;i+=f.chunk){for(let j=i;j<Math.min(list.length,i+f.chunk);j++)f.fn(list[j]);
+    setLoadProgress((done+w*Math.min(1,(i+f.chunk)/n))/total,label+' '+Math.min(list.length,i+f.chunk)+'/'+list.length);await nextPaint()}}
+  done+=w}
+ setLoadProgress(1,'Ready')}
 
 
 // ================= PARTICLES =================
@@ -4926,9 +4944,9 @@ function afterLoadReset(){endJob();heliReset();refreshStashes();refreshProps();f
 const EXT={heli,gangs,gators,stashes,GAS,PROPS,RACES,BOAT_SPOTS,cctv,DEALER,get EXPORT(){return EXPORT},get SJ(){return SJ},startRace,startTaxi,startGatorHunt,buyVehicle,takeOut,storeCar,openShop,onR,nearSpot,useSpot,robStore,findWater,roadSpotNear,spawnBoat,damageHeli,hurtGator,showBanner,cycleStation,maxHp,tierOf,addRep,updateJob,newExport};
 
 // ================= BOOT =================
-function boot(){
- try{buildWorld();buildAllInteriors();buildMarkers();buildGivers();
- initRain();spawnGators();buildExtras();initBoatSpots();
+async function boot(){
+ const startBtn=$('#start'),startHTML=startBtn&&startBtn.innerHTML;if(startBtn){startBtn.disabled=true;startBtn.textContent='LOADING…'}
+ try{await buildWorldStaged([['Interiors, shops and missions',4,()=>{buildAllInteriors();buildMarkers();buildGivers()}],['Wildlife, weather and extras',4,()=>{initRain();spawnGators();buildExtras();initBoatSpots()}]]);
  G.stats={nodes:nodes.length,roads:roads.length};
  skyUpdate(8);updateEnv();setQuality(1);resizePost();bindMapControls();
  const sv=readSave();if(sv){$('#cont').style.display='block'}
@@ -5059,6 +5077,9 @@ function boot(){
   $('#phClock').textContent=hh+':'+mm;$('#phBatt').textContent='🔋 '+Math.round(G.batt)+'%';
  },1000);
  addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();resizePost()});
+ if(startBtn){startBtn.disabled=false;startBtn.innerHTML=startHTML}
+ // menu handlers defined after boot() was called (window.__vcBegin) still win
+ if(window.__vcBegin){$('#start').onclick=()=>window.__vcBegin(false);$('#cont').onclick=()=>window.__vcBegin(true)}
  requestAnimationFrame(frame)}
 function begin(cont){audio.init();audio.setStation(G.station);const __ov=document.getElementById('overlay');if(__ov){__ov.classList.add('home-hidden');__ov.style.setProperty('display','none','important');}if(__ov){__ov.classList.add('home-hidden');__ov.style.setProperty('display','none','important');}G.state='play';
  const sv=cont?readSave():null;if(sv){newGame();MS.active=null;ring.visible=false;$('#goal').classList.remove('on');applySave(sv);if(!MS.active&&!pl.missions.m0&&!G.work)startMission(MISSIONS[0]);toast('Game loaded')}else{newGame();toast('Welcome to Vice City. C = switch Jason/Lucia · P = phone · R = jobs · F = focus',5500)}
@@ -5590,7 +5611,7 @@ function updateRaceTrack(dt){
 const speedingNativeClearWanted=clearWanted;clearWanted=function(){resetSpeedingEnforcement();return speedingNativeClearWanted.apply(this,arguments);};
 const speedingNativeNewGame=newGame;newGame=function(){resetSpeedingEnforcement();return speedingNativeNewGame.apply(this,arguments);};
 
-boot()}catch(err){console.error('boot failed',err);const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small style="color:#ff8">Boot error — check console. You can still try Singleplayer.</small>'}
+boot().catch(err=>{console.error('boot failed',err);const sb=document.getElementById('start');if(sb){sb.disabled=false;if(/LOADING/.test(sb.textContent))sb.textContent='SINGLEPLAYER'}const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small style="color:#ff8">Boot error — check console.</small>'})}catch(err){console.error('boot failed',err);const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small style="color:#ff8">Boot error — check console. You can still try Singleplayer.</small>'}
 // Expose for menu handlers
 window.G=G;window.begin=begin;window.mpActive=typeof mpActive!=='undefined'?mpActive:false;
 window.__vcBegin=function(cont){try{const ov=document.getElementById('overlay');if(ov){ov.classList.add('home-hidden');ov.style.setProperty('display','none','important')}G.multiplayer=false;window.mpActive=false;begin(!!cont)}catch(e){console.error(e)}};
