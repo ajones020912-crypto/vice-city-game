@@ -2132,7 +2132,7 @@ function buildAirport(){
  concrete.map=makeNoiseTex(256,82,18,[1,1,.98],6);
  const blueLight=new T.MeshBasicMaterial({color:0x668edb}),warmLight=new T.MeshBasicMaterial({color:0xffe2aa});
  const batches=new Map();
- const box=(w,h,d,m,x,y,z,solid=false)=>{w*=SCALE;d*=SCALE;x*=SCALE;z*=SCALE;const lift=m===asphalt?.22:0;if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,cx+x,ground+y+lift,cz+z]);if(solid)addCol(cx+x-w/2,cz+z-d/2,cx+x+w/2,cz+z+d/2,ground+y+lift+h/2);};
+ const box=(w,h,d,m,x,y,z,solid=false,angle=0)=>{w*=SCALE;d*=SCALE;x*=SCALE;z*=SCALE;const lift=m===asphalt?.22:0;if(!batches.has(m))batches.set(m,[]);batches.get(m).push([w,h,d,cx+x,ground+y+lift,cz+z,angle]);if(solid)addCol(cx+x-w/2,cz+z-d/2,cx+x+w/2,cz+z+d/2,ground+y+lift+h/2);};
  const paint=(w,d,m,x,z)=>box(w,.018,d,m,x,.455,z);
  // Entire VCIA airfield apron/ground is asphalt, not grass.
  box(720,.4,570,asphalt,60,-.21,0);
@@ -2175,33 +2175,33 @@ function buildAirport(){
  box(82,4,2,yellow,0,30,211,true);
  box(48,4,2,blueLight,-143,29,105,true);
  // North Terminal D: long concourse with overhead Skytrain guideway.
- box(28,17,255,white,178,8.5,-48,true);
- box(32,2,263,roof,178,18,-48,true);
- box(.8,9,240,glass,164,10,-48,true);
- box(.8,9,240,glass,192,10,-48,true);
- box(7,1.8,270,metal,178,30,-48,true);
+ box(28,17,255,white,190,8.5,-43,true,2.82);
+ box(32,2,263,roof,190,18,-43,true,2.82);
+ box(.8,9,240,glass,177,10,-39,true,2.82);
+ box(.8,9,240,glass,203,10,-47,true,2.82);
+ box(7,1.8,270,metal,190,30,-43,true,2.82);
  // Central Terminal E, F and G.
- box(28,17,198,white,108,8.5,-54,true);
- box(32,2,206,roof,108,18,-54,true);
- box(.8,9,184,glass,94,10,-54,true);
- box(.8,9,184,glass,122,10,-54,true);
- box(28,17,180,white,38,8.5,-52,true);
- box(32,2,188,roof,38,18,-52,true);
- box(.8,9,166,glass,24,10,-52,true);
- box(.8,9,166,glass,52,10,-52,true);
- box(28,17,180,white,-38,8.5,-52,true);
- box(32,2,188,roof,-38,18,-52,true);
- box(.8,9,166,glass,-52,10,-52,true);
- box(.8,9,166,glass,-24,10,-52,true);
+ box(28,17,198,white,112,8.5,-27,true,2.94);
+ box(32,2,206,roof,112,18,-27,true,2.94);
+ box(.8,9,184,glass,98,10,-25,true,2.94);
+ box(.8,9,184,glass,126,10,-29,true,2.94);
+ box(28,17,180,white,38,8.5,-25,true,3.07);
+ box(32,2,188,roof,38,18,-25,true,3.07);
+ box(.8,9,166,glass,24,10,-24,true,3.07);
+ box(.8,9,166,glass,52,10,-26,true,3.07);
+ box(28,17,180,white,-40,8.5,-25,true,3.21);
+ box(32,2,188,roof,-40,18,-25,true,3.21);
+ box(.8,9,166,glass,-54,10,-26,true,3.21);
+ box(.8,9,166,glass,-26,10,-24,true,3.21);
  // South Terminal H and J.
- box(28,17,198,white,-108,8.5,-54,true);
- box(32,2,206,roof,-108,18,-54,true);
- box(.8,9,184,glass,-122,10,-54,true);
- box(.8,9,184,glass,-94,10,-54,true);
- box(28,17,225,white,-178,8.5,-48,true);
- box(32,2,233,roof,-178,18,-48,true);
- box(.8,9,211,glass,-192,10,-48,true);
- box(.8,9,211,glass,-164,10,-48,true);
+ box(28,17,198,white,-115,8.5,-27,true,3.34);
+ box(32,2,206,roof,-115,18,-27,true,3.34);
+ box(.8,9,184,glass,-128,10,-29,true,3.34);
+ box(.8,9,184,glass,-102,10,-25,true,3.34);
+ box(28,17,225,white,-194,8.5,-25,true,3.46);
+ box(32,2,233,roof,-194,18,-25,true,3.46);
+ box(.8,9,211,glass,-207,10,-21,true,3.46);
+ box(.8,9,211,glass,-181,10,-29,true,3.46);
  // Enclosed passenger boarding bridges along both sides of the concourses.
  box(18,6,10,white,207,8,-28,true);box(16,4,8,glass,207,9,-28,true);box(20,.8,12,roof,207,11.5,-28,true);
  box(18,6,10,white,149,8,-76,true);box(16,4,8,glass,149,9,-76,true);box(20,.8,12,roof,149,11.5,-76,true);
@@ -2234,7 +2234,7 @@ function buildAirport(){
  box(340,.16,16,asphalt,0,.1,238);
  paint(320,.25,yellow,0,238);
  const geometry=new T.BoxGeometry(1,1,1),matrix=new T.Matrix4(),rotation=new T.Quaternion();
- for(const [material,items] of batches){const mesh=new T.InstancedMesh(geometry,material,items.length);for(let i=0;i<items.length;i++){const [w,h,d,x,y,z]=items[i];matrix.compose(new T.Vector3(x,y,z),rotation,new T.Vector3(w,h,d));mesh.setMatrixAt(i,matrix);}mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;mesh.receiveShadow=true;world.add(mesh);}
+ for(const [material,items] of batches){const mesh=new T.InstancedMesh(geometry,material,items.length);for(let i=0;i<items.length;i++){const item=items[i];const w=item[0],h=item[1],d=item[2],x=item[3],y=item[4],z=item[5],angle=item[6]||0;rotation.setFromAxisAngle(new T.Vector3(0,1,0),angle);matrix.compose(new T.Vector3(x,y,z),rotation,new T.Vector3(w,h,d));mesh.setMatrixAt(i,matrix);}mesh.instanceMatrix.needsUpdate=true;mesh.frustumCulled=false;mesh.receiveShadow=true;world.add(mesh);}
  const [signCanvas,signCtx]=cv(1024,160);signCtx.fillStyle='#102d40';signCtx.fillRect(0,0,1024,160);signCtx.strokeStyle='#d9b85c';signCtx.lineWidth=10;signCtx.strokeRect(8,8,1008,144);signCtx.fillStyle='#fff';signCtx.font='bold 58px Arial';signCtx.textAlign='center';signCtx.textBaseline='middle';signCtx.fillText('VICE CITY INTERNATIONAL AIRPORT',512,82);const signMat=new T.MeshStandardMaterial({map:mkTex(signCanvas),roughness:.75});box(146,4,1.2,signMat,-153,8.5,135,true);
  airport={x:cx,z:cz,ground};
 }
