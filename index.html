@@ -4273,7 +4273,7 @@ const copOpts=()=>({skin:pick2(SKIN),shirt:0x1b2a4d,pants:0x141a2a,hair:0x1d1410
 const nearRoadsCache={t:-9,list:[]};
 class Ped{
  constructor(cop,gang){this.cop=cop;this.gang=!!gang;this.h=makeHuman(cop?copOpts():gang?gangOpts():randomHumanOpts());this.h.visible=false;world.add(this.h);this.active=false;this.dead=false;this.state='idle';this.x=this.z=this.y=0;this.vx=this.vz=0;this.dir=0;this.hp=100;this.t=0;this.tx=0;this.tz=0;this.fireT=0;this.speed=1.4;this.bust=0;this.scale=1}
- init(x,z){this.active=true;this.dead=false;this.x=x;this.z=z;this.y=heightAt(x,z);this.vx=this.vz=0;this.hp=this.cop?110:70;this.state='walk';this.t=0;this.h.visible=true;this.h.rotation.set(0,0,0);this.h.userData.dead=0;this.fireT=Math.random();this.bust=0;
+ init(x,z){this.active=true;this.dead=false;this.x=x;this.z=z;this.y=heightAt(x,z);this.vx=this.vz=0;this.hp=this.cop?110:70;this.state='walk';this.t=0;this.h.visible=true;this.h.rotation.set(0,0,0);this.h.userData.dead=0;this.fireT=Math.random();this.bust=0;this.foe=null;this.hothead=false;this.punchT=0;
   if(this.gang){const o=gangOpts();setHumanLook(this.h,o);this.scale=1;this.h.scale.setScalar(1);this.hp=90;this.hostile=false;this.speed=1.2+Math.random()*.4;this.gun=Math.random()<.35?'smg':'pistol'}
   else if(!this.cop){const o=randomHumanOpts(x,z);setHumanLook(this.h,o);this.speed=1.1+Math.random()*.7;this.scale=.93+Math.random()*.12;this.h.scale.setScalar(this.scale)}else{setHumanLook(this.h,copOpts());this.scale=1;this.h.scale.setScalar(1)}
   this.dir=Math.random()*TAU;this.pick()}
@@ -4283,7 +4283,8 @@ class Ped{
  flee(fx,fz,t=8){if(this.dead||this.cop||this.gang)return;this.state='flee';this.fx=fx;this.fz=fz;this.t=t;this.speed=5.8}
  update(dt){
   const d2=(this.x-pl.x)**2+(this.z-pl.z)**2;if(d2>150*150){this.kill();return}
-  this.h.visible=d2<125*125;let sp=0,aim=false;
+  this.h.visible=d2<125*125;let sp=0,aim=false;if(this.punchT>0)this.punchT-=dt;
+  if(this.hothead&&!this.dead&&this.state==='walk'){this.fightIn-=dt;if(this.fightIn<0)startNpcFight(this)}
   if(this.dead){this.t-=dt;this.x+=this.vx*dt;this.z+=this.vz*dt;this.vx*=1-4*dt;this.vz*=1-4*dt;if(this.t<0){this.kill();return}if(this.t<1.5)this.h.scale.setScalar(this.scale*Math.max(.01,this.t/1.5));
    this.y=heightAt(this.x,this.z)}
   else if(this.state==='down'){this.t-=dt;this.vx*=1-3*dt;this.vz*=1-3*dt;this.x+=this.vx*dt;this.z+=this.vz*dt;if(this.t<0){if(this.gang){this.state='gang';this.hostile=true}else{this.state='flee';this.t=8;this.speed=5.8;this.fx=this.x-this.vx;this.fz=this.z-this.vz}}}
@@ -4294,13 +4295,14 @@ class Ped{
    for(const c of cars){if(c.speed<2||Math.abs((c.y||0)-(this.y||0))>4)continue;const rx=this.x-c.x,rz=this.z-c.z;if(rx*rx+rz*rz<64){const f=rx*c.vx+rz*c.vz;if(f>0&&Math.hypot(rx,rz)<7){this.flee(c.x,c.z,3);break}}}}
   else if(this.state==='chase'){sp=this.copUpdate(dt);aim=this.aimNow}
   else if(this.state==='gang'){sp=this.gangUpdate(dt);aim=this.aimNow}
+  else if(this.state==='fight'){sp=this.fightUpdate(dt)}
   if(!this.dead&&this.state!=='down'){const px=this.x,pz=this.z;this.x+=this.vx*dt;this.z+=this.vz*dt;
    _fp[0]=this.x;_fp[1]=this.z;for(const col of queryCols(this.x,this.z,.8)){const ct=circleBox(_fp,.35,col);if(ct){_fp[0]+=ct.nx*ct.pen;_fp[1]+=ct.nz*ct.pen;if(this.state==='walk'&&Math.random()<.2)this.pick()}}
    this.x=_fp[0];this.z=_fp[1];this.y=heightAt(this.x,this.z);if(this.y<WL-1){this.hp=0;this.die(0,0,'water')}}
   const g=this.h;g.position.set(this.x,this.y+(this.dead?0:0),this.z);
   const wantDir=this.dead||this.state==='down'?g.rotation.y:this.dir;g.rotation.y+=wrapA(wantDir-g.rotation.y)*Math.min(1,dt*10);
   if(this.state==='down'){g.rotation.x=-1.3;g.position.y=this.y+.15;animHuman(g,dt,{speed:0,dead:true,baseY:this.y})}
-  else animHuman(g,dt,{speed:this.dead?0:Math.hypot(this.vx,this.vz),dead:this.dead,aim,weapon:this.cop?'pistol':this.gang?this.gun:null,baseY:this.y})}
+  else animHuman(g,dt,{speed:this.dead?0:Math.hypot(this.vx,this.vz),dead:this.dead,aim,punch:this.punchT>0?1-this.punchT/.35:0,weapon:this.cop?'pistol':this.gang?this.gun:null,baseY:this.y})}
  die(sx,sz,src){if(this.dead)return;this.dead=true;this.state='dead';this.t=12;let dx=this.x-sx,dz=this.z-sz;const l=Math.hypot(dx,dz)||1;this.vx=dx/l*(src==='car'?5:2.5);this.vz=dz/l*(src==='car'?5:2.5);if(src==='water')this.t=1;
   if(this.gang){if(Math.random()<.6)dropPickup('ammo',this.x,this.z,15);dropPickup('cash',this.x+.5,this.z,40+Math.floor(Math.random()*100))}
   else if(this.cop){if(Math.random()<.7)dropPickup('ammo',this.x,this.z,12);dropPickup('cash',this.x+.5,this.z,30+Math.floor(Math.random()*80))}else if(Math.random()<.55)dropPickup('cash',this.x,this.z,5+Math.floor(Math.random()*60))}
@@ -4331,12 +4333,13 @@ class Ped{
   return sp}
 }
 function hurtPed(p,d,sx,sz,src,byP){if(p.dead)return;p.hp-=d;
- if(byP){if(p.cop)addCrime(src==='gun'||src==='punch'?3:2);else if(p.gang)alertGang(p);else addCrime(p.hp<=0?1.6:.8)}
- if(p.hp<=0){p.die(sx,sz,src);if(byP){pl.stats.kills++;if(p.cop)killCop();else if(p.gang)onGangKill(p);else addCrime(1.4)}}
+ const selfDefence=byP&&p.foe==='player'; /* NPC_FIGHTS_V1: they started it */
+ if(byP&&!selfDefence){if(p.cop)addCrime(src==='gun'||src==='punch'?3:2);else if(p.gang)alertGang(p);else addCrime(p.hp<=0?1.6:.8)}
+ if(p.hp<=0){p.die(sx,sz,src);if(byP){pl.stats.kills++;if(p.cop)killCop();else if(p.gang)onGangKill(p);else if(!selfDefence)addCrime(1.4)}}
  else if(src==='car'){p.state='down';p.t=1.5+Math.random()*2;let dx=p.x-sx,dz=p.z-sz;const l=Math.hypot(dx,dz)||1;p.vx=dx/l*4;p.vz=dz/l*4;p.fx=sx;p.fz=sz}
- else if(!p.cop){p.flee(sx,sz,10)}
+ else if(!p.cop){if(byP&&src==='punch'&&!p.gang&&(p.foe==='player'||Math.random()<.3)){p.state='fight';p.foe='player';p.fightT=Math.max(p.fightT||0,15)}else p.flee(sx,sz,10)}
  if(src==='gun'||src==='punch')for(const o of peds)if(o.active&&!o.dead&&o!==p&&!o.cop&&(o.x-p.x)**2+(o.z-p.z)**2<400)o.flee(p.x,p.z,9)}
-function activatePed(x,z,cop){const pool=cop?cops:peds;let p=pool.find(q=>!q.active);if(!p){if(pool.length>=(cop?14:46))return null;p=new Ped(cop);pool.push(p)}p.init(x,z);if(cop){p.state='chase';p.speed=6}return p}
+function activatePed(x,z,cop){const pool=cop?cops:peds;let p=pool.find(q=>!q.active);if(!p){if(pool.length>=(cop?14:46))return null;p=new Ped(cop);pool.push(p)}p.init(x,z);if(cop){p.state='chase';p.speed=6}else if(!p.gang&&Math.random()<(G.hotheadChance??.01)){p.hothead=true;p.fightIn=4+Math.random()*12}return p}
 // population around the player
 let popT=0;const SW=1.4;
 function pickSidewalk(){ // random sidewalk spot near the player
@@ -6788,6 +6791,69 @@ function updateAirportPolice(dt){
 }
 // hand airport cars their own driver instead of the road-network AI
 {const ctlOrig=controlAI;controlAI=function(c,dt){if(c.ai&&c.ai.airport)return apolDrive(c,dt);return ctlOrig.apply(this,arguments)}}
+
+// NPC_FIGHTS_V1: about 1 in 100 pedestrians is a hothead who starts a fist fight a few seconds after appearing,
+// usually with another pedestrian nearby and sometimes with the player. The other side fights back about two thirds
+// of the time; bystanders scatter. Fighting back against someone who attacked you is self-defence (no wanted level).
+function startNpcFight(a){a.hothead=false;
+ let foe=null,bd=26;for(const o of peds)if(o!==a&&o.active&&!o.dead&&!o.cop&&!o.gang&&o.state!=='fight'){const d=Math.hypot(o.x-a.x,o.z-a.z);if(d<bd){bd=d;foe=o}}
+ const pd=Math.hypot(pl.x-a.x,pl.z-a.z),playerOk=pl.alive&&!pl.car&&!pl.inside&&pd<20;
+ if(playerOk&&(!foe||Math.random()<.3))foe='player';if(!foe)return;
+ a.state='fight';a.foe=foe;a.fightT=25;a.hitT=.4;
+ if(foe==='player')toast('👊 Someone wants to fight you! (fighting back is self-defence)',2600);
+ else if(Math.random()<.65){foe.state='fight';foe.foe=a;foe.fightT=25;foe.hitT=.8}else foe.flee(a.x,a.z,9);
+ for(const o of peds)if(o.active&&!o.dead&&o!==a&&o!==foe&&!o.cop&&!o.gang&&(o.x-a.x)**2+(o.z-a.z)**2<300)o.flee(a.x,a.z,7)}
+Ped.prototype.fightUpdate=function(dt){const f=this.foe;this.fightT-=dt;
+ const fx=f==='player'?pl.x:f&&f.x,fz=f==='player'?pl.z:f&&f.z;
+ const gone=!f||(f==='player'?(!pl.alive||pl.car||pl.inside):(!f.active||f.dead||f.state==='flee'||f.state==='down'));
+ if(gone||this.fightT<0||Math.hypot(fx-this.x,fz-this.z)>40){this.state='walk';this.foe=f==='player'?'player':null;this.speed=1.2+Math.random()*.6;this.pick();return 0}
+ const dx=fx-this.x,dz=fz-this.z,d=Math.hypot(dx,dz);this.dir=Math.atan2(dx,dz);let sp=0;
+ if(d>1.25){sp=4.4;this.vx=dx/d*sp;this.vz=dz/d*sp}else{this.vx=this.vz=0}
+ this.hitT=(this.hitT||0)-dt;
+ if(d<1.6&&this.hitT<=0){this.hitT=.75+Math.random()*.55;this.punchT=.35;audio.punch&&audio.punch();
+  if(f==='player'){hurtPlayer(3+Math.random()*4)}
+  else{const dmg=7+Math.random()*8;f.hp-=dmg;goreHit(f,dmg,this.x,this.z,'punch');
+   if(f.hp<=0)f.die(this.x,this.z,'punch');else if(Math.random()<.18){f.state='down';f.t=1.2+Math.random();const l=d||1;f.vx=dx/l*2.5;f.vz=dz/l*2.5}}}
+ return sp};
+
+// GORE_V1: blood that sprays on every hit (bullets, punches, cars, fights), splatters on the ground, pools under
+// bodies (which now stay for 30 s), and a red blood vignette on screen when the player is hurt.
+const GORE=(()=>{
+ const MAXP=500,pos=new Float32Array(MAXP*3),col=new Float32Array(MAXP*3),P=[];let next=0;
+ for(let i=0;i<MAXP;i++)P.push({life:0,x:0,y:0,z:0,vx:0,vy:0,vz:0,g:0,r:.5});
+ const geo=new T.BufferGeometry();geo.setAttribute('position',new T.BufferAttribute(pos,3));geo.setAttribute('color',new T.BufferAttribute(col,3));
+ const pts=new T.Points(geo,new T.PointsMaterial({size:.16,vertexColors:true,sizeAttenuation:true,transparent:true,depthWrite:false}));pts.frustumCulled=false;pts.renderOrder=5;
+ const MAXD=160,dMesh=new T.InstancedMesh(new T.CircleGeometry(1,14).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:0x3a0204,depthWrite:false,toneMapped:false,polygonOffset:true,polygonOffsetFactor:-2}),MAXD);
+ dMesh.frustumCulled=false;dMesh.renderOrder=3;const D=[];for(let i=0;i<MAXD;i++)D.push({on:false});let dNext=0;const m4=new T.Matrix4(),q=new T.Quaternion(),v3=new T.Vector3(),sc=new T.Vector3();
+ let added=false;const ensure=()=>{if(!added){world.add(pts);world.add(dMesh);added=true}};
+ const vig=document.createElement('div');vig.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:30;opacity:0;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 45%,rgba(120,0,0,.55) 78%,rgba(70,0,0,.9) 100%)';document.body.appendChild(vig);let vigA=0;
+ const ground=(x,z)=>pl.inside?(pl.y||0):heightAt(x,z);
+ function decal(x,z,r,grow){ensure();const d=D[dNext];dNext=(dNext+1)%MAXD;Object.assign(d,{on:true,x,z,y:ground(x,z)+.035+Math.random()*.01,r,cur:grow?r*.15:r,grow:grow?r/5:0,life:grow?75:45,rot:Math.random()*6.28,sx:.7+Math.random()*.6})}
+ function spray(x,y,z,dx,dz,n,force){ensure();const l=Math.hypot(dx,dz)||1;dx/=l;dz/=l;
+  for(let i=0;i<n;i++){const p=P[next];next=(next+1)%MAXP;const s=force*(.4+Math.random()*.9),a=(Math.random()-.5)*1.4,c=Math.cos(a),sn=Math.sin(a);
+   Object.assign(p,{life:.7+Math.random()*.7,x:x+(Math.random()-.5)*.25,y:y+(Math.random()-.5)*.3,z:z+(Math.random()-.5)*.25,vx:(dx*c-dz*sn)*s+(Math.random()-.5)*1.2,vy:1+Math.random()*2.6,vz:(dz*c+dx*sn)*s+(Math.random()-.5)*1.2,g:ground(x,z),r:.28+Math.random()*.32})}}
+ function update(dt){if(!added)return;let n=0;
+  for(const p of P){if(p.life<=0)continue;p.life-=dt;p.vy-=9.8*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.z+=p.vz*dt;
+   if(p.y<=p.g+.02){p.y=p.g+.02;if(p.vy<-1&&Math.random()<.22&&!pl.inside)decal(p.x,p.z,.12+Math.random()*.22,false);p.vx=p.vz=p.vy=0;p.life=Math.min(p.life,.05)}
+   const i=n++*3;pos[i]=p.x;pos[i+1]=p.y;pos[i+2]=p.z;col[i]=p.r;col[i+1]=0;col[i+2]=.01}
+  geo.setDrawRange(0,n);geo.attributes.position.needsUpdate=true;geo.attributes.color.needsUpdate=true;
+  for(let i=0;i<MAXD;i++){const d=D[i];let s=0;if(d.on){d.life-=dt;if(d.grow)d.cur=Math.min(d.r,d.cur+d.grow*dt);s=d.life<2?d.cur*Math.max(0,d.life/2):d.cur;if(d.life<=0)d.on=false}
+   q.setFromAxisAngle(v3.set(0,1,0),d.rot||0);m4.compose(v3.set(d.x||0,d.y||0,d.z||0),q,sc.set(s*(d.sx||1),1,s));dMesh.setMatrixAt(i,m4)}
+  dMesh.instanceMatrix.needsUpdate=true;
+  const low=pl.alive&&pl.hp<30?(.35+.25*Math.sin(G.time*4))*(1-pl.hp/30):0;vigA=Math.max(0,vigA-dt*.8);vig.style.opacity=Math.min(.95,Math.max(vigA,low)).toFixed(3)}
+ function clear(){for(const p of P)p.life=0;for(const d of D)d.on=false;vigA=0}
+ return{spray,decal,update,clear,playerHit:d=>{vigA=Math.min(.95,vigA+.18+d*.05)},count:()=>P.filter(p=>p.life>0).length,decals:()=>D.filter(d=>d.on).length}})();
+function goreHit(p,dmg,sx,sz,src){if(!p||src==='water')return;const y=(p.y||0)+(p.state==='down'||p.dead?.4:1.2);
+ const n=Math.min(70,Math.round(8+dmg*(src==='gun'?1.6:src==='car'?1.2:.9))),force=src==='gun'?4.5:src==='car'?5.5:2.6;
+ GORE.spray(p.x,y,p.z,p.x-sx,p.z-sz,n,force);if(!pl.inside&&(src==='car'||dmg>18))GORE.decal(p.x+(Math.random()-.5),p.z+(Math.random()-.5),.35+Math.random()*.35,false)}
+{const hpOrig=hurtPed;hurtPed=function(p,d,sx,sz,src,byP){const was=p&&!p.dead;const r=hpOrig.apply(this,arguments);
+  try{if(was)goreHit(p,d,sx,sz,src);if(was&&p.dead&&src!=='water'&&!pl.inside){GORE.spray(p.x,(p.y||0)+.8,p.z,p.x-sx,p.z-sz,40,3);p.poolT=.9}}catch(e){}return r}}
+{const dieOrig=Ped.prototype.die;Ped.prototype.die=function(sx,sz,src){const was=!this.dead;const r=dieOrig.apply(this,arguments);if(was&&src!=='water'){this.t=30;this.poolT=this.poolT||1}return r}}
+{const hplOrig=hurtPlayer;hurtPlayer=function(d){const was=pl.alive;const r=hplOrig.apply(this,arguments);try{if(was&&d>0){GORE.playerHit(d);GORE.spray(pl.x,(pl.y||0)+1.2,pl.z,Math.random()-.5,Math.random()-.5,Math.round(6+d*2),2.2)}}catch(e){}return r}}
+{const simGore=simulate;simulate=function(dt){const r=simGore.apply(this,arguments);try{const t=Number.isFinite(dt)?Math.min(dt,.1):0;GORE.update(t);
+  for(const list of[peds,cops,gangs])for(const p of list)if(p.active&&p.dead&&p.poolT>0){p.poolT-=t;if(p.poolT<=0&&!pl.inside){const R=.75+Math.random()*.5;GORE.decal(p.x,p.z,R,true);for(let k=0;k<3;k++){const a=Math.random()*6.28,o=R*(.45+Math.random()*.4);GORE.decal(p.x+Math.cos(a)*o,p.z+Math.sin(a)*o,R*(.35+Math.random()*.3),true)}p.poolT=0} /* an uneven pool from a few overlapping blobs */}}catch(e){console.error('gore',e)}return r}}
+{const ngGore=newGame;newGame=function(){GORE.clear();return ngGore.apply(this,arguments)}}
+G.gore=GORE;G.startNpcFight=startNpcFight;
 {const simAP=simulate;simulate=function(dt){try{updateAirportTraffic(Number.isFinite(dt)?dt:0)}catch(e){console.error('airport traffic',e)}const r=simAP.apply(this,arguments);try{updateAirportPolice(Number.isFinite(dt)?dt:0)}catch(e){console.error('airport police',e)}return r}}
 // POLICE_DIALOGUE_V1: officers talk out loud. Each line is spoken with the browser's voice and written as a subtitle at
 // the bottom of the screen (O toggles the voice). Lines come from
