@@ -1,7 +1,28 @@
 {
   "passed": false,
-  "error": "Error: page.evaluate: ReferenceError: KL is not defined\n    at Object.run (http://127.0.0.1:8765/.kl-rebuild-test.html:7043:30)\n    at eval (eval at evaluate (:370:30), <anonymous>:1:21)\n    at UtilityScript.evaluate (<anonymous>:372:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)",
-  "stack": "page.evaluate: ReferenceError: KL is not defined\n    at Object.run (http://127.0.0.1:8765/.kl-rebuild-test.html:7043:30)\n    at eval (eval at evaluate (:370:30), <anonymous>:1:21)\n    at UtilityScript.evaluate (<anonymous>:372:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at [stdin]:1:576",
+  "error": "Error: page.evaluate: Error: New highway traffic graph is disconnected\n    at Object.run (http://127.0.0.1:8765/.kl-rebuild-test.html:2563:1002)\n    at async <anonymous>:381:23",
+  "stack": "page.evaluate: Error: New highway traffic graph is disconnected\n    at Object.run (http://127.0.0.1:8765/.kl-rebuild-test.html:2563:1002)\n    at async <anonymous>:381:23\n    at [stdin]:1:576",
   "browserErrors": [],
-  "baselinePreserved": true
+  "baselinePreserved": true,
+  "scopeRetry": {
+    "originalInstallerBlob": "ae802b58c0dfd5239a3046d0a6d4e8272fe707fd",
+    "rebuildHelperBlob": "30cdce8821484e57a2b8f530e3f1bb1ac481cd75",
+    "adapterInsertedAtRebuildMarker": true,
+    "sameLexicalBlockRequired": true,
+    "allOriginalBrowserChecksRetained": true,
+    "stageResults": [
+      {
+        "stage": 0,
+        "exitCode": 0
+      },
+      {
+        "stage": 1,
+        "exitCode": 0
+      },
+      {
+        "stage": 2,
+        "exitCode": 1
+      }
+    ]
+  }
 }
