@@ -634,7 +634,7 @@ const shoreZ=x=>flLerp([[-8000,-1600],[-6500,-1450],[-5350,-1050],[-4300,-780],[
 // PORT_VICE_CITY_ISLAND_V1: long, angled working-port footprint based on the supplied reference.
 const HH_CX=2150,HH_CZ=-1050;
 // Wide east-west port island. World axes are rotated on the map, so its long axis follows z.
-const HH_PORT_SHORE=[[-350,-620],[-285,-690],[-130,-715],[110,-710],[285,-660],[355,-565],[365,-360],[330,-180],[355,40],[335,270],[260,485],[125,635],[-95,690],[-275,610],[-355,455],[-370,220],[-350,-40],[-370,-310]];
+const HH_PORT_SHORE=[[-430,-850],[-350,-910],[-160,-920],[40,-850],[220,-700],[360,-510],[445,-285],[430,-80],[350,95],[205,205],[20,245],[-190,220],[-350,125],[-435,-55],[-455,-285],[-445,-575]];
 function hhIsle(x,z){
  const px=x-HH_CX,pz=z-HH_CZ;let inside=false,minD=1e9;
  for(let i=0,j=HH_PORT_SHORE.length-1;i<HH_PORT_SHORE.length;j=i++){
@@ -1497,7 +1497,7 @@ const crossWalkZ=[];
 function buildRoadMeshes(){
  const col=[1,1,1],M=[.2,.2,.2];
  for(const r of roads){const key=r.type==='hwy'?'roadH':r.type==='dirt'?'roadD':'roadC',per=r.type==='dirt'?12:16;
-  for(let p=r.a;p<r.b;p+=150){const q=Math.min(p+150,r.b),y=.05;
+  for(let p=r.a;p<r.b;p+=150){const q=Math.min(p+150,r.b),y=r.type==='bridge'?.12:.05;
    if(r.o==='h'){const x0=p,x1=q,z0=r.c-r.hw,z1=r.c+r.hw;B(key+'_h',(x0+x1)/2,r.c).quad([x0,y,z1],[x1,y,z1],[x1,y,z0],[x0,y,z0],0,1,0,(x0-r.a)/per,0,(x1-r.a)/per,1,col)}
    else{const z0=p,z1=q,x0=r.c-r.hw,x1=r.c+r.hw;B(key+'_v',r.c,(z0+z1)/2).quad([x0,y,z1],[x1,y,z1],[x1,y,z0],[x0,y,z0],0,1,0,0,(z1-r.a)/per,1,(z0-r.a)/per,col)}}}
  // dark asphalt intersection patches
@@ -2485,29 +2485,24 @@ defineRoads=function(){
   if(r.c<c0-hw||r.c>c1+hw||hi<a0-hw||lo>a1+hw)continue;const before=a0-hw-pad-lo,after=hi-(a1+hw+pad);
   if(before<20&&after<20){roads.splice(i,1);continue}if(before>=after){r.a=lo;r.b=a0-hw-pad}else{r.a=a1+hw+pad;r.b=hi}}}
  for(let i=roads.length-1;i>=0;i--){const r=roads[i],lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),crosses=noRoadZones.some(zone=>r.o==='h'?(r.c>=zone.z0-r.hw&&r.c<=zone.z1+r.hw&&hi>=zone.x0-r.hw&&lo<=zone.x1+r.hw):(r.c>=zone.x0-r.hw&&r.c<=zone.x1+r.hw&&hi>=zone.z0-r.hw&&lo<=zone.z1+r.hw));if(crosses)roads.splice(i,1)}
- // PORT_VICE_CITY_MAINLAND_ROADS_FIX_V2: the recursive port grid was spilling beyond
- // the actual island footprint. Remove every nearby mainland segment, not just segments
- // whose centerline falls wholly inside the district rectangle.
- {const vxRoad=HH.roads.filter(q=>q[0]==='v').sort((a,b)=>Math.abs(a[1]-2150)-Math.abs(b[1]-2150))[0];
-  const causeX=vxRoad?vxRoad[1]:2150,causeShore=vxRoad?vxRoad[3]:-700;
-  const x0=1550,x1=2750,z0=-1900,z1=-250,filtered=[];
+ // PORT_VICE_CITY_MAINLAND_ROADS_FIX_V3: remove the stray mainland grid in the channel approach.
+ // Road orientation: v roads vary along z; h roads vary along x. Clip both correctly.
+ {const x0=1450,x1=2820,z0=-300,z1=1450,filtered=[];
   for(const r of roads){
    const lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),isH=r.o==='h';
-   const nearPort=isH?(r.c>=z0-r.hw&&r.c<=z1+r.hw&&hi>=x0-r.hw&&lo<=x1+r.hw):(r.c>=x0-r.hw&&r.c<=x1+r.hw&&hi>=z0-r.hw&&lo<=z1+r.hw);
-   if(!nearPort){filtered.push(r);continue}
-   const step=5,n=Math.max(1,Math.ceil((hi-lo)/step));let run=null;
+   const crosses=isH?(r.c>=z0-r.hw&&r.c<=z1+r.hw&&hi>=x0-r.hw&&lo<=x1+r.hw):(r.c>=x0-r.hw&&r.c<=x1+r.hw&&hi>=z0-r.hw&&lo<=z1+r.hw);
+   if(!crosses){filtered.push(r);continue}
+   const step=4,n=Math.max(1,Math.ceil((hi-lo)/step));let run=null;
    for(let j=0;j<=n;j++){
-    const t=lo+(hi-lo)*j/n,px=isH?t:r.c,pz=isH?r.c:t;
-    const onPortIsland=hhIsle(px,pz)<-(r.hw+10);
-    const causeway=(isH&&Math.abs(r.c-causeX)<r.hw+5&&px>=causeShore-20&&px<=-200)||
-      (!isH&&Math.abs(r.c+200)<r.hw+5&&pz>=1400&&pz<=causeX+20);
-    const keep=onPortIsland||causeway;
-    if(keep&&run===null)run=t;
-    if((!keep||j===n)&&run!==null){const finish=keep&&j===n?t:lo+(hi-lo)*(j-1)/n;
+    const t=lo+(hi-lo)*j/n,px=isH?t:r.c,pz=isH?r.c:t,onIsland=hhIsle(px,pz)<-(r.hw+8);
+    if(onIsland&&run===null)run=t;
+    if((!onIsland||j===n)&&run!==null){const finish=onIsland&&j===n?t:lo+(hi-lo)*(j-1)/n;
      if(finish-run>Math.max(12,r.hw*1.5))filtered.push({...r,a:run,b:finish,cross:[]});run=null}
    }
   }
   roads.length=0;roads.push(...filtered);
+  // One deliberate north-side bridge, aligned with the island's main access avenue.
+  addRoad('v',2150,-900,260,28,'bridge',true);
  }
  // ROAD_OVERLAP_CLEANUP_V1: merge overlapping collinear road surfaces before mesh generation.
  {const groups=[];
