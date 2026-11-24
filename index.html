@@ -786,12 +786,15 @@ function seaD(x,z){ // signed metres into the sea (>0 sea, <0 land)
  const bu=Math.abs(x+1250)/800,bv=Math.abs(z-1865)/835,ba=Math.atan2(z-1865,x+1250);
  const bay=(1-Math.pow(Math.pow(bu,3.2)+Math.pow(bv,3.2),1/3.2))*800-Math.abs(70*Math.sin(ba*3+.7)+45*Math.sin(ba*7+2.2)+22*Math.sin(ba*13+.4))-25;
  const pass=-1e9; // lake now: no channel to the sea
- const mainlandSea=Math.min(Math.max(edge,Math.min(Math.max(bay,pass,Math.min(n,isl)),hhIsle(x,z))),flKeysD(x,z),westAirportIslandD(x,z),afbIsle(x,z));
- // VICE_CITY_COASTAL_METRO_V3:
- // Keep Vice City as one continuous coastal mainland/peninsula. The old detached oval island
- // made the urban footprint look like an offshore blob; the shoreline now comes from Florida's
- // real coast and the existing bays, with VCIA protected on the mainland.
- return Math.min(mainlandSea,vcBayD(x,z));
+ const mainlandSea=Math.min(Math.max(edge,Math.max(bay,pass,Math.min(n,isl))),flKeysD(x,z),westAirportIslandD(x,z),afbIsle(x,z));
+ // PORT_VICE_CITY_DETACHED_ISLAND_V1:
+ // Carve a continuous 180m water moat around the port footprint. The old Math.min()
+ // union added the island to the mainland but never cut water between them.
+ const portD=hhIsle(x,z),moat=180;
+ if(Math.abs(portD)<moat)return moat-Math.abs(portD);
+ // Keep the island as its own landmass, separated from the Florida mainland by the moat.
+ const coastWithPort=Math.min(mainlandSea,portD);
+ return Math.min(coastWithPort,vcBayD(x,z));
 }
 const gladesMask=(x,z)=>sstep(-2300,-2000,x)*(1-sstep(1300,1700,x))*sstep(3200,3450,z)*(1-sstep(4400,4650,z))*(.75+.25*Math.sin(x*.003+z*.002));
 const swampMask=(x,z)=>Math.max(gladesMask(x,z),swampMask0(x,z));
