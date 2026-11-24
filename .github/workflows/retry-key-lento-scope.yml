@@ -1,0 +1,68 @@
+name: Retry Key Lento with scope-correct browser adapter
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/retry-key-lento-scope.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: key-lento-full-rebuild-retry
+  cancel-in-progress: false
+jobs:
+  retry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Correct test-adapter scope and run the guarded original installer
+        run: |
+          python3 <<'PY'
+          import json, pathlib, subprocess
+          source='.github/workflows/key-lento-full-rebuild.yml'
+          expected='ae802b58c0dfd5239a3046d0a6d4e8272fe707fd'
+          actual=subprocess.check_output(['git','rev-parse','HEAD:'+source],text=True).strip()
+          if actual!=expected: raise RuntimeError('Original installer changed; refusing to run unreviewed content')
+          helper='scripts/key-lento-rebuild.js'
+          reviewed=subprocess.check_output(['git','rev-parse','083a9d705496b0e951d49bf490719182e2c83425:'+helper],text=True).strip()
+          current=subprocess.check_output(['git','rev-parse','HEAD:'+helper],text=True).strip()
+          if current!=reviewed: raise RuntimeError('Rebuild implementation changed since review; inspect it before retrying')
+          text=pathlib.Path(source).read_text()
+          old="const test=candidate.slice(0,off)+code+adapter+candidate.slice(off+code.length);fs.writeFileSync('.kl-rebuild-test.html',test);"
+          new="""const marker='// KEY_LENTO_FULL_REBUILD_V1';assert(code.split(marker).length===2,'One rebuild insertion marker required');const testCode=code.replace(marker,adapter+String.fromCharCode(10)+marker),testAST=acorn.parse(testCode,{ecmaVersion:'latest'});let klScope=null,adapterScope=null;function verifyScope(n,owner){if(n.type==='Program'||n.type==='BlockStatement')owner=n;if(n.type==='VariableDeclarator'&&n.id.type==='Identifier'&&n.id.name==='KL'){assert(!klScope,'Ambiguous KL binding');klScope=owner;}if(n.type==='AssignmentExpression'&&testCode.slice(n.left.start,n.left.end)==='window.__klTest'){assert(!adapterScope,'Ambiguous browser adapter');adapterScope=owner;}for(const value of Object.values(n)){if(Array.isArray(value)){for(const child of value)if(child&&typeof child.type==='string')verifyScope(child,owner);}else if(value&&typeof value.type==='string')verifyScope(value,owner);}}verifyScope(testAST,null);assert(klScope&&adapterScope===klScope,'Browser adapter and KL must share the same lexical block');const test=html.slice(0,off)+testCode+html.slice(off+m[1].length);for(const part of test.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(part[1].trim())acorn.parse(part[1],{ecmaVersion:'latest'});fs.writeFileSync('.kl-rebuild-test.html',test);"""
+          if text.count(old)!=1: raise RuntimeError('Expected adapter-construction fragment is missing or ambiguous')
+          text=text.replace(old,new,1)
+          lines=text.splitlines();blocks=[]
+          for i,line in enumerate(lines):
+              if line.strip() not in ('run: |','- run: |'): continue
+              body=[]
+              for value in lines[i+1:]:
+                  if value and not value.startswith('          '): break
+                  body.append(value[10:] if value else '')
+              blocks.append('\n'.join(body)+'\n')
+          if len(blocks)!=4: raise RuntimeError('Unexpected original installer layout; expected dependency, preparation, browser, and publication blocks')
+          outcomes=[]
+          for i,body in enumerate(blocks[:3]):
+              path=pathlib.Path('/tmp/key-lento-scope-stage-'+str(i)+'.sh');path.write_text(body)
+              result=subprocess.run(['bash','-e',str(path)])
+              outcomes.append({'stage':i,'exitCode':result.returncode})
+              if result.returncode: break
+          report=pathlib.Path('status/key-lento-full-rebuild-check.json')
+          if not report.exists(): raise RuntimeError('Installer did not produce a rebuild report; refusing publication')
+          data=json.loads(report.read_text())
+          if any(s['exitCode'] for s in outcomes):
+              data['passed']=False
+              data.setdefault('error','Retry stage failed; inspect workflow logs')
+              if pathlib.Path('/tmp/kl-before.html').exists(): pathlib.Path('index.html').write_bytes(pathlib.Path('/tmp/kl-before.html').read_bytes())
+              data['baselinePreserved']=True
+          data['scopeRetry']={'originalInstallerBlob':expected,'rebuildHelperBlob':current,'adapterInsertedAtRebuildMarker':True,'sameLexicalBlockRequired':True,'allOriginalBrowserChecksRetained':True,'stageResults':outcomes}
+          report.write_text(json.dumps(data,indent=2)+'\n')
+          publish=pathlib.Path('/tmp/key-lento-scope-publish.sh');publish.write_text(blocks[3])
+          subprocess.run(['bash','-e',str(publish)],check=True)
+          PY
