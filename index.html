@@ -633,8 +633,9 @@ const shoreZ=x=>flLerp([[-8000,-1600],[-6500,-1450],[-5350,-1050],[-4300,-780],[
  +10*Math.sin(x*.012)+6*Math.sin(x*.031+1)-Math.max(0,55*Math.sin(x*.0047+1.3)+38*Math.sin(x*.0121+.4)+16*Math.sin(x*.029+2));
 // PORT_VICE_CITY_ISLAND_V1: long, angled working-port footprint based on the supplied reference.
 const HH_CX=2150,HH_CZ=-1050;
-// Wide east-west port island. World axes are rotated on the map, so its long axis follows z.
-const HH_PORT_SHORE=[[-430,-850],[-350,-910],[-160,-920],[40,-850],[220,-700],[360,-510],[445,-285],[430,-80],[350,95],[205,205],[20,245],[-190,220],[-350,125],[-435,-55],[-455,-285],[-445,-575]];
+// PORT_VICE_CITY_COASTLINE_V3: long engineered harbor island with an angled approach,
+// broad terminal apron, irregular quay edges and a tapered southern end.
+const HH_PORT_SHORE=[[-300,-980],[-230,-1060],[-80,-1080],[100,-1030],[250,-900],[325,-700],[345,-430],[330,-150],[290,120],[220,430],[95,720],[-55,900],[-190,920],[-285,790],[-335,560],[-350,250],[-345,-100],[-330,-480],[-320,-780]];
 function hhIsle(x,z){
  const px=x-HH_CX,pz=z-HH_CZ;let inside=false,minD=1e9;
  for(let i=0,j=HH_PORT_SHORE.length-1;i<HH_PORT_SHORE.length;j=i++){
@@ -1466,22 +1467,18 @@ const HH=(()=>{
  const roads=[],blocks=[],inside=(x,z,m=28)=>hhIsle(x,z)<-m;
  const clipSeg=(o,c,a,b)=>{const out=[];let run=null,last=a;for(let t=a;t<=b+0.01;t+=4){const p=Math.min(t,b),ok=o==='h'?inside(p,c):inside(c,p);if(ok&&run===null)run=p;if(!ok&&run!==null){if(last-run>26)out.push([run,last]);run=null}last=p}if(run!==null&&b-run>26)out.push([run,b]);return out};
  const add=(o,c,a,b,w=14)=>{for(const [u,v]of clipSeg(o,c,a,b))roads.push([o,c,u,v,w])};
- // Main perimeter loop and broad parallel port avenues.
- for(const z of[-1620,-1450,-1260,-1080,-900,-720,-540])add('h',z,1770,2530,18);
- for(const x of[1800,1900,2020,2160,2300,2440,2540])add('v',x,-1700,-400,16);
- // Cross streets stop at the shoreline, leaving a clear northern terminal apron.
- for(const z of[-1510,-1320,-1130,-950,-770,-590])add('h',z,1790,2510,13);
- // Long dock/service lanes and the terminal access loop at the north end.
- add('h',-1680,1850,2460,22);add('v',1860,-1690,-1500,20);add('v',2450,-1690,-1500,20);
- add('h',-1510,1860,2450,20);add('h',-470,1900,2400,20);
- // Rectangular cargo and warehouse blocks fitted to the inner island.
- const xs=[1815,1945,2075,2210,2345,2480],zs=[-1580,-1390,-1200,-1010,-820,-630];
+ // PORT_VICE_CITY_FIXED_PLAN_V3: sparse port circulation, not a residential street grid.
+ for(const x of[1900,2070,2320])add('v',x,-1980,-120,22);
+ for(const z of[-1770,-1370,-850,-330])add('h',z,1850,2460,18);
+ add('v',1800,-1850,-1450,24);add('v',2470,-1850,-1450,24);
+ add('h',-1880,1840,2470,26);add('h',-1800,1870,2440,18);
+ add('h',-260,1960,2380,18);
+ const xs=[1860,1990,2120,2250,2380,2470],zs=[-1510,-1260,-1010,-760,-510];
  for(let i=0;i<xs.length-1;i++)for(let j=0;j<zs.length-1;j++){
-  const x0=xs[i]+13,x1=xs[i+1]-13,z0=zs[j]+13,z1=zs[j+1]-13;
-  if(x1-x0>55&&z1-z0>55&&inside((x0+x1)/2,(z0+z1)/2,48))blocks.push([x0,z0,x1,z1]);
+  const x0=xs[i]+16,x1=xs[i+1]-16,z0=zs[j]+16,z1=zs[j+1]-16;
+  if(x1-x0>60&&z1-z0>70&&inside((x0+x1)/2,(z0+z1)/2,54))blocks.push([x0,z0,x1,z1]);
  }
- // Large container/terminal apron at the northern end; southern end gets smaller service lots.
- blocks.push([1910,-1690,2390,-1605],[1980,-550,2330,-485]);
+ blocks.push([1930,-1990,2390,-1840],[1970,-300,2340,-190]);
  return{roads,blocks}
 })();
 for(let k=-8;k<=5;k++)CR_X.push(380+100*k);for(let j=0;j<=8;j++)CR_Z.push(1640+95*j);
@@ -2126,7 +2123,7 @@ function* buildBaseMapGen(){
  }
  baseMap=c;
 }
-const REGIONS=[['MERIDIAN BEACH',-2650,-2100,950,-1530,0,0],['FAIRWAY ISLAND',-1930,-1240,-1370,-860,0,0],['PELICAN ISLE',-1290,-1340,-1010,-1160,0,0],['SANDDOLLAR ISLAND',-520,-1360,-180,-1140,0,0],['BRISA ISLAND',980,-1960,1360,-1640,0,0],['LEONIDA WEST REGIONAL AIRPORT',4400,2250,5400,3350,0,0],['VICE CITY INTERNATIONAL AIRPORT',200,470,1440,1320,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',430,-920,2440,1570,1510,315],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['PORT VICE CITY',1770,-1780,2530,-390,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['KEY LENTO',3680,430,4230,970,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
+const REGIONS=[['MERIDIAN BEACH',-2650,-2100,950,-1530,0,0],['FAIRWAY ISLAND',-1930,-1240,-1370,-860,0,0],['PELICAN ISLE',-1290,-1340,-1010,-1160,0,0],['SANDDOLLAR ISLAND',-520,-1360,-180,-1140,0,0],['BRISA ISLAND',980,-1960,1360,-1640,0,0],['LEONIDA WEST REGIONAL AIRPORT',4400,2250,5400,3350,0,0],['VICE CITY INTERNATIONAL AIRPORT',200,470,1440,1320,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',430,-920,2440,1570,1510,315],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['PORT VICE CITY',1800,-2200,2500,-100,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['KEY LENTO',3680,430,4230,970,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
 function zoneName(x,z){for(const r of REGIONS)if(x>r[1]&&x<r[3]&&z>r[2]&&z<r[4])return r[0];if(z<shoreZ(x))return'PALMERA GULF';return'PALMERA COUNTRYSIDE'}
 
 function clearStructureFootprint(x0,z0,x1,z1,margin=1.2){
@@ -2484,10 +2481,9 @@ defineRoads=function(){
   if(before<20&&after<20){roads.splice(i,1);continue}if(before>=after){r.a=lo;r.b=a0-hw-pad}else{r.a=a1+hw+pad;r.b=hi}}}
  for(let i=roads.length-1;i>=0;i--){const r=roads[i],lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),crosses=noRoadZones.some(zone=>r.o==='h'?(r.c>=zone.z0-r.hw&&r.c<=zone.z1+r.hw&&hi>=zone.x0-r.hw&&lo<=zone.x1+r.hw):(r.c>=zone.x0-r.hw&&r.c<=zone.x1+r.hw&&hi>=zone.z0-r.hw&&lo<=zone.z1+r.hw));if(crosses)roads.splice(i,1)}
  // PORT_VICE_CITY_MAINLAND_ROADS_FIX_V4:
- // The port sits at z=-1960..-805. V3 mistakenly filtered z=-300..1450,
- // the opposite side of the map, so the mainland grid was never touched.
- // Remove all generated roads in the port approach rectangle unless they lie on the island.
- {const x0=1450,x1=2820,z0=-2250,z1=-350,filtered=[];
+ // Mainland grid roads are east of the island in world z (left side of the rotated map).
+ // Remove every generated road in that approach corridor unless it lies on the island.
+ {const x0=1450,x1=2820,z0=-300,z1=1450,filtered=[];
   for(const r of roads){
    const lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),isH=r.o==='h';
    const crosses=isH?(r.c>=z0-r.hw&&r.c<=z1+r.hw&&hi>=x0-r.hw&&lo<=x1+r.hw):(r.c>=x0-r.hw&&r.c<=x1+r.hw&&hi>=z0-r.hw&&lo<=z1+r.hw);
@@ -2503,7 +2499,7 @@ defineRoads=function(){
   roads.length=0;roads.push(...filtered);
   // One short, straight bridge from the island's west-facing shore to the mainland.
   // On the rotated map, this is a v-road (fixed x, changing z).
-  addRoad('v',2150,-900,-400,30,'bridge',true);
+  addRoad('v',2150,-160,520,30,'bridge',true);
  }
  // ROAD_OVERLAP_CLEANUP_V1: merge overlapping collinear road surfaces before mesh generation.
  {const groups=[];
