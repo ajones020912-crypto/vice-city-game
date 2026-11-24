@@ -1,0 +1,56 @@
+name: Build and browser test complete Key Lento
+on:
+  push:
+    branches: [main]
+    paths: ['scripts/key-lento-rebuild.js', '.github/workflows/key-lento-full-rebuild.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: |
+          npm install --prefix "$RUNNER_TEMP/kl-rebuild" --no-package-lock --ignore-scripts acorn@8 playwright@1
+          "$RUNNER_TEMP/kl-rebuild/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Prepare scoped replacement and actual game test adapter
+        run: |
+          cp index.html /tmp/kl-before.html
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/kl-rebuild/node_modules/acorn'),html=fs.readFileSync('index.html','utf8'),helper=fs.readFileSync('scripts/key-lento-rebuild.js','utf8');function walk(n,f){f(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f);}else if(v&&typeof v.type==='string')walk(v,f);}}try{assert(!html.includes('KEY_LENTO_FULL_REBUILD_V1'));acorn.parse(helper,{ecmaVersion:'latest'});const scripts=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)],m=scripts.find(m=>m[1].includes('function worldSteps('));assert(m);let code=m[1];const ast=acorn.parse(code,{ecmaVersion:'latest'}),named={},regions=[];walk(ast,n=>{if(n.type==='FunctionDeclaration'&&n.id)named[n.id.name]=n;if(n.type==='VariableDeclarator'&&n.id.name==='REGIONS')regions.push(n);});for(const n of ['worldSteps','buildBaseMap','buildRoadMeshes','defineRoads','seaD','buildKeyLentoUS1Details'])assert(named[n],n+' missing');assert(regions.length===1);const ellipse=/k\.push\(\s*\[\s*3950\s*,\s*700\s*,\s*270\s*,\s*155\s*,\s*-\.16\s*\]\s*\)\s*;/g,e=[...code.matchAll(ellipse)];assert(e.length===1,'Original island shape changed');const reg=regions[0].init,list=vm.runInNewContext(code.slice(reg.start,reg.end)),newRegions=[['KEY LENTO',3500,470,4350,1010,0,0],...list.filter(r=>r[0]!=='KEY LENTO')],us=named.buildKeyLentoUS1Details;let usText=code.slice(us.start,us.end);const a=usText.indexOf('const defs='),b=usText.indexOf(',route=',a),c=usText.indexOf(' const town='),d=usText.indexOf(' const geometry=',c);assert(a>=0&&b>a&&c>b&&d>c,'Reviewed US 1 helper changed');usText=usText.slice(0,c)+usText.slice(d);usText=usText.slice(0,a)+'const defs='+JSON.stringify([['h',3200,2600,3600,16],['v',3600,820,3200,16],['v',4250,820,2800,16],['h',2800,4250,4900,16]])+usText.slice(b);usText=usText.replace('roads:5','roads:4');const edits=[{a:e[0].index,b:e[0].index+e[0][0].length,t:'// Original oval replaced by the Key Lento coastline distance field.'},{a:reg.start,b:reg.end,t:JSON.stringify(newRegions)},{a:us.start,b:us.end,t:usText},{a:named.worldSteps.start,b:named.worldSteps.start,t:helper+'\n'},{a:named.buildBaseMap.body.start+1,b:named.buildBaseMap.body.start+1,t:'\nklBuildTown();\n'},{a:named.buildBaseMap.body.end-1,b:named.buildBaseMap.body.end-1,t:'\nklPaintMap();\n'}];for(const e of edits.sort((a,b)=>b.a-a.a))code=code.slice(0,e.a)+e.t+code.slice(e.b);acorn.parse(code,{ecmaVersion:'latest'});const off=m.index+m[0].indexOf(m[1]),candidate=html.slice(0,off)+code+html.slice(off+m[1].length);for(const s of candidate.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(s[1].trim())acorn.parse(s[1],{ecmaVersion:'latest'});fs.writeFileSync('index.html',candidate);
+          const adapter=String.raw`
+          window.__klTest={async run(){if(!KL.started)await buildWorldStaged([]);for(let i=0;i<1800&&!(KL.complete&&KL.built);i++)await new Promise(r=>setTimeout(r,100));if(!KL.complete||!KL.built)throw Error('World did not complete');if(KL.stats.homes<30||KL.stats.businesses<4||KL.stats.usableShops<2||KL.stats.piers!==2)throw Error('Incomplete developed island '+JSON.stringify(KL.stats));const samples=[];for(let i=0;i<=120;i++){const p=klAt(i/120);for(const o of [-7,0,7]){const x=p.x-p.dz*o,z=p.z+p.dx*o,h=heightAt(x,z);if(!Number.isFinite(h)||h<WL+.15||Math.abs(h)>.3)throw Error('Highway has unsupported or uneven ground at '+i+','+o+': '+h);}samples.push([p.x,p.z]);}const getNode=(x,z)=>nodes.reduce((a,n)=>Math.hypot(n.x-x,n.z-z)<Math.hypot(a.x-x,a.z-z)?n:a,nodes[0]),start=getNode(3600,820),end=getNode(4250,820),visited=new Set([start]),queue=[start];for(let i=0;i<queue.length;i++)for(const e of queue[i].edges)if(!visited.has(e.to)){visited.add(e.to);queue.push(e.to);}if(!visited.has(end))throw Error('New highway traffic graph is disconnected');const wet=KL.canals.map(c=>{let n=0;for(let i=2;i<9;i++){const t=i/10,a=c.points[0],b=c.points[1];if(heightAt(a.x+(b.x-a.x)*t,a.z+(b.z-a.z)*t)<WL-.25)n++;}return n;});if(wet.some(n=>n<2))throw Error('A canal is not actually water '+wet);const dd=doors.filter(d=>['burger','clothes'].includes(d.kind)&&klBounds(d.x,d.z));if(dd.length<2||dd.some(d=>!d.ret||heightAt(d.ret.x,d.ret.z)<WL+.1))throw Error('Island shop egress is invalid');const p=klAt(.55),car=spawnCar('sports',p.x,p.z,Math.atan2(p.dx,p.dz),'parked',CAR_TYPES.sports.colors[0]);let maximumDeparture=0;for(let i=0;i<300;i++){const q=klNear(car.x,car.z),target=klAt(Math.min(.89,q.u+.026)),wanted=Math.atan2(target.x-car.x,target.z-car.z),error=Math.atan2(Math.sin(wanted-car.h),Math.cos(wanted-car.h));car.inp.thr=.32;car.inp.hb=0;car.inp.steer=Math.max(-1,Math.min(1,error*1.4));stepCar(car,1/60);maximumDeparture=Math.max(maximumDeparture,klNear(car.x,car.z).d);if(car.dead||car.drown>.2||!Number.isFinite(car.y))throw Error('Driving test failed');}const distance=Math.hypot(car.x-p.x,car.z-p.z);removeCar(car);if(distance<5||maximumDeparture>9.5)throw Error('Driving did not stay on highway '+distance+','+maximumDeparture);const camera=new T.OrthographicCamera(-470,470,340,-340,.1,5000);camera.position.set(3925,1200,735);camera.up.set(0,0,-1);camera.lookAt(3925,0,735);renderer.render(scene,camera);return {passed:true,stats:KL.stats,highwaySamples:samples.length,canalWaterSamples:wet,trafficGraphConnected:true,supportedIslandShops:dd.map(d=>({name:d.name,kind:d.kind,x:d.x,z:d.z})),driving:{seconds:5,distance,maximumDeparture},mapPNG:baseMap.toDataURL('image/png'),gamePNG:renderer.domElement.toDataURL('image/png'),scope:'Real browser world generation, native road graph, water canals, supported shop portals, limited native vehicle-physics driving, and captured game/map views. Not an exhaustive gameplay or visual-quality review.'};}};
+          `;const test=candidate.slice(0,off)+code+adapter+candidate.slice(off+code.length);fs.writeFileSync('.kl-rebuild-test.html',test);
+          }catch(e){fs.writeFileSync('index.html',html);fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/key-lento-full-rebuild-check.json',JSON.stringify({passed:false,error:String(e),stack:e.stack,baselinePreserved:true},null,2));process.exit(1);}
+          JS
+      - name: Run real Chromium world-generation and driving checks
+        run: |
+          python3 -m http.server 8765 >/tmp/kl-server.log 2>&1 &
+          node <<'JS'
+          const fs=require('fs'),{chromium}=require(process.env.RUNNER_TEMP+'/kl-rebuild/node_modules/playwright');(async()=>{let browser;const errors=[];try{browser=await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-sandbox']});const page=await browser.newPage({viewport:{width:1400,height:950}});page.on('pageerror',e=>errors.push(String(e)));await page.goto('http://127.0.0.1:8765/.kl-rebuild-test.html',{waitUntil:'load',timeout:120000});await page.waitForFunction(()=>window.__klTest,{timeout:120000});const result=await page.evaluate(()=>window.__klTest.run());fs.mkdirSync('status',{recursive:true});for(const [key,name]of [['gamePNG','key-lento-rebuilt-game.png'],['mapPNG','key-lento-rebuilt-map.png']]){fs.writeFileSync('status/'+name,Buffer.from(result[key].split(',')[1],'base64'));delete result[key];}result.browserErrors=errors;if(errors.length)throw Error('Browser errors: '+errors.join('; '));fs.writeFileSync('status/key-lento-full-rebuild-check.json',JSON.stringify(result,null,2)+'\n');}catch(error){fs.copyFileSync('/tmp/kl-before.html','index.html');fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/key-lento-full-rebuild-check.json',JSON.stringify({passed:false,error:String(error),stack:error.stack,browserErrors:errors,baselinePreserved:true},null,2)+'\n');process.exitCode=1;}finally{if(browser)await browser.close();}})();
+          JS
+      - name: Publish only browser-verified rebuild or exact diagnostics
+        if: always()
+        run: |
+          if ! test -f status/key-lento-full-rebuild-check.json; then exit 1; fi
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun against latest.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/key-lento-full-rebuild-check.json
+          if node -e "if(!require('./status/key-lento-full-rebuild-check.json').passed)process.exit(1)"; then
+            git add -- index.html status/key-lento-rebuilt-game.png status/key-lento-rebuilt-map.png
+          fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Install curved developed Key Lento after real-browser checks or record precise failure'
+            git push origin HEAD:refs/heads/main
+          fi
+          node -e "if(!require('./status/key-lento-full-rebuild-check.json').passed)process.exit(1)"
