@@ -1,76 +1,13 @@
 {
-  "passed": true,
-  "stats": {
-    "homes": 39,
-    "businesses": 4,
-    "usableShops": 2,
-    "piers": 2,
-    "palms": 13,
-    "mangroves": 45,
-    "canals": 4,
-    "curvedStreets": 9
-  },
-  "highwaySamples": 121,
-  "canalWaterSamples": [
-    7,
-    7,
-    7,
-    7
-  ],
-  "trafficGraphConnected": true,
-  "graphRepair": {
-    "roads": 229,
-    "createdNodes": 21,
-    "addedLinks": 44,
-    "stitchTolerance": 0.16
-  },
-  "allNewStreetsConnected": true,
-  "supportedIslandShops": [
-    {
-      "name": "LENTO BURGER SHACK",
-      "kind": "burger",
-      "x": 4054.160865057664,
-      "z": 695.5669459655264
-    },
-    {
-      "name": "ISLAND THREADS",
-      "kind": "clothes",
-      "x": 4021.634788562242,
-      "z": 603.1220740265487
-    }
-  ],
-  "driving": {
-    "seconds": 5,
-    "distance": 52.25254239779657,
-    "maximumDeparture": 0.10345555439640255
-  },
-  "scope": "Real browser world generation, native road graph, water canals, supported shop portals, limited native vehicle-physics driving, and captured game/map views. Not an exhaustive gameplay or visual-quality review.",
+  "passed": false,
+  "error": "Error: page.evaluate: Error: Incomplete developed island {\"homes\":16,\"businesses\":2,\"usableShops\":2,\"piers\":2,\"palms\":14,\"mangroves\":49,\"canals\":4,\"curvedStreets\":23}\n    at Object.run (http://127.0.0.1:8765/.kl-rebuild-test.html:2563:320)\n    at async <anonymous>:381:23",
+  "stack": "page.evaluate: Error: Incomplete developed island {\"homes\":16,\"businesses\":2,\"usableShops\":2,\"piers\":2,\"palms\":14,\"mangroves\":49,\"canals\":4,\"curvedStreets\":23}\n    at Object.run (http://127.0.0.1:8765/.kl-rebuild-test.html:2563:320)\n    at async <anonymous>:381:23\n    at [stdin]:1:576",
   "browserErrors": [],
-  "graphRepairRetry": {
-    "endpointRepairInserted": true,
-    "allNewStreetsChecked": true,
-    "scopeAndOriginalBrowserChecksRetained": true,
-    "helperBlob": "468b6b4adacefc5c6f31302eb899ba99034a9236"
-  },
-  "scopeRetry": {
-    "originalInstallerBlob": "ae802b58c0dfd5239a3046d0a6d4e8272fe707fd",
-    "rebuildHelperBlob": "30cdce8821484e57a2b8f530e3f1bb1ac481cd75",
-    "adapterInsertedAtRebuildMarker": true,
-    "sameLexicalBlockRequired": true,
-    "allOriginalBrowserChecksRetained": true,
-    "stageResults": [
-      {
-        "stage": 0,
-        "exitCode": 0
-      },
-      {
-        "stage": 1,
-        "exitCode": 0
-      },
-      {
-        "stage": 2,
-        "exitCode": 0
-      }
-    ]
+  "baselinePreserved": true,
+  "referenceRevision": {
+    "requestedLayout": "Long southwest-to-northeast island, tapered southern tip, dense connected blocks, four longitudinal neighborhood streets, eighteen cross streets, beach coastline and seven offshore keys",
+    "originalBrowserChecksRetained": true,
+    "workingShopSystemRetained": true,
+    "helperBlob": "fcb74eece1b5d1d8c52a2e8d3193e585caf099b9"
   }
 }
