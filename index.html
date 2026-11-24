@@ -1996,7 +1996,7 @@ function buildCityRivers(){
  // Northern tidal channel: separates the northern neighborhoods from wetlands.
  make([[-100,-190],[220,-220],[560,-190],[900,-230],[1240,-190],[1580,-160],[1900,-120],[2200,-80]],58);
  // Southern/eastern estuary: runs outside the east-side city edge and opens toward the bay.
- make([[1650,420],[1770,610],[1810,850],[1780,1100],[1840,1340],[1970,1530],[2200,1650],[2460,1680]],64);
+ // Removed the eastern estuary that cut through the middle of Vice City.
 }
 function buildBaseMap(){if(LOADPRE.map){LOADPRE.map=false;return}for(const _ of buildBaseMapGen());}
 function* buildBaseMapGen(){
@@ -2027,7 +2027,7 @@ function* buildBaseMapGen(){
   x.save();
   river([[-160,160],[-130,430],[-150,720],[-120,1010],[-90,1320],[-120,1630],[-80,1930],[-40,2200]],68);
   river([[-100,-190],[220,-220],[560,-190],[900,-230],[1240,-190],[1580,-160],[1900,-120],[2200,-80]],58);
-  river([[1650,420],[1770,610],[1810,850],[1780,1100],[1840,1340],[1970,1530],[2200,1650],[2460,1680]],64);
+  // Eastern estuary removed to keep the downtown grid continuous.
   x.restore();
  }
  // Buildings and developed blocks: soft slate-lavender, like the reference map.
