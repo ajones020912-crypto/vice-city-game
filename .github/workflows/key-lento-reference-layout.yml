@@ -1,0 +1,97 @@
+name: Build reference-matched Key Lento
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/key-lento-reference-layout.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: key-lento-full-rebuild-retry
+  cancel-in-progress: false
+jobs:
+  reference-layout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Revise coastline and neighborhoods and run real browser checks
+        run: |
+          python3 <<'PY'
+          import json,pathlib,subprocess,traceback
+          root=pathlib.Path('.'); page=root/'index.html'; model=root/'scripts/key-lento-rebuild.js'; report=root/'status/key-lento-full-rebuild-check.json'
+          baseline=page.read_bytes();pathlib.Path('/tmp/kl-before.html').write_bytes(baseline)
+          source='.github/workflows/key-lento-full-rebuild.yml'
+          def once(s,a,b):
+              if s.count(a)!=1: raise RuntimeError('Reviewed fragment missing or ambiguous: '+a[:100])
+              return s.replace(a,b,1)
+          def shell(body,label):
+              p=pathlib.Path('/tmp/kl-reference-'+label+'.sh');p.write_text(body);subprocess.run(['bash','-e',str(p)],check=True)
+          expected='ae802b58c0dfd5239a3046d0a6d4e8272fe707fd'
+          if subprocess.check_output(['git','rev-parse','HEAD:'+source],text=True).strip()!=expected: raise RuntimeError('Browser installer changed; review required')
+          lines=pathlib.Path(source).read_text().splitlines();blocks=[]
+          for i,line in enumerate(lines):
+              if line.strip() not in ('run: |','- run: |'): continue
+              body=[]
+              for v in lines[i+1:]:
+                  if v and not v.startswith('          '): break
+                  body.append(v[10:] if v else '')
+              blocks.append('\n'.join(body)+'\n')
+          if len(blocks)!=4: raise RuntimeError('Unexpected browser installer layout')
+          report.unlink(missing_ok=True)
+          try:
+              if subprocess.check_output(['git','rev-parse','HEAD:scripts/key-lento-rebuild.js'],text=True).strip()!='468b6b4adacefc5c6f31302eb899ba99034a9236': raise RuntimeError('Island generator changed; review required')
+              old=model.read_text();new=old
+              curve=next(s for s in old.splitlines() if s.startswith('KL.curve='))
+              new=once(new,curve,"KL.curve=new T.CatmullRomCurve3([[3600,820],[3660,780],[3760,720],[3870,625],[3990,505],[4105,365],[4220,235],[4350,130],[4500,80]].map(p=>new T.Vector3(p[0],0,p[1])),false,'centripetal');")
+              width=next(s for s in old.splitlines() if s.startswith('function klWidth('))
+              new=once(new,width,'function klWidth(u){const t=(u-.055)/.89;return t>0&&t<1?(52+50*u)*Math.pow(Math.sin(Math.PI*t),.48)*(1+.035*Math.sin(u*43)):0;}')
+              new=once(new,'function klBounds(x,z){return x>3500&&x<4350&&z>470&&z<1010;}','function klBounds(x,z){return x>3500&&x<4650&&z>-80&&z<1010;}')
+              new=once(new,'const klOriginalSeaD=seaD;',"KL.offshore=[[.23,170,18,42],[.37,205,15,35],[.48,160,22,48],[.63,190,16,46],[.78,165,18,40],[.34,-180,21,29],[.65,-175,15,32]].map(([u,off,w,l])=>Object.assign(klAt(u,off),{w,l}));\nconst klOriginalSeaD=seaD;")
+              needle='let result=w?Math.min(original,q.d-w):original;const canal='
+              new=once(new,needle,'let result=w?Math.min(original,q.d-w):original;for(const k of KL.offshore){const dx=x-k.x,dz=z-k.z,along=dx*k.dx+dz*k.dz,across=-dx*k.dz+dz*k.dx;result=Math.min(result,(Math.hypot(along/k.l,across/k.w)-1)*k.w);}const canal=')
+              new=once(new,"else if(r.o==='v'&&[3600,4250].includes(r.c)&&r.a===700)r.a=820;","else if(r.o==='v'&&r.c===3600&&r.a===700)r.a=820;else if(r.o==='v'&&r.c===4250&&r.a===700){r.c=4500;r.a=80;}else if(r.o==='h'&&r.c===2800&&r.a===4250)r.a=4500;")
+              new=once(new,'for(const side of [-1,1]){const points=[];for(let i=0;i<=90;i++){const p=klAt(.28+.55*i/90,side*32);','for(const side of [-50,-25,25,50]){const points=[];for(let i=0;i<=90;i++){const u=.20+.64*i/90,p=klAt(u,Math.sign(side)*Math.min(Math.abs(side),klWidth(u)-10));')
+              new=once(new,"name:side<0?'Bayside Drive':'Ocean Drive'","name:(side<0?'Bayside Drive ':'Ocean Drive ')+Math.abs(side)")
+              new=once(new,'for(const u of [.30,.39,.51,.64,.79,.82]){const points=[];for(let i=0;i<=12;i++){const p=klAt(u,-32+64*i/12);','for(let j=0;j<18;j++){const u=.20+.64*j/17,reach=Math.min(50,klWidth(u)-10)+2,points=[];for(let i=0;i<=12;i++){const p=klAt(u,-reach+2*reach*i/12);')
+              new=once(new,"for(const x of [3600,4250]){const r=addRoad('h',820,x-12,x+12,16,'hwy');","for(const [x,z]of [[3600,820],[4500,80]]){const r=addRoad('h',z,x-12,x+12,16,'hwy');")
+              new=once(new,'Math.floor((470+WS)/TS)','Math.floor((-80+WS)/TS)')
+              new=once(new,'Math.ceil((4350+WS)/TS)','Math.ceil((4650+WS)/TS)')
+              new=once(new,'for(const off of [49,-49,20,-20])','for(const off of [38,-38,65,-65])')
+              new=once(new,"for(let i=0;i<38;i++)for(const off of [-49,-20,20,49])building(.29+.53*i/37,off,false,null,'',i);","for(let i=0;i<100;i++)for(const off of [-65,-38,-15,15,38,65])building(.21+.62*i/99,off,false,null,'',i);")
+              candidate=once(baseline.decode(),old,new)
+              candidate=once(candidate,'["KEY LENTO",3500,470,4350,1010,0,0]','["KEY LENTO",3500,-80,4650,1010,0,0]')
+              candidate=once(candidate,'["v",4250,820,2800,16]','["v",4500,80,2800,16]')
+              candidate=once(candidate,'["h",2800,4250,4900,16]','["h",2800,4500,4900,16]')
+              adapter=blocks[1].split('const adapter=String.raw`',1)[1].split('`;const test=',1)[0]
+              adapter=once(adapter,'end=getNode(4250,820)','end=getNode(4500,80)')
+              gate="if(!visited.has(end))throw Error('New highway traffic graph is disconnected');"
+              extra="if(KL.stats.homes<80||KL.paths.length<23)throw Error('Reference layout is not densely developed '+JSON.stringify(KL.stats));const south=klAt(.15),north=klAt(.85);if(north.x-south.x<450||south.z-north.z<450)throw Error('Island does not have the reference southwest-to-northeast proportions');for(const path of KL.paths)for(let i=0;i<path.points.length;i+=5){const p=path.points[i],n=getNode(p.x,p.z);if(!visited.has(n)||Math.hypot(n.x-p.x,n.z-p.z)>24)throw Error('Disconnected new street: '+path.name+' sample '+i);if(heightAt(p.x,p.z)<WL+.15)throw Error('Unsupported new street: '+path.name+' sample '+i);}"
+              adapter=once(adapter,gate,gate+extra)
+              adapter=once(adapter,'trafficGraphConnected:true,','trafficGraphConnected:true,allNewStreetsConnected:true,allNewStreetsSupported:true,referenceLayout:{diagonal:true,minimumHomes:80,offshoreKeys:KL.offshore.length,paths:KL.paths.length},graphRepair:KL.graphRepair,')
+              adapter=once(adapter,'new T.OrthographicCamera(-470,470,340,-340,.1,5000)','new T.OrthographicCamera(-800,800,590,-590,.1,5000)')
+              adapter=once(adapter,'camera.position.set(3925,1200,735)','camera.position.set(4030,1400,465)')
+              adapter=once(adapter,'camera.lookAt(3925,0,735)','camera.lookAt(4030,0,465)')
+              shell(blocks[0],'dependencies')
+              model.write_text(new);page.write_text(candidate);pathlib.Path('/tmp/kl-reference-adapter.js').write_text(adapter)
+              js="const fs=require('fs'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/kl-rebuild/node_modules/acorn'),html=fs.readFileSync('index.html','utf8'),adapter=fs.readFileSync('/tmp/kl-reference-adapter.js','utf8'),marker='// KEY_LENTO_FULL_REBUILD_V1';assert(html.split(marker).length===2,'Expected one island implementation');acorn.parse(fs.readFileSync('scripts/key-lento-rebuild.js','utf8'),{ecmaVersion:'latest'});const test=html.replace(marker,adapter+'\\n'+marker);for(const h of [html,test])for(const m of h.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi))if(m[1].trim())acorn.parse(m[1],{ecmaVersion:'latest'});fs.writeFileSync('.kl-rebuild-test.html',test);"
+              js=js.replace('\\\\','\\')
+              subprocess.run(['node','-e',js],check=True)
+              shell(blocks[2],'browser')
+          except Exception as error:
+              page.write_bytes(baseline);report.parent.mkdir(exist_ok=True)
+              if report.exists(): data=json.loads(report.read_text())
+              else: data={'passed':False,'error':str(error),'stack':traceback.format_exc()}
+              data['passed']=False;data['baselinePreserved']=True;report.write_text(json.dumps(data,indent=2)+'\n')
+          data=json.loads(report.read_text());data['referenceRevision']={'requestedLayout':'Long southwest-to-northeast island, tapered southern tip, dense connected blocks, four longitudinal neighborhood streets, eighteen cross streets, beach coastline and seven offshore keys','originalBrowserChecksRetained':True,'workingShopSystemRetained':True,'helperBlob':subprocess.check_output(['git','hash-object',str(model)],text=True).strip()}
+          report.write_text(json.dumps(data,indent=2)+'\n')
+          publish=once(blocks[3],'git add -- index.html status/key-lento-rebuilt-game.png status/key-lento-rebuilt-map.png','git add -- scripts/key-lento-rebuild.js index.html status/key-lento-rebuilt-game.png status/key-lento-rebuilt-map.png')
+          publish=once(publish,'Install curved developed Key Lento after real-browser checks or record precise failure','Install reference-matched Key Lento after expanded browser checks or record precise failure')
+          shell(publish,'publish')
+          PY
