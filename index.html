@@ -749,6 +749,19 @@ function buildAFB(){
 }
 function spawnAFBJets(){for(const c of cars.slice())if(c.afbStatic)removeCar(c);
  for(let i=0;i<3;i++){const x=AFB.cx-300+i*120,z=AFB.hasZ+AFB.hasL/2+.5;const j=spawnCar('fighterJet',x,z,Math.PI,'parked',CAR_TYPES.fighterJet.colors[i%2]);j.afbStatic=true;j.keep=true}} // parked inside the shelters, nose to the door
+// MIAMI_BAY_COAST_V1: east of the city (more negative z) the open sea becomes a bay modelled on real Biscayne Bay:
+// a long barrier island with an ocean beach (Meridian Beach), new islands in the bay, and a small island off the
+// barrier island's south tip. Everything is added as extra land in the sea, so the mainland city is untouched.
+const VCB={xN:-2600,xS:900,W:240,zc:x=>-1800+25*Math.sin((x+2300)*.0021),
+ isles:[[-1650,-1050,260,170,'FAIRWAY ISLAND'],[-1150,-1250,120,70,'PELICAN ISLE'],[-350,-1250,150,90,'SANDDOLLAR ISLAND'],[1170,-1800,170,140,'BRISA ISLAND']]};
+VCB.w=x=>x<VCB.xS-500?VCB.W:VCB.W*Math.pow(clamp((VCB.xS-x)/500,0,1),.7);
+VCB.shoreO=x=>VCB.zc(x)-VCB.w(x);   // ocean-side shoreline (east)
+function vcBayD(x,z){
+ // barrier island: a band around a gently curving north-south centreline, tapering to a point in the south
+ let d=1e9;if(x>VCB.xN-400&&x<VCB.xS+300&&z<-1450&&z>-2200){const t=clamp(x,VCB.xN,VCB.xS),w=VCB.w(t),zc=VCB.zc(t);
+  d=Math.hypot(x-t,z-zc)-w;if(z>zc)d+=6*Math.sin(x*.013)+4*Math.sin(x*.031+1);}   // a slightly ragged bay side
+ for(const [cx,cz,rx,rz] of VCB.isles){const dx=(x-cx)/rx,dz=(z-cz)/rz;if(dx*dx+dz*dz<9){const a=Math.atan2(dz,dx);d=Math.min(d,(Math.hypot(dx,dz)-1)*Math.min(rx,rz)-6*Math.sin(a*3+cx))}}
+ return d}
 function seaD(x,z){ // signed metres into the sea (>0 sea, <0 land)
  const n=shoreZ(x)-z;let isl=1e9;
  for(const [cx,cz,rx,rz] of ISL){const d=Math.hypot((x-cx)/rx,(z-cz)/rz);isl=Math.min(isl,(d-.62)*Math.min(rx,rz))}
@@ -767,7 +780,7 @@ function seaD(x,z){ // signed metres into the sea (>0 sea, <0 land)
  // Keep Vice City as one continuous coastal mainland/peninsula. The old detached oval island
  // made the urban footprint look like an offshore blob; the shoreline now comes from Florida's
  // real coast and the existing bays, with VCIA protected on the mainland.
- return mainlandSea;
+ return Math.min(mainlandSea,vcBayD(x,z));
 }
 const gladesMask=(x,z)=>sstep(-2300,-2000,x)*(1-sstep(1300,1700,x))*sstep(3200,3450,z)*(1-sstep(4400,4650,z))*(.75+.25*Math.sin(x*.003+z*.002));
 const swampMask=(x,z)=>Math.max(gladesMask(x,z),swampMask0(x,z));
@@ -1296,8 +1309,6 @@ const CITY_CUTS=(()=>{const c={v:{},h:{}},add=(o,k,a,b)=>(c[o][k]=c[o][k]||[]).p
  add('v',120,60,120);add('h',90,90,150);                         // the downtown park
  for(const [x,z] of CITY_SUPER){add('v',x,z-60,z+60);add('h',z,x-60,x+60)}
  for(const [o,k,a] of CITY_MERGE)add(o,k,a,a+60);return c})();
-// BOARDWALK_FIX_V1: where the Vice Beach boardwalk runs (a straight strip along z=-346, the beach lies seaward of it)
-const BOARDWALK={x0:-880,x1:1090,z:-346,land:-326};
 function defineRoads(){
  const xr=[],zr=[];for(let i=-300;i<=300;i+=60)xr.push(i);for(let i=-330;i<=330;i+=60)zr.push(i);
  G.xr=xr;G.zr=zr;
@@ -1571,7 +1582,7 @@ function collideNearbyCars(){const grid=new Map();for(const a of cars){const gx=
 const CITY_LOTS=[];
 function cityLotCluster(a,b,c,e,H,style,mode,southEdge){
  const W=c-a,D=e-b,rec={x0:a,z0:b,x1:c,z1:e,cells:[],lawns:[]};CITY_LOTS.push(rec);
- const mk=(x0,z0,x1,z1,h,st,edgeS)=>{const natural=st==='brick'||st==='concrete';const q={x0,z0,x1,z1,cx:(x0+x1)/2,cz:(z0+z1)/2,H:h,style:st,col:natural?[1-rnd()*.06,1-rnd()*.07,1-rnd()*.08]:undefined,mode,edgeS,cityId:mode==='port'?'port':'dt'};parcels.push(q);rec.cells.push(q)};
+ const mk=(x0,z0,x1,z1,h,st,edgeS)=>{if(seaD((x0+x1)/2,(z0+z1)/2)>-6||[[x0,z0],[x1,z0],[x0,z1],[x1,z1]].some(([u,v])=>seaD(u,v)>-1))return; /* MIAMI_BAY_COAST_V1: never build in the water */const natural=st==='brick'||st==='concrete';const q={x0,z0,x1,z1,cx:(x0+x1)/2,cz:(z0+z1)/2,H:h,style:st,col:natural?[1-rnd()*.06,1-rnd()*.07,1-rnd()*.08]:undefined,mode,edgeS,cityId:mode==='port'?'port':'dt'};parcels.push(q);rec.cells.push(q)};
  if(W<46||D<46){mk(a,b,c,e,H,style,southEdge);return}
  if(H>58){ // tower: a footprint of 34-50 m, set back from the lot edges, with a plaza around it
   const tw=Math.min(W-14,34+rnd()*16),td=Math.min(D-14,34+rnd()*16),ox=(rnd()-.5)*(W-tw-14),oz=(rnd()-.5)*(D-td-14),mx=(a+c)/2+ox,mz=(b+e)/2+oz;
@@ -1643,7 +1654,8 @@ function makeParcels(){
   lot(CR_X[i]+a,CR_Z[j]+7+2.9,CR_X[i+1]-b,CR_Z[j+1]-7-2.9,'low')}
 
 vcReserveMedicalBlock();
- for(let i=parcels.length-1;i>=0;i--){const q=parcels[i];if(q.x1>BOARDWALK.x0-4&&q.x0<BOARDWALK.x1+4&&q.z0<BOARDWALK.land-2&&q.z1>Math.min(shoreZ(q.x0),shoreZ(q.x1),shoreZ(q.cx))-15)parcels.splice(i,1)} /* BOARDWALK_FIX_V1: keep the boardwalk and the beach between it and the shoreline open */
+ // MIAMI_BAY_COAST_V1: Meridian Beach blocks between its avenues and cross streets (Art Deco low-rise)
+ for(let x=-2400;x<300;x+=90)for(const [z0,z1] of[[-1690,-1610],[-1770,-1690],[-1850,-1770],[-1930,-1850]])lot(x+6+2.9,z0+7+2.9,x+90-6-2.9,z1-7-2.9,'low');
 }
 const SHOPS=[
  {k:'burger',name:"BENNY'S BURGER SHACK",col:'#ff9a2e',spots:[[-60,-100],[-180,150],[-840,640],[-30,590]]},
@@ -1748,73 +1760,42 @@ function portExtras(){
 function beachProps(){
  for(let x=-1200;x<1600;x+=12+rnd()*10){const z=shoreZ(x)+rr(8,28);if(rnd()<.5)palm(x,z,rr(.8,1.1));if(rnd()<.35){const c=pick([[1,.3,.4],[.2,.7,1],[1,.85,.2],[.3,.9,.6],[1,1,1]]);bakeG('plain',GEO.cyl6,x+3,0,z+3,0,.05,2.4,.05,[.9,.9,.9]);bakeG('plain',GEO.cone,x+3,2.2,z+3,0,1.9,.6,1.9,c);bakeG('plain',GEO.box,x+3.8,.05,z+4.5,0,1.1,.06,2,pick([[1,.4,.5],[.3,.6,1],[1,.9,.3]]))}
   if(rnd()<.04){bakeG('plain',GEO.box,x,0,z,0,2.2,3.2,2.2,[.95,.95,.9]);bakeG('plain',GEO.box,x,3.2,z,0,3,.3,3,[1,.25,.25]);bakeG('plain',GEO.box,x,0,z-1.2,0,.2,4,.2,[.9,.9,.9]);addCol(x-1,z-1,x+1,z+1,3)}}
- // VICE BEACH BOARDWALK: a continuous timber promenade with piers, kiosks, seating and a lit Ferris wheel.
- const bwx0=BOARDWALK.x0,bwx1=BOARDWALK.x1,bwz=BOARDWALK.z;
- // BOARDWALK_FIX_V1: the boardwalk is laid in segments with a gap wherever a road still crosses it (the highways)
- const bwGaps=roads.filter(r=>r.o==='v'&&r.c>bwx0-20&&r.c<bwx1+20&&Math.min(r.a,r.b)<bwz-8&&Math.max(r.a,r.b)>bwz+8).map(r=>[r.c-r.hw-3,r.c+r.hw+3]).sort((a,b)=>a[0]-b[0]);
- const bwSegs=[];{let s0=bwx0;for(const [g0,g1] of bwGaps){if(g0>s0+4)bwSegs.push([s0,g0]);s0=Math.max(s0,g1)}if(bwx1>s0+4)bwSegs.push([s0,bwx1])}
- const onBw=(x,half=0)=>bwSegs.some(([a,b])=>x-half>=a&&x+half<=b);
- for(const [s0,s1] of bwSegs){
-  bakeG('plain',GEO.box,(s0+s1)/2,-.02,bwz,0,s1-s0,.28,15,[.48,.31,.18]);
-  bakeG('plain',GEO.box,(s0+s1)/2,.14,bwz,0,s1-s0,.06,14,[.69,.49,.29]);
-  // Decorative boardwalk plank seams and edge rails.
-  for(let x=s0+5;x<s1;x+=5)bakeG('plain',GEO.box,x,.19,bwz,0,.055,.025,13,[.32,.2,.12]);
-  for(const side of[-1,1]){
-   const rz=bwz+side*7;
-   bakeG('plain',GEO.box,(s0+s1)/2,.72,rz,0,s1-s0,.18,.22,[.34,.23,.15]);
-   for(let x=s0+8;x<s1;x+=16){bakeG('plain',GEO.box,x,.42,rz,0,.22,.85,.22,[.3,.2,.13]);addCol(x-.16,rz-.16,x+.16,rz+.16,1.1,'boardwalk-rail-post')}
-   addCol(s0,rz-.18,s1,rz+.18,1.05,'boardwalk-rail');
-  }
- }
- // Warm globe lamps and ocean-facing benches.
- for(let x=bwx0+22;x<bwx1;x+=44){if(!onBw(x,1))continue;
-  bakeG('plain',GEO.cyl6,x,1.8,bwz-5.2,0,.11,3.6,.11,[.16,.16,.17]);
-  bakeG('lamp',GEO.sph,x,3.72,bwz-5.2,0,.34,.34,.34,[1,.78,.48]);
-  addCol(x-.22,bwz-5.42,x+.22,bwz-4.98,4.2,'boardwalk-lamp');
- }
- for(const x of[-790,-570,-350,-130,90,310,530,930]){if(!onBw(x,2))continue;
-  bakeG('plain',GEO.box,x,.58,bwz+3.2,0,3.2,.16,.75,[.48,.27,.13]);
-  bakeG('plain',GEO.box,x,.92,bwz+2.82,0,3.2,.55,.12,[.48,.27,.13]);
-  for(const dx of[-1.25,1.25])bakeG('plain',GEO.box,x+dx,.3,bwz+3.2,0,.12,.56,.65,[.22,.22,.24]);
-  addCol(x-1.65,bwz+2.78,x+1.65,bwz+3.62,1.25,'boardwalk-bench');
- }
- // Colorful food, souvenir and arcade kiosks along the landward edge.
- const kiosks=[
-  [-700,'SUNSET SNACKS',[.9,.35,.18]],[-470,'TIDE & TREAT',[.15,.55,.72]],
-  [-240,'BOARDWALK BITES',[.95,.68,.2]],[0,'VICE BEACH GIFTS',[.78,.28,.48]],
-  [240,'SHELL SHACK',[.2,.62,.48]],[470,'NEON ARCADE',[.35,.28,.78]],
-  [930,'ICE CREAM CO.',[.9,.45,.65]]
- ];
- for(let [x,name,col] of kiosks){for(let k=0;k<6&&!onBw(x,8);k++)x+=12; /* step off a highway gap */if(!onBw(x,8))continue;
-  const z=bwz-13,w=name==='NEON ARCADE'?13:10,d=8;
-  bakeG('plain',GEO.box,x,1.8,z,0,w,3.6,d,[.86,.78,.62]);
-  bakeG('plain',GEO.box,x,3.72,z,0,w+1,.35,d+.7,col);
-  bakeG('plain',GEO.box,x,.95,z+d/2+.12,0,w*.72,.9,.28,[.42,.25,.15]);
-  for(const side of[-1,1])bakeG('plain',GEO.box,x+side*(w/2-.3),1.8,z+d/2,0,.28,3.4,.3,col);
+ // VICE BEACH BOARDWALK (MIAMI_BAY_COAST_V1): a timber promenade along Meridian Beach's ocean shore, following the
+ // curve of the coast ~18 m inside the waterline, with piers out to sea, kiosks, benches, lamps and a lit Ferris wheel.
+ const bwX0=-2250,bwX1=250,bwZ=x=>VCB.shoreO(x)+18,step=10,wood=[.48,.31,.18],plank=[.69,.49,.29],railC=[.34,.23,.15];
+ for(let x=bwX0;x<bwX1;x+=step){const x2=x+step,z1=bwZ(x),z2=bwZ(x2),L=Math.hypot(step,z2-z1),ry=Math.atan2(-(z2-z1),step),mx=(x+x2)/2,mz=(z1+z2)/2,nx=-(z2-z1)/L,nz=step/L;
+  bakeG('plain',GEO.box,mx,-.02,mz,ry,L+.3,.28,15,wood);bakeG('plain',GEO.box,mx,.14,mz,ry,L+.3,.06,14,plank);
+  for(let k=1;k<=2;k++)bakeG('plain',GEO.box,x+k*step/2-step/4,.19,z1+(z2-z1)*(k/2-.25),ry,.055,.025,13,[.32,.2,.12]);
+  for(const side of[-1,1]){const rx=mx+nx*side*7,rz=mz+nz*side*7;bakeG('plain',GEO.box,rx,.72,rz,ry,L+.3,.18,.22,railC);
+   bakeG('plain',GEO.box,rx,.42,rz,0,.22,.85,.22,[.3,.2,.13]);addCol(Math.min(x,x2)+nx*side*7-.2,Math.min(z1,z2)+nz*side*7-.2,Math.max(x,x2)+nx*side*7+.2,Math.max(z1,z2)+nz*side*7+.2,1.05,'boardwalk-rail')}
+  if(Math.round(x/10)%4===0){bakeG('plain',GEO.cyl6,mx,1.8,mz+5.2,0,.11,3.6,.11,[.16,.16,.17]);bakeG('lamp',GEO.sph,mx,3.72,mz+5.2,0,.34,.34,.34,[1,.78,.48]);addCol(mx-.22,mz+4.98,mx+.22,mz+5.42,4.2,'boardwalk-lamp')}
+  if(Math.round(x/10)%22===5){bakeG('plain',GEO.box,mx,.58,mz-3.2,0,3.2,.16,.75,[.48,.27,.13]);bakeG('plain',GEO.box,mx,.92,mz-2.82,0,3.2,.55,.12,[.48,.27,.13]);addCol(mx-1.65,mz-3.62,mx+1.65,mz-2.78,1.25,'boardwalk-bench')}
+  if(Math.round(x/10)%3===0)palm(mx+rr(-3,3),mz+rr(10,16),rr(.85,1.15))}   // palms on the land side
+ // the boardwalk's ends ramp down onto the beach
+ for(const x of[bwX0,bwX1])bakeG('plain',GEO.box,x,-.1,bwZ(x),0,4,.25,14,wood);
+ // food, souvenir and arcade kiosks just inland of the boardwalk
+ const kiosks=[[-2050,'SUNSET SNACKS',[.9,.35,.18]],[-1700,'TIDE & TREAT',[.15,.55,.72]],[-1350,'BOARDWALK BITES',[.95,.68,.2]],[-1000,'VICE BEACH GIFTS',[.78,.28,.48]],
+  [-650,'SHELL SHACK',[.2,.62,.48]],[-300,'NEON ARCADE',[.35,.28,.78]],[100,'ICE CREAM CO.',[.9,.45,.65]]];
+ for(const [x,name,col] of kiosks){const z=bwZ(x)+14,w=name==='NEON ARCADE'?13:10,d=8;
+  bakeG('plain',GEO.box,x,1.8,z,0,w,3.6,d,[.86,.78,.62]);bakeG('plain',GEO.box,x,3.72,z,0,w+1,.35,d+.7,col);
+  bakeG('plain',GEO.box,x,.95,z-d/2-.12,0,w*.72,.9,.28,[.42,.25,.15]);for(const side of[-1,1])bakeG('plain',GEO.box,x+side*(w/2-.3),1.8,z-d/2,0,.28,3.4,.3,col);
   const sign=new T.Mesh(new T.PlaneGeometry(w*.88,1.35),new T.MeshBasicMaterial({map:signTex(name,'#fff2d6',null,'generic'),toneMapped:false}));
-  sign.position.set(x,4.65,z+d/2+.2);world.add(sign);
-  addCol(x-w/2,z-d/2,x+w/2,z+d/2,4.2,'boardwalk-kiosk');
- }
- // Entrance arch and a clear landmark sign.
- for(const x of[-80,80]){bakeG('plain',GEO.box,x,3.3,bwz-13,0,.65,6.6,.65,[.25,.18,.13]);addCol(x-.35,bwz-13.35,x+.35,bwz-12.65,7,'boardwalk-arch')}
- bakeG('neon',GEO.box,0,6.8,bwz-13,0,17,.55,.55,[1,.42,.22]);
- const bwSign=new T.Mesh(new T.PlaneGeometry(15,2.3),new T.MeshBasicMaterial({map:signTex('VICE BEACH BOARDWALK','#ffe5a8',null,'generic'),toneMapped:false}));
- bwSign.position.set(0,6.8,bwz-12.68);world.add(bwSign);
- // Ferris wheel at the eastern end of the promenade.
- const wheelX=700,wheelY=15,wheelZ=bwz-15;
- const wheelMat=new T.MeshStandardMaterial({color:0x7bd5e8,metalness:.55,roughness:.35,emissive:0x123344,emissiveIntensity:.35});
- const wheel=new T.Mesh(new T.TorusGeometry(12,.48,8,48),wheelMat);wheel.position.set(wheelX,wheelY,wheelZ);world.add(wheel);
- for(let i=0;i<12;i++){const a=i*Math.PI/6;
-  const spoke=new T.Mesh(new T.BoxGeometry(.22,12,.22),wheelMat);spoke.position.set(wheelX+Math.cos(a)*6,wheelY+Math.sin(a)*6,wheelZ);spoke.rotation.z=a;world.add(spoke);
-  const gondola=new T.Mesh(new T.BoxGeometry(1.45,1.15,1.25),new T.MeshStandardMaterial({color:[0xff6b83,0xffd166,0x6bd6b8,0x8c83ff][i%4],roughness:.65}));
-  gondola.position.set(wheelX+Math.cos(a)*12,wheelY+Math.sin(a)*12,wheelZ);world.add(gondola);
- }
- for(const x of[-5,5]){bakeG('plain',GEO.box,wheelX+x,4,wheelZ,0,.65,8,.65,[.34,.31,.3]);}
- addCol(wheelX-14,wheelZ-1.4,wheelX+14,wheelZ+1.4,30,'boardwalk-ferris-wheel');
- // Existing piers extend from the boardwalk out over the water.
- for(const px of[-120,210]){decks.push({x0:px-3,x1:px+3,z0:-428,z1:-350,y:.6});bakeG('plain',GEO.box,px,.1,-384,0,6,.55,68,[.58,.42,.28]);for(let z=-415;z<-352;z+=6)for(const sx of[-3,3])bakeG('plain',GEO.cyl6,px+sx,-2.5,z,0,.18,3.4,.18,[.35,.26,.18]);
-  bakeG('plain',GEO.box,px,.65,-423,0,10,3,6,pick(PAL));bakeG('plain',GEO.box,px,3.65,-423,0,11,.4,7,[.9,.3,.4]);
-  addCol(px-3.1,-428,px+3.1,-350,1.2,'boardwalk-pier');}
+  sign.position.set(x,4.65,z-d/2-.2);sign.rotation.y=Math.PI;world.add(sign);addCol(x-w/2,z-d/2,x+w/2,z+d/2,4.2,'boardwalk-kiosk')}
+ // entrance arch with the landmark sign, facing the beach
+ {const ax=-820,az=bwZ(ax)+12;for(const dx of[-8,8]){bakeG('plain',GEO.box,ax+dx,3.3,az,0,.65,6.6,.65,[.25,.18,.13]);addCol(ax+dx-.35,az-.35,ax+dx+.35,az+.35,7,'boardwalk-arch')}
+  bakeG('neon',GEO.box,ax,6.8,az,0,17,.55,.55,[1,.42,.22]);const bwSign=new T.Mesh(new T.PlaneGeometry(15,2.3),new T.MeshBasicMaterial({map:signTex('VICE BEACH BOARDWALK','#ffe5a8',null,'generic'),toneMapped:false}));
+  bwSign.position.set(ax,6.8,az-.32);bwSign.rotation.y=Math.PI;world.add(bwSign)}
+ // Ferris wheel on the land side of the boardwalk
+ {const wheelX=-450,wheelY=15,wheelZ=bwZ(-450)+24;
+  const wheelMat=new T.MeshStandardMaterial({color:0x7bd5e8,metalness:.55,roughness:.35,emissive:0x123344,emissiveIntensity:.35});
+  const wheel=new T.Mesh(new T.TorusGeometry(12,.48,8,48),wheelMat);wheel.position.set(wheelX,wheelY,wheelZ);world.add(wheel);
+  for(let i=0;i<12;i++){const a=i*Math.PI/6;const spoke=new T.Mesh(new T.BoxGeometry(.22,12,.22),wheelMat);spoke.position.set(wheelX+Math.cos(a)*6,wheelY+Math.sin(a)*6,wheelZ);spoke.rotation.z=a;world.add(spoke);
+   const gondola=new T.Mesh(new T.BoxGeometry(1.45,1.15,1.25),new T.MeshStandardMaterial({color:[0xff6b83,0xffd166,0x6bd6b8,0x8c83ff][i%4],roughness:.65}));gondola.position.set(wheelX+Math.cos(a)*12,wheelY+Math.sin(a)*12,wheelZ);world.add(gondola)}
+  for(const x of[-5,5])bakeG('plain',GEO.box,wheelX+x,4,wheelZ,0,.65,8,.65,[.34,.31,.3]);addCol(wheelX-14,wheelZ-1.4,wheelX+14,wheelZ+1.4,30,'boardwalk-ferris-wheel')}
+ // two piers run from the boardwalk out over the ocean
+ for(const px of[-1500,-150]){const z0=bwZ(px)-7.5,z1=z0-75;decks.push({x0:px-3,x1:px+3,z0:z1,z1:z0,y:.6});bakeG('plain',GEO.box,px,.1,(z0+z1)/2,0,6,.55,z0-z1,[.58,.42,.28]);
+  for(let z=z1+3;z<z0;z+=6)for(const sx of[-3,3])bakeG('plain',GEO.cyl6,px+sx,-2.5,z,0,.18,3.4,.18,[.35,.26,.18]);
+  bakeG('plain',GEO.box,px,.65,z1+5,0,10,3,6,pick(PAL));bakeG('plain',GEO.box,px,3.65,z1+5,0,11,.4,7,[.9,.3,.4]);addCol(px-3.1,z1,px+3.1,z0,1.2,'boardwalk-pier')}
  // beached boats at the marina
  for(let i=0;i<8;i++){const x=-760+i*14,z=shoreZ(x)-14;bakeG('plain',GEO.box,x,-.3,z,rr(-.3,.3),2.4,.8,6.5,pick([[.95,.95,.95],[.3,.5,.9],[.9,.3,.3]]));bakeG('plain',GEO.box,x,.4,z-.5,0,1.6,.8,2.6,[.85,.88,.9])}
 }
@@ -2095,7 +2076,7 @@ function* buildBaseMapGen(){
  }
  baseMap=c;
 }
-const REGIONS=[['LEONIDA WEST REGIONAL AIRPORT',4400,2250,5400,3350,0,0],['VICE CITY INTERNATIONAL AIRPORT',200,470,1440,1320,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',430,-920,2440,1570,1510,315],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['KEY LENTO',3680,430,4230,970,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
+const REGIONS=[['MERIDIAN BEACH',-2650,-2100,950,-1530,0,0],['FAIRWAY ISLAND',-1930,-1240,-1370,-860,0,0],['PELICAN ISLE',-1290,-1340,-1010,-1160,0,0],['SANDDOLLAR ISLAND',-520,-1360,-180,-1140,0,0],['BRISA ISLAND',980,-1960,1360,-1640,0,0],['LEONIDA WEST REGIONAL AIRPORT',4400,2250,5400,3350,0,0],['VICE CITY INTERNATIONAL AIRPORT',200,470,1440,1320,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',430,-920,2440,1570,1510,315],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['HARBOR HEIGHTS',1700,-1550,2700,-560,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['KEY LENTO',3680,430,4230,970,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
 function zoneName(x,z){for(const r of REGIONS)if(x>r[1]&&x<r[3]&&z>r[2]&&z<r[4])return r[0];if(z<shoreZ(x))return'PALMERA GULF';return'PALMERA COUNTRYSIDE'}
 
 function clearStructureFootprint(x0,z0,x1,z1,margin=1.2){
@@ -2443,14 +2424,10 @@ defineRoads=function(){
  pgOldDefineRoads();PG.paths=[];PG.homes=[];PG.signs=[];
  // Remove every road segment entering Palmetto Grove.
  const noRoadZones=[{x0:-345,x1:425,z0:445,z1:1115}]; // Palmetto Grove
- // BOARDWALK_FIX_V1: city streets used to run straight across the boardwalk and down to the water; they now end at
- // its land side (highways carry on, and the boardwalk leaves a gap for them)
- {const B=BOARDWALK;for(let i=roads.length-1;i>=0;i--){const r=roads[i];if(r.type!=='city'||r.o!=='v'||r.c<B.x0-10||r.c>B.x1+10)continue;const lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b);if(lo>=B.land)continue;
-  if(hi<=B.land+20){roads.splice(i,1);continue}r.a=B.land;r.b=hi}}
- // ...and no city street runs along the beach strip beside it: those sections are cut out for the boardwalk's length
- {const B=BOARDWALK,cut0=B.x0-12,cut1=B.x1+12;for(let i=roads.length-1;i>=0;i--){const r=roads[i];if(r.type!=='city'||r.o!=='h'||r.c>=B.land+r.hw||r.c<B.z-140)continue;
-  const lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b);if(hi<=cut0||lo>=cut1)continue;roads.splice(i,1);
-  if(cut0-lo>20)addRoad('h',r.c,lo,cut0,r.w,r.type,r.sig);if(hi-cut1>20)addRoad('h',r.c,cut1,hi,r.w,r.type,r.sig)}}
+ // MIAMI_BAY_COAST_V1: causeways across the bay and the barrier island's streets
+ for(const x of[-2000,-1080,-60])addRoad('v',x,-1610,-380,18,'hwy');   // the two city ones continue existing streets
+ for(const z of[-1610,-1690,-1770,-1850,-1930])addRoad('h',z,-2450,z===-1930?280:420,z===-1770?16:14,'city',z===-1770);   // bay drive ... ocean drive
+ for(let x=-2400;x<=300;x+=90)addRoad('v',x,-1930,-1610,12,'city');
  // VCIA_MIA_LAYOUT_V1: roads that run into the airport are cut short at its fence; roads entirely inside it are dropped.
  {const A={x0:200,x1:1440,z0:470,z1:1320},pad=6;for(let i=roads.length-1;i>=0;i--){const r=roads[i],hw=r.hw||r.w/2,lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),[c0,c1,a0,a1]=r.o==='h'?[A.z0,A.z1,A.x0,A.x1]:[A.x0,A.x1,A.z0,A.z1];
   if(r.c<c0-hw||r.c>c1+hw||hi<a0-hw||lo>a1+hw)continue;const before=a0-hw-pad-lo,after=hi-(a1+hw+pad);
