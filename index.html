@@ -2461,6 +2461,16 @@ defineRoads=function(){
   if(r.c<c0-hw||r.c>c1+hw||hi<a0-hw||lo>a1+hw)continue;const before=a0-hw-pad-lo,after=hi-(a1+hw+pad);
   if(before<20&&after<20){roads.splice(i,1);continue}if(before>=after){r.a=lo;r.b=a0-hw-pad}else{r.a=a1+hw+pad;r.b=hi}}}
  for(let i=roads.length-1;i>=0;i--){const r=roads[i],lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),crosses=noRoadZones.some(zone=>r.o==='h'?(r.c>=zone.z0-r.hw&&r.c<=zone.z1+r.hw&&hi>=zone.x0-r.hw&&lo<=zone.x1+r.hw):(r.c>=zone.x0-r.hw&&r.c<=zone.x1+r.hw&&hi>=zone.z0-r.hw&&lo<=zone.z1+r.hw));if(crosses)roads.splice(i,1)}
+ // ROAD_OVERLAP_CLEANUP_V1: merge overlapping collinear road surfaces before mesh generation.
+ {const groups=[];
+  for(const r of roads){const lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b);
+   let g=groups.find(q=>q.o===r.o&&Math.abs(q.c-r.c)<1.25&&lo<=q.hi+1.5&&hi>=q.lo-1.5);
+   if(!g){groups.push({o:r.o,c:r.c,lo,hi,w:r.w,hw:r.hw,type:r.type,sig:!!r.sig,base:r});continue}
+   g.lo=Math.min(g.lo,lo);g.hi=Math.max(g.hi,hi);g.w=Math.max(g.w,r.w);g.hw=Math.max(g.hw,r.hw);
+   if(r.type==='hwy'||(r.type==='city'&&g.type==='dirt'))g.type=r.type;g.sig=g.sig||!!r.sig;
+  }
+  roads.length=0;for(const g of groups)roads.push({...g.base,c:g.c,a:g.lo,b:g.hi,w:g.w,hw:g.hw,type:g.type,sig:g.sig,cross:[]});
+ }
 };
 const pgOldNearRoad=nearRoad;nearRoad=function(x,z,m=0){return pgOldNearRoad(x,z,m)||pgNear(x,z,m)};
 const pgOldFootprint=footprintHitsRoad;footprintHitsRoad=function(x0,z0,x1,z1,m=.8){return pgOldFootprint(x0,z0,x1,z1,m)||pgHitsBox(x0,z0,x1,z1,m)};
