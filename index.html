@@ -2469,26 +2469,26 @@ defineRoads=function(){
   if(r.c<c0-hw||r.c>c1+hw||hi<a0-hw||lo>a1+hw)continue;const before=a0-hw-pad-lo,after=hi-(a1+hw+pad);
   if(before<20&&after<20){roads.splice(i,1);continue}if(before>=after){r.a=lo;r.b=a0-hw-pad}else{r.a=a1+hw+pad;r.b=hi}}}
  for(let i=roads.length-1;i>=0;i--){const r=roads[i],lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),crosses=noRoadZones.some(zone=>r.o==='h'?(r.c>=zone.z0-r.hw&&r.c<=zone.z1+r.hw&&hi>=zone.x0-r.hw&&lo<=zone.x1+r.hw):(r.c>=zone.x0-r.hw&&r.c<=zone.x1+r.hw&&hi>=zone.z0-r.hw&&lo<=zone.z1+r.hw));if(crosses)roads.splice(i,1)}
- // HARBOR_HEIGHTS_LAND_ROADS_FIX_V1: keep streets in the Harbor Heights district on the island,
- // and retain only its intentional north causeway outside the shoreline.
+ // PORT_VICE_CITY_MAINLAND_ROADS_FIX_V2: the recursive port grid was spilling beyond
+ // the actual island footprint. Remove every nearby mainland segment, not just segments
+ // whose centerline falls wholly inside the district rectangle.
  {const vxRoad=HH.roads.filter(q=>q[0]==='v').sort((a,b)=>Math.abs(a[1]-1900)-Math.abs(b[1]-1900))[0];
   const causeX=vxRoad?vxRoad[1]:1900,causeShore=vxRoad?vxRoad[3]:-700;
-  const x0=1450,x1=2850,z0=-1750,z1=-150,filtered=[];
+  const x0=1050,x1=3400,z0=-2200,z1=350,filtered=[];
   for(const r of roads){
    const lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),isH=r.o==='h';
-   const lineInBox=isH?(r.c>=z0-r.hw&&r.c<=z1+r.hw&&hi>=x0-r.hw&&lo<=x1+r.hw):(r.c>=x0-r.hw&&r.c<=x1+r.hw&&hi>=z0-r.hw&&lo<=z1+r.hw);
-   if(!lineInBox){filtered.push(r);continue}
-   const step=8,n=Math.max(1,Math.ceil((hi-lo)/step));let run=null;
+   const nearPort=isH?(r.c>=z0-r.hw&&r.c<=z1+r.hw&&hi>=x0-r.hw&&lo<=x1+r.hw):(r.c>=x0-r.hw&&r.c<=x1+r.hw&&hi>=z0-r.hw&&lo<=z1+r.hw);
+   if(!nearPort){filtered.push(r);continue}
+   const step=5,n=Math.max(1,Math.ceil((hi-lo)/step));let run=null;
    for(let j=0;j<=n;j++){
     const t=lo+(hi-lo)*j/n,px=isH?t:r.c,pz=isH?r.c:t;
-    const inBox=px>=x0&&px<=x1&&pz>=z0&&pz<=z1;
-    const island=hhIsle(px,pz)<-(r.hw+10);
+    const onPortIsland=hhIsle(px,pz)<-(r.hw+10);
     const causeway=(isH&&Math.abs(r.c+200)<r.hw+5&&px>=1400&&px<=causeX+20)||
       (!isH&&Math.abs(r.c-causeX)<r.hw+5&&pz>=causeShore-20&&pz<=-150);
-    const keep=!inBox||island||causeway;
+    const keep=onPortIsland||causeway;
     if(keep&&run===null)run=t;
-    if((!keep||j===n)&&run!==null){const end=keep&&j===n?t:lo+(hi-lo)*(j-1)/n;
-     if(end-run>Math.max(12,r.hw*1.5))filtered.push({...r,a:run,b:end,cross:[]});run=null}
+    if((!keep||j===n)&&run!==null){const finish=keep&&j===n?t:lo+(hi-lo)*(j-1)/n;
+     if(finish-run>Math.max(12,r.hw*1.5))filtered.push({...r,a:run,b:finish,cross:[]});run=null}
    }
   }
   roads.length=0;roads.push(...filtered);
