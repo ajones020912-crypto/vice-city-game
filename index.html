@@ -633,13 +633,14 @@ const shoreZ=x=>flLerp([[-8000,-1600],[-6500,-1450],[-5350,-1050],[-4300,-780],[
  +10*Math.sin(x*.012)+6*Math.sin(x*.031+1)-Math.max(0,55*Math.sin(x*.0047+1.3)+38*Math.sin(x*.0121+.4)+16*Math.sin(x*.029+2));
 // PORT_VICE_CITY_ISLAND_V1: long, angled working-port footprint based on the supplied reference.
 const HH_CX=2150,HH_CZ=-1050;
-const HH_PORT_SHORE=[[-690,-70],[-650,-270],[-500,-320],[-190,-325],[-85,-435],[105,-430],[360,-265],[625,-105],[700,55],[650,155],[410,205],[105,275],[-210,285],[-405,230],[-620,135]];
+// Wide east-west port island. World axes are rotated on the map, so its long axis follows z.
+const HH_PORT_SHORE=[[-350,-620],[-285,-690],[-130,-715],[110,-710],[285,-660],[355,-565],[365,-360],[330,-180],[355,40],[335,270],[260,485],[125,635],[-95,690],[-275,610],[-355,455],[-370,220],[-350,-40],[-370,-310]];
 function hhIsle(x,z){
  const px=x-HH_CX,pz=z-HH_CZ;let inside=false,minD=1e9;
  for(let i=0,j=HH_PORT_SHORE.length-1;i<HH_PORT_SHORE.length;j=i++){
-  const a=HH_PORT_SHORE[j],b=HH_PORT_SHORE[i],dx=b[0]-a[0],dz=b[1]-a[1],t=Math.max(0,Math.min(1,((px-a[0])*dx+(pz-a[1])*dz)/(dx*dx+dz*dz||1)));
-  minD=Math.min(minD,Math.hypot(px-a[0]-t*dx,pz-a[1]-t*dz));
-  if(((a[1]>pz)!==(b[1]>pz))&&(px<(b[0]-a[0])*(pz-a[1])/(b[1]-a[1])+a[0]))inside=!inside;
+  const p=HH_PORT_SHORE[j],q=HH_PORT_SHORE[i],dx=q[0]-p[0],dz=q[1]-p[1],t=Math.max(0,Math.min(1,((px-p[0])*dx+(pz-p[1])*dz)/(dx*dx+dz*dz||1)));
+  minD=Math.min(minD,Math.hypot(px-p[0]-t*dx,pz-p[1]-t*dz));
+  if(((p[1]>pz)!==(q[1]>pz))&&(px<(q[0]-p[0])*(pz-p[1])/(q[1]-p[1])+p[0]))inside=!inside;
  }
  return inside?-minD:minD;
 }
@@ -842,7 +843,7 @@ function groundCol(x,z,h,o){
  // urban concrete / asphalt blocks
  if((x>-345&&x<425&&z>-345&&z<445)||(x>-1110&&x<-515&&z>395&&z<1045)||(x>410&&x<2140&&z>-140&&z<1710)){r=.42;g=.41;b=.40}
  else if(x>-345&&x<425&&z>445&&z<1115){r=.32+(n-.5)*.12;g=.58+(n-.5)*.16;b=.26} // greener suburbs
- else if(hhIsle(x,z)<-30){r=.42;g=.41;b=.40} // Harbor Heights island
+ else if(hhIsle(x,z)<-30){r=.42;g=.41;b=.40} // Port Vice City island
  else if(x>-435&&x<895&&z>1625&&z<2415){r=.33+(n-.5)*.12;g=.57+(n-.5)*.16;b=.27} // Coral Ridge lawns
  if(sw>.05){const m=sw*.9;r=lerp(r,.26+n*.12,m);g=lerp(g,.40+n*.08,m);b=lerp(b,.19,m);if(h<-.1){r=lerp(r,.18,.55);g=lerp(g,.26,.55);b=lerp(b,.14,.55)}}
  if(hm>.05){const rock=sstep(14,34,h);r=lerp(lerp(r,.22,hm*.6),.48,rock);g=lerp(lerp(g,.38,hm*.6),.44,rock);b=lerp(lerp(b,.20,hm*.6),.38,rock)}
@@ -1380,7 +1381,7 @@ function defineRoads(){
  for(const [o,c,a,b,w] of HH.roads)addRoad(o,c,a,b,w,'city');
  // causeways: Port Calusa down to the island's north shore, and across the channel to Coral Ridge
  {const v=HH.roads.filter(q=>q[0]==='v').sort((a,b)=>Math.abs(a[1]-1900)-Math.abs(b[1]-1900))[0];
-  const vx=v?v[1]:1900,shore=v?v[3]:-700;addRoad('v',vx,shore,-200,18,'city');addRoad('h',-200,1400,vx,16,'city')} // causeway to the mainland
+  const vx=v?v[1]:1900,shore=v?v[3]:-700;addRoad('h',vx,shore,-200,18,'city');addRoad('v',-200,1400,vx,16,'city')} // causeway to the mainland
  for(const x of CR_X)if(x!==380)addRoad('v',x,1640,2400,14,'city',true);
  for(const z of CR_Z)addRoad('h',z,-420,880,14,'city',true);
  addRoad('v',380,1400,2480,30,'hwy');          // Interstate 1 continues south through Coral Ridge
@@ -1462,14 +1463,29 @@ function defineRoads(){
 }
 const CR_X=[],CR_Z=[];
 // Port Vice City street plan: clipped port access lanes and irregular terminal/cargo blocks
-const HH=(()=>{let seed=91731;const r=()=>(seed=(seed*16807)%2147483647)/2147483647;
- const roads=[],blocks=[],inside=(x,z,m)=>hhIsle(x,z)<-m;
- const clipSeg=(o,c,a,b)=>{const out=[];let s0=null;for(let t=a;t<=b;t+=5){const ok=o==='h'?inside(t,c,22):inside(c,t,22);if(ok&&s0===null)s0=t;if((!ok||t+5>b)&&s0!==null){const e=ok?t:t-5;if(e-s0>25)out.push([s0,e]);s0=null}}return out};
- const split=(x0,z0,x1,z1,d)=>{const w=x1-x0,h=z1-z0;if((w<150&&h<150)||d>6||(d>3&&r()<.25)){blocks.push([x0,z0,x1,z1]);return}
-  const vert=w>h*1.25?true:h>w*1.25?false:r()<.5,f=.3+r()*.4,W=d<2?16:d<4?13:11;
-  if(vert){const x=Math.round(x0+w*f);for(const [a,b] of clipSeg('v',x,z0,z1))roads.push(['v',x,a,b,W]);split(x0,z0,x,z1,d+1);split(x,z0,x1,z1,d+1)}
-  else{const z=Math.round(z0+h*f);for(const [a,b] of clipSeg('h',z,x0,x1))roads.push(['h',z,a,b,W]);split(x0,z0,x1,z,d+1);split(x0,z,x1,z1,d+1)}};
- split(HH_CX-710,HH_CZ-445,HH_CX+710,HH_CZ+295,0);return{roads,blocks}})();
+// PORT_VICE_CITY_FIXED_PLAN_V2: deliberate port plan, no random recursive street splitting.
+const HH=(()=>{
+ const roads=[],blocks=[],inside=(x,z,m=28)=>hhIsle(x,z)<-m;
+ const clipSeg=(o,c,a,b)=>{const out=[];let run=null,last=a;for(let t=a;t<=b+0.01;t+=4){const p=Math.min(t,b),ok=o==='h'?inside(p,c):inside(c,p);if(ok&&run===null)run=p;if(!ok&&run!==null){if(last-run>26)out.push([run,last]);run=null}last=p}if(run!==null&&b-run>26)out.push([run,b]);return out};
+ const add=(o,c,a,b,w=14)=>{for(const [u,v]of clipSeg(o,c,a,b))roads.push([o,c,u,v,w])};
+ // Main perimeter loop and broad parallel port avenues.
+ for(const z of[-1620,-1450,-1260,-1080,-900,-720,-540])add('h',z,1770,2530,18);
+ for(const x of[1800,1900,2020,2160,2300,2440,2540])add('v',x,-1700,-400,16);
+ // Cross streets stop at the shoreline, leaving a clear northern terminal apron.
+ for(const z of[-1510,-1320,-1130,-950,-770,-590])add('h',z,1790,2510,13);
+ // Long dock/service lanes and the terminal access loop at the north end.
+ add('h',-1680,1850,2460,22);add('v',1860,-1690,-1500,20);add('v',2450,-1690,-1500,20);
+ add('h',-1510,1860,2450,20);add('h',-470,1900,2400,20);
+ // Rectangular cargo and warehouse blocks fitted to the inner island.
+ const xs=[1815,1945,2075,2210,2345,2480],zs=[-1580,-1390,-1200,-1010,-820,-630];
+ for(let i=0;i<xs.length-1;i++)for(let j=0;j<zs.length-1;j++){
+  const x0=xs[i]+13,x1=xs[i+1]-13,z0=zs[j]+13,z1=zs[j+1]-13;
+  if(x1-x0>55&&z1-z0>55&&inside((x0+x1)/2,(z0+z1)/2,48))blocks.push([x0,z0,x1,z1]);
+ }
+ // Large container/terminal apron at the northern end; southern end gets smaller service lots.
+ blocks.push([1910,-1690,2390,-1605],[1980,-550,2330,-485]);
+ return{roads,blocks}
+})();
 for(let k=-8;k<=5;k++)CR_X.push(380+100*k);for(let j=0;j<=8;j++)CR_Z.push(1640+95*j);
 function buildNodes(){
  const hs=roads.filter(r=>r.o==='h'),vs=roads.filter(r=>r.o==='v');
@@ -2112,7 +2128,7 @@ function* buildBaseMapGen(){
  }
  baseMap=c;
 }
-const REGIONS=[['MERIDIAN BEACH',-2650,-2100,950,-1530,0,0],['FAIRWAY ISLAND',-1930,-1240,-1370,-860,0,0],['PELICAN ISLE',-1290,-1340,-1010,-1160,0,0],['SANDDOLLAR ISLAND',-520,-1360,-180,-1140,0,0],['BRISA ISLAND',980,-1960,1360,-1640,0,0],['LEONIDA WEST REGIONAL AIRPORT',4400,2250,5400,3350,0,0],['VICE CITY INTERNATIONAL AIRPORT',200,470,1440,1320,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',430,-920,2440,1570,1510,315],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['PORT VICE CITY',1430,-1530,2870,-620,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['KEY LENTO',3680,430,4230,970,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
+const REGIONS=[['MERIDIAN BEACH',-2650,-2100,950,-1530,0,0],['FAIRWAY ISLAND',-1930,-1240,-1370,-860,0,0],['PELICAN ISLE',-1290,-1340,-1010,-1160,0,0],['SANDDOLLAR ISLAND',-520,-1360,-180,-1140,0,0],['BRISA ISLAND',980,-1960,1360,-1640,0,0],['LEONIDA WEST REGIONAL AIRPORT',4400,2250,5400,3350,0,0],['VICE CITY INTERNATIONAL AIRPORT',200,470,1440,1320,0,0],['SALTON MEMORIAL ISLAND',40,-1400,1270,-965,0,0],['VICE CITY',430,-920,2440,1570,1510,315],['PORT CALUSA',-1110,395,-515,1045,0,0],['PALMETTO GROVE',-345,445,425,1115,0,0],['GRASSRUN BAYOU',440,-300,1600,520,0,0],['MOUNT ORRIN',-1600,-400,-640,400,0,0],['KESTREL KEYS',-450,-1200,1700,-700,0,0],['WEST OUTSKIRTS',-400,1100,1000,1600,0,0],['PORT VICE CITY',1770,-1780,2530,-390,0,0],['LAKE CALUSA',-2050,1050,-500,2680,0,0],['CORAL RIDGE',-440,1600,960,2480,0,0],['ORRIN WILDS',-3700,-400,-1600,1850,0,0],['OKEE GLADES',-2400,3150,1800,4650,0,0],['GULF COAST',-5400,4650,3400,5700,0,0],['UPCOUNTRY',-5400,-400,-3700,4650,0,0],['FLORIDA KEYS',3500,-400,5000,3200,0,0],['KEY LENTO',3680,430,4230,970,0,0],['SOUTH HIGHWAY',900,-200,1700,600,0,0]];
 function zoneName(x,z){for(const r of REGIONS)if(x>r[1]&&x<r[3]&&z>r[2]&&z<r[4])return r[0];if(z<shoreZ(x))return'PALMERA GULF';return'PALMERA COUNTRYSIDE'}
 
 function clearStructureFootprint(x0,z0,x1,z1,margin=1.2){
@@ -2472,9 +2488,9 @@ defineRoads=function(){
  // PORT_VICE_CITY_MAINLAND_ROADS_FIX_V2: the recursive port grid was spilling beyond
  // the actual island footprint. Remove every nearby mainland segment, not just segments
  // whose centerline falls wholly inside the district rectangle.
- {const vxRoad=HH.roads.filter(q=>q[0]==='v').sort((a,b)=>Math.abs(a[1]-1900)-Math.abs(b[1]-1900))[0];
-  const causeX=vxRoad?vxRoad[1]:1900,causeShore=vxRoad?vxRoad[3]:-700;
-  const x0=1050,x1=3400,z0=-2200,z1=350,filtered=[];
+ {const vxRoad=HH.roads.filter(q=>q[0]==='v').sort((a,b)=>Math.abs(a[1]-2150)-Math.abs(b[1]-2150))[0];
+  const causeX=vxRoad?vxRoad[1]:2150,causeShore=vxRoad?vxRoad[3]:-700;
+  const x0=1550,x1=2750,z0=-1900,z1=-250,filtered=[];
   for(const r of roads){
    const lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),isH=r.o==='h';
    const nearPort=isH?(r.c>=z0-r.hw&&r.c<=z1+r.hw&&hi>=x0-r.hw&&lo<=x1+r.hw):(r.c>=x0-r.hw&&r.c<=x1+r.hw&&hi>=z0-r.hw&&lo<=z1+r.hw);
@@ -2483,8 +2499,8 @@ defineRoads=function(){
    for(let j=0;j<=n;j++){
     const t=lo+(hi-lo)*j/n,px=isH?t:r.c,pz=isH?r.c:t;
     const onPortIsland=hhIsle(px,pz)<-(r.hw+10);
-    const causeway=(isH&&Math.abs(r.c+200)<r.hw+5&&px>=1400&&px<=causeX+20)||
-      (!isH&&Math.abs(r.c-causeX)<r.hw+5&&pz>=causeShore-20&&pz<=-150);
+    const causeway=(isH&&Math.abs(r.c-causeX)<r.hw+5&&px>=causeShore-20&&px<=-200)||
+      (!isH&&Math.abs(r.c+200)<r.hw+5&&pz>=1400&&pz<=causeX+20);
     const keep=onPortIsland||causeway;
     if(keep&&run===null)run=t;
     if((!keep||j===n)&&run!==null){const finish=keep&&j===n?t:lo+(hi-lo)*(j-1)/n;
