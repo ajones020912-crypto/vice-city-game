@@ -1,0 +1,41 @@
+name: Style Key Lento highway like US 1
+on:
+  push:
+    branches: [main]
+    paths: ['scripts/key-lento-us1.js', '.github/workflows/key-lento-us1.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  highway:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/key-lento-us1" --no-package-lock --ignore-scripts acorn@8 three@0.128.0
+      - name: Prepare scoped highway changes and test roadside geometry
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/key-lento-us1/node_modules/acorn'),T=require(process.env.RUNNER_TEMP+'/key-lento-us1/node_modules/three'),file='index.html',before=fs.readFileSync(file,'utf8'),helper=fs.readFileSync('scripts/key-lento-us1.js','utf8'),report={passed:false,scope:'Scoped source edits, JavaScript syntax, and real Three.js roadside meshes on fixture terrain. Native lane painting is retained; this does not convert lane counts, reroute the highway, build elevated bridges, verify live traffic, or establish deployed appearance.'};function walk(n,f){f(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f);}else if(v&&typeof v.type==='string')walk(v,f);}}
+          try{assert(!before.includes('function buildKeyLentoUS1Details('),'US 1 upgrade already installed');acorn.parse(helper,{ecmaVersion:'latest'});const scripts=[...before.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)],target=scripts.filter(m=>m[1].includes('function defineRoads(')&&m[1].includes('function buildBaseMap('));assert(target.length===1);const m=target[0],code=m[1],ast=acorn.parse(code,{ecmaVersion:'latest'}),defs=[['h',3200,2600,3600,16],['v',3600,700,3200,16],['h',700,3600,4250,22],['v',4250,700,2800,16],['h',2800,4250,4900,16]],edits=[],hits=new Set();let map;walk(ast,n=>{if(n.type==='FunctionDeclaration'&&n.id.name==='buildBaseMap'){assert(!map);map=n;}if(n.type==='CallExpression'&&n.callee.type==='Identifier'&&n.callee.name==='addRoad'&&n.arguments.length>=6){const values=n.arguments.map(a=>a.type==='Literal'?a.value:undefined),index=defs.findIndex(d=>d.slice(0,4).every((v,i)=>values[i]===v));if(index>=0){assert(!hits.has(index)&&values[4]===30&&values[5]==='hwy','Reviewed highway definition changed');hits.add(index);edits.push({start:n.arguments[4].start,end:n.arguments[4].end,text:String(defs[index][4])});}}});assert(hits.size===5&&map,'All five connected route definitions and map hook required');edits.push({start:map.start,end:map.start,text:helper+'\n'},{start:map.body.end-1,end:map.body.end-1,text:'\nbuildKeyLentoUS1Details();\n'});let changed=code;for(const e of edits.sort((a,b)=>b.start-a.start))changed=changed.slice(0,e.start)+e.text+changed.slice(e.end);acorn.parse(changed,{ecmaVersion:'latest'});
+           const roadList=defs.map(d=>({o:d[0],c:d[1],a:d[2],b:d[3],w:d[4],hw:d[4]/2,cross:[]})),cols=[],objects=[],ctx=new Proxy({},{get:(o,k)=>k in o?o[k]:()=>{},set:(o,k,v)=>(o[k]=v,true)}),sandbox={T,G:{},WL:-.6,roads:roadList,document:{createElement:()=>({width:0,height:0,getContext:()=>ctx})},world:{add:o=>objects.push(o)},heightAt:()=>0,rawH:(x,z)=>Math.abs(x-3950)<300&&Math.abs(z-700)<140?.3:-2,footprintHitsRoad:(x0,z0,x1,z1,margin=0)=>roadList.some(r=>r.o==='h'?x1+margin>r.a&&x0-margin<r.b&&z1+margin>r.c-r.hw&&z0-margin<r.c+r.hw:z1+margin>r.a&&z0-margin<r.b&&x1+margin>r.c-r.hw&&x0-margin<r.c+r.hw),queryCols:(x,z,r)=>cols.filter(c=>x+r>c.x0&&x-r<c.x1&&z+r>c.z0&&z-r<c.z1),addCol:(x0,z0,x1,z1,h,tag)=>cols.push({x0,z0,x1,z1,h,tag})};vm.createContext(sandbox);vm.runInContext(helper,sandbox);sandbox.buildKeyLentoUS1Details();const count=objects.length;sandbox.buildKeyLentoUS1Details();assert(objects.length===count,'Duplicate highway props');const stats=sandbox.G.keyLentoUS1;assert(stats.routeShields>=10&&stats.mileMarkers===4&&stats.entranceSigns===2&&stats.guardrailSections>20,JSON.stringify(stats));for(const o of objects){assert(o.matrix.elements.every(Number.isFinite));if(o.isInstancedMesh){assert(Array.from(o.instanceMatrix.array).every(Number.isFinite));assert(o.count>0);}}for(const c of cols)assert(!roadList.some(r=>r.o==='h'?c.x1>r.a&&c.x0<r.b&&c.z1>r.c-r.hw&&c.z0<r.c+r.hw:c.z1>r.a&&c.z0<r.b&&c.x1>r.c-r.hw&&c.x0<r.c+r.hw),'New barrier or sign intrudes into a travel corridor');const offset=m.index+m[0].indexOf(code),candidate=before.slice(0,offset)+changed+before.slice(offset+code.length);for(const s of candidate.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(s[1].trim())acorn.parse(s[1],{ecmaVersion:'latest'});fs.writeFileSync(file,candidate);Object.assign(report,{passed:true,fixture:stats,widths:{town:22,connectingHighways:16,previous:30},roadOrientationsEndpointsAndTypesPreserved:true,otherRoadDefinitionsUnchanged:true,nativeTrafficAndLanePaintingPreserved:true,standaloneMeshesDoNotDependOnWorldBatchFinalization:true,mileMarkersAreCompressedGameScenery:true,previousSceneryIntegrationNotRetried:true});}catch(error){fs.writeFileSync(file,before);Object.assign(report,{passed:false,error:String(error),stack:error.stack,baselinePreserved:true});}fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/key-lento-us1-check.json',JSON.stringify(report,null,2)+'\n');
+          JS
+      - name: Publish checked highway changes or diagnostics
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Main changed; rerun.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/key-lento-us1-check.json
+          if node -e "if(!require('./status/key-lento-us1-check.json').passed)process.exit(1)"; then git add -- index.html; fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Style Key Lento highway with narrower US 1 corridor signs and water-side guardrails or record diagnostics'
+            git push origin HEAD:refs/heads/main
+          fi
+          node -e "if(!require('./status/key-lento-us1-check.json').passed)process.exit(1)"
