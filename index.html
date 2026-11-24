@@ -1436,6 +1436,21 @@ function defineRoads(){
   }
  }
  roads.length=0;roads.push(...clipped);
+ // SPAWN_PALM_PARK_CLEAR_V1: keep the central palm-tree spawn park free of through-roads.
+ // Preserve the streets around the block, but split any horizontal/vertical road at the park edge.
+ {const px0=66,px1=174,pz0=36,pz1=144,clear=[];
+  for(const r of roads){
+   const half=(r.hw??r.w/2)+2;
+   if(r.o==='h'&&r.c>pz0+half&&r.c<pz1-half&&r.a<px1+half&&r.b>px0-half){
+    if(r.a<px0-half)clear.push({...r,b:px0-half,cross:[]});
+    if(r.b>px1+half)clear.push({...r,a:px1+half,cross:[]});
+   }else if(r.o==='v'&&r.c>px0+half&&r.c<px1-half&&r.a<pz1+half&&r.b>pz0-half){
+    if(r.a<pz0-half)clear.push({...r,b:pz0-half,cross:[]});
+    if(r.b>pz1+half)clear.push({...r,a:pz1+half,cross:[]});
+   }else clear.push(r);
+  }
+  roads.length=0;roads.push(...clear);
+ }
 }
 const CR_X=[],CR_Z=[];
 // Harbor Heights street plan: recursive random splits of the island, so every street ends in a T or at the shore
