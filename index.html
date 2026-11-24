@@ -7076,10 +7076,10 @@ G.gore=GORE;G.startNpcFight=startNpcFight;
  const el=()=>{const d=document.createElement('div');d.id='vcIntro';d.innerHTML='<div class="vig"></div><div class="bar t"></div><div class="bar b"></div><div class="title"><div class="big">VICE CITY</div><div class="sub">WELCOME TO PARADISE</div></div><div class="cap"><div class="k"></div><div class="n"></div><div class="line"></div></div><div class="press">GET READY</div><div class="skip">PRESS ANY KEY TO SKIP</div><div class="fade"></div>';return d};
  function startIntro(){if(I)return;const root=el();document.body.appendChild(root);
   const hidden=[];for(const c of[...document.body.children])if(c!==root&&c!==renderer.domElement&&c.tagName!=='SCRIPT'&&c.tagName!=='STYLE'&&!c.contains(renderer.domElement)){hidden.push([c,c.style.visibility]);c.style.visibility='hidden'}
-  I={root,hidden,S:shots(),i:0,t:0,total:0,clock:G.clock,fov:camera.fov,far:camera.far,state:G.state,armed:false,cap:null};
+  I={root,hidden,S:shots(),i:0,t:0,total:0,clock:G.clock,fov:camera.fov,far:camera.far,state:G.state,armAt:performance.now()+700,cap:null};
   for(const k in keys)keys[k]=false;G.clock=18.4;camera.fov=50;camera.far=Math.max(camera.far,6000);camera.updateProjectionMatrix();G.state='intro';
   requestAnimationFrame(()=>{root.classList.add('on');root.querySelector('.fade').style.opacity='0'});
-  setTimeout(()=>{if(I)I.armed=true},700)}
+}
  function endIntro(){if(!I)return;const S=I;I=null;for(const [c,v] of S.hidden)c.style.visibility=v;S.root.remove();G.clock=S.clock;camera.fov=S.fov;camera.far=S.far;camera.updateProjectionMatrix();
   if(G.state==='intro')G.state='play';for(const k in keys)keys[k]=false;try{camInit=false}catch(e){}setTimeout(()=>{if(G.state==='play')requestGameMouseLock()},120)}
  function introTick(dt){if(!I)return;const sh=I.S[I.i];I.t+=dt;I.total+=dt;G.time+=dt;
@@ -7092,7 +7092,7 @@ G.gore=GORE;G.startNpcFight=startNpcFight;
   const fade=root.querySelector('.fade');fade.style.transition='opacity .45s ease';fade.style.opacity=(I.t>sh.d-.35&&!sh.end)||(sh.end&&I.t>sh.d-.5)?'1':(I.i===0&&I.t<.2?'1':'0');
   if(I.t>=sh.d){if(sh.end){endIntro();return}I.i++;I.t=0;I.cap=null;cap.classList.remove('show')}
   try{updateParticles(dt)}catch(e){}}
- const skip=e=>{if(I&&I.armed){e.preventDefault&&e.preventDefault();endIntro()}};
+ const skip=e=>{if(I&&performance.now()>I.armAt){ /* ignore the click that started the game */e.preventDefault&&e.preventDefault();endIntro()}};
  addEventListener('keydown',skip,true);addEventListener('mousedown',skip,true);addEventListener('touchstart',skip,{capture:true,passive:false});
  const beginOrig=begin;begin=function(cont){const r=beginOrig.apply(this,arguments);try{if(!cont&&!G.noIntro)startIntro()}catch(e){console.error('intro',e);endIntro()}return r};
  Object.assign(G,{introTick,endIntro,startIntro,introActive:()=>!!I});
