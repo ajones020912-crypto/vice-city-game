@@ -1,0 +1,25 @@
+{
+  "passed": true,
+  "scope": "Scoped source edits, JavaScript syntax, and real Three.js roadside meshes on fixture terrain. Native lane painting is retained; this does not convert lane counts, reroute the highway, build elevated bridges, verify live traffic, or establish deployed appearance.",
+  "fixture": {
+    "version": 1,
+    "roads": 5,
+    "routeShields": 20,
+    "mileMarkers": 4,
+    "entranceSigns": 2,
+    "guardrailSections": 994,
+    "trafficLogicChanged": false,
+    "nativeLaneMarkingsRetained": true
+  },
+  "widths": {
+    "town": 22,
+    "connectingHighways": 16,
+    "previous": 30
+  },
+  "roadOrientationsEndpointsAndTypesPreserved": true,
+  "otherRoadDefinitionsUnchanged": true,
+  "nativeTrafficAndLanePaintingPreserved": true,
+  "standaloneMeshesDoNotDependOnWorldBatchFinalization": true,
+  "mileMarkersAreCompressedGameScenery": true,
+  "previousSceneryIntegrationNotRetried": true
+}
