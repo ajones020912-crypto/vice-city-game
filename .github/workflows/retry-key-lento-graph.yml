@@ -1,0 +1,69 @@
+name: Repair Key Lento graph and retry full browser checks
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/retry-key-lento-graph.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: key-lento-full-rebuild-retry
+  cancel-in-progress: false
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Connect native road endpoints and retain guarded browser publication
+        run: |
+          python3 <<'PY'
+          import pathlib, subprocess
+          scope='.github/workflows/retry-key-lento-scope.yml'
+          actual=subprocess.check_output(['git','rev-parse','HEAD:'+scope],text=True).strip()
+          if actual!='dd3d5731451bca7abe4bd8a1942e892c9d4a1e85': raise RuntimeError('Scope retry changed; refusing unreviewed execution')
+          lines=pathlib.Path(scope).read_text().splitlines();blocks=[]
+          for i,line in enumerate(lines):
+              if line.strip()!='run: |': continue
+              body=[]
+              for v in lines[i+1:]:
+                  if v and not v.startswith('          '): break
+                  body.append(v[10:] if v else '')
+              blocks.append('\n'.join(body)+'\n')
+          if len(blocks)!=1: raise RuntimeError('Unexpected scope-retry layout')
+          block=blocks[0]
+          if not block.startswith("python3 <<'PY'\n") or not block.rstrip().endswith('PY'): raise RuntimeError('Reviewed Python runner not found')
+          program=block[block.index('\n')+1:block.rfind('\nPY')]
+          repair="""// KEY_LENTO_EXPLICIT_GRAPH_ENDPOINTS_V1
+          function klConnectNativeGraph(){
+           const tolerance=.16,cell=.2,grid=new Map(),bucket=(x,z)=>[Math.floor(x/cell),Math.floor(z/cell)],key=(x,z)=>x+','+z,stats={roads:0,createdNodes:0,addedLinks:0,stitchTolerance:tolerance};
+           function remember(n){const [x,z]=bucket(n.x,n.z),k=key(x,z);if(!grid.has(k))grid.set(k,[]);grid.get(k).push(n);}for(const n of nodes)if(klBounds(n.x,n.z))remember(n);
+           function endpoint(x,z,r){const [bx,bz]=bucket(x,z);let best=null,distance=tolerance;for(let dx=-1;dx<=1;dx++)for(let dz=-1;dz<=1;dz++)for(const n of grid.get(key(bx+dx,bz+dz))||[]){const d=Math.hypot(n.x-x,n.z-z);if(d<=distance){distance=d;best=n;}}if(best)return best;const perpendicular={id:-1,o:r.o==='h'?'v':'h',c:r.o==='h'?x:z,a:(r.o==='h'?z:x)-.1,b:(r.o==='h'?z:x)+.1,w:r.w,hw:r.hw,type:'hwy',sig:false,keyLento:true,cross:[]},n={id:nodes.length,x,z,h:r.o==='h'?r:perpendicular,v:r.o==='v'?r:perpendicular,sig:false,off:0,edges:[],keyLentoEndpoint:true};nodes.push(n);remember(n);stats.createdNodes++;return n;}
+           function link(a,b,r,dir){if(a===b)return;const len=Math.hypot(b.x-a.x,b.z-a.z);if(len<.005)return;if(!a.edges.some(e=>e.to===b&&e.road===r)){a.edges.push({to:b,road:r,dir,len});stats.addedLinks++;}}
+           for(const r of roads){if(!r.keyLento)continue;stats.roads++;const first=endpoint(r.o==='h'?r.a:r.c,r.o==='h'?r.c:r.a,r),last=endpoint(r.o==='h'?r.b:r.c,r.o==='h'?r.c:r.b,r),cross=r.cross.concat([{p:r.a,node:first,other:r.o==='h'?first.v:first.h},{p:r.b,node:last,other:r.o==='h'?last.v:last.h}]).sort((a,b)=>a.p-b.p),clean=[];for(const c of cross)if(!clean.length||clean[clean.length-1].node!==c.node)clean.push(c);r.cross=clean;for(let i=1;i<clean.length;i++){link(clean[i-1].node,clean[i].node,r,1);link(clean[i].node,clean[i-1].node,r,-1);}}KL.graphRepair=stats;
+          }
+          const klBeforeEndpointRepair=buildNodes;buildNodes=function(){klBeforeEndpointRepair();klConnectNativeGraph();};
+          """
+          def once(s,a,b):
+              if s.count(a)!=1: raise RuntimeError('Reviewed fragment changed: '+a[:100])
+              return s.replace(a,b,1)
+          injection="model=pathlib.Path(helper)\nmodel_text=model.read_text()\nif 'KEY_LENTO_EXPLICIT_GRAPH_ENDPOINTS_V1' in model_text: raise RuntimeError('Endpoint repair already installed')\nanchor='const klOriginalBake=bakeTerrain;'\nif model_text.count(anchor)!=1: raise RuntimeError('Expected graph insertion anchor missing')\nmodel.write_text(model_text.replace(anchor,"+repr(repair)+"+anchor,1))\n"
+          program=once(program,'text=pathlib.Path(source).read_text()',injection+'text=pathlib.Path(source).read_text()')
+          graph_old="if(!visited.has(end))throw Error('New highway traffic graph is disconnected');const wet="
+          graph_new="if(!visited.has(end))throw Error('New highway traffic graph is disconnected');for(const path of KL.paths)for(let i=0;i<path.points.length;i+=5){const p=path.points[i],n=getNode(p.x,p.z);if(!visited.has(n)||Math.hypot(n.x-p.x,n.z-p.z)>22)throw Error('Disconnected new street: '+path.name+' sample '+i);}const wet="
+          publication_old='git add -- index.html status/key-lento-rebuilt-game.png status/key-lento-rebuilt-map.png'
+          publication_new='git add -- scripts/key-lento-rebuild.js index.html status/key-lento-rebuilt-game.png status/key-lento-rebuilt-map.png'
+          extra="\ngraph_old="+repr(graph_old)+"\ngraph_new="+repr(graph_new)+"\nif text.count(graph_old)!=1: raise RuntimeError('Original graph assertion changed')\ntext=text.replace(graph_old,graph_new,1)\nold_publish="+repr(publication_old)+"\nif text.count(old_publish)!=1: raise RuntimeError('Original publication fragment changed')\ntext=text.replace(old_publish,"+repr(publication_new)+",1)\nneedle='trafficGraphConnected:true,'\nif text.count(needle)!=1: raise RuntimeError('Original graph report fragment changed')\ntext=text.replace(needle,'trafficGraphConnected:true,graphRepair:KL.graphRepair,allNewStreetsConnected:true,',1)\n"
+          program=once(program,'text=text.replace(old,new,1)','text=text.replace(old,new,1)'+extra)
+          report_marker="data['scopeRetry']={"
+          report_extra="data['graphRepairRetry']={'endpointRepairInserted':True,'allNewStreetsChecked':True,'scopeAndOriginalBrowserChecksRetained':True,'helperBlob':subprocess.check_output(['git','hash-object',helper],text=True).strip()}\n"
+          program=once(program,report_marker,report_extra+report_marker)
+          script=pathlib.Path('/tmp/key-lento-graph-retry.py');script.write_text(program)
+          subprocess.run(['python3',str(script)],check=True)
+          PY
