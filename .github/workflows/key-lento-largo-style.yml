@@ -1,0 +1,45 @@
+name: Give Key Lento a Key Largo inspired look
+on:
+  push:
+    branches: [main]
+    paths: ['scripts/key-lento-largo-style.js', '.github/workflows/key-lento-largo-style.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  style:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --prefix "$RUNNER_TEMP/vc-key-lento" --no-package-lock --ignore-scripts acorn@8
+      - name: Integrate scoped island scenery and check road clearances
+        run: |
+          node <<'JS'
+          const fs=require('fs'),vm=require('vm'),assert=require('assert'),acorn=require(process.env.RUNNER_TEMP+'/vc-key-lento/node_modules/acorn'),file='index.html',before=fs.readFileSync(file,'utf8'),helper=fs.readFileSync('scripts/key-lento-largo-style.js','utf8'),report={passed:false,scope:'Syntax, scoped source edits, fixture terrain placement and building-road collision tests. Actual procedural terrain, rendered appearance, boat/traffic behavior and deployment remain unverified.'};
+          function walk(n,f){f(n);for(const v of Object.values(n)){if(Array.isArray(v)){for(const x of v)if(x&&typeof x.type==='string')walk(x,f);}else if(v&&typeof v.type==='string')walk(v,f);}}
+          try{
+           assert(!before.includes('function buildKeyLentoLargoStyle('),'Key Lento style already installed');acorn.parse(helper,{ecmaVersion:'latest'});const matches=[...before.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].filter(m=>m[1].includes('function keysProps('));assert(matches.length===1);const m=matches[0],code=m[1],ast=acorn.parse(code,{ecmaVersion:'latest'}),named={},regions=[];walk(ast,n=>{if(n.type==='FunctionDeclaration'&&n.id&&['keysProps','defineRoads','worldSteps'].includes(n.id.name)){assert(!named[n.id.name]);named[n.id.name]=n;}if(n.type==='VariableDeclarator'&&n.id.name==='REGIONS')regions.push(n);});assert(named.keysProps&&named.defineRoads&&named.worldSteps&&regions.length===1);const steps=code.slice(named.worldSteps.start,named.worldSteps.end);assert(steps.includes('keysProps')&&steps.includes('finalizeBatches')&&steps.indexOf('keysProps')<steps.indexOf('finalizeBatches'),'Scenery must be generated before batched meshes are finalized');const island=/k\.push\(\s*\[\s*3950\s*,\s*700\s*,\s*270\s*,\s*155\s*,\s*-\.16\s*\]\s*\)\s*;/g,found=[...code.matchAll(island)];assert(found.length===1,'Current Key Lento ellipse differs; inspect before altering terrain');const reg=regions[0].init,list=vm.runInNewContext(code.slice(reg.start,reg.end));assert(Array.isArray(list)&&list.every(r=>Array.isArray(r)&&r.every(v=>typeof v==='string'||Number.isFinite(v))));assert(list.filter(r=>r[0]==='KEY LENTO').length===1);const updated=[['KEY LENTO',3600,500,4300,920,0,0],...list.filter(r=>r[0]!=='KEY LENTO')];const roadsText="\n// KEY_LENTO_LOCAL_STREETS_V2\naddRoad('h',650,3780,4110,9,'city');addRoad('h',750,3780,4110,9,'city');for(const x of [3800,3950,4100])addRoad('v',x,650,750,9,'city');\n";const edits=[{start:found[0].index,end:found[0].index+found[0][0].length,text:'k.push([3950,700,330,125,-.08]);'},{start:reg.start,end:reg.end,text:JSON.stringify(updated)},{start:named.defineRoads.body.end-1,end:named.defineRoads.body.end-1,text:roadsText},{start:named.keysProps.start,end:named.keysProps.start,text:helper+'\n'},{start:named.keysProps.body.end-1,end:named.keysProps.body.end-1,text:'\nbuildKeyLentoLargoStyle();\n'}];let changed=code;for(const e of edits.sort((a,b)=>b.start-a.start))changed=changed.slice(0,e.start)+e.text+changed.slice(e.end);acorn.parse(changed,{ecmaVersion:'latest'});assert(code.includes("addRoad('h',700,3600,4250,30,'hwy')")&&changed.includes("addRoad('h',700,3600,4250,30,'hwy')"),'Existing island highway not found or modified');
+           const roads=[{o:'h',c:700,a:3600,b:4250,w:30}],cols=[],buildings=[],baked=[],decks=[],worldObjects=[],hit=(p,r)=>r.o==='h'?p.x1>r.a&&p.x0<r.b&&p.z1>r.c-r.w/2&&p.z0<r.c+r.w/2:p.z1>r.a&&p.z0<r.b&&p.x1>r.c-r.w/2&&p.x0<r.c+r.w/2;class Mesh{constructor(){this.position={set(){}};this.rotation={};}}const sandbox={G:{},WL:0,BLD:buildings,decks,GEO:{box:{},cyl:{},sph:{}},T:{Mesh,PlaneGeometry:class{},MeshBasicMaterial:class{}},world:{add(o){worldObjects.push(o);}},signTex:()=>({}),heightAt(x,z){for(const d of decks)if(x>d.x0&&x<d.x1&&z>d.z0&&z<d.z1)return d.y;return ((x-3950)/330)**2+((z-700)/125)**2<.90?.6:-1;},footprintHitsRoad(x0,z0,x1,z1,margin=0){return roads.some(r=>hit({x0:x0-margin,z0:z0-margin,x1:x1+margin,z1:z1+margin},r));},clearStructureFootprint(x0,z0,x1,z1,margin=0){return !this.footprintHitsRoad(x0,z0,x1,z1,margin)&&!cols.some(c=>x1+.4>c.x0&&x0-.4<c.x1&&z1+.4>c.z0&&z0-.4<c.z1);},addCol(x0,z0,x1,z1,h,tag){cols.push({x0,z0,x1,z1,h,tag});},bakeG(...args){assert(args.slice(2,10).every(Number.isFinite));baked.push(args);},addRoad(o,c,a,b,w,type){roads.push({o,c,a,b,w,type});}};vm.createContext(sandbox);vm.runInContext(roadsText+helper,sandbox);sandbox.buildKeyLentoLargoStyle();const first=baked.length;sandbox.buildKeyLentoLargoStyle();assert(first===baked.length,'Scenery duplicates on repeated calls');const stats=sandbox.G.keyLentoStyle;assert(stats.homes>=8&&stats.businesses>=2&&stats.piers===2&&stats.palms>0&&stats.mangroves>0,'Fixture did not produce intended coastal town features: '+JSON.stringify(stats));assert(buildings.every(p=>!roads.some(r=>hit(p,r))),'Building overlaps a road');assert(buildings.every(p=>p.x0>3700&&p.x1<4200&&p.z0>570&&p.z1<830),'Scenery escapes Key Lento');assert(decks.length>=2&&decks.every(d=>Object.values(d).every(Number.isFinite)));const offset=m.index+m[0].indexOf(code),candidate=before.slice(0,offset)+changed+before.slice(offset+code.length);for(const s of candidate.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(s[1].trim())acorn.parse(s[1],{ecmaVersion:'latest'});fs.writeFileSync(file,candidate);Object.assign(report,{passed:true,fixture:stats,otherRegionRowsPreserved:true,originalHighwayRetained:true,terrainChange:'Only the Key Lento ellipse changes, from 270x155 to 330x125 radius units',nameRetained:'KEY LENTO',businessesAreDecorative:true,canalsExcavated:false,tests:['All inline JavaScript parses','Existing highway retained and local streets added without deleting roads','Key Lento region takes priority over broad Florida Keys label','Batched scenery is integrated before finalization','Fixture produces homes businesses two piers palms and mangroves','Building footprints clear roads','Pier deck heights are finite','Repeated generation does not duplicate scenery']});
+          }catch(error){fs.writeFileSync(file,before);Object.assign(report,{passed:false,error:String(error),stack:error.stack,baselinePreserved:true});}
+          fs.mkdirSync('status',{recursive:true});fs.writeFileSync('status/key-lento-largo-check.json',JSON.stringify(report,null,2)+'\n');
+          JS
+      - name: Publish validated Key Lento styling or diagnostics
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || { echo 'Branch changed; rerun.'; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -- status/key-lento-largo-check.json
+          if node -e "if(!require('./status/key-lento-largo-check.json').passed)process.exit(1)"; then git add -- index.html; fi
+          if ! git diff --cached --quiet; then
+            git commit -m 'Give Key Lento a Key Largo inspired coastal town layout or record validation error'
+            git push origin HEAD:refs/heads/main
+          fi
+          node -e "if(!require('./status/key-lento-largo-check.json').passed)process.exit(1)"
