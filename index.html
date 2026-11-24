@@ -1379,9 +1379,7 @@ function defineRoads(){
  addRoad('h',-100,1000,1600,8,'dirt');addRoad('v',1600,-400,400,8,'dirt');addRoad('v',-1300,-100,500,8,'dirt');
  // SOUTH_EXPANSION_V1 (bottom of the map): Harbor Heights below Port Calusa, Coral Ridge below Palmetto Grove
  for(const [o,c,a,b,w] of HH.roads)addRoad(o,c,a,b,w,'city');
- // causeways: Port Calusa down to the island's north shore, and across the channel to Coral Ridge
- {const v=HH.roads.filter(q=>q[0]==='v').sort((a,b)=>Math.abs(a[1]-1900)-Math.abs(b[1]-1900))[0];
-  const vx=v?v[1]:1900,shore=v?v[3]:-700;addRoad('h',vx,shore,-200,18,'city');addRoad('v',-200,1400,vx,16,'city')} // causeway to the mainland
+ // Port Vice City bridge is added after mainland-road clipping in PORT_VICE_CITY_MAINLAND_ROADS_FIX_V4.
  for(const x of CR_X)if(x!==380)addRoad('v',x,1640,2400,14,'city',true);
  for(const z of CR_Z)addRoad('h',z,-420,880,14,'city',true);
  addRoad('v',380,1400,2480,30,'hwy');          // Interstate 1 continues south through Coral Ridge
@@ -2485,14 +2483,16 @@ defineRoads=function(){
   if(r.c<c0-hw||r.c>c1+hw||hi<a0-hw||lo>a1+hw)continue;const before=a0-hw-pad-lo,after=hi-(a1+hw+pad);
   if(before<20&&after<20){roads.splice(i,1);continue}if(before>=after){r.a=lo;r.b=a0-hw-pad}else{r.a=a1+hw+pad;r.b=hi}}}
  for(let i=roads.length-1;i>=0;i--){const r=roads[i],lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),crosses=noRoadZones.some(zone=>r.o==='h'?(r.c>=zone.z0-r.hw&&r.c<=zone.z1+r.hw&&hi>=zone.x0-r.hw&&lo<=zone.x1+r.hw):(r.c>=zone.x0-r.hw&&r.c<=zone.x1+r.hw&&hi>=zone.z0-r.hw&&lo<=zone.z1+r.hw));if(crosses)roads.splice(i,1)}
- // PORT_VICE_CITY_MAINLAND_ROADS_FIX_V3: remove the stray mainland grid in the channel approach.
- // Road orientation: v roads vary along z; h roads vary along x. Clip both correctly.
- {const x0=1450,x1=2820,z0=-300,z1=1450,filtered=[];
+ // PORT_VICE_CITY_MAINLAND_ROADS_FIX_V4:
+ // The port sits at z=-1960..-805. V3 mistakenly filtered z=-300..1450,
+ // the opposite side of the map, so the mainland grid was never touched.
+ // Remove all generated roads in the port approach rectangle unless they lie on the island.
+ {const x0=1450,x1=2820,z0=-2250,z1=-350,filtered=[];
   for(const r of roads){
    const lo=Math.min(r.a,r.b),hi=Math.max(r.a,r.b),isH=r.o==='h';
    const crosses=isH?(r.c>=z0-r.hw&&r.c<=z1+r.hw&&hi>=x0-r.hw&&lo<=x1+r.hw):(r.c>=x0-r.hw&&r.c<=x1+r.hw&&hi>=z0-r.hw&&lo<=z1+r.hw);
    if(!crosses){filtered.push(r);continue}
-   const step=4,n=Math.max(1,Math.ceil((hi-lo)/step));let run=null;
+   const step=3,n=Math.max(1,Math.ceil((hi-lo)/step));let run=null;
    for(let j=0;j<=n;j++){
     const t=lo+(hi-lo)*j/n,px=isH?t:r.c,pz=isH?r.c:t,onIsland=hhIsle(px,pz)<-(r.hw+8);
     if(onIsland&&run===null)run=t;
@@ -2501,8 +2501,9 @@ defineRoads=function(){
    }
   }
   roads.length=0;roads.push(...filtered);
-  // One deliberate north-side bridge, aligned with the island's main access avenue.
-  addRoad('v',2150,-900,260,28,'bridge',true);
+  // One short, straight bridge from the island's west-facing shore to the mainland.
+  // On the rotated map, this is a v-road (fixed x, changing z).
+  addRoad('v',2150,-900,-400,30,'bridge',true);
  }
  // ROAD_OVERLAP_CLEANUP_V1: merge overlapping collinear road surfaces before mesh generation.
  {const groups=[];
