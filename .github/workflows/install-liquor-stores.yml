@@ -2,7 +2,7 @@ name: Install integrated liquor stores
 on:
   push:
     branches: [main]
-    paths: ['index.html', 'js/liquor-stores.js', 'scripts/install-liquor-stores.cjs', 'scripts/test-liquor-stores.cjs', '.github/workflows/install-liquor-stores.yml']
+    paths: ['index.html', 'js/liquor-stores.js', 'js/reference-characters.js', 'scripts/install-liquor-stores.cjs', 'scripts/test-liquor-stores.cjs', '.github/workflows/install-liquor-stores.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,6 +25,7 @@ jobs:
       - name: Guarded integration and actual browser smoke test
         run: |
           node --check js/liquor-stores.js
+          node --check js/reference-characters.js
           node --check scripts/install-liquor-stores.cjs
           node --check scripts/test-liquor-stores.cjs
           node scripts/install-liquor-stores.cjs

@@ -335,14 +335,14 @@ small{color:#b9cce0}
 <div id="mpLobby" class="mp-screen" style="display:none"><div class="mp-card"><button id="mpBack" class="mp-back">← BACK</button><div class="home-kicker">ONLINE SESSION</div><h2>PLAY ONLINE</h2><label for="mpName">PLAYER NAME</label><input id="mpName" maxlength="16" value="Player" autocomplete="nickname"><div class="mp-actions"><button id="mpHost">JOIN WORLD</button></div><div id="mpOnline" class="mp-room" style="display:block">Players online: …</div><div id="mpStatus" class="mp-status">Everyone joins the same shared city. No codes needed.</div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/characters.js"></script>
-<script src="js/reference-characters.js"></script>
+<script src="js/reference-characters.js?v=lucia-face-2"></script>
 <script src="js/supercar.js"></script>
 <script src="js/sport-suv.js"></script>
 <script src="js/suv-details-live.js?v=2"></script>
 <script src="js/punch-visual-fix.js?v=1"></script>
 <script src="js/one-hand-hit.js?v=1"></script>
 <script src="js/gun-animation.js?v=1"></script>
-<script src="js/liquor-stores.js"></script>
+<script src="js/liquor-stores.js?v=2"></script>
 <script>// VC_FULL_MAP_ZOOM_4X_V1
 // AIRCRAFT_UNLOCK_DISTANCE_V1
 function vehicleUnlockDistance(c){const distance=Math.hypot(c.x-pl.x,c.z-pl.z);return distance-(c.t.aircraft?Math.max(c.t.L,c.t.W)/2:0); }
@@ -1244,13 +1244,15 @@ const signCache={};
 function signTex(text,fg,bg,kind='generic'){
  const k=kind+'|'+text+'|'+fg+'|'+(bg||'');if(signCache[k])return signCache[k];
  const[c,x]=cv(1024,256),themes={
+ liquorNamed:{bg:'#12312d',edge:'#79e3be',sub:'LIQUOR STORE',shape:'bottle'},
  palmgrill:{bg:'#123d35',edge:'#f2d69a',sub:'TROPICAL KITCHEN',shape:'palm'},oceandiner:{bg:'#102f4d',edge:'#f3f6ef',sub:'DINER · EST. 1986',shape:'star'},havana:{bg:'#572719',edge:'#f2bd62',sub:'CAFÉ · COCINA CUBANA',shape:'sun'},bigwave:{bg:'#073b55',edge:'#b5edf2',sub:'FRESH FROM THE COAST',shape:'fish'},sunsetsteak:{bg:'#291915',edge:'#e9a36e',sub:'CHOPHOUSE & GRILL',shape:'steak'},flamingo:{bg:'#571c3d',edge:'#ffd2e3',sub:'PIZZA · PASTA · MORE',shape:'slice'},ricos:{bg:'#5a2719',edge:'#f5d36b',sub:'TAQUERÍA · FRESH DAILY',shape:'taco'},goldenfry:{bg:'#593b08',edge:'#ffe17b',sub:'BURGERS · FRIES · SHAKES',shape:'fries'},baysidebbq:{bg:'#382016',edge:'#e4b17c',sub:'LOW & SLOW SMOKEHOUSE',shape:'flame'},burger:{bg:'#40220e',edge:'#ffc36a',sub:'BURGERS · FRIES · SHAKES',shape:'burger'},nightclub:{bg:'#160e39',edge:'#d5a5ff',sub:'MUSIC · LIGHTS · LATE NIGHTS',shape:'disco'},bar:{bg:'#082d3b',edge:'#a8f1ff',sub:'MOCKTAILS · MUSIC · SOCIAL',shape:'sun'},gym:{bg:'#1d3528',edge:'#c8ff8e',sub:'FITNESS · TRAINING · RECOVERY',shape:'star'},spray:{bg:'#241d39',edge:'#d4b4ff',sub:'AUTO BODY · CUSTOM PAINT',shape:'generic'}};
  const th=themes[kind]||{bg:bg||'#0c1018',edge:fg,sub:'',shape:'generic'};
  const grad=x.createLinearGradient(0,0,1024,256);grad.addColorStop(0,th.bg);grad.addColorStop(.55,'#080b15');grad.addColorStop(1,th.bg);x.fillStyle=grad;x.fillRect(0,0,1024,256);
  x.shadowColor=th.edge;x.shadowBlur=kind==='nightclub'?30:18;x.strokeStyle=th.edge;x.lineWidth=12;x.strokeRect(10,10,1004,236);x.shadowBlur=0;x.strokeStyle='#ffffff44';x.lineWidth=2;x.strokeRect(25,25,974,206);
  const cx=137,cy=128;x.fillStyle=th.edge;x.globalAlpha=.16;x.beginPath();x.arc(cx,cy,87,0,Math.PI*2);x.fill();x.globalAlpha=1;x.save();x.translate(cx,cy);x.strokeStyle=th.edge;x.fillStyle=th.edge;x.lineWidth=9;x.lineCap='round';x.lineJoin='round';
  const shape=th.shape;
- if(shape==='palm'){x.beginPath();x.moveTo(0,65);x.quadraticCurveTo(10,5,4,-43);x.stroke();for(let i=0;i<7;i++){const a=-Math.PI*.95+i*Math.PI*1.9/6;x.beginPath();x.moveTo(4,-40);x.quadraticCurveTo(Math.cos(a)*48,-60+Math.sin(a)*32,Math.cos(a)*76,-42+Math.sin(a)*48);x.stroke();}}
+ if(shape==='bottle'){x.beginPath();x.moveTo(-13,-63);x.lineTo(13,-63);x.lineTo(13,-30);x.lineTo(32,-10);x.lineTo(32,61);x.lineTo(-32,61);x.lineTo(-32,-10);x.lineTo(-13,-30);x.closePath();x.stroke();x.fillRect(-23,12,46,22);}
+ else if(shape==='palm'){x.beginPath();x.moveTo(0,65);x.quadraticCurveTo(10,5,4,-43);x.stroke();for(let i=0;i<7;i++){const a=-Math.PI*.95+i*Math.PI*1.9/6;x.beginPath();x.moveTo(4,-40);x.quadraticCurveTo(Math.cos(a)*48,-60+Math.sin(a)*32,Math.cos(a)*76,-42+Math.sin(a)*48);x.stroke();}}
  else if(shape==='star'||shape==='disco'){x.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?27:70;x.lineTo(Math.cos(a)*r,Math.sin(a)*r);}x.closePath();x.fill();if(shape==='disco'){x.strokeStyle='#fff';x.lineWidth=4;for(let i=0;i<8;i++){x.beginPath();x.moveTo(-65+i*18,-72);x.lineTo(-35+i*18,72);x.stroke();}}}
  else if(shape==='sun'){x.beginPath();x.arc(0,0,38,0,Math.PI*2);x.fill();for(let i=0;i<12;i++){const a=i*Math.PI/6;x.beginPath();x.moveTo(Math.cos(a)*52,Math.sin(a)*52);x.lineTo(Math.cos(a)*76,Math.sin(a)*76);x.stroke();}}
  else if(shape==='fish'){x.beginPath();x.ellipse(-8,0,53,30,0,0,Math.PI*2);x.fill();x.beginPath();x.moveTo(42,0);x.lineTo(78,-30);x.lineTo(78,30);x.closePath();x.fill();x.fillStyle=th.bg;x.beginPath();x.arc(-28,-7,5,0,Math.PI*2);x.fill();}
@@ -2157,7 +2159,8 @@ function shopFaceFor(p){
 function attachSafeShopEntrance(p,shop,face){
  const f=face||shopFaceFor(p);if(!f)return false;
  const d={x:f.ex,z:f.ez,kind:shop.k,name:shop.name,col:shop.col,ret:{x:f.rx,z:f.rz}};doors.push(d);
- const sg=new T.Mesh(new T.PlaneGeometry(Math.min(8,(f.nx?p.z1-p.z0:p.x1-p.x0)-1),2),new T.MeshBasicMaterial({map:signTex(shop.name,shop.col,null,shop.k),toneMapped:false}));
+ const theme=shop.k==='liquor'&&shop.name!=='LIQUOR STORE'?'liquorNamed':shop.k;
+ const sg=new T.Mesh(new T.PlaneGeometry(Math.min(8,(f.nx?p.z1-p.z0:p.x1-p.x0)-1),2),new T.MeshBasicMaterial({map:signTex(shop.name,shop.col,null,theme),toneMapped:false}));
  sg.position.set(f.x+f.nx*.35,Math.min(6.2,p.H-.6),f.z+f.nz*.35);sg.rotation.y=Math.atan2(f.nx,f.nz);world.add(sg);
  const tx=f.nz,tz=-f.nx;
  bakeG('neon',GEO.box,f.x+f.nx*.12,3.5,f.z+f.nz*.12,0,f.nz?3.2:.28,.3,f.nx?3.2:.28,hexRGB(shop.col));
@@ -4434,7 +4437,22 @@ function updateRedLights(){
  RL.node=at;RL.px=c.x;RL.pz=c.z;
 }
 function addWanted(n,why){addCrime(n>0?n*2:.6)}
-function clearWanted(){pl.crime=0;pl.wanted=0;pl.heat={face:0,clothes:0,vehicle:0,weapon:0,partner:0,cctv:0};G.hudDirty=true}
+function clearWanted(){pl.crime=0;pl.wanted=0;G.duiVehicle=null;pl.heat={face:0,clothes:0,vehicle:0,weapon:0,partner:0,cctv:0};G.hudDirty=true}
+function isDUIVehicle(){return pl.wanted===1&&pl.car&&pl.car===G.duiVehicle&&!pl.car.dead;}
+function stoppedForDUI(){return isDUIVehicle()&&Math.abs(pl.car.speed)<.8;}
+function policeSeesErraticDriver(o,h,range,eye){
+ const dx=pl.x-o.x,dz=pl.z-o.z,d=Math.hypot(dx,dz);
+ return d<range&&(d<12||Math.sin(h)*dx+Math.cos(h)*dz>d*.25)&&policeLineOfSight(o.x,o.y+eye,o.z);
+}
+const LIQUOR_POLICE={
+ seenDriving(car){
+  if(pl.car!==car||pl.inside)return false;
+  return cops.some(p=>p.active&&!p.dead&&policeSeesErraticDriver(p,p.dir,42,1.6))||cars.some(c=>c!==car&&c.mode==='cop'&&c.occ==='cop'&&!c.dead&&policeSeesErraticDriver(c,c.h,55,1.4));
+ },
+ reportDUI(car){if(pl.car!==car||pl.wanted)return;G.duiVehicle=car;addCrime(1);
+  for(const p of cops)if(p.active&&!p.dead&&policeSeesErraticDriver(p,p.dir,42,1.6)){p.state='chase';p.bust=0;}
+  toast('Police spotted erratic driving. Pull over.',3000);}
+};
 function killCop(){addCrime(6)}
 function updateProfile(){
   const s=pl.profScore||0;
@@ -4503,10 +4521,10 @@ class Ped{
  copUpdate(dt){
   const dx=pl.x-this.x,dz=pl.z-this.z,d=Math.hypot(dx,dz);this.aimNow=false;this.dir=Math.atan2(dx,dz);
   if(pl.wanted<=0){this.state='walk';this.speed=1.3;this.pick();return 0}
-  if(pl.wanted===1){if(pl.car||pl.inside||!pl.alive||d>60){this.vx=this.vz=0;this.bust=Math.max(0,this.bust-dt);return 0}
-   let sp=0;if(d>1.4){sp=5.4;this.vx=dx/d*sp;this.vz=dz/d*sp}else{this.vx=this.vz=0}
+  if(pl.wanted===1){const duiStop=stoppedForDUI(),reach=duiStop?3:1.9;if((pl.car&&!duiStop)||pl.inside||!pl.alive||d>60){this.vx=this.vz=0;this.bust=Math.max(0,this.bust-dt);return 0}
+   let sp=0;if(d>reach-.5){sp=5.4;this.vx=dx/d*sp;this.vz=dz/d*sp}else{this.vx=this.vz=0}
    if(d<4&&!(G.arrestWarn>G.time)){toast('👮 "Police! Stay where you are!"',1800);G.arrestWarn=G.time+6}
-   if(d<1.9){this.bust+=dt;if(this.bust>1.1&&!G.busted)bustPlayer()}else this.bust=Math.max(0,this.bust-dt);return sp}
+   if(d<reach&&(!duiStop||policeLineOfSight(this.x,this.y+1.6,this.z))){this.bust+=dt;if(this.bust>1.1&&!G.busted)bustPlayer()}else this.bust=Math.max(0,this.bust-dt);return sp}
   const inCar=!!pl.car,stopD=inCar?6:11;let sp=0;
   if(d>stopD){sp=6.2;this.vx=dx/d*sp;this.vz=dz/d*sp}else{this.vx=this.vz=0}
   if(d<28&&pl.alive&&!pl.inside){this.aimNow=true;this.fireT-=dt;if(this.fireT<=0){this.fireT=(pl.wanted>=3?.7:1.2)+Math.random()*.6;
@@ -4624,13 +4642,13 @@ function controlAI(c,dt){
  if(ai.cop){
   const dp=Math.hypot(pl.x-c.x,pl.z-c.z);
   if(pl.wanted>=2)ai.offduty=false;
-  else if(pl.wanted===1&&!c.parkedCop){const sees=!pl.car&&pl.alive&&!pl.inside&&dp<70;ai.offduty=!sees;if(!sees)ai.direct=false}
+  else if(pl.wanted===1&&!c.parkedCop){const sees=(!pl.car||isDUIVehicle())&&pl.alive&&!pl.inside&&dp<70;ai.offduty=!sees;if(!sees)ai.direct=false}
   if(ai.offduty){vmax=14;if(dp>(ai.patrol?320:150)&&pl.wanted===0){removeCar(c);return}}
   else{vmax=(pl.car?pl.car.speed+6:20)+8;vmax=clamp(vmax,16,36);
    ai.tPlan-=dt;if(ai.tPlan<=0&&dp>38){ai.tPlan=2.2;let k=ai.route.findIndex(q=>q.rs);if(k>=0){ai.route.length=k+1;ai.rs=Object.assign({},ai.route[k].rs)}
     const nx=nextCross(ai.rs.road,ai.rs.dir,ai.rs.s),b=nodeNear(pl.x,pl.z);const path=nx?astar(nx.node,b):null;if(path)ai.path=path}
    const plWet=heightAt(pl.x,pl.z)<WL+.15;if(dp<45&&!ai.direct&&!plWet){ai.direct=true}if(dp>70||plWet)ai.direct=false;
-   if(ai.direct){direct=true;tx=pl.x;tz=pl.z;if(!pl.car&&dp<16){vmax=0;if(c.speed<2&&!ai.unloaded){ai.unloaded=true;for(let i=0;i<c.cops;i++){const p=activatePed(c.x+Math.cos(c.h)*(2.5+i),c.z-Math.sin(c.h)*(2.5+i),true);}c.cops=0;c.occ=null;ai.offduty=false;c.mode='cop';c.parkedCop=true}}}}}
+   if(ai.direct){direct=true;tx=pl.x;tz=pl.z;if((!pl.car||stoppedForDUI())&&dp<16){vmax=0;if(c.speed<2&&!ai.unloaded){ai.unloaded=true;for(let i=0;i<c.cops;i++){const p=activatePed(c.x+Math.cos(c.h)*(2.5+i),c.z-Math.sin(c.h)*(2.5+i),true);}c.cops=0;c.occ=null;ai.offduty=false;c.mode='cop';c.parkedCop=true}}}}}
  if(c.parkedCop){inp.thr=0;inp.hb=1;inp.steer=0;return}
  if(!direct){if(ai.route.length<5)extendRoute(c);let rt=ai.route[0];
   while(rt&&!rt.node&&Math.hypot(rt.x-c.x,rt.z-c.z)<5+c.speed*.18){ai.route.shift();rt=ai.route[0]}
@@ -6953,10 +6971,10 @@ function spawnCarSafe(tk,x,z,h){try{return spawnCar(tk,x,z,h,'cop')}catch(e){con
 function apolClear(){for(const c of APOL.cars)if(cars.includes(c))removeCar(c);APOL.cars=[];for(const p of APOL.feet)if(p.active&&!p.dead&&p.kill)p.kill();APOL.feet=[]}
 function apolDrive(c,dt){const ai=c.ai,inp=c.inp;if(c.dead)return;
  const dp=Math.hypot(pl.x-c.x,pl.z-c.z),onFoot=!pl.car&&!pl.inside&&pl.alive,inPlaneUp=pl.car&&pl.car.t.aircraft&&pl.car.airborne;
- const respond=pl.wanted>=2?(!inPlaneUp&&dp<900):pl.wanted===1?(onFoot&&dp<140):false;ai.offduty=!respond;
+ const onStop=onFoot||stoppedForDUI(),respond=pl.wanted>=2?(!inPlaneUp&&dp<900):pl.wanted===1?((onFoot||isDUIVehicle())&&dp<140):false;ai.offduty=!respond;
  let tx,tz,vmax;
- if(respond&&!ai.unloaded){tx=pl.x;tz=pl.z;vmax=onFoot&&dp<40?(dp<13?0:Math.max(3,dp*.45)):26;
-  if(onFoot&&dp<16&&c.speed<2){ai.unloaded=true;for(let i=0;i<c.cops;i++)activatePed(c.x+Math.cos(c.h)*(2.5+i),c.z-Math.sin(c.h)*(2.5+i),true);c.cops=0;c.occ=null;c.parkedCop=true}}
+ if(respond&&!ai.unloaded){tx=pl.x;tz=pl.z;vmax=onStop&&dp<40?(dp<13?0:Math.max(3,dp*.45)):26;
+  if(onStop&&dp<16&&c.speed<2){ai.unloaded=true;for(let i=0;i<c.cops;i++)activatePed(c.x+Math.cos(c.h)*(2.5+i),c.z-Math.sin(c.h)*(2.5+i),true);c.cops=0;c.occ=null;c.parkedCop=true}}
  else if(ai.unloaded){inp.thr=0;inp.hb=1;inp.steer=0;return}
  else{const w=ai.wps[ai.i];tx=w[0];tz=w[1];vmax=9;if(Math.hypot(tx-c.x,tz-c.z)<14)ai.i=(ai.i+1)%ai.wps.length}
  const des=Math.atan2(tx-c.x,tz-c.z),err=wrapA(des-c.h);inp.steer=clamp(err*1.9,-1,1);vmax*=1-clamp(Math.abs(err)/1.3,0,.7);
@@ -7157,7 +7175,7 @@ const speedingNativeNewGame=newGame;newGame=function(){resetSpeedingEnforcement(
 
 
 // VC_LIQUOR_INTEGRATION_V1
-window.VCLiquor.install({T,G,pl,INT,INTKINDS,SHOP_ITEMS,SHOP_NAMES,doors,BLD,roads,world,renderer,signTex,ensureSafeForcedShop,heightAt,zoneName,toast,showPrompt,getPlayer:()=>plH,openShop:(k)=>openShop(k),exitInterior:()=>exitInterior(),hooks:{get forceShopDoors(){return forceShopDoors;},set forceShopDoors(value){forceShopDoors=value;},get simulate(){return simulate;},set simulate(value){simulate=value;},get animHuman(){return animHuman;},set animHuman(value){animHuman=value;},get stepCar(){return stepCar;},set stepCar(value){stepCar=value;},get applySave(){return applySave;},set applySave(value){applySave=value;},get newGame(){return newGame;},set newGame(value){newGame=value;},get respawn(){return respawn;},set respawn(value){respawn=value;}},testHooks:()=>({enterInterior:(d)=>enterInterior(d),exitInterior:()=>exitInterior(),closeShop:()=>closeShop(),saveGame:(m)=>saveGame(m),readSave:()=>readSave(),applySave:(d)=>applySave(d),drawMap:()=>drawMap(),drawMini:()=>drawMini(),nativeBlips:()=>blips(),keys})});
+window.VCLiquor.install({T,G,pl,INT,INTKINDS,SHOP_ITEMS,SHOP_NAMES,doors,BLD,roads,world,renderer,signTex,ensureSafeForcedShop,heightAt,zoneName,toast,showPrompt,...LIQUOR_POLICE,getPlayer:()=>plH,openShop:(k)=>openShop(k),exitInterior:()=>exitInterior(),hooks:{get forceShopDoors(){return forceShopDoors;},set forceShopDoors(value){forceShopDoors=value;},get simulate(){return simulate;},set simulate(value){simulate=value;},get animHuman(){return animHuman;},set animHuman(value){animHuman=value;},get stepCar(){return stepCar;},set stepCar(value){stepCar=value;},get applySave(){return applySave;},set applySave(value){applySave=value;},get newGame(){return newGame;},set newGame(value){newGame=value;},get respawn(){return respawn;},set respawn(value){respawn=value;}},testHooks:()=>({enterInterior:(d)=>enterInterior(d),exitInterior:()=>exitInterior(),closeShop:()=>closeShop(),saveGame:(m)=>saveGame(m),readSave:()=>readSave(),applySave:(d)=>applySave(d),drawMap:()=>drawMap(),drawMini:()=>drawMini(),nativeBlips:()=>blips(),keys})});
 boot().catch(err=>{console.error('boot failed',err);const sb=document.getElementById('start');if(sb){sb.disabled=false;if(/LOADING/.test(sb.textContent))sb.textContent='SINGLEPLAYER'}const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small style="color:#ff8">Boot error — check console.</small>'})}catch(err){console.error('boot failed',err);const lm=document.getElementById('loadmsg');if(lm)lm.innerHTML='<small style="color:#ff8">Boot error — check console. You can still try Singleplayer.</small>'}
 // Expose for menu handlers
 window.G=G;window.begin=begin;window.mpActive=typeof mpActive!=='undefined'?mpActive:false;

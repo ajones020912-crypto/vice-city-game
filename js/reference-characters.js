@@ -638,7 +638,103 @@ function lucia(T,h){
   const collar=add(T,u.spine,new T.TorusGeometry(.06,.005,6,24),cloth(T,0x4f5755),'jason-tee-collar',0,.55,0);collar.scale.y=.8;collar.rotation.x=Math.PI/2;
   const stubble=new T.MeshStandardMaterial({color:0x47372d,transparent:true,opacity:.15,roughness:1,depthWrite:false});const jaw=new T.LatheGeometry([[.041,.043],[.069,.064],[.085,.097],[.089,.116]].map(p=>new T.Vector2(...p)),24,-Math.PI/2,Math.PI);const shadow=add(T,u.headP,jaw,stubble,'jason-light-stubble',0,0,.005);shadow.scale.set(.94,1,1.065);
  }
+ function sculptLuciaHead(T,h){
+  // Original geometry, using Rockstar's Lucia Caminos 01 gym shot as a visual reference.
+  const {headP,m}=h.userData;
+  for(const mesh of headP.children.slice())if(mesh.isMesh&&mesh.material!==m.metal)remove(mesh);
+  const profile=[
+   [.036,.024,.052,.048],[.055,.046,.071,.062],[.074,.062,.077,.074],[.099,.073,.082,.084],
+   [.126,.081,.084,.094],[.152,.092,.090,.101],[.180,.094,.091,.105],[.213,.086,.094,.108],
+   [.245,.083,.089,.099],[.270,.077,.073,.087],[.291,.054,.052,.066],[.306,.001,.001,.002]
+  ];
+  function radii(y){
+   let i=0;while(i<profile.length-2&&y>profile[i+1][0])i++;
+   const a=profile[i],b=profile[i+1],before=profile[Math.max(0,i-1)],after=profile[Math.min(profile.length-1,i+2)],dy=b[0]-a[0],t=Math.max(0,Math.min(1,(y-a[0])/dy)),t2=t*t,t3=t2*t;
+   return [1,2,3].map(k=>Math.max(.0005,(2*t3-3*t2+1)*a[k]+(t3-2*t2+t)*dy*(b[k]-before[k])/(b[0]-before[0])+(-2*t3+3*t2)*b[k]+(t3-t2)*dy*(after[k]-a[k])/(after[0]-a[0])));
+  }
+  const g=(v,c,w)=>Math.exp(-(((v-c)/w)**2));
+  function relief(x,y){
+   const u=Math.abs(x);
+   return .014*g(u,.057,.022)*g(y,.151,.020) // cheekbones
+       -.013*g(u,.038,.024)*g(y,.183,.015) // recessed eye sockets
+       +.007*g(u,.035,.033)*g(y,.206,.012)
+       +.016*g(x,0,.015)*g(y,.172,.036)+.023*g(x,0,.015)*g(y,.142,.014)
+       +.010*g(u,.013,.007)*g(y,.135,.008)-.003*g(x,0,.004)*g(y,.117,.010)
+       +.011*g(x,0,.035)*g(y,.105,.020)+.008*g(x,0,.027)*g(y,.064,.013);
+  }
+  function faceZ(x,y){const [w,front]=radii(y);return -.013+front*Math.sqrt(Math.max(0,1-(x/w)**2))+relief(x,y);}
+  function grid(cols,rows,point,reverse=false,uvAt){
+   const points=[],uv=[],indices=[];
+   for(let j=0;j<=rows;j++)for(let i=0;i<=cols;i++){
+    const u=i/cols,v=j/rows;points.push(...point(u,v));uv.push(...(uvAt?uvAt(u,v):[u,v]));
+    if(i<cols&&j<rows){const a=j*(cols+1)+i,b=a+cols+1;indices.push(...(reverse?[a,b,a+1,a+1,b,b+1]:[a,a+1,b,a+1,b+1,b]));}
+   }
+   const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(points,3));geo.setAttribute('uv',new T.Float32BufferAttribute(uv,2));geo.setIndex(indices);geo.computeVertexNormals();
+   if(cols>=76){const n=geo.attributes.normal,nv=new T.Vector3();for(let j=0;j<=rows;j++){const a=j*(cols+1),b=a+cols;nv.set(n.getX(a)+n.getX(b),n.getY(a)+n.getY(b),n.getZ(a)+n.getZ(b)).normalize();n.setXYZ(a,nv.x,nv.y,nv.z);n.setXYZ(b,nv.x,nv.y,nv.z);}}
+   return geo;
+  }
+  add(T,headP,grid(92,70,(u,v)=>{
+   const y=.036+v*.270,a=(u-.5)*2*Math.PI,[w,front,back]=radii(y),x=w*Math.sin(a),f=Math.cos(a);
+   return [x,y,-.013+f*(f>0?front:back)+(f>0?relief(x,y)*Math.min(1,f*3):0)];
+  }),m.skin,'lucia-sculpted-face');
+  const ball=(name,mat,x,y,z,sx,sy,sz)=>{const o=add(T,headP,new T.SphereGeometry(1,20,14),mat,name,x,y,z);o.scale.set(sx,sy,sz);return o;};
+  const skinShade=m.skin.clone();skinShade.color.multiplyScalar(.73);
+  const lip=m.lip,upper=lip.clone(),crease=cloth(T,0x452827),lid=cloth(T,0x463229);
+  lip.color.setHex(0xa76b60).convertSRGBToLinear();upper.color.copy(lip.color).multiplyScalar(.86);
+  crease.color.convertSRGBToLinear();lid.color.convertSRGBToLinear();
+  const surface=(name,mat,point)=>add(T,headP,grid(36,12,point),mat,name);
+  function eye(u){return .181+.004*u;}
+  function eyeZ(x,y,u,v){return faceZ(x,y)+.0015+.0037*Math.max(0,1-u*u)*(1-v*v);}
+  m.brow.color.setHex(0x4e3526).convertSRGBToLinear();m.eyeW.color.setHex(0xd5cbbb).convertSRGBToLinear();m.iris.color.setHex(0x62442d).convertSRGBToLinear();
+  for(const s of [-1,1]){
+   ball('lucia-ear',m.skin,s*.091,.151,-.010,.014,.023,.012);
+   ball('lucia-ear-fold',skinShade,s*.096,.151,-.001,.006,.013,.005);
+   surface('lucia-almond-eye',m.eyeW,(u,v)=>{
+    const j=(u*2-1)*s,q=v*2-1,x=s*(.038+.018*j),y=eye(j)+Math.sqrt(Math.max(0,1-j*j))*q*(q>0?.0065:.0046);
+    return [x,y,eyeZ(x,y,j,q)];
+   });
+   for(const [name,mat,rx,ry,offset] of [['iris',m.iris,.0062,.0051,.0005],['pupil',m.pupil,.0029,.0034,.0010]]){
+    surface('lucia-'+name,mat,(u,v)=>{const a=u*2-1,x=s*.037+rx*a,dy=ry*(2*v-1)*Math.sqrt(Math.max(0,1-a*a)),j=(x*s-.038)/.018,y=eye(j)+Math.max(-.0044,dy),q=Math.max(-1,Math.min(1,(y-eye(j))/(dy>=0?.0065:.0046)));return [x,y,eyeZ(x,y,j,q)+offset];});
+   }
+   for(const [mat,kind] of [[lid,'lash-line'],[m.brow,'brow']]){
+    const points=[];for(let i=0;i<=12;i++){const j=2*i/12-1,x=s*(.037+(kind==='brow'?.024:.018)*j),y=kind==='brow'?.201+.007*Math.sin(Math.PI*i/12)+.003*j:eye(j)+.0066*Math.sqrt(Math.max(0,1-j*j));points.push([x,y,faceZ(x,y)+(kind==='brow'?.0018:.0027)]);}
+    add(T,headP,tube(T,points,kind==='brow'?.0038:.0017,18),mat,'lucia-'+kind);
+   }
+   ball('lucia-nostril',lid,s*.0107,.1345,faceZ(s*.0107,.1345)+.0001,.0036,.00135,.0015).rotation.z=s*.19;
+  }
+  const mouth=(t)=>.101+.002*t*t-.0013*g(t,0,.20);
+  for(const [mat,side] of [[upper,1],[lip,-1]]){
+   surface('lucia-lip',mat,(u,v)=>{const t=u*2-1,x=.027*t,a=Math.abs(t),edge=mouth(t),k=side===1?v:1-v,y=edge+side*k*Math.sqrt(1-t*t)*(side===1?.0045+.003*g(a,.27,.16):.007);
+    return [x,y,faceZ(x,y)+.0009+.0027*Math.sin(Math.PI*k)*(1-t*t)];});
+  }
+  surface('lucia-mouth-line',crease,(u,v)=>{const t=2*u-1,x=.0266*t,y=mouth(t)+(v-.5)*.0014*(1-t*t);return [x,y,faceZ(x,y)+.00125];});
+  m.hair.color.setHex(0x3f2b20).convertSRGBToLinear();m.hair.roughness=.74;
+  function scalp(u,v){
+   const a=(u-.5)*2*Math.PI,f=Math.cos(a),end=.107+.127*Math.pow(Math.max(0,f),.55)+.054*Math.pow(Math.sin(a)**2,2)+Math.max(0,f)*(.004*Math.sin(a*4)+.0010*Math.sin(a*23));
+   const y=.311-(.311-end)*v,[w,front,back]=radii(Math.min(.304,y-.005));
+   const ridge=(.0007+.0007*Math.sin(a*13))*Math.sin(Math.PI*v*.94);
+   return [(w+.004+ridge)*Math.sin(a),y,-.013+(f>0?front+.005+ridge:back+.005+ridge)*f];
+  }
+  add(T,headP,grid(76,38,scalp,true),m.hair,'lucia-swept-hairline');
+  const lock=m.hair.clone();lock.color.setHex(0x50372a).convertSRGBToLinear();
+  for(let i=0;i<30;i++){
+   const u=(i+.45)/30,pts=[];
+   for(let j=0;j<=11;j++){const v=.97-j*.075,p=scalp(u+.014*Math.sin(v*Math.PI*1.4),v);p[0]*=1.007;p[2]=-.013+(p[2]+.013)*1.009;pts.push(p);}
+   add(T,headP,tube(T,pts,.00145,14),i%3===0?lock:m.hair,'lucia-swept-strands');
+  }
+  ball('lucia-high-knot',m.hair,-.006,.304,-.080,.048,.057,.047).rotation.z=-.27;
+  for(let i=0;i<8;i++){
+   const points=[],a=i*2*Math.PI/8;
+   for(let j=0;j<=17;j++){const t=j/17,b=a+2.6*t,r=Math.sin(Math.PI*t);points.push([-.006+.049*r*Math.cos(b),.298+.060*Math.cos(Math.PI*t),-.080+.048*r*Math.sin(b)]);}
+   add(T,headP,tube(T,points,.003,24),i%3===0?lock:m.hair,'lucia-knot-coil');
+  }
+  for(const s of [-1,1]){
+   const points=[[s*.058,.249,.056],[s*.075,.231,.050],[s*.081,.209,.046],[s*.077,.196,.049]];
+   add(T,headP,tube(T,points,.0044,18),m.hair,'lucia-temple-wisp');
+  }
+  h.userData.luciaSculptedHead=true;
+ }
  function batch(T,h){const u=h.userData,keep=new Set(u.Lg.map(l=>l.shin)),joints=[u.hips,u.spine,u.headP,...u.A.flatMap(a=>[a.sh,a.el]),...u.Lg.flatMap(l=>[l.hp,l.kn])];for(const joint of joints){const groups=new Map();for(const mesh of joint.children.slice()){if(!mesh.isMesh||keep.has(mesh)||Array.isArray(mesh.material))continue;mesh.updateMatrix();const g=mesh.geometry.index?mesh.geometry.toNonIndexed():mesh.geometry.clone();g.applyMatrix4(mesh.matrix);if(!g.attributes.normal)g.computeVertexNormals();if(!groups.has(mesh.material))groups.set(mesh.material,{p:[],n:[],uv:[]});const b=groups.get(mesh.material),a=g.attributes;for(let i=0;i<a.position.count;i++){b.p.push(a.position.getX(i),a.position.getY(i),a.position.getZ(i));b.n.push(a.normal.getX(i),a.normal.getY(i),a.normal.getZ(i));b.uv.push(a.uv?a.uv.getX(i):0,a.uv?a.uv.getY(i):0)}g.dispose();remove(mesh)}for(const [material,b]of groups){const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(b.p,3));g.setAttribute('normal',new T.Float32BufferAttribute(b.n,3));g.setAttribute('uv',new T.Float32BufferAttribute(b.uv,2));g.computeBoundingSphere();add(T,joint,g,material,'reference-character-batch')}}}
- api.build=function(T,design,over){const id=typeof design==='string'?design:design&&design.referenceLead==='lucia'?'luciaC':design&&design.referenceLead==='jason'?'jasonC':null;if(!looks[id])return originalBuild.apply(this,arguments);const d=Object.assign({},api.DESIGNS[id],over||{},{merge:false,extras:api.DESIGNS[id].extras.filter(x=>x!=='bandana'&&x!=='shades')}),h=originalBuild(T,d,{merge:false});if(id==='luciaC')lucia(T,h);else jason(T,h);h.userData.referenceLead=id;h.userData.faceUncovered=true;if(over&&over.merge)batch(T,h);return h};
+ api.build=function(T,design,over){const id=typeof design==='string'?design:design&&design.referenceLead==='lucia'?'luciaC':design&&design.referenceLead==='jason'?'jasonC':null;if(!looks[id])return originalBuild.apply(this,arguments);const d=Object.assign({},api.DESIGNS[id],over||{},{merge:false,extras:api.DESIGNS[id].extras.filter(x=>x!=='bandana'&&x!=='shades')}),h=originalBuild(T,d,{merge:false});if(id==='luciaC'){lucia(T,h);sculptLuciaHead(T,h);}else{jason(T,h);h.userData.luciaSculptedHead=false;}h.userData.referenceLead=id;h.userData.faceUncovered=true;if(over&&over.merge)batch(T,h);return h};
  api.referenceLeadsInstalled=true;
 })();

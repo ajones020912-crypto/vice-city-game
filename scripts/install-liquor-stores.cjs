@@ -7,7 +7,7 @@ try{
  const validate=html=>{for(const script of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi))if(script[1].trim())acorn.parse(script[1],{ecmaVersion:'latest'});acorn.parse(fs.readFileSync('js/liquor-stores.js','utf8'),{ecmaVersion:'latest'});};
  const record=edits=>{fs.mkdirSync('status',{recursive:true});fs.writeFileSync(status,JSON.stringify({passed:false,stage:'integrated; browser tests pending',sourceEdits:edits,baselineSyntaxPassed:true,originalSHA256:sourceSHA256},null,2)+'\n');};
  if(alreadyInstalled){
-  assert(original.split('<script src="js/liquor-stores.js"></script>').length===2,'Expected one liquor-store script');
+  assert([...original.matchAll(/<script src="js\/liquor-stores\.js(?:\?v=\d+)?"><\/script>/g)].length===1,'Expected one liquor-store script');
   validate(original);record(0);
  }else{
  const matches=[...original.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].filter(m=>m[1].includes('function simulate(')&&m[1].includes('function buildInterior('));assert(matches.length===1);const m=matches[0],code=m[1],ast=acorn.parse(code,{ecmaVersion:'latest'}),functions={};walk(ast,n=>{if(n.type==='FunctionDeclaration'&&n.id){if(!functions[n.id.name])functions[n.id.name]=[];functions[n.id.name].push(n);}});function fn(name){assert(functions[name]&&functions[name].length===1,'Ambiguous or missing '+name);return functions[name][0];}const edits=[];function edit(start,end,text){edits.push({start,end,text});}
